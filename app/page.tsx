@@ -321,7 +321,7 @@ export default function ExamPage() {
     return (
       <div className="flex-1 flex flex-col pt-16 md:pt-24 px-6">
         <div className="max-w-3xl mx-auto w-full">
-          <h1 className="font-display text-[64px] sm:text-[96px] text-nike-black leading-[0.90] tracking-tighter uppercase mb-12">
+          <h1 data-mobile-title="true" className="mobile-exam-title font-display text-[64px] sm:text-[96px] text-nike-black leading-[0.90] tracking-tighter uppercase mb-12">
             Take The<br />Exam.
           </h1>
           <div className="max-w-md w-full space-y-6">

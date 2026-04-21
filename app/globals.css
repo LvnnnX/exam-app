@@ -4,6 +4,7 @@
 :root {
   --background: #ffffff;
   --foreground: #111111;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -114,6 +115,13 @@ body {
 
 /* Mobile title color fix: override gray utility colors for heading/title elements */
 @media (max-width: 767px) {
+  html,
+  body,
+  main {
+    background-color: #ffffff !important;
+    color: #111111 !important;
+  }
+
   h1,
   h2,
   h3,
@@ -121,6 +129,7 @@ body {
   h5,
   h6,
   .font-display,
+  .mobile-exam-title,
   .mobile-title-black,
   [data-mobile-title="true"] {
     color: #000000 !important;
