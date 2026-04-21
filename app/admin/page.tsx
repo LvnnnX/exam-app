@@ -297,7 +297,7 @@ export default function AdminPage() {
       option_c: sanitizeRichHtml(formData.option_c),
       option_d: sanitizeRichHtml(formData.option_d),
       option_e: sanitizeRichHtml(formData.option_e),
-      correct_answer: formData.correct_answer,
+      correct_answer: formData.correct_answer.toUpperCase(),
       category: formData.category,
     };
 
@@ -791,11 +791,11 @@ export default function AdminPage() {
                         onChange={(event) => handleInputChange('correct_answer', event.target.value)}
                         className="w-full px-4 h-[48px] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium appearance-none bg-white"
                       >
-                        <option value="a">Option A</option>
-                        <option value="b">Option B</option>
-                        <option value="c">Option C</option>
-                        <option value="d">Option D</option>
-                        <option value="e">Option E</option>
+                        <option value="A">Option A</option>
+                        <option value="B">Option B</option>
+                        <option value="C">Option C</option>
+                        <option value="D">Option D</option>
+                        <option value="E">Option E</option>
                       </select>
                     </div>
                   </div>
