@@ -80,6 +80,9 @@ export default function AdminPage() {
   const [totalResults, setTotalResults] = useState(0);
   const ITEMS_PER_PAGE = 20;
 
+  // New state for aggregate statistics across all records
+  const [statsData, setStatsData] = useState<{ score: number; total_questions: number }[]>([]);
+
   const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
   const [detailQuestions, setDetailQuestions] = useState<RawQuestion[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -177,18 +180,19 @@ export default function AdminPage() {
   const fetchResults = async (page = 0, category = activeResCategory) => {
     setLoading(true);
     try {
+      // 1. Fetch paginated data for the table
       const from = page * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      let query = supabase
+      let paginatedQuery = supabase
         .from('exam_results')
         .select('*', { count: 'exact' });
 
       if (category !== 'all') {
-        query = query.eq('category', category);
+        paginatedQuery = paginatedQuery.eq('category', category);
       }
 
-      const { data, error, count } = await query
+      const { data, error, count } = await paginatedQuery
         .order('taken_at', { ascending: false })
         .range(from, to);
 
@@ -199,6 +203,22 @@ export default function AdminPage() {
       setResults(data || []);
       setTotalResults(count || 0);
       setResultPage(page);
+
+      // 2. Fetch aggregate data for all matching records (Minimal columns for performance)
+      let statsQuery = supabase
+        .from('exam_results')
+        .select('score, total_questions');
+
+      if (category !== 'all') {
+        statsQuery = statsQuery.eq('category', category);
+      }
+
+      const { data: statRows, error: statError } = await statsQuery;
+      if (statError) {
+        throw statError;
+      }
+
+      setStatsData(statRows || []);
     } catch (err) {
       console.error('Error fetching results:', err);
     } finally {
@@ -570,32 +590,33 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {results.length > 0 && (
+          {statsData.length > 0 && (
             <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-indigo-600">{results.length}</div>
+                <div className="text-2xl font-bold text-indigo-600">{statsData.length}</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Attempts</div>
               </div>
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
                 <div className="text-2xl font-bold text-green-600">
-                  {Math.round(results.reduce((sum, row) => sum + row.score, 0) / results.length * 10) / 10}
+                  {Math.round(statsData.reduce((sum, row) => sum + row.score, 0) / statsData.length * 10) / 10}
                 </div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Average Score</div>
               </div>
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
                 <div className="text-2xl font-bold text-blue-600">
-                  {results.reduce((sum, row) => sum + row.total_questions, 0)}
+                  {statsData.reduce((sum, row) => sum + row.total_questions, 0)}
                 </div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Questions Answered</div>
               </div>
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
                 <div className="text-2xl font-bold text-purple-600">
-                  {results.length > 0 ? Math.round(results.filter((row) => (row.score / row.total_questions) >= 0.7).length / results.length * 100) : 0}%
+                  {statsData.length > 0 ? Math.round(statsData.filter((row) => (row.score / row.total_questions) >= 0.7).length / statsData.length * 100) : 0}%
                 </div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pass Rate (70%+)</div>
               </div>
             </div>
           )}
+
 
           {loading ? (
             <p>Loading results...</p>

@@ -613,7 +613,7 @@ export default function ExamPage() {
 
                   <div className="ml-[10px] sm:ml-[40px] pl-6 border-l-[2px] border-nike-grey-300">
                     {isSkipped ? (
-                      <p className="text-[14px] font-medium text-nike-grey-500 uppercase">Input: Skipped</p>
+                      <p className="text-[14px] font-medium text-nike-grey-500 uppercase">No Answer</p>
                     ) : isCorrect ? (
                       <div className="flex items-start gap-3">
                         <div className="w-2 h-2 rounded-full bg-nike-green"></div>
