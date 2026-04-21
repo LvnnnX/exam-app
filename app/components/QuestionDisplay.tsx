@@ -32,13 +32,13 @@ export default function QuestionDisplay({
             <button
               key={option.label}
               onClick={() => onSelectAnswer(option.label)}
-              className={`w-full p-6 sm:px-8 rounded-[30px] text-left transition-all ${
+              className={`w-full p-4 sm:p-6 sm:px-8 rounded-[24px] sm:rounded-[30px] text-left transition-all ${
                 isSelected
                   ? 'bg-nike-black border-[1.5px] border-nike-black text-nike-white'
                   : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
               }`}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 <span className={`font-bold mt-0.5 ${isSelected ? 'text-nike-grey-300' : 'text-nike-grey-500'}`}>
                   {option.label}.
                 </span>

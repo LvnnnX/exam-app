@@ -571,7 +571,7 @@ export default function AdminPage() {
           </div>
 
           {results.length > 0 && (
-            <div className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
                 <div className="text-2xl font-bold text-indigo-600">{results.length}</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Attempts</div>
@@ -604,8 +604,9 @@ export default function AdminPage() {
               <p className="text-gray-500">No exam results yet. Users need to complete the exam first.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
+            <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -649,7 +650,8 @@ export default function AdminPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
               
               {/* Pagination Controls */}
               {totalResults > ITEMS_PER_PAGE && (
@@ -683,123 +685,157 @@ export default function AdminPage() {
       )}
 
       {(selectedQuestion || isAdding || isEditing) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-xl font-bold mb-4">
-              {isAdding ? 'Add New Question' : isEditing ? 'Edit Question' : 'Question Details'}
-            </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[9999]" onClick={closeModal}>
+          <div 
+            className="bg-white rounded-[20px] shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center bg-white sticky top-0 z-10">
+              <h2 className="text-xl font-bold">
+                {isAdding ? 'Add New Question' : isEditing ? 'Edit Question' : 'Question Details'}
+              </h2>
+              <button 
+                onClick={closeModal}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-xl"
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
 
-            {(isAdding || isEditing) ? (
-              <div className="space-y-5">
-                <RichTextEditorField
-                  label="Question Text"
-                  value={formData.question_text}
-                  onChange={(value) => handleInputChange('question_text', value)}
-                />
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50/30">
+              {(isAdding || isEditing) ? (
+                <div className="space-y-6">
+                  <RichTextEditorField
+                    label="Question Text"
+                    value={formData.question_text}
+                    onChange={(value) => handleInputChange('question_text', value)}
+                  />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <RichTextEditorField
-                    label="Option A"
-                    value={formData.option_a}
-                    onChange={(value) => handleInputChange('option_a', value)}
-                  />
-                  <RichTextEditorField
-                    label="Option B"
-                    value={formData.option_b}
-                    onChange={(value) => handleInputChange('option_b', value)}
-                  />
-                  <RichTextEditorField
-                    label="Option C"
-                    value={formData.option_c}
-                    onChange={(value) => handleInputChange('option_c', value)}
-                  />
-                  <RichTextEditorField
-                    label="Option D"
-                    value={formData.option_d}
-                    onChange={(value) => handleInputChange('option_d', value)}
-                  />
-                  <RichTextEditorField
-                    label="Option E"
-                    value={formData.option_e}
-                    onChange={(value) => handleInputChange('option_e', value)}
-                  />
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <RichTextEditorField
+                      label="Option A"
+                      value={formData.option_a}
+                      onChange={(value) => handleInputChange('option_a', value)}
+                    />
+                    <RichTextEditorField
+                      label="Option B"
+                      value={formData.option_b}
+                      onChange={(value) => handleInputChange('option_b', value)}
+                    />
+                    <RichTextEditorField
+                      label="Option C"
+                      value={formData.option_c}
+                      onChange={(value) => handleInputChange('option_c', value)}
+                    />
+                    <RichTextEditorField
+                      label="Option D"
+                      value={formData.option_d}
+                      onChange={(value) => handleInputChange('option_d', value)}
+                    />
+                    <RichTextEditorField
+                      label="Option E"
+                      value={formData.option_e}
+                      onChange={(value) => handleInputChange('option_e', value)}
+                    />
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="relative group">
-                      <input
-                        type="text"
-                        list="category-options"
-                        value={formData.category}
-                        onChange={(event) => handleInputChange('category', event.target.value.toLowerCase().replace(/\s+/g, '_'))}
-                        onFocus={(e) => e.target.select()}
-                        placeholder="Search or type new category..."
-                        className="w-full px-4 py-2.5 border-2 border-gray-100 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium placeholder:text-gray-400"
-                      />
-                      <datalist id="category-options">
-                        {allCategories.map((cat) => (
-                          <option key={cat.value} value={cat.value}>{cat.label}</option>
-                        ))}
-                      </datalist>
-                      <p className="text-[10px] text-gray-400 mt-2 uppercase font-bold tracking-widest pl-1">
-                        Select existing or type new to create
-                      </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">Question Category</label>
+                      <div className="relative group">
+                        <input
+                          type="text"
+                          list="category-options"
+                          value={formData.category}
+                          onChange={(event) => handleInputChange('category', event.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                          onFocus={(e) => e.target.select()}
+                          placeholder="Search or type new category..."
+                          className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium placeholder:text-gray-400"
+                        />
+                        <datalist id="category-options">
+                          {allCategories.map((cat) => (
+                            <option key={cat.value} value={cat.value}>{cat.label}</option>
+                          ))}
+                        </datalist>
+                      </div>
                     </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
-                    <select
-                      value={formData.correct_answer}
-                      onChange={(event) => handleInputChange('correct_answer', event.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      {['A', 'B', 'C', 'D', 'E'].map((option) => (
-                        <option key={option} value={option}>Option {option}</option>
+                    
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">Correct Answer</label>
+                      <select
+                        value={formData.correct_answer}
+                        onChange={(event) => handleInputChange('correct_answer', event.target.value)}
+                        className="w-full px-4 h-[48px] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium appearance-none bg-white"
+                      >
+                        <option value="a">Option A</option>
+                        <option value="b">Option B</option>
+                        <option value="c">Option C</option>
+                        <option value="d">Option D</option>
+                        <option value="e">Option E</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                selectedQuestion && (
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Question Prompt</h3>
+                      <div className="p-4 sm:p-6 bg-white rounded-xl border border-gray-100 shadow-sm">
+                        <RichContent html={selectedQuestion.question_text} className="text-lg text-gray-900" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
+                        <div 
+                          key={label}
+                          className={`p-4 rounded-xl border-2 transition-all ${
+                            selectedQuestion.correct_answer.toLowerCase() === label 
+                              ? 'border-green-500 bg-green-50' 
+                              : 'border-gray-100 bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-3 pb-2 border-b border-inherit">
+                            <span className="font-bold uppercase text-gray-400 text-sm">Option {label}</span>
+                            {selectedQuestion.correct_answer.toLowerCase() === label && (
+                              <span className="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Correct</span>
+                            )}
+                          </div>
+                          <RichContent html={(selectedQuestion as any)[`option_${label}`]} />
+                        </div>
                       ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            ) : selectedQuestion ? (
-              <div className="space-y-5">
-                <div className="rounded-lg border p-4 bg-gray-50">
-                  <p className="text-sm text-gray-500 mb-1">Question</p>
-                  <RichContent html={selectedQuestion.question_text} className="text-gray-900" />
-                </div>
+                    </div>
 
-                {['A', 'B', 'C', 'D', 'E'].map((option) => (
-                  <div key={option} className="rounded-lg border p-4 bg-white">
-                    <p className="text-sm text-gray-500 mb-1">Option {option}</p>
-                    <RichContent html={selectedQuestion[`option_${option.toLowerCase()}` as keyof RawQuestion] as string} className="text-gray-900" />
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="p-4 bg-white rounded-xl border border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Category</p>
+                        <p className="font-bold text-gray-900 capitalize">{selectedQuestion.category?.replaceAll('_', ' ')}</p>
+                      </div>
+                    </div>
                   </div>
-                ))}
+                )
+              )}
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-lg border p-4 bg-white">
-                    <p className="text-sm text-gray-500">Category</p>
-                    <p className="font-semibold text-gray-900">{selectedQuestion.category}</p>
-                  </div>
-                  <div className="rounded-lg border p-4 bg-white">
-                    <p className="text-sm text-gray-500">Correct Answer</p>
-                    <p className="font-semibold text-gray-900">Option {selectedQuestion.correct_answer}</p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="flex justify-end gap-3 mt-6">
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-6 border-t bg-white flex flex-col sm:flex-row justify-end gap-3 sticky bottom-0 z-10">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                className="w-full sm:w-auto px-8 h-[48px] rounded-[24px] border border-gray-300 text-gray-700 font-bold uppercase text-xs tracking-widest hover:bg-gray-50 transition-colors"
               >
-                Close
+                {isAdding || isEditing ? 'Cancel' : 'Close Details'}
               </button>
               {(isAdding || isEditing) && (
                 <button
                   onClick={handleSave}
                   disabled={savingQuestion}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                  className="w-full sm:w-auto px-10 h-[48px] rounded-[24px] bg-nike-black text-nike-white font-bold uppercase text-xs tracking-widest hover:bg-nike-grey-500 transition-colors disabled:opacity-50"
                 >
-                  {savingQuestion ? 'Saving...' : 'Save Question'}
+                  {savingQuestion ? 'Syncing...' : (isAdding ? 'Create Question' : 'Save Changes')}
                 </button>
               )}
             </div>
@@ -844,7 +880,7 @@ export default function AdminPage() {
                           {question ? (
                             <>
                               <RichContent html={question.question_text} className="font-medium text-gray-900" />
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <div className={`p-3 rounded-lg border ${answer.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
                                   <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected ({answer.user_answer})</p>
                                   <RichContent html={question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string} />

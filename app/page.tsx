@@ -468,27 +468,29 @@ export default function ExamPage() {
       <div className="flex-1 flex flex-col px-6 py-12 md:py-16">
         <div className="max-w-3xl mx-auto w-full">
           {/* Progress & Status */}
-          <div className="flex justify-between items-end mb-8 pb-4 border-b border-nike-grey-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-4 border-b border-nike-grey-200 gap-4">
             <div className="flex flex-col">
-              <span className="text-[17px] font-bold text-nike-black uppercase tracking-[0.2em]">
+              <span className="text-[17px] font-bold text-nike-black uppercase tracking-[0.2em] break-words">
                 {name}
               </span>
-              <span className="text-[12px] font-bold text-nike-grey-400 uppercase tracking-widest mb-1">
+              <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
                 Kategori: {categoryLabel}
               </span>
               <span className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest">
                 Question {current + 1} / {total}
               </span>
             </div>
-            {hasAnswerSelected ? (
-              <span className="text-[14px] font-medium text-nike-green uppercase tracking-widest">
-                Answer Saved
-              </span>
-            ) : (
-              <span className="text-[14px] font-medium text-nike-grey-300 uppercase tracking-widest">
-                Pending Response
-              </span>
-            )}
+            <div className="sm:text-right">
+              {hasAnswerSelected ? (
+                <span className="text-[14px] font-bold text-nike-green uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
+                  Answer Saved
+                </span>
+              ) : (
+                <span className="text-[14px] font-bold text-nike-grey-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">
+                  Pending Response
+                </span>
+              )}
+            </div>
           </div>
 
           <QuestionDisplay
