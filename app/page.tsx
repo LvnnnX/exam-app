@@ -223,11 +223,27 @@ export default function ExamPage() {
     saveStepToStorage(newStep);
   };
 
+  const scrollToQuestionTop = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const mainContainer = document.querySelector('main');
+      if (mainContainer instanceof HTMLElement && mainContainer.scrollHeight > mainContainer.clientHeight) {
+        mainContainer.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
+
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+  };
+
   const nextQuestion = () => {
     if (current < total - 1) {
       const nextIdx = current + 1;
       setCurrent(nextIdx);
       saveCurrentQuestionToStorage(nextIdx);
+      scrollToQuestionTop();
     } else {
       const finalScore = calculateScore();
       setScore(finalScore);
@@ -240,6 +256,7 @@ export default function ExamPage() {
       const nextIdx = current + 1;
       setCurrent(nextIdx);
       saveCurrentQuestionToStorage(nextIdx);
+      scrollToQuestionTop();
     } else {
       const finalScore = calculateScore();
       setScore(finalScore);
