@@ -158,3 +158,23 @@ INSERT INTO questions (question_text, option_a, option_b, option_c, option_d, op
 -- ALTER TABLE questions ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'general_informatics';
 -- ALTER TABLE exam_results ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'general_informatics';
 -- ALTER TABLE exam_results ADD COLUMN IF NOT EXISTS question_count INTEGER NOT NULL DEFAULT 20;
+
+-- ============================================================
+-- Storage Configuration
+-- ============================================================
+
+-- Ensure the exam-images bucket exists
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('exam-images', 'exam-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage Policies
+-- 1. Allow public to read images
+CREATE POLICY "Public Read Access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'exam-images');
+
+-- 2. Allow authenticated users to upload images
+CREATE POLICY "Authenticated Upload Access" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'exam-images');
+
+-- 3. Allow authenticated users to update/delete their own uploads (basic simple policy for dev)
+CREATE POLICY "Authenticated Manage Access" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'exam-images');
+CREATE POLICY "Authenticated Delete Access" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'exam-images');

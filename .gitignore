@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files
 .env*
+*.md
 
 # supabase
 supabase/.temp/
@@ -42,3 +43,5 @@ supabase/.temp/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+tes-schema.sql

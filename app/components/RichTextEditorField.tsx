@@ -120,50 +120,71 @@ export default function RichTextEditorField({
     }
 
     const language = selectedLanguage === 'pseudocode' ? 'plaintext' : selectedLanguage;
-    editor.chain().focus().setCodeBlock({ language }).run();
+    editor.chain().focus().toggleCodeBlock({ language }).run();
   };
+
+  if (!editor) {
+    return <div className="p-4 border rounded-lg bg-gray-50 animate-pulse">Initializing editor...</div>;
+  }
 
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
 
-      <div className="tiptap-shell border rounded-lg bg-white overflow-hidden">
-        <div className="tiptap-toolbar border-b bg-gray-50 p-2 flex flex-wrap gap-2">
+      <div className="tiptap-shell border rounded-lg bg-white overflow-hidden shadow-sm transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-nike-black">
+        <div className="tiptap-toolbar border-b bg-gray-50 p-2 flex flex-wrap gap-2 sticky top-0 z-10">
           <button
             type="button"
-            onClick={() => editor?.chain().focus().toggleBold().run()}
-            className={`toolbar-btn ${editor?.isActive('bold') ? 'is-active' : ''}`}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            className={`toolbar-btn ${editor.isActive('bold') ? 'is-active' : ''}`}
+            title="Bold"
           >
-            Bold
+            <span className="font-bold">B</span>
           </button>
           <button
             type="button"
-            onClick={() => editor?.chain().focus().toggleItalic().run()}
-            className={`toolbar-btn ${editor?.isActive('italic') ? 'is-active' : ''}`}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            className={`toolbar-btn ${editor.isActive('italic') ? 'is-active' : ''}`}
+            title="Italic"
           >
-            Italic
+            <span className="italic">I</span>
           </button>
           <button
             type="button"
-            onClick={() => editor?.chain().focus().toggleBulletList().run()}
-            className={`toolbar-btn ${editor?.isActive('bulletList') ? 'is-active' : ''}`}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            className={`toolbar-btn ${editor.isActive('bulletList') ? 'is-active' : ''}`}
+            title="Bullet List"
           >
-            Bullets
+            • Bullets
           </button>
           <button
             type="button"
-            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-            className={`toolbar-btn ${editor?.isActive('orderedList') ? 'is-active' : ''}`}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            className={`toolbar-btn ${editor.isActive('orderedList') ? 'is-active' : ''}`}
+            title="Ordered List"
           >
-            Numbered
+            1. Numbered
           </button>
+          
+          <div className="h-6 w-[1px] bg-gray-300 mx-1 self-center" />
+
           <button
             type="button"
             onClick={insertImage}
-            className="toolbar-btn"
+            className="toolbar-btn flex items-center gap-2"
             disabled={isUploading}
           >
-            {isUploading ? 'Uploading...' : 'Insert Image'}
+            {isUploading ? (
+              <span className="flex items-center gap-1">
+                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                ...
+              </span>
+            ) : (
+              '🖼️ Image'
+            )}
           </button>
           
           <input 
@@ -174,11 +195,11 @@ export default function RichTextEditorField({
             className="hidden" 
           />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <select
               value={selectedLanguage}
               onChange={(event) => setSelectedLanguage(event.target.value)}
-              className="text-sm border rounded px-2 py-1 bg-white"
+              className="text-xs border rounded-md px-2 py-1 bg-white focus:ring-1 focus:ring-nike-black outline-none"
             >
               {CODE_LANGUAGES.map((language) => (
                 <option key={language.value} value={language.value}>
@@ -189,16 +210,17 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={applyCodeBlock}
-              className={`toolbar-btn ${editor?.isActive('codeBlock') ? 'is-active' : ''}`}
+              className={`toolbar-btn ${editor.isActive('codeBlock') ? 'is-active' : ''} whitespace-nowrap`}
             >
-              Code Block
+              {'{ }'} Code
             </button>
             <button
               type="button"
-              onClick={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()}
-              className="toolbar-btn"
+              onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
+              className="toolbar-btn text-nike-red hover:bg-red-50 border-red-200"
+              title="Clear Formatting"
             >
-              Clear
+              ×
             </button>
           </div>
         </div>
