@@ -340,7 +340,7 @@ export default function ExamPage() {
     return (
       <div className="flex-1 flex flex-col pt-16 md:pt-24 px-6">
         <div className="max-w-3xl mx-auto w-full">
-          <h1 data-mobile-title="true" className="mobile-exam-title font-display text-[64px] sm:text-[96px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-12">
+          <h1 className="font-display text-[56px] sm:text-[96px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8 md:mb-12">
             Take The<br />Exam.
           </h1>
           <div className="max-w-md w-full space-y-6">
@@ -380,7 +380,7 @@ export default function ExamPage() {
                     <button
                       key={cat.value}
                       onClick={() => setCategory(cat.value)}
-                      className={`px-5 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${category === cat.value
+                      className={`flex-1 sm:flex-none px-5 h-[44px] rounded-[30px] text-[13px] sm:text-[14px] font-medium transition-all uppercase tracking-wider ${category === cat.value
                         ? 'bg-nike-black text-nike-white'
                         : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
                         }`}
