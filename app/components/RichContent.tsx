@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import hljs from 'highlight.js';
 import { ensureHtmlDocument } from '@/lib/rich-text';
@@ -30,15 +30,23 @@ const SANITIZE_OPTIONS: DomPurifyConfig = {
 };
 
 export default function RichContent({ html, className = '' }: RichContentProps) {
+  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const safeHtml = useMemo(() => {
+    if (!mounted) {
+      return '';
+    }
     const normalized = ensureHtmlDocument(html);
     return String(DOMPurify.sanitize(normalized, SANITIZE_OPTIONS));
-  }, [html]);
+  }, [html, mounted]);
 
   useEffect(() => {
-    if (!containerRef.current) {
+    if (!mounted || !containerRef.current) {
       return;
     }
 
@@ -62,7 +70,7 @@ export default function RichContent({ html, className = '' }: RichContentProps) 
       image.setAttribute('decoding', 'async');
       image.setAttribute('referrerpolicy', 'no-referrer');
     });
-  }, [safeHtml]);
+  }, [safeHtml, mounted]);
 
   return (
     <div
@@ -71,4 +79,4 @@ export default function RichContent({ html, className = '' }: RichContentProps) 
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );
-}
+}
