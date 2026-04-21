@@ -111,3 +111,18 @@ body {
   color: #ffffff;
   border-color: #111827;
 }
+
+/* Force bold text to solid black on mobile devices for improved readability */
+@media (max-width: 767px) {
+  b, 
+  strong, 
+  h1, h2, h3, h4, h5, h6,
+  .font-bold, 
+  .font-semibold,
+  .font-display,
+  [class*="font-bold"],
+  [class*="font-semibold"],
+  [class*="font-display"] {
+    color: #000000 !important;
+  }
+}

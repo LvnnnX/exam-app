@@ -805,7 +805,10 @@ export default function AdminPage() {
                               <span className="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Correct</span>
                             )}
                           </div>
-                          <RichContent html={(selectedQuestion as any)[`option_${label}`]} />
+                          <RichContent 
+                            html={(selectedQuestion as any)[`option_${label}`]} 
+                            className="text-gray-900 font-medium"
+                          />
                         </div>
                       ))}
                     </div>
@@ -883,12 +886,18 @@ export default function AdminPage() {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <div className={`p-3 rounded-lg border ${answer.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
                                   <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected ({answer.user_answer})</p>
-                                  <RichContent html={question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string} />
+                                  <RichContent 
+                                    html={question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string} 
+                                    className="text-gray-900 font-medium"
+                                  />
                                 </div>
                                 {!answer.is_correct && (
                                   <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
                                     <p className="text-xs font-bold text-gray-500 uppercase mb-1">Correct Answer ({question.correct_answer})</p>
-                                    <RichContent html={question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string} />
+                                    <RichContent 
+                                    html={question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string} 
+                                    className="text-gray-900 font-medium"
+                                  />
                                   </div>
                                 )}
                               </div>
