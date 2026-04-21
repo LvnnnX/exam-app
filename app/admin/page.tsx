@@ -89,6 +89,7 @@ export default function AdminPage() {
   const [allCategories, setAllCategories] = useState<CategoryInfo[]>([]);
   const [sessionInfo, setSessionInfo] = useState<string | null>(null);
   const [activeResCategory, setActiveResCategory] = useState<string>('all');
+  const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -150,7 +151,7 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(data.session?.user.id || 'anonymous');
         setPinError('');
-        
+
         if (activeTab === 'results') {
           void fetchResults();
         } else {
@@ -353,12 +354,9 @@ export default function AdminPage() {
     }
   };
 
-  const handleDelete = async (question: RawQuestion) => {
-    if (!question.id) {
-      return;
-    }
-
-    if (!window.confirm('Are you sure you want to delete this question?')) {
+  const confirmDelete = async () => {
+    if (!deletingQuestion?.id) {
+      setDeletingQuestion(null);
       return;
     }
 
@@ -366,19 +364,20 @@ export default function AdminPage() {
       const { error } = await supabase
         .from('questions')
         .delete()
-        .eq('id', question.id);
+        .eq('id', deletingQuestion.id);
 
       if (error) {
         throw error;
       }
 
       await fetchAdminQuestions();
-      if (selectedQuestion?.id === question.id) {
+      if (selectedQuestion?.id === deletingQuestion.id) {
         closeModal();
       }
     } catch (err) {
       console.error('Error deleting question:', err);
-      window.alert('Failed to delete question.');
+    } finally {
+      setDeletingQuestion(null);
     }
   };
 
@@ -493,11 +492,10 @@ export default function AdminPage() {
                 <button
                   key={category}
                   onClick={() => setActiveCategoryFilter(category)}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition-colors ${
-                    isActive
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-700 hover:border-indigo-400 hover:text-indigo-700'
-                  }`}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition-colors ${isActive
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-700 hover:border-indigo-400 hover:text-indigo-700'
+                    }`}
                 >
                   <span>{getCategoryLabel(category)}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
@@ -546,8 +544,9 @@ export default function AdminPage() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(question)}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                        type="button"
+                        onClick={() => setDeletingQuestion(question)}
+                        className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 cursor-pointer"
                       >
                         Delete
                       </button>
@@ -578,11 +577,10 @@ export default function AdminPage() {
                 <button
                   key={cat}
                   onClick={() => handleResCategoryChange(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                    activeResCategory === cat 
-                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
-                      : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeResCategory === cat
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
+                    }`}
                 >
                   {getCategoryLabel(cat)}
                 </button>
@@ -628,52 +626,51 @@ export default function AdminPage() {
             <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {results.map((result) => (
-                     <tr key={result.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className="capitalize">{result.category?.replaceAll('_', ' ')}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {result.score} / {result.total_questions}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 rounded ${
-                          (result.score / result.total_questions) >= 0.7 ? 'bg-green-100 text-green-800' :
-                          (result.score / result.total_questions) >= 0.5 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {Math.round((result.score / result.total_questions) * 100)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(result.taken_at).toLocaleDateString()} {new Date(result.taken_at).toLocaleTimeString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleFetchResultDetail(result)}
-                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
-                        >
-                          View Details
-                        </button>
-                      </td>
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
                     </tr>
-                  ))}
-                </tbody>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {results.map((result) => (
+                      <tr key={result.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className="capitalize">{result.category?.replaceAll('_', ' ')}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {result.score} / {result.total_questions}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`px-2 py-1 rounded ${(result.score / result.total_questions) >= 0.7 ? 'bg-green-100 text-green-800' :
+                            (result.score / result.total_questions) >= 0.5 ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                            {Math.round((result.score / result.total_questions) * 100)}%
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(result.taken_at).toLocaleDateString()} {new Date(result.taken_at).toLocaleTimeString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleFetchResultDetail(result)}
+                            className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
-              
+
               {/* Pagination Controls */}
               {totalResults > ITEMS_PER_PAGE && (
                 <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
@@ -707,7 +704,7 @@ export default function AdminPage() {
 
       {(selectedQuestion || isAdding || isEditing) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[9999]" onClick={closeModal}>
-          <div 
+          <div
             className="bg-white rounded-[20px] shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -716,7 +713,7 @@ export default function AdminPage() {
               <h2 className="text-xl font-bold">
                 {isAdding ? 'Add New Question' : isEditing ? 'Edit Question' : 'Question Details'}
               </h2>
-              <button 
+              <button
                 onClick={closeModal}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-xl"
                 title="Close"
@@ -783,7 +780,7 @@ export default function AdminPage() {
                         </datalist>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-1">
                       <label className="block text-sm font-medium text-gray-700">Correct Answer</label>
                       <select
@@ -812,13 +809,12 @@ export default function AdminPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
-                        <div 
+                        <div
                           key={label}
-                          className={`p-4 rounded-xl border-2 transition-all ${
-                            selectedQuestion.correct_answer.toLowerCase() === label 
-                              ? 'border-green-500 bg-green-50' 
-                              : 'border-gray-100 bg-white'
-                          }`}
+                          className={`p-4 rounded-xl border-2 transition-all ${selectedQuestion.correct_answer.toLowerCase() === label
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-100 bg-white'
+                            }`}
                         >
                           <div className="flex items-center justify-between mb-3 pb-2 border-b border-inherit">
                             <span className="font-bold uppercase text-gray-400 text-sm">Option {label}</span>
@@ -826,8 +822,8 @@ export default function AdminPage() {
                               <span className="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Correct</span>
                             )}
                           </div>
-                          <RichContent 
-                            html={(selectedQuestion as any)[`option_${label}`]} 
+                          <RichContent
+                            html={(selectedQuestion as any)[`option_${label}`]}
                             className="text-gray-900 font-medium"
                           />
                         </div>
@@ -876,7 +872,7 @@ export default function AdminPage() {
                 <h2 className="text-xl font-bold">Exam Breakdown: {viewingResult.name}</h2>
                 <p className="text-sm text-gray-500">{new Date(viewingResult.taken_at).toLocaleString()} • {viewingResult.category}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setViewingResult(null)}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -891,7 +887,7 @@ export default function AdminPage() {
                 <div className="space-y-6">
                   {viewingResult.user_answers.map((answer, idx) => {
                     const question = detailQuestions.find(q => q.id === answer.question_id);
-                    
+
                     return (
                       <div key={idx} className="bg-white rounded-lg border shadow-sm overflow-hidden">
                         <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
@@ -907,18 +903,18 @@ export default function AdminPage() {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <div className={`p-3 rounded-lg border ${answer.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
                                   <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected ({answer.user_answer})</p>
-                                  <RichContent 
-                                    html={question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string} 
+                                  <RichContent
+                                    html={question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string}
                                     className="text-gray-900 font-medium"
                                   />
                                 </div>
                                 {!answer.is_correct && (
                                   <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
                                     <p className="text-xs font-bold text-gray-500 uppercase mb-1">Correct Answer ({question.correct_answer})</p>
-                                    <RichContent 
-                                    html={question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string} 
-                                    className="text-gray-900 font-medium"
-                                  />
+                                    <RichContent
+                                      html={question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string}
+                                      className="text-gray-900 font-medium"
+                                    />
                                   </div>
                                 )}
                               </div>
@@ -943,6 +939,34 @@ export default function AdminPage() {
                 className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deletingQuestion && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Question?</h3>
+            <p className="text-sm text-gray-600 mb-1">This action cannot be undone.</p>
+            <p className="text-sm text-gray-500 mb-6 truncate">
+              &ldquo;{stripHtml(deletingQuestion.question_text).slice(0, 80)}&rdquo;
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeletingQuestion(null)}
+                className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="px-5 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+              >
+                Delete
               </button>
             </div>
           </div>
