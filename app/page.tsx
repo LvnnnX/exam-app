@@ -482,8 +482,8 @@ export default function ExamPage() {
   // Steps 3-5: Questions
   if (step >= 3 && step <= 5 && currentQuestion) {
     return (
-      <div className="flex-1 flex flex-col px-6 py-12 md:py-16">
-        <div className="max-w-3xl mx-auto w-full">
+      <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16">
+        <div className="max-w-6xl mx-auto w-full">
           {/* Progress & Status */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-4 border-b border-nike-grey-200 gap-4">
             <div className="flex flex-col">
@@ -546,7 +546,7 @@ export default function ExamPage() {
           <h2 className="font-display text-[96px] sm:text-[120px] text-nike-black leading-[0.85] tracking-[0.03em] uppercase mb-4">
             {score}/{total}
           </h2>
-          <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase">{percentage}% Completed</p>
+          <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase">{percentage}% Correct Answer</p>
           <p className="text-[14px] font-medium text-nike-grey-300 mb-12 uppercase tracking-widest">{categoryLabel}</p>
 
           <div className="h-[24px] mb-8">
@@ -571,7 +571,7 @@ export default function ExamPage() {
   // Step 7: Results
   if (step === 7) {
     return (
-      <div className="flex-1 flex flex-col px-6 py-12 md:py-16">
+      <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16">
         <div className="max-w-3xl mx-auto w-full">
           <div className="mb-12 border-b border-nike-black pb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
             <div>

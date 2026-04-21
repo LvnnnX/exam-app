@@ -71,6 +71,29 @@ body {
   font-size: 0.92em;
 }
 
+.exam-question-content {
+  min-height: 0;
+}
+
+.exam-question-content img {
+  max-height: 200px;
+  width: 100%;
+  object-fit: contain;
+}
+
+.exam-question-content pre {
+  max-height: 180px;
+}
+
+.exam-option-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.exam-option-content p {
+  margin: 0;
+}
+
 .tiptap-editor {
   outline: none;
 }
