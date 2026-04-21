@@ -618,7 +618,7 @@ export default function ExamPage() {
                       <div className="flex items-start gap-3">
                         <div className="w-2 h-2 rounded-full bg-nike-green"></div>
                         <div className="text-[16px] font-bold text-nike-green">
-                          <p className="uppercase mb-1">Correct</p>
+                          <p className="uppercase mb-1">CORRECT</p>
                           <RichContent html={userOptionHtml ?? ''} />
                         </div>
                       </div>
@@ -626,8 +626,8 @@ export default function ExamPage() {
                       <div className="flex flex-col gap-1">
                         <div className="flex items-start gap-3">
                           <div className="w-2 h-2 rounded-full bg-nike-red"></div>
-                          <div className="text-[16px] font-bold text-nike-red line-through opacity-70">
-                            <p className="uppercase mb-1">Selected</p>
+                          <div className="text-[16px] font-bold text-nike-red">
+                            <p className="uppercase mb-1">WRONG ANSWER</p>
                             <RichContent html={userOptionHtml ?? ''} />
                           </div>
                         </div>
