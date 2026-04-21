@@ -338,7 +338,7 @@ export default function ExamPage() {
     return (
       <div className="flex-1 flex flex-col pt-16 md:pt-24 px-6">
         <div className="max-w-3xl mx-auto w-full">
-          <h1 data-mobile-title="true" className="mobile-exam-title font-display text-[64px] sm:text-[96px] text-nike-black leading-[0.90] tracking-tighter uppercase mb-12">
+          <h1 data-mobile-title="true" className="mobile-exam-title font-display text-[64px] sm:text-[96px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-12">
             Take The<br />Exam.
           </h1>
           <div className="max-w-md w-full space-y-6">
@@ -427,7 +427,7 @@ export default function ExamPage() {
     return (
       <div className="flex-1 flex flex-col pt-16 md:pt-32 px-6">
         <div className="max-w-3xl mx-auto w-full">
-          <h2 className="font-display text-[48px] sm:text-[72px] text-nike-black leading-[0.90] tracking-tighter uppercase mb-8">
+          <h2 className="font-display text-[48px] sm:text-[72px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8">
             Confirm<br />Identity.
           </h2>
           <div className="max-w-md w-full">
@@ -543,7 +543,7 @@ export default function ExamPage() {
     return (
       <div className="flex-1 flex flex-col pt-16 md:pt-32 px-6">
         <div className="max-w-3xl mx-auto w-full text-center">
-          <h2 className="font-display text-[96px] sm:text-[120px] text-nike-black leading-[0.85] tracking-tighter uppercase mb-4">
+          <h2 className="font-display text-[96px] sm:text-[120px] text-nike-black leading-[0.85] tracking-[0.03em] uppercase mb-4">
             {score}/{total}
           </h2>
           <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase">{percentage}% Completed</p>
@@ -575,7 +575,7 @@ export default function ExamPage() {
         <div className="max-w-3xl mx-auto w-full">
           <div className="mb-12 border-b border-nike-black pb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
             <div>
-              <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-tighter uppercase mb-2">
+              <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2">
                 Performance.
               </h2>
               <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{name}</p>
