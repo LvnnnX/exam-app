@@ -198,11 +198,12 @@ body {
     flex-direction: column !important;
   }
   .rich-content p {
-    order: -1 !important; /* Force prompt/text to the top */
+    order: 1 !important; /* Force prompt/text below code */
   }
   .rich-content pre {
-    order: 1 !important; /* Force code block below text */
+    order: -1 !important; /* Force code block to the top */
   }
 }
+
 
 
