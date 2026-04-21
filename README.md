@@ -38,6 +38,28 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 
 ---
 
+## 📂 Struktur Proyek
+
+```text
+exam-app/
+├── app/
+│   ├── admin/             # Dashboard Admin & Manajemen Hasil
+│   ├── components/        # Komponen UI Reusable (RichContent, dll)
+│   └── page.tsx           # Halaman Utama & Interface Ujian
+├── lib/
+│   ├── questions.ts       # Logika pengambilan data & pengacakan
+│   ├── rich-text.ts       # Sanitasi HTML & utilitas teks
+│   └── supabase.ts        # Konfigurasi Supabase Client
+├── scripts/
+│   └── seed-questions.ts  # Script untuk seeding data awal
+├── supabase/
+│   └── schema.sql         # Skema Database & Kebijakan RLS
+├── public/                # Asset statis (logo, gambar)
+└── README.md              # Dokumentasi proyek
+```
+
+---
+
 ## 📦 Instalasi Lokal
 
 Ikuti langkah-langkah berikut untuk menjalankan proyek di mesin lokal Anda:
