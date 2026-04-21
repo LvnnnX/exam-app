@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
-import { CATEGORIES, type RawQuestion, fallbackQuestions, fetchQuestions } from '@/lib/questions';
+import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchCategories, type CategoryInfo } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
 
@@ -13,7 +13,13 @@ type ExamResult = {
   name: string;
   score: number;
   total_questions: number;
+  category: string;
   taken_at: string;
+  user_answers: {
+    question_id: number;
+    user_answer: string;
+    is_correct: boolean;
+  }[];
 };
 
 type QuestionDraft = {
@@ -66,8 +72,33 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [questionLoading, setQuestionLoading] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
-  const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>(fallbackQuestions);
+  const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>([]);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
+
+  // Pagination and detailed view state
+  const [resultPage, setResultPage] = useState(0);
+  const [totalResults, setTotalResults] = useState(0);
+  const ITEMS_PER_PAGE = 20;
+
+  const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
+  const [detailQuestions, setDetailQuestions] = useState<RawQuestion[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [allCategories, setAllCategories] = useState<CategoryInfo[]>([]);
+  const [sessionInfo, setSessionInfo] = useState<string | null>(null);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsAuthenticated(true);
+        setSessionInfo(session.user.id);
+        void fetchAdminQuestions();
+        void loadAllCategories();
+      }
+    }
+    void checkSession();
+  }, []);
 
   const questionsByCategory = useMemo(() => {
     return adminQuestions.reduce<Record<string, RawQuestion[]>>((accumulator, question) => {
@@ -81,14 +112,9 @@ export default function AdminPage() {
   }, [adminQuestions]);
 
   const categoryTabs = useMemo(() => {
-    const categoriesFromData = Object.keys(questionsByCategory);
-    const orderedKnownCategories = CATEGORIES
-      .map((category) => category.value)
-      .filter((value) => categoriesFromData.includes(value));
-    const knownCategorySet = new Set<string>(orderedKnownCategories);
-    const dynamicCategories = categoriesFromData.filter((value) => !knownCategorySet.has(value));
-
-    return ['all', ...orderedKnownCategories, ...dynamicCategories];
+    // Collect all unique categories from the fetched data and sort them alphabetically
+    const categoriesFromData = Object.keys(questionsByCategory).sort();
+    return ['all', ...categoriesFromData];
   }, [questionsByCategory]);
 
   const filteredQuestions = useMemo(() => {
@@ -103,25 +129,33 @@ export default function AdminPage() {
       return 'All Categories';
     }
 
-    const knownCategory = CATEGORIES.find((item) => item.value === category);
-    if (knownCategory) {
-      return knownCategory.label;
-    }
 
     return category
       .replaceAll('_', ' ')
       .replace(/\b\w/g, (match) => match.toUpperCase());
   };
 
-  const handlePinSubmit = (event: React.FormEvent) => {
+  const handlePinSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (pinInput === ADMIN_PIN) {
-      setIsAuthenticated(true);
-      setPinError('');
-      if (activeTab === 'results') {
-        void fetchResults();
-      } else {
-        void fetchAdminQuestions();
+      try {
+        // Authenticate with Supabase to get a valid JWT for RLS
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) throw error;
+
+        setIsAuthenticated(true);
+        setSessionInfo(data.session?.user.id || 'anonymous');
+        setPinError('');
+        
+        if (activeTab === 'results') {
+          void fetchResults();
+        } else {
+          void fetchAdminQuestions();
+          void loadAllCategories();
+        }
+      } catch (err: any) {
+        console.error('Auth failed:', err.message);
+        setPinError(`Auth Failed: ${err.message}`);
       }
       return;
     }
@@ -130,23 +164,57 @@ export default function AdminPage() {
     setPinInput('');
   };
 
-  const fetchResults = async () => {
+  const loadAllCategories = async () => {
+    try {
+      const cats = await fetchCategories();
+      setAllCategories(cats);
+    } catch (err) {
+      console.error('Failed to load category list:', err);
+    }
+  };
+
+  const fetchResults = async (page = 0) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const from = page * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      const { data, error, count } = await supabase
         .from('exam_results')
-        .select('*')
-        .order('taken_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .order('taken_at', { ascending: false })
+        .range(from, to);
 
       if (error) {
         throw error;
       }
 
       setResults(data || []);
+      setTotalResults(count || 0);
+      setResultPage(page);
     } catch (err) {
       console.error('Error fetching results:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFetchResultDetail = async (result: ExamResult) => {
+    setViewingResult(result);
+    setDetailLoading(true);
+    setDetailQuestions([]);
+
+    try {
+      // Extract unique question IDs from the user answers
+      const questionIds = result.user_answers.map((a) => a.question_id);
+      if (questionIds.length > 0) {
+        const questions = await fetchQuestionsByIds(questionIds);
+        setDetailQuestions(questions);
+      }
+    } catch (err) {
+      console.error('Error fetching result details:', err);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -157,7 +225,7 @@ export default function AdminPage() {
       setAdminQuestions(questionRows);
     } catch (err) {
       console.error('Error fetching questions:', err);
-      setAdminQuestions(fallbackQuestions);
+      // Removed fallback pool. Error state can just be empty or handled visually.
     } finally {
       setQuestionLoading(false);
     }
@@ -226,7 +294,8 @@ export default function AdminPage() {
       if (isAdding) {
         const { error } = await supabase.from('questions').insert([payload]);
         if (error) {
-          throw error;
+          console.error("Supabase Insert Error:", error);
+          throw new Error(`Database Error: ${error.message} (Code: ${error.code})`);
         }
       } else if (isEditing && selectedQuestion?.id) {
         const { error } = await supabase
@@ -235,11 +304,13 @@ export default function AdminPage() {
           .eq('id', selectedQuestion.id);
 
         if (error) {
-          throw error;
+          console.error("Supabase Update Error:", error);
+          throw new Error(`Database Error: ${error.message} (Code: ${error.code})`);
         }
       }
 
       await fetchAdminQuestions();
+      await loadAllCategories();
       closeModal();
     } catch (err) {
       console.error('Error saving question:', err);
@@ -462,7 +533,7 @@ export default function AdminPage() {
           <div className="mb-4 flex justify-between items-center">
             <h2 className="text-xl font-semibold">Exam Results</h2>
             <button
-              onClick={fetchResults}
+              onClick={() => fetchResults(0)}
               className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
             >
               Refresh
@@ -484,6 +555,7 @@ export default function AdminPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -505,10 +577,43 @@ export default function AdminPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(result.taken_at).toLocaleDateString()} {new Date(result.taken_at).toLocaleTimeString()}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleFetchResultDetail(result)}
+                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
+                        >
+                          View Details
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              
+              {/* Pagination Controls */}
+              {totalResults > ITEMS_PER_PAGE && (
+                <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{resultPage * ITEMS_PER_PAGE + 1}</span> to <span className="font-medium">{Math.min((resultPage + 1) * ITEMS_PER_PAGE, totalResults)}</span> of <span className="font-medium">{totalResults}</span> results
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => fetchResults(resultPage - 1)}
+                      disabled={resultPage === 0}
+                      className="px-3 py-1 border rounded bg-white text-sm disabled:opacity-50 hover:bg-gray-50"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => fetchResults(resultPage + 1)}
+                      disabled={(resultPage + 1) * ITEMS_PER_PAGE >= totalResults}
+                      className="px-3 py-1 border rounded bg-white text-sm disabled:opacity-50 hover:bg-gray-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -587,15 +692,20 @@ export default function AdminPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Question Category</label>
-                    <select
+                    <input
+                      type="text"
+                      list="category-options"
                       value={formData.category}
-                      onChange={(event) => handleInputChange('category', event.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      {CATEGORIES.map((category) => (
-                        <option key={category.value} value={category.value}>{category.label}</option>
+                      onChange={(event) => handleInputChange('category', event.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                      placeholder="e.g. general_informatics"
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                    />
+                    <datalist id="category-options">
+                      {allCategories.map((cat) => (
+                        <option key={cat.value} value={cat.value}>{cat.label}</option>
                       ))}
-                    </select>
+                    </datalist>
+                    <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tight">Type a new name to create a category</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
@@ -654,6 +764,82 @@ export default function AdminPage() {
                   {savingQuestion ? 'Saving...' : 'Save Question'}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Result Details Modal */}
+      {viewingResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold">Exam Breakdown: {viewingResult.name}</h2>
+                <p className="text-sm text-gray-500">{new Date(viewingResult.taken_at).toLocaleString()} • {viewingResult.category}</p>
+              </div>
+              <button 
+                onClick={() => setViewingResult(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 bg-gray-50">
+              {detailLoading ? (
+                <div className="py-12 text-center text-gray-500">Loading full session data...</div>
+              ) : (
+                <div className="space-y-6">
+                  {viewingResult.user_answers.map((answer, idx) => {
+                    const question = detailQuestions.find(q => q.id === answer.question_id);
+                    
+                    return (
+                      <div key={idx} className="bg-white rounded-lg border shadow-sm overflow-hidden">
+                        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                          <span className="font-bold text-gray-700">Question {idx + 1}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${answer.is_correct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {answer.is_correct ? 'Correct' : 'Incorrect'}
+                          </span>
+                        </div>
+                        <div className="p-4 space-y-4">
+                          {question ? (
+                            <>
+                              <RichContent html={question.question_text} className="font-medium text-gray-900" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                <div className={`p-3 rounded-lg border ${answer.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected ({answer.user_answer})</p>
+                                  <RichContent html={question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string} />
+                                </div>
+                                {!answer.is_correct && (
+                                  <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
+                                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Correct Answer ({question.correct_answer})</p>
+                                    <RichContent html={question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string} />
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-gray-400 italic">Question data no longer available in database.</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t flex justify-between items-center bg-white rounded-b-xl">
+              <div className="text-sm font-bold text-gray-700 uppercase">
+                Final Score: <span className={viewingResult.score / viewingResult.total_questions >= 0.7 ? 'text-green-600' : 'text-red-600'}>{viewingResult.score} / {viewingResult.total_questions}</span>
+              </div>
+              <button
+                onClick={() => setViewingResult(null)}
+                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

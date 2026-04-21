@@ -6,11 +6,11 @@ import RichContent from '@/app/components/RichContent';
 import {
   type ShuffledQuestion,
   type RawQuestion,
-  type CategoryValue,
   type QuestionCount,
-  CATEGORIES,
+  type CategoryInfo,
   QUESTION_COUNTS,
   fetchQuestions,
+  fetchCategories,
   prepareSessionQuestions,
 } from '@/lib/questions';
 
@@ -32,7 +32,8 @@ const STORAGE_KEYS = {
 export default function ExamPage() {
   // App state
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<CategoryValue>('general_informatics');
+  const [category, setCategory] = useState<string>('general_informatics');
+  const [availableCategories, setAvailableCategories] = useState<CategoryInfo[]>([]);
   const [questionCount, setQuestionCount] = useState<QuestionCount>(20);
   const [step, setStep] = useState(1); // 1=Name, 2=Confirm, 25=Preparing, 3=Quiz, 6=Score, 7=Results
   const [current, setCurrent] = useState(0);
@@ -43,6 +44,7 @@ export default function ExamPage() {
   const [saving, setSaving] = useState(false);
   const [isRestored, setIsRestored] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const total = sessionQuestions.length;
   const currentQuestion = sessionQuestions[current] ?? null;
@@ -103,7 +105,7 @@ export default function ExamPage() {
       current: storedCurrent ? parseInt(storedCurrent) : 0,
       answers: storedAnswers ? JSON.parse(storedAnswers) : null,
       questions: storedQuestions ? JSON.parse(storedQuestions) as ShuffledQuestion[] : null,
-      category: storedCategory as CategoryValue | null,
+      category: storedCategory as string | null,
       questionCount: storedQuestionCount ? parseInt(storedQuestionCount) as QuestionCount : null,
     };
   };
@@ -144,6 +146,29 @@ export default function ExamPage() {
     } else {
       setIsRestored(true);
     }
+
+    // Fetch dynamic categories helper
+    const loadCategories = async () => {
+      try {
+        setFetchError(null);
+        const data = await fetchCategories();
+        if (data.length === 0) {
+          // If no categories returned, it might be an empty DB or a connection issue
+          console.warn("No categories found in Supabase.");
+        }
+        setAvailableCategories(data);
+        if (data.length > 0 && !stored.category) {
+          setCategory(data[0].value);
+        }
+      } catch (err: any) {
+        console.error("Failed to load categories:", err);
+        setFetchError(err.message || "Failed to connect to server");
+      }
+    };
+
+    loadCategories();
+    // Expose for retry button usage if needed
+    (window as any).__retryCategoryFetch = loadCategories;
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -279,7 +304,7 @@ export default function ExamPage() {
 
   // ==================== HELPERS ====================
 
-  const categoryLabel = CATEGORIES.find(c => c.value === category)?.label ?? category;
+  const categoryLabel = availableCategories.find(c => c.value === category)?.label ?? category;
 
   // ==================== RENDER ====================
 
@@ -316,19 +341,36 @@ export default function ExamPage() {
             <label className="block">
               <span className="block text-[16px] font-medium text-nike-black mb-2">QUESTION CATEGORY</span>
               <div className="flex flex-wrap gap-3">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    onClick={() => setCategory(cat.value)}
-                    className={`px-5 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${
-                      category === cat.value
-                        ? 'bg-nike-black text-nike-white'
-                        : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+                {fetchError ? (
+                  <div className="w-full flex items-center justify-between bg-nike-red/10 p-4 rounded-[12px] border border-nike-red/20">
+                    <p className="text-nike-red text-[14px] font-medium uppercase">Connection Error</p>
+                    <button 
+                      onClick={() => (window as any).__retryCategoryFetch?.()}
+                      className="px-4 h-[32px] rounded-[16px] bg-nike-red text-nike-white text-[10px] font-bold uppercase hover:bg-nike-red/80 transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : availableCategories.length === 0 ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-nike-grey-300 border-t-nike-black rounded-full animate-spin"></div>
+                    <p className="text-nike-grey-500 text-[14px] font-medium uppercase tracking-wider">Syncing categories...</p>
+                  </div>
+                ) : (
+                  availableCategories.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setCategory(cat.value)}
+                      className={`px-5 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${
+                        category === cat.value
+                          ? 'bg-nike-black text-nike-white'
+                          : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))
+                )}
               </div>
             </label>
 

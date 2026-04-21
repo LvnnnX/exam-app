@@ -31,7 +31,10 @@ ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exam_results ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
-CREATE POLICY "questions_select" ON questions FOR SELECT USING (true);
+CREATE POLICY "questions_select" ON questions FOR SELECT USING (true); -- Public can read
+CREATE POLICY "questions_insert" ON questions FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "questions_update" ON questions FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "questions_delete" ON questions FOR DELETE TO authenticated USING (true);
 CREATE POLICY "exam_results_insert" ON exam_results FOR INSERT WITH CHECK (true);
 CREATE POLICY "exam_results_select" ON exam_results FOR SELECT USING (true);
 
