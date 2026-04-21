@@ -327,24 +327,24 @@ export default function ExamPage() {
           <div className="max-w-md w-full space-y-6">
             {/* Name Input */}
             <label className="block">
-              <span className="block text-[16px] font-medium text-nike-black mb-2">ENTER YOUR FULL NAME</span>
+              <span className="block text-[16px] font-medium text-nike-black mb-2">MASUKKAN NAMA ANDA</span>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="YOUR NAME"
+                placeholder="NAMA KAMU"
                 className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-4 h-[48px] text-[16px] placeholder-nike-grey-500 focus:outline-none focus:border-nike-black focus:ring-1 focus:ring-nike-black transition-colors uppercase"
               />
             </label>
 
             {/* Category Selector */}
             <label className="block">
-              <span className="block text-[16px] font-medium text-nike-black mb-2">QUESTION CATEGORY</span>
+              <span className="block text-[16px] font-medium text-nike-black mb-2">KATEGORI PERTANYAAN</span>
               <div className="flex flex-wrap gap-3">
                 {fetchError ? (
                   <div className="w-full flex items-center justify-between bg-nike-red/10 p-4 rounded-[12px] border border-nike-red/20">
                     <p className="text-nike-red text-[14px] font-medium uppercase">Connection Error</p>
-                    <button 
+                    <button
                       onClick={() => (window as any).__retryCategoryFetch?.()}
                       className="px-4 h-[32px] rounded-[16px] bg-nike-red text-nike-white text-[10px] font-bold uppercase hover:bg-nike-red/80 transition-colors"
                     >
@@ -361,11 +361,10 @@ export default function ExamPage() {
                     <button
                       key={cat.value}
                       onClick={() => setCategory(cat.value)}
-                      className={`px-5 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${
-                        category === cat.value
-                          ? 'bg-nike-black text-nike-white'
-                          : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
-                      }`}
+                      className={`px-5 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${category === cat.value
+                        ? 'bg-nike-black text-nike-white'
+                        : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
+                        }`}
                     >
                       {cat.label}
                     </button>
@@ -376,17 +375,16 @@ export default function ExamPage() {
 
             {/* Question Count Selector */}
             <label className="block">
-              <span className="block text-[16px] font-medium text-nike-black mb-2">NUMBER OF QUESTIONS</span>
+              <span className="block text-[16px] font-medium text-nike-black mb-2">BANYAK PERTANYAAN</span>
               <div className="flex gap-3">
                 {QUESTION_COUNTS.map((count) => (
                   <button
                     key={count}
                     onClick={() => setQuestionCount(count)}
-                    className={`w-[72px] h-[44px] rounded-[30px] text-[16px] font-bold transition-all ${
-                      questionCount === count
-                        ? 'bg-nike-black text-nike-white'
-                        : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
-                    }`}
+                    className={`w-[72px] h-[44px] rounded-[30px] text-[16px] font-bold transition-all ${questionCount === count
+                      ? 'bg-nike-black text-nike-white'
+                      : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
+                      }`}
                   >
                     {count}
                   </button>
