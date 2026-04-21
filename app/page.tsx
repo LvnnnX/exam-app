@@ -470,10 +470,15 @@ export default function ExamPage() {
       <div className="flex-1 flex flex-col px-6 py-12 md:py-16">
         <div className="max-w-3xl mx-auto w-full">
           {/* Progress & Status */}
-          <div className="flex justify-between items-center mb-8 pb-4 border-b border-nike-grey-200">
-            <span className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest">
-              Question {current + 1} / {total}
-            </span>
+          <div className="flex justify-between items-end mb-8 pb-4 border-b border-nike-grey-200">
+            <div className="flex flex-col">
+              <span className="text-[17px] font-bold text-nike-black uppercase tracking-[0.2em] mb-1">
+                {name}
+              </span>
+              <span className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest">
+                Question {current + 1} / {total}
+              </span>
+            </div>
             {hasAnswerSelected ? (
               <span className="text-[14px] font-medium text-nike-green uppercase tracking-widest">
                 Answer Saved
@@ -553,6 +558,7 @@ export default function ExamPage() {
               <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-tighter uppercase mb-2">
                 Performance.
               </h2>
+              <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{name}</p>
               <p className="text-[16px] font-medium text-nike-grey-500 uppercase">
                 {categoryLabel} — {score} / {total}
               </p>

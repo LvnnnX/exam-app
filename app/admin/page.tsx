@@ -85,6 +85,7 @@ export default function AdminPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [allCategories, setAllCategories] = useState<CategoryInfo[]>([]);
   const [sessionInfo, setSessionInfo] = useState<string | null>(null);
+  const [activeResCategory, setActiveResCategory] = useState<string>('all');
 
   // Check for existing session on mount
   useEffect(() => {
@@ -173,15 +174,21 @@ export default function AdminPage() {
     }
   };
 
-  const fetchResults = async (page = 0) => {
+  const fetchResults = async (page = 0, category = activeResCategory) => {
     setLoading(true);
     try {
       const from = page * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      const { data, error, count } = await supabase
+      let query = supabase
         .from('exam_results')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact' });
+
+      if (category !== 'all') {
+        query = query.eq('category', category);
+      }
+
+      const { data, error, count } = await query
         .order('taken_at', { ascending: false })
         .range(from, to);
 
@@ -197,6 +204,11 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResCategoryChange = (category: string) => {
+    setActiveResCategory(category);
+    void fetchResults(0, category);
   };
 
   const handleFetchResultDetail = async (result: ExamResult) => {
@@ -530,15 +542,60 @@ export default function AdminPage() {
 
       {activeTab === 'results' && (
         <div>
-          <div className="mb-4 flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Exam Results</h2>
-            <button
-              onClick={() => fetchResults(0)}
-              className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
-            >
-              Refresh
-            </button>
+          <div className="mb-6 flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Exam Results</h2>
+              <button
+                onClick={() => fetchResults(0)}
+                className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {categoryTabs.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => handleResCategoryChange(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    activeResCategory === cat 
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
+                  }`}
+                >
+                  {getCategoryLabel(cat)}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {results.length > 0 && (
+            <div className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                <div className="text-2xl font-bold text-indigo-600">{results.length}</div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Attempts</div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                <div className="text-2xl font-bold text-green-600">
+                  {Math.round(results.reduce((sum, row) => sum + row.score, 0) / results.length * 10) / 10}
+                </div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Average Score</div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                <div className="text-2xl font-bold text-blue-600">
+                  {results.reduce((sum, row) => sum + row.total_questions, 0)}
+                </div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Questions Answered</div>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                <div className="text-2xl font-bold text-purple-600">
+                  {results.length > 0 ? Math.round(results.filter((row) => (row.score / row.total_questions) >= 0.7).length / results.length * 100) : 0}%
+                </div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pass Rate (70%+)</div>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <p>Loading results...</p>
@@ -552,6 +609,7 @@ export default function AdminPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -560,8 +618,11 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {results.map((result) => (
-                    <tr key={result.id} className="hover:bg-gray-50">
+                     <tr key={result.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className="capitalize">{result.category?.replaceAll('_', ' ')}</span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {result.score} / {result.total_questions}
                       </td>
@@ -617,32 +678,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {results.length > 0 && (
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg p-4 shadow">
-                <div className="text-2xl font-bold text-indigo-600">{results.length}</div>
-                <div className="text-sm text-gray-500">Total Attempts</div>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow">
-                <div className="text-2xl font-bold text-green-600">
-                  {Math.round(results.reduce((sum, row) => sum + row.score, 0) / results.length * 10) / 10}
-                </div>
-                <div className="text-sm text-gray-500">Average Score</div>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow">
-                <div className="text-2xl font-bold text-blue-600">
-                  {results.reduce((sum, row) => sum + row.total_questions, 0)}
-                </div>
-                <div className="text-sm text-gray-500">Questions Answered</div>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow">
-                <div className="text-2xl font-bold text-purple-600">
-                  {Math.round(results.filter((row) => (row.score / row.total_questions) >= 0.7).length / results.length * 100)}%
-                </div>
-                <div className="text-sm text-gray-500">Pass Rate (70%+)</div>
-              </div>
-            </div>
-          )}
+
         </div>
       )}
 
@@ -690,23 +726,25 @@ export default function AdminPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Question Category</label>
-                    <input
-                      type="text"
-                      list="category-options"
-                      value={formData.category}
-                      onChange={(event) => handleInputChange('category', event.target.value.toLowerCase().replace(/\s+/g, '_'))}
-                      placeholder="e.g. general_informatics"
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                    />
-                    <datalist id="category-options">
-                      {allCategories.map((cat) => (
-                        <option key={cat.value} value={cat.value}>{cat.label}</option>
-                      ))}
-                    </datalist>
-                    <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tight">Type a new name to create a category</p>
-                  </div>
+                    <div className="relative group">
+                      <input
+                        type="text"
+                        list="category-options"
+                        value={formData.category}
+                        onChange={(event) => handleInputChange('category', event.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="Search or type new category..."
+                        className="w-full px-4 py-2.5 border-2 border-gray-100 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium placeholder:text-gray-400"
+                      />
+                      <datalist id="category-options">
+                        {allCategories.map((cat) => (
+                          <option key={cat.value} value={cat.value}>{cat.label}</option>
+                        ))}
+                      </datalist>
+                      <p className="text-[10px] text-gray-400 mt-2 uppercase font-bold tracking-widest pl-1">
+                        Select existing or type new to create
+                      </p>
+                    </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
                     <select
