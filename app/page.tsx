@@ -470,8 +470,11 @@ export default function ExamPage() {
           {/* Progress & Status */}
           <div className="flex justify-between items-end mb-8 pb-4 border-b border-nike-grey-200">
             <div className="flex flex-col">
-              <span className="text-[17px] font-bold text-nike-black uppercase tracking-[0.2em] mb-1">
+              <span className="text-[17px] font-bold text-nike-black uppercase tracking-[0.2em]">
                 {name}
+              </span>
+              <span className="text-[12px] font-bold text-nike-grey-400 uppercase tracking-widest mb-1">
+                Kategori: {categoryLabel}
               </span>
               <span className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest">
                 Question {current + 1} / {total}
