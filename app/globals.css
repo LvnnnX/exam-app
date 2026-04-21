@@ -174,4 +174,35 @@ body {
   [data-mobile-title="true"][class*="text-gray-"] {
     color: #000000 !important;
   }
+
+  /* Step 3, 4, 5: Mobile Code Block Optimizations */
+  .rich-content code {
+    font-size: 0.7rem !important;
+    line-height: 1.1 !important;
+  }
+  
+  .rich-content pre,
+  .exam-question-content pre {
+    max-height: 140px !important;
+    max-width: 100% !important;
+    padding: 0.5rem !important;
+    overflow: hidden !important; /* Step 5: Remove scrollbars */
+    margin: 0.4rem 0 !important;
+    white-space: pre-wrap !important; /* Step 6: Ensure it fits/wraps */
+    word-break: break-all !important;
+  }
+
+  /* Step 9: Position question text at the top */
+  .rich-content {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .rich-content p {
+    order: -1 !important; /* Force prompt/text to the top */
+  }
+  .rich-content pre {
+    order: 1 !important; /* Force code block below text */
+  }
 }
+
+

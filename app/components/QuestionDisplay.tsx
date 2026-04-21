@@ -16,24 +16,25 @@ export default function QuestionDisplay({
   onSelectAnswer,
 }: QuestionDisplayProps) {
   return (
-    <div className="mb-0 h-auto md:h-[min(65vh,620px)] md:min-h-[420px] overflow-hidden border border-nike-grey-200 rounded-[24px] bg-white shadow-sm flex flex-col">
-      <div className="flex flex-col md:grid md:h-full md:grid-cols-[1fr_1px_1fr] flex-1 overflow-hidden">
-        {/* Step 3: Question text and media in the left column */}
-        <div className="h-auto max-h-[40vh] md:h-full md:max-h-none overflow-y-auto p-6 md:p-10 flex flex-col pt-6 md:pt-12 border-b md:border-b-0 border-nike-grey-100">
+    <div className="mb-0 h-auto md:h-[min(65vh,620px)] md:min-h-[420px] overflow-y-auto md:overflow-hidden border border-nike-grey-200 rounded-[24px] bg-white shadow-sm flex flex-col">
+      <div className="flex flex-col md:grid md:h-full md:grid-cols-[1fr_1px_1fr] flex-1">
+        {/* Step 9: Question text and media at the top for mobile */}
+        <div className="h-auto md:h-full overflow-visible md:overflow-y-auto p-6 md:p-10 flex flex-col pt-6 md:pt-12 border-b md:border-b-0 border-nike-grey-100">
           <RichContent
             html={currentQuestion.question_text}
             className="exam-question-content text-[18px] md:text-[28px] font-bold text-nike-black leading-[1.25] tracking-tight"
           />
         </div>
 
-        {/* Step 5: Vertical divider line */}
+        {/* Step 5: Vertical divider line - Desktop only */}
         <div className="hidden md:flex items-center">
           <div className="w-px h-[85%] bg-nike-grey-200" aria-hidden="true" />
         </div>
 
-        {/* Step 4: Multiple choice options from A to E in the right column */}
-        <div className="flex-1 h-auto md:h-full overflow-y-auto p-6 md:p-10 flex flex-col justify-center bg-nike-grey-50 md:bg-white">
+        {/* Step 10: Multiple choice options directly below the question for mobile */}
+        <div className="flex-1 h-auto md:h-full overflow-visible md:overflow-y-auto p-6 md:p-10 flex flex-col justify-center bg-nike-grey-50 md:bg-white">
           <div className="grid grid-rows-5 gap-3 w-full">
+
 
             {currentQuestion.options.map((option) => {
               const isSelected = selectedAnswer === option.label;
