@@ -457,7 +457,7 @@ export default function ExamPage() {
               <button
                 onClick={startExam}
                 disabled={isLoading}
-                className="flex-1 h-[54px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors uppercase disabled:bg-nike-grey-200 disabled:text-nike-grey-500"
+                className="w-full sm:w-auto px-8 h-[54px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors uppercase disabled:bg-nike-grey-200 disabled:text-nike-grey-500"
               >
                 {isLoading ? 'Preparing...' : 'Start Exam'}
               </button>
@@ -487,7 +487,7 @@ export default function ExamPage() {
           {/* Progress & Status */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-4 border-b border-nike-grey-200 gap-4">
             <div className="flex flex-col">
-              <span className="text-[17px] font-bold text-nike-black uppercase tracking-[0.2em] break-words">
+              <span className="text-[17px] font-bold text-nike-black uppercase tracking break-words">
                 {name}
               </span>
               <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
