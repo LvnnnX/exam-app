@@ -32,7 +32,7 @@ const STORAGE_KEYS = {
 export default function ExamPage() {
   // App state
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<string>('general_informatics');
+  const [category, setCategory] = useState<string>('');
   const [availableCategories, setAvailableCategories] = useState<CategoryInfo[]>([]);
   const [questionCount, setQuestionCount] = useState<QuestionCount>(20);
   const [step, setStep] = useState(1); // 1=Name, 2=Confirm, 25=Preparing, 3=Quiz, 6=Score, 7=Results
@@ -157,9 +157,11 @@ export default function ExamPage() {
           console.warn("No categories found in Supabase.");
         }
         setAvailableCategories(data);
+        /* 
         if (data.length > 0 && !stored.category) {
           setCategory(data[0].value);
         }
+        */
       } catch (err: any) {
         console.error("Failed to load categories:", err);
         setFetchError(err.message || "Failed to connect to server");
@@ -411,7 +413,7 @@ export default function ExamPage() {
 
             <button
               onClick={() => setStep(2)}
-              disabled={!name.trim()}
+              disabled={!name.trim() || !category}
               className="w-full h-[54px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase"
             >
               Continue
