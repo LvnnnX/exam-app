@@ -114,6 +114,21 @@ body {
   margin: 0;
 }
 
+/* Step 6: Force code blocks to always have a dark background regardless of selection state */
+.rich-content pre,
+.exam-question-content pre,
+.exam-option-content pre {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+.rich-content pre code,
+.exam-question-content pre code,
+.exam-option-content pre code {
+  background: transparent !important;
+  color: inherit !important;
+}
+
 .tiptap-editor {
   outline: none;
 }
