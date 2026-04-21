@@ -1,4 +1,4 @@
-# 🎓 Kuis Tanya Jawab - Nike Inspired Exam Platform
+# 🎓 Smandapura Exam App
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-blue?style=for-the-badge&logo=supabase)](https://supabase.com/)
