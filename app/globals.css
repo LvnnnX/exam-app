@@ -112,17 +112,34 @@ body {
   border-color: #111827;
 }
 
-/* Force bold text to solid black on mobile devices for improved readability */
+/* Mobile title color fix: override gray utility colors for heading/title elements */
 @media (max-width: 767px) {
-  b, 
-  strong, 
-  h1, h2, h3, h4, h5, h6,
-  .font-bold, 
-  .font-semibold,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
   .font-display,
-  [class*="font-bold"],
-  [class*="font-semibold"],
-  [class*="font-display"] {
+  .mobile-title-black,
+  [data-mobile-title="true"] {
+    color: #000000 !important;
+  }
+
+  h1[class*="text-nike-grey"],
+  h2[class*="text-nike-grey"],
+  h3[class*="text-nike-grey"],
+  h4[class*="text-nike-grey"],
+  h5[class*="text-nike-grey"],
+  h6[class*="text-nike-grey"],
+  h1[class*="text-gray-"],
+  h2[class*="text-gray-"],
+  h3[class*="text-gray-"],
+  h4[class*="text-gray-"],
+  h5[class*="text-gray-"],
+  h6[class*="text-gray-"],
+  [data-mobile-title="true"][class*="text-nike-grey"],
+  [data-mobile-title="true"][class*="text-gray-"] {
     color: #000000 !important;
   }
 }
