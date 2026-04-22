@@ -16,12 +16,16 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 *   **Kategori Dinamis**: Daftar kategori ditarik langsung dari database secara real-time.
 *   **Pengacakan Cerdas**: Implementasi algoritma *Fisher-Yates Shuffle* untuk mengacak soal dan opsi jawaban secara dinamis.
 *   **Sesi Lokal (Persistence)**: Fitur auto-save sesi ujian di LocalStorage, memungkinkan peserta melanjutkan ujian jika halaman tidak sengaja tertutup.
-*   **Laporan Skor Terperinci**: Tampilan skor akhir otomatis beserta persentase kelulusan.
+*   **Time Tracking Presisi**: Melacak waktu pengerjaan ujian secara akurat, mencakup waktu mulai, waktu selesai, dan total durasi.
+*   **Data Tracking Canggih**: Merekam opsi jawaban yang dipilih secara *exact string*, menjamin data peserta tidak akan tertukar meski terjadi proses pengacakan.
+*   **Laporan Skor Terperinci**: Tampilan skor akhir otomatis beserta persentase kelulusan dan durasi pengerjaan.
 
 ### 🔐 Fitur Admin (Dashboard)
 *   **Autentikasi PIN**: Sistem login aman menggunakan 6-digit PIN khusus.
 *   **Dashboard Hasil Berhalaman**: Manajemen hasil ujian dengan fitur paginasi (20 item per halaman) untuk performa optimal.
-*   **Inspeksi Sesi Mendalam**: Fitur "View Details" untuk melihat breakdown pengerjaan user (apa yang mereka jawab vs jawaban yang benar).
+*   **Analitik Waktu Pengerjaan**: Kolom tambahan di *Results Dashboard* untuk melacak Start Time, End Time, dan Durasi setiap peserta.
+*   **Inspeksi Sesi Mendalam**: Fitur "View Details" untuk melihat breakdown pengerjaan user secara persis (teks jawaban pengguna vs jawaban yang benar).
+*   **Smart Search (Pencarian Pintar)**: *Search bar* dinamis untuk memfilter dan mencari soal berdasarkan kategori atau potongan teks secara instan.
 *   **Manajemen Soal (CRUD)**:
     *   **Rich Text Editor (TipTap)**: Editor teks canggih untuk membuat soal dengan pemformatan tebal, miring, daftar, dan blok kode.
     *   **Integrasi Gambar**: Upload gambar langsung ke Supabase Storage dan masukkan ke dalam soal.
