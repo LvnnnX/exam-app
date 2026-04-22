@@ -27,6 +27,7 @@ const STORAGE_KEYS = {
   QUESTIONS: 'exam_questions',
   CATEGORY: 'exam_category',
   QUESTION_COUNT: 'exam_question_count',
+  START_TIME: 'exam_start_time',
 };
 
 export default function ExamPage() {
@@ -45,6 +46,8 @@ export default function ExamPage() {
   const [isRestored, setIsRestored] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [endTime, setEndTime] = useState<number | null>(null);
 
   const total = sessionQuestions.length;
   const currentQuestion = sessionQuestions[current] ?? null;
@@ -93,6 +96,10 @@ export default function ExamPage() {
     localStorage.setItem(STORAGE_KEYS.QUESTION_COUNT, count.toString());
   };
 
+  const saveStartTimeToStorage = (time: number) => {
+    localStorage.setItem(STORAGE_KEYS.START_TIME, time.toString());
+  };
+
   const loadFromStorage = () => {
     const storedName = localStorage.getItem(STORAGE_KEYS.NAME);
     const storedStep = localStorage.getItem(STORAGE_KEYS.STEP);
@@ -101,6 +108,7 @@ export default function ExamPage() {
     const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
     const storedCategory = localStorage.getItem(STORAGE_KEYS.CATEGORY);
     const storedQuestionCount = localStorage.getItem(STORAGE_KEYS.QUESTION_COUNT);
+    const storedStartTime = localStorage.getItem(STORAGE_KEYS.START_TIME);
 
     return {
       name: storedName,
@@ -110,6 +118,7 @@ export default function ExamPage() {
       questions: storedQuestions ? JSON.parse(storedQuestions) as ShuffledQuestion[] : null,
       category: storedCategory as string | null,
       questionCount: storedQuestionCount ? parseInt(storedQuestionCount) as QuestionCount : null,
+      startTime: storedStartTime ? parseInt(storedStartTime) : null,
     };
   };
 
@@ -121,6 +130,7 @@ export default function ExamPage() {
     localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
     localStorage.removeItem(STORAGE_KEYS.CATEGORY);
     localStorage.removeItem(STORAGE_KEYS.QUESTION_COUNT);
+    localStorage.removeItem(STORAGE_KEYS.START_TIME);
   };
 
   // ==================== RESTORE STATE ON MOUNT ====================
@@ -138,6 +148,7 @@ export default function ExamPage() {
 
       if (stored.category) setCategory(stored.category);
       if (stored.questionCount) setQuestionCount(stored.questionCount);
+      if (stored.startTime) setStartTime(stored.startTime);
 
       if (stored.answers && Array.isArray(stored.answers)) {
         setAnswers(stored.answers);
@@ -208,9 +219,10 @@ export default function ExamPage() {
   const startExam = async () => {
     saveNameToStorage(name);
     goToStep(PREPARING_STEP);
-
     await startNewSession();
-
+    const now = Date.now();
+    setStartTime(now);
+    saveStartTimeToStorage(now);
     goToStep(3);
   };
 
@@ -252,6 +264,7 @@ export default function ExamPage() {
     } else {
       const finalScore = calculateScore();
       setScore(finalScore);
+      setEndTime(Date.now());
       goToStep(6);
     }
   };
@@ -265,6 +278,7 @@ export default function ExamPage() {
     } else {
       const finalScore = calculateScore();
       setScore(finalScore);
+      setEndTime(Date.now());
       goToStep(6);
     }
   };
@@ -278,6 +292,8 @@ export default function ExamPage() {
     setSessionQuestions([]);
     setAnswers([]);
     setScore(0);
+    setStartTime(null);
+    setEndTime(null);
     setSaved(false);
     clearStorage();
   };
@@ -297,6 +313,10 @@ export default function ExamPage() {
         };
       });
 
+      const finalStartTime = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
+      const finalEndTime = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
+      const durationSeconds = startTime && endTime ? Math.floor((endTime - startTime) / 1000) : null;
+
       const { error } = await supabase
         .from('exam_results')
         .insert([{
@@ -305,8 +325,11 @@ export default function ExamPage() {
           total_questions: total,
           category,
           question_count: questionCount,
-          taken_at: new Date().toISOString(),
-          user_answers: answersArray
+          taken_at: finalEndTime,
+          user_answers: answersArray,
+          start_time: finalStartTime,
+          end_time: finalEndTime,
+          duration_seconds: durationSeconds
         }]);
 
       if (error) throw error;
@@ -317,7 +340,7 @@ export default function ExamPage() {
     } finally {
       setSaving(false);
     }
-  }, [answers, category, name, questionCount, score, sessionQuestions, total]);
+  }, [answers, category, name, questionCount, score, sessionQuestions, total, startTime, endTime]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -578,13 +601,26 @@ export default function ExamPage() {
 
   // Step 7: Results
   if (step === 7) {
+    const durationSeconds = startTime && endTime ? Math.floor((endTime - startTime) / 1000) : 0;
+    const hours = Math.floor(durationSeconds / 3600);
+    const minutes = Math.floor((durationSeconds % 3600) / 60);
+    const seconds = durationSeconds % 60;
+    
+    let formattedDuration = '';
+    if (hours > 0) formattedDuration += `${hours} Hours, `;
+    if (minutes > 0 || hours > 0) formattedDuration += `${minutes} Minutes, `;
+    formattedDuration += `${seconds} Seconds`;
+
     return (
       <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16">
         <div className="max-w-3xl mx-auto w-full">
           <div className="mb-12 border-b border-nike-black pb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
             <div>
-              <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2">
-                Performance.
+              <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2 flex flex-wrap items-baseline gap-4">
+                <span>Performance.</span>
+                {startTime && endTime && (
+                  <span className="text-[16px] md:text-[20px] text-nike-grey-400 tracking-normal normal-case font-medium font-sans">{formattedDuration}</span>
+                )}
               </h2>
               <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{name}</p>
               <p className="text-[16px] font-medium text-nike-grey-500 uppercase">

@@ -20,6 +20,9 @@ type ExamResult = {
     user_answer: string;
     is_correct: boolean;
   }[];
+  start_time?: string;
+  end_time?: string;
+  duration_seconds?: number;
 };
 
 type QuestionDraft = {
@@ -663,6 +666,9 @@ export default function AdminPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
                     </tr>
                   </thead>
@@ -685,7 +691,16 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(result.taken_at).toLocaleDateString()} {new Date(result.taken_at).toLocaleTimeString()}
+                          {new Date(result.taken_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {result.start_time ? new Date(result.start_time).toLocaleTimeString() : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {result.end_time ? new Date(result.end_time).toLocaleTimeString() : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {result.duration_seconds != null ? `${Math.floor(result.duration_seconds / 60)}m ${result.duration_seconds % 60}s` : '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
