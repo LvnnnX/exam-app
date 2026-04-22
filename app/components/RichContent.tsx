@@ -29,7 +29,7 @@ const SANITIZE_OPTIONS: DomPurifyConfig = {
   ],
 };
 
-export default function RichContent({ html, className = '' }: RichContentProps) {
+function RichContent({ html, className = '' }: RichContentProps) {
   const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -79,4 +79,5 @@ export default function RichContent({ html, className = '' }: RichContentProps) 
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );
-}
+}
+export default React.memo(RichContent);

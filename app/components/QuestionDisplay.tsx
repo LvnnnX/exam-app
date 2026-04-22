@@ -56,7 +56,7 @@ export default function QuestionDisplay({
                     <div className="w-px h-6 bg-nike-grey-200 group-hover:bg-nike-grey-300 transition-colors" />
                     <RichContent
                       html={option.text}
-                      className={`exam-option-content flex-1 text-[15px] md:text-[17px] font-medium leading-normal ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
+                      className={`exam-option-content flex-1 text-[15px] md:text-[17px] font-medium tracking-tight leading-tight ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
                     />
                   </div>
                 </button>

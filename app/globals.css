@@ -22,7 +22,7 @@
   /* Basic tokens mapped */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  
+
   /* Fallbacks for typography since we don't have Nike fonts */
   --font-sans: Helvetica, Arial, sans-serif;
   --font-display: Impact, "Arial Black", sans-serif;
@@ -76,19 +76,22 @@ body {
 }
 
 @media (min-width: 768px) {
+
   /* Step 4, 5, 6, 7: Desktop Code Block Optimizations */
   .rich-content code {
     font-size: 0.85rem !important;
     line-height: 1.25 !important;
   }
-  
+
   .rich-content pre,
   .exam-question-content pre {
     max-height: 280px !important;
     max-width: 100% !important;
     padding: 1rem !important;
-    overflow: hidden !important; /* Step 6: Remove scrollbars */
-    white-space: pre-wrap !important; /* Step 7: Ensure visibility/fit */
+    overflow: hidden !important;
+    /* Step 6: Remove scrollbars */
+    white-space: pre-wrap !important;
+    /* Step 7: Ensure visibility/fit */
     word-break: break-all !important;
     margin: 0.8rem 0 !important;
   }
@@ -131,6 +134,8 @@ body {
 .exam-option-content pre code {
   background: transparent !important;
   color: inherit !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.25 !important;
 }
 
 .tiptap-editor {
@@ -177,6 +182,7 @@ body {
 
 /* Mobile title color fix: override gray utility colors for heading/title elements */
 @media (max-width: 767px) {
+
   html,
   body,
   main {
@@ -219,15 +225,17 @@ body {
     font-size: 0.7rem !important;
     line-height: 1.1 !important;
   }
-  
+
   .rich-content pre,
   .exam-question-content pre {
     max-height: 140px !important;
     max-width: 100% !important;
     padding: 0.5rem !important;
-    overflow: hidden !important; /* Step 5: Remove scrollbars */
+    overflow: hidden !important;
+    /* Step 5: Remove scrollbars */
     margin: 0.4rem 0 !important;
-    white-space: pre-wrap !important; /* Step 6: Ensure it fits/wraps */
+    white-space: pre-wrap !important;
+    /* Step 6: Ensure it fits/wraps */
     word-break: break-all !important;
   }
 
@@ -236,13 +244,14 @@ body {
     display: flex !important;
     flex-direction: column !important;
   }
+
   .rich-content p {
-    order: 1 !important; /* Force prompt/text below code */
+    order: 1 !important;
+    /* Force prompt/text below code */
   }
+
   .rich-content pre {
-    order: -1 !important; /* Force code block to the top */
+    order: -1 !important;
+    /* Force code block to the top */
   }
 }
-
-
-
