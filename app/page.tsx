@@ -55,7 +55,10 @@ export default function ExamPage() {
   const calculateScore = useCallback(() => {
     let s = 0;
     answers.forEach((a, idx) => {
-      if (a && sessionQuestions[idx] && a === sessionQuestions[idx].correct_label) s++;
+      if (a && sessionQuestions[idx]) {
+        const correctOpt = sessionQuestions[idx].options.find(o => o.label === sessionQuestions[idx].correct_label);
+        if (correctOpt && a === correctOpt.text) s++;
+      }
     });
     return s;
   }, [answers, sessionQuestions]);
@@ -285,11 +288,14 @@ export default function ExamPage() {
     if (!name || total === 0) return;
     setSaving(true);
     try {
-      const answersArray = answers.map((answer, idx) => ({
-        question_id: sessionQuestions[idx]?.id ?? idx + 1,
-        user_answer: answer || 'skipped',
-        is_correct: answer !== null && sessionQuestions[idx] && answer === sessionQuestions[idx].correct_label
-      }));
+      const answersArray = answers.map((answer, idx) => {
+        const correctOpt = sessionQuestions[idx]?.options.find(o => o.label === sessionQuestions[idx].correct_label);
+        return {
+          question_id: sessionQuestions[idx]?.id ?? idx + 1,
+          user_answer: answer || 'skipped',
+          is_correct: answer !== null && correctOpt && answer === correctOpt.text
+        };
+      });
 
       const { error } = await supabase
         .from('exam_results')
@@ -597,12 +603,11 @@ export default function ExamPage() {
           <div className="space-y-6 mb-12">
             {sessionQuestions.map((q, idx) => {
               const userAnswer = answers[idx];
-              const isCorrect = userAnswer === q.correct_label;
+              const correctOpt = q.options.find(o => o.label === q.correct_label);
+              const isCorrect = userAnswer === correctOpt?.text;
               const isSkipped = !userAnswer;
 
-              const userOptionHtml = userAnswer
-                ? q.options.find(o => o.label === userAnswer)?.text ?? userAnswer
-                : null;
+              const userOptionHtml = userAnswer || null;
 
               return (
                 <div key={idx} className="bg-nike-grey-100 p-6 sm:p-8 rounded-[20px]">

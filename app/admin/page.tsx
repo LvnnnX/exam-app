@@ -74,6 +74,7 @@ export default function AdminPage() {
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>([]);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Pagination and detailed view state
   const [resultPage, setResultPage] = useState(0);
@@ -123,11 +124,20 @@ export default function AdminPage() {
   }, [questionsByCategory]);
 
   const filteredQuestions = useMemo(() => {
-    if (activeCategoryFilter === 'all') {
-      return adminQuestions;
+    let list = adminQuestions;
+    if (activeCategoryFilter !== 'all') {
+      list = questionsByCategory[activeCategoryFilter] || [];
     }
-    return questionsByCategory[activeCategoryFilter] || [];
-  }, [activeCategoryFilter, adminQuestions, questionsByCategory]);
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(question => {
+        const plainText = stripHtml(question.question_text).toLowerCase();
+        return plainText.includes(q) || question.category?.toLowerCase().includes(q);
+      });
+    }
+    return list;
+  }, [activeCategoryFilter, adminQuestions, questionsByCategory, searchQuery]);
 
   const getCategoryLabel = (category: string) => {
     if (category === 'all') {
@@ -504,6 +514,26 @@ export default function AdminPage() {
                 </button>
               );
             })}
+          </div>
+
+          <div className="mb-6 flex">
+            <div className="relative w-full max-w-md">
+              <input
+                type="text"
+                placeholder="Search questions by text or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              />
+              <svg 
+                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
           </div>
 
           {questionLoading ? (
@@ -902,11 +932,15 @@ export default function AdminPage() {
                               <RichContent html={question.question_text} className="font-medium text-gray-900" />
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <div className={`p-3 rounded-lg border ${answer.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-                                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected ({answer.user_answer})</p>
-                                  <RichContent
-                                    html={question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string}
-                                    className="text-gray-900 font-medium"
-                                  />
+                                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected {['A','B','C','D','E'].includes(answer.user_answer) ? `(${answer.user_answer})` : ''}</p>
+                                  {answer.user_answer === 'skipped' ? (
+                                    <p className="text-sm font-medium text-gray-500 italic">Skipped</p>
+                                  ) : (
+                                    <RichContent
+                                      html={['A','B','C','D','E'].includes(answer.user_answer) ? (question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string || answer.user_answer) : answer.user_answer}
+                                      className="text-gray-900 font-medium"
+                                    />
+                                  )}
                                 </div>
                                 {!answer.is_correct && (
                                   <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">

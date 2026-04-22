@@ -37,12 +37,12 @@ export default function QuestionDisplay({
 
 
             {currentQuestion.options.map((option) => {
-              const isSelected = selectedAnswer === option.label;
+              const isSelected = selectedAnswer === option.text;
 
               return (
                 <button
                   key={option.label}
-                  onClick={() => onSelectAnswer(option.label)}
+                  onClick={() => onSelectAnswer(option.text)}
                   className={`w-full group flex items-center p-4 md:p-5 rounded-[16px] text-left transition-all duration-200 border-[1.5px] ${
                     isSelected
                       ? 'bg-nike-black border-nike-black text-nike-white'
