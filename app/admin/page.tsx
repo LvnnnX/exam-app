@@ -33,7 +33,7 @@ type QuestionDraft = {
   option_d: string;
   option_e: string;
   correct_answer: string;
-  category: string;
+  categories: string[];
 };
 
 const ADMIN_PIN = '123456';
@@ -46,14 +46,14 @@ const EMPTY_DRAFT: QuestionDraft = {
   option_d: '<p></p>',
   option_e: '<p></p>',
   correct_answer: 'A',
-  category: 'general_informatics',
+  categories: [],
 };
 
 const SANITIZE_OPTIONS: DomPurifyConfig = {
   USE_PROFILES: { html: true },
   FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
   FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
-  ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'data-language'],
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'data-language', 'data-type', 'data-latex'],
 };
 
 function sanitizeRichHtml(value: string): string {
@@ -111,11 +111,13 @@ export default function AdminPage() {
 
   const questionsByCategory = useMemo(() => {
     return adminQuestions.reduce<Record<string, RawQuestion[]>>((accumulator, question) => {
-      const key = question.category || 'uncategorized';
-      if (!accumulator[key]) {
-        accumulator[key] = [];
-      }
-      accumulator[key].push(question);
+      const keys = question.categories && question.categories.length > 0 ? question.categories : ['uncategorized'];
+      keys.forEach(key => {
+        if (!accumulator[key]) {
+          accumulator[key] = [];
+        }
+        accumulator[key].push(question);
+      });
       return accumulator;
     }, {});
   }, [adminQuestions]);
@@ -131,12 +133,12 @@ export default function AdminPage() {
     if (activeCategoryFilter !== 'all') {
       list = questionsByCategory[activeCategoryFilter] || [];
     }
-    
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(question => {
         const plainText = stripHtml(question.question_text).toLowerCase();
-        return plainText.includes(q) || question.category?.toLowerCase().includes(q);
+        return plainText.includes(q) || question.categories?.some(c => c.toLowerCase().includes(q));
       });
     }
     return list;
@@ -299,7 +301,7 @@ export default function AdminPage() {
     setFormData(EMPTY_DRAFT);
   };
 
-  const handleInputChange = (field: keyof QuestionDraft, value: string) => {
+  const handleInputChange = (field: keyof QuestionDraft, value: string | string[]) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
   };
 
@@ -312,7 +314,7 @@ export default function AdminPage() {
       option_d: sanitizeRichHtml(formData.option_d),
       option_e: sanitizeRichHtml(formData.option_e),
       correct_answer: formData.correct_answer.toUpperCase(),
-      category: formData.category,
+      categories: formData.categories,
     };
 
     const missingContent = [
@@ -410,7 +412,7 @@ export default function AdminPage() {
       option_d: ensureHtmlDocument(question.option_d),
       option_e: ensureHtmlDocument(question.option_e),
       correct_answer: question.correct_answer,
-      category: question.category,
+      categories: question.categories || [],
     });
     setIsEditing(true);
     setIsAdding(false);
@@ -429,7 +431,7 @@ export default function AdminPage() {
                 type="password"
                 value={pinInput}
                 onChange={(event) => setPinInput(event.target.value)}
-                placeholder="6-digit PIN"
+                placeholder="Enter your PIN"
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 maxLength={6}
               />
@@ -528,10 +530,10 @@ export default function AdminPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
               />
-              <svg 
-                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -557,7 +559,7 @@ export default function AdminPage() {
                     <div className="font-semibold text-gray-800 mb-2">
                       Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
                     </div>
-                    <div className="text-sm text-gray-500 mb-1">Category: {question.category}</div>
+                    <div className="text-sm text-gray-500 mb-1">Categories: {question.categories?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-sm text-gray-500 mb-3">Correct: {question.correct_answer}</div>
                     <div className="flex gap-2">
                       <button
@@ -806,23 +808,67 @@ export default function AdminPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">Question Category</label>
-                      <div className="relative group">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Question Categories</label>
+                      <div className="border border-gray-200 rounded-lg p-3 max-h-[150px] overflow-y-auto bg-white space-y-2">
+                        {allCategories.map((cat) => (
+                          <label key={cat.value} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.categories?.includes(cat.value)}
+                              onChange={(e) => {
+                                const newCats = e.target.checked
+                                  ? [...(formData.categories || []), cat.value]
+                                  : (formData.categories || []).filter(c => c !== cat.value);
+                                handleInputChange('categories', newCats);
+                              }}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            {cat.label}
+                          </label>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
                         <input
                           type="text"
-                          list="category-options"
-                          value={formData.category}
-                          onChange={(event) => handleInputChange('category', event.target.value.toLowerCase().replace(/\s+/g, '_'))}
-                          onFocus={(e) => e.target.select()}
-                          placeholder="Search or type new category..."
-                          className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium placeholder:text-gray-400"
+                          id="new-category-input"
+                          placeholder="Type new category..."
+                          className="flex-1 px-3 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:border-nike-black"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = e.currentTarget.value.trim().toLowerCase().replace(/\s+/g, '_');
+                              if (val && !(formData.categories || []).includes(val)) {
+                                handleInputChange('categories', [...(formData.categories || []), val]);
+                                if (!allCategories.some(c => c.value === val)) {
+                                  const label = val.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                  setAllCategories(prev => [...prev, { value: val, label }]);
+                                }
+                                e.currentTarget.value = '';
+                              }
+                            }
+                          }}
                         />
-                        <datalist id="category-options">
-                          {allCategories.map((cat) => (
-                            <option key={cat.value} value={cat.value}>{cat.label}</option>
-                          ))}
-                        </datalist>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            const input = document.getElementById('new-category-input') as HTMLInputElement;
+                            if (input) {
+                              const val = input.value.trim().toLowerCase().replace(/\s+/g, '_');
+                              if (val && !(formData.categories || []).includes(val)) {
+                                handleInputChange('categories', [...(formData.categories || []), val]);
+                                if (!allCategories.some(c => c.value === val)) {
+                                  const label = val.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                  setAllCategories(prev => [...prev, { value: val, label }]);
+                                }
+                                input.value = '';
+                              }
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200"
+                        >
+                          Add
+                        </button>
                       </div>
                     </div>
 
@@ -877,8 +923,8 @@ export default function AdminPage() {
 
                     <div className="grid grid-cols-1 gap-4">
                       <div className="p-4 bg-white rounded-xl border border-gray-100">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Category</p>
-                        <p className="font-bold text-gray-900 capitalize">{selectedQuestion.category?.replaceAll('_', ' ')}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Categories</p>
+                        <p className="font-bold text-gray-900 capitalize">{selectedQuestion.categories?.join(', ').replaceAll('_', ' ')}</p>
                       </div>
                     </div>
                   </div>
@@ -947,12 +993,12 @@ export default function AdminPage() {
                               <RichContent html={question.question_text} className="font-medium text-gray-900" />
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                 <div className={`p-3 rounded-lg border ${answer.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-                                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected {['A','B','C','D','E'].includes(answer.user_answer) ? `(${answer.user_answer})` : ''}</p>
+                                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected {['A', 'B', 'C', 'D', 'E'].includes(answer.user_answer) ? `(${answer.user_answer})` : ''}</p>
                                   {answer.user_answer === 'skipped' ? (
                                     <p className="text-sm font-medium text-gray-500 italic">Skipped</p>
                                   ) : (
                                     <RichContent
-                                      html={['A','B','C','D','E'].includes(answer.user_answer) ? (question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string || answer.user_answer) : answer.user_answer}
+                                      html={['A', 'B', 'C', 'D', 'E'].includes(answer.user_answer) ? (question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string || answer.user_answer) : answer.user_answer}
                                       className="text-gray-900 font-medium"
                                     />
                                   )}

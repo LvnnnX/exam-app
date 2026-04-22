@@ -21,7 +21,7 @@ export type RawQuestion = {
   option_d: string;
   option_e: string;
   correct_answer: string; // 'A' | 'B' | 'C' | 'D' | 'E'
-  category: string;
+  categories: string[];
 };
 
 // A single shuffled option for rendering
@@ -61,15 +61,15 @@ function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
 export async function fetchCategories(): Promise<CategoryInfo[]> {
   const { data, error } = await supabase
     .from('questions')
-    .select('category');
+    .select('categories');
 
   if (error) {
     console.error('Failed to fetch categories:', error.message);
     return [];
   }
 
-  // Deduplicate manually (since Supabase JS client doesn't explicitly expose DISTINCT via simple Select API)
-  const uniqueCategories = Array.from(new Set(data.map((q) => q.category)));
+  // Deduplicate manually 
+  const uniqueCategories = Array.from(new Set(data.flatMap((q) => q.categories || [])));
   
   return uniqueCategories.map((cat) => {
     // Basic Title Casing for the display label: 'general_informatics' -> 'General Informatics'
@@ -85,12 +85,11 @@ export async function fetchCategories(): Promise<CategoryInfo[]> {
 export async function fetchQuestions(category?: string): Promise<RawQuestion[]> {
   let query = supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, category');
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, categories');
 
-  // Supabase stores categories matching these value tags: 'coding', 'general_informatics', 'combinatorics'.
   // We skip filtering if the chosen category is somehow the placeholder 'All Categories', or just filter normally.
   if (category && category !== 'All Categories') {
-    query = query.eq('category', category);
+    query = query.contains('categories', [category]);
   }
 
   const { data, error } = await query;
@@ -115,7 +114,7 @@ export async function fetchQuestionsByIds(ids: number[]): Promise<RawQuestion[]>
 
   const { data, error } = await supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, category')
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, categories')
     .in('id', ids);
 
   if (error) {

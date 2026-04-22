@@ -3,7 +3,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import hljs from 'highlight.js';
+import katex from 'katex';
 import { ensureHtmlDocument } from '@/lib/rich-text';
+
+import 'katex/dist/katex.min.css';
 
 type RichContentProps = {
   html: string;
@@ -23,6 +26,8 @@ const SANITIZE_OPTIONS: DomPurifyConfig = {
     'title',
     'class',
     'data-language',
+    'data-type',
+    'data-latex',
     'loading',
     'decoding',
     'referrerpolicy',
@@ -70,6 +75,26 @@ function RichContent({ html, className = '' }: RichContentProps) {
       image.setAttribute('decoding', 'async');
       image.setAttribute('referrerpolicy', 'no-referrer');
     });
+
+    // Render KaTeX math nodes that come from TipTap's Mathematics extension
+    const mathNodes = containerRef.current.querySelectorAll('[data-type="inline-math"], [data-type="block-math"]');
+    mathNodes.forEach((node) => {
+      const element = node as HTMLElement;
+      const latex = element.getAttribute('data-latex') || element.textContent || '';
+      const isBlock = element.getAttribute('data-type') === 'block-math';
+
+      if (latex && !element.dataset.katexDone) {
+        try {
+          element.innerHTML = katex.renderToString(latex, {
+            throwOnError: false,
+            displayMode: isBlock,
+          });
+          element.dataset.katexDone = 'true';
+        } catch {
+          // Leave content as-is if KaTeX fails
+        }
+      }
+    });
   }, [safeHtml, mounted]);
 
   return (
@@ -80,4 +105,4 @@ function RichContent({ html, className = '' }: RichContentProps) {
     />
   );
 }
-export default React.memo(RichContent);
+export default React.memo(RichContent);

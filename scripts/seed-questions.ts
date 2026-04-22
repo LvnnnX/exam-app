@@ -2,11 +2,11 @@ import { createClient } from '@supabase/supabase-js'
 import { type RawQuestion } from '../lib/questions'
 
 const staticSeedPool: RawQuestion[] = [
-  { id: 1, question_text: 'What is the time complexity of binary search?', option_a: 'O(n)', option_b: 'O(log n)', option_c: 'O(n log n)', option_d: 'O(1)', option_e: 'O(n²)', correct_answer: 'B', category: 'coding' },
-  { id: 2, question_text: 'Which data structure uses LIFO?', option_a: 'Queue', option_b: 'Stack', option_c: 'Array', option_d: 'Linked List', option_e: 'Tree', correct_answer: 'B', category: 'coding' },
-  { id: 3, question_text: 'ACID in databases stands for?', option_a: 'Atomicity, Consistency, Isolation, Durability', option_b: 'Atomic, Consistency, Instant, Durability', option_c: 'Asynchronous, Consistent, Isolated, Durable', option_d: 'Atomicity, Concurrency, Isolation, Durability', option_e: 'Atomic, Consistency, Isolation, Durability', correct_answer: 'A', category: 'general_informatics' },
-  { id: 4, question_text: 'Which SQL join returns left table all records?', option_a: 'INNER JOIN', option_b: 'LEFT OUTER JOIN', option_c: 'RIGHT OUTER JOIN', option_d: 'FULL OUTER JOIN', option_e: 'CROSS JOIN', correct_answer: 'B', category: 'general_informatics' },
-  { id: 5, question_text: 'Which property does a primary key enforce?', option_a: 'Nullable', option_b: 'Duplicates Allowed', option_c: 'Not Null Only', option_d: 'Not Null and Unique', option_e: 'Indexed Only', correct_answer: 'D', category: 'general_informatics' }
+  { id: 1, question_text: 'What is the time complexity of binary search?', option_a: 'O(n)', option_b: 'O(log n)', option_c: 'O(n log n)', option_d: 'O(1)', option_e: 'O(n²)', correct_answer: 'B', categories: ['coding'] },
+  { id: 2, question_text: 'Which data structure uses LIFO?', option_a: 'Queue', option_b: 'Stack', option_c: 'Array', option_d: 'Linked List', option_e: 'Tree', correct_answer: 'B', categories: ['coding'] },
+  { id: 3, question_text: 'ACID in databases stands for?', option_a: 'Atomicity, Consistency, Isolation, Durability', option_b: 'Atomic, Consistency, Instant, Durability', option_c: 'Asynchronous, Consistent, Isolated, Durable', option_d: 'Atomicity, Concurrency, Isolation, Durability', option_e: 'Atomic, Consistency, Isolation, Durability', correct_answer: 'A', categories: ['general_informatics'] },
+  { id: 4, question_text: 'Which SQL join returns left table all records?', option_a: 'INNER JOIN', option_b: 'LEFT OUTER JOIN', option_c: 'RIGHT OUTER JOIN', option_d: 'FULL OUTER JOIN', option_e: 'CROSS JOIN', correct_answer: 'B', categories: ['general_informatics'] },
+  { id: 5, question_text: 'Which property does a primary key enforce?', option_a: 'Nullable', option_b: 'Duplicates Allowed', option_c: 'Not Null Only', option_d: 'Not Null and Unique', option_e: 'Indexed Only', correct_answer: 'D', categories: ['general_informatics'] }
 ];
 
 const SUPABASE_URL = process.env.SUPABASE_URL as string
@@ -47,7 +47,7 @@ async function seedQuestions(): Promise<void> {
       option_d: q.option_d,
       option_e: q.option_e,
       correct_answer: q.correct_answer,
-      category: q.category,
+      categories: q.categories,
     }
 
     const { error } = await supabase.from('questions').insert([payload])

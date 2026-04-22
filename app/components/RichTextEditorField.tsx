@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Mathematics } from '@tiptap/extension-mathematics';
 import { common, createLowlight } from 'lowlight';
 import { ensureHtmlDocument } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
+
+import 'katex/dist/katex.min.css';
 
 type RichTextEditorFieldProps = {
   label: string;
@@ -52,6 +55,27 @@ export default function RichTextEditorField({
       CodeBlockLowlight.configure({
         lowlight,
         defaultLanguage: 'plaintext',
+      }),
+      Mathematics.configure({
+        katexOptions: {
+          throwOnError: false,
+        },
+        inlineOptions: {
+          onClick: (node, pos) => {
+            const latex = prompt('Edit LaTeX formula (inline):', node.attrs.latex);
+            if (latex !== null && editor) {
+              editor.chain().setNodeSelection(pos).updateInlineMath({ latex }).focus().run();
+            }
+          },
+        },
+        blockOptions: {
+          onClick: (node, pos) => {
+            const latex = prompt('Edit LaTeX formula (block):', node.attrs.latex);
+            if (latex !== null && editor) {
+              editor.chain().setNodeSelection(pos).updateBlockMath({ latex }).focus().run();
+            }
+          },
+        },
       }),
     ],
     content: normalizedValue,
@@ -123,6 +147,22 @@ export default function RichTextEditorField({
     editor.chain().focus().toggleCodeBlock({ language }).run();
   };
 
+  const insertInlineMath = () => {
+    if (!editor) return;
+    const latex = prompt('Enter inline LaTeX formula:', '\\frac{a}{b}');
+    if (latex) {
+      editor.commands.insertInlineMath({ latex });
+    }
+  };
+
+  const insertBlockMath = () => {
+    if (!editor) return;
+    const latex = prompt('Enter block LaTeX formula:', '\\sum_{i=1}^{n} x_i');
+    if (latex) {
+      editor.commands.insertBlockMath({ latex });
+    }
+  };
+
   if (!editor) {
     return <div className="p-4 border rounded-lg bg-gray-50 animate-pulse">Initializing editor...</div>;
   }
@@ -152,6 +192,27 @@ export default function RichTextEditorField({
             </button>
             <button
               type="button"
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+              className={`toolbar-btn ${editor.isActive('strike') ? 'is-active' : ''}`}
+              title="Strikethrough"
+            >
+              <span className="line-through px-1">S</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleCode().run()}
+              className={`toolbar-btn ${editor.isActive('code') ? 'is-active' : ''}`}
+              title="Inline Code"
+            >
+              <span className="font-mono px-1 text-xs">{`<>`}</span>
+            </button>
+          </div>
+          
+          <div className="h-6 w-[1px] bg-gray-300 mx-0.5 hidden sm:block" />
+
+          <div className="flex flex-wrap gap-1 items-center">
+            <button
+              type="button"
               onClick={() => editor.chain().focus().toggleBulletList().run()}
               className={`toolbar-btn ${editor.isActive('bulletList') ? 'is-active' : ''}`}
               title="Bullet List"
@@ -166,8 +227,24 @@ export default function RichTextEditorField({
             >
               1. List
             </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+              className={`toolbar-btn ${editor.isActive('blockquote') ? 'is-active' : ''}`}
+              title="Blockquote"
+            >
+              ❝ Quote
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().setHorizontalRule().run()}
+              className="toolbar-btn"
+              title="Horizontal Rule"
+            >
+              ― HR
+            </button>
           </div>
-          
+
           <div className="h-6 w-[1px] bg-gray-300 mx-0.5 hidden sm:block" />
 
           <div className="flex items-center gap-1">
@@ -187,6 +264,28 @@ export default function RichTextEditorField({
               accept="image/*" 
               className="hidden" 
             />
+          </div>
+
+          <div className="h-6 w-[1px] bg-gray-300 mx-0.5 hidden sm:block" />
+
+          {/* LaTeX / Math Buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={insertInlineMath}
+              className="toolbar-btn text-xs font-bold whitespace-nowrap"
+              title="Insert inline LaTeX formula"
+            >
+              Σ Inline
+            </button>
+            <button
+              type="button"
+              onClick={insertBlockMath}
+              className="toolbar-btn text-xs font-bold whitespace-nowrap"
+              title="Insert block LaTeX formula"
+            >
+              Σ Block
+            </button>
           </div>
 
           <div className="flex items-center gap-1.5 ml-auto">
