@@ -15,6 +15,7 @@ import {
 } from '@/lib/questions';
 
 type Answer = string | null;
+type GameMode = 'exam' | 'survival';
 
 const PREPARING_STEP = 25;
 
@@ -28,6 +29,8 @@ const STORAGE_KEYS = {
   CATEGORY: 'exam_category',
   QUESTION_COUNT: 'exam_question_count',
   START_TIME: 'exam_start_time',
+  MODE: 'exam_mode',
+  LIVES: 'exam_lives',
 };
 
 export default function ExamPage() {
@@ -48,6 +51,10 @@ export default function ExamPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [endTime, setEndTime] = useState<number | null>(null);
+  const [gameMode, setGameMode] = useState<GameMode>('exam');
+  const [lives, setLives] = useState(3);
+  const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
+  const isSurvival = gameMode === 'survival';
 
   const total = sessionQuestions.length;
   const currentQuestion = sessionQuestions[current] ?? null;
@@ -100,6 +107,14 @@ export default function ExamPage() {
     localStorage.setItem(STORAGE_KEYS.START_TIME, time.toString());
   };
 
+  const saveModeToStorage = (mode: GameMode) => {
+    localStorage.setItem(STORAGE_KEYS.MODE, mode);
+  };
+
+  const saveLivesToStorage = (l: number) => {
+    localStorage.setItem(STORAGE_KEYS.LIVES, l.toString());
+  };
+
   const loadFromStorage = () => {
     const storedName = localStorage.getItem(STORAGE_KEYS.NAME);
     const storedStep = localStorage.getItem(STORAGE_KEYS.STEP);
@@ -119,6 +134,8 @@ export default function ExamPage() {
       category: storedCategory as string | null,
       questionCount: storedQuestionCount ? parseInt(storedQuestionCount) as QuestionCount : null,
       startTime: storedStartTime ? parseInt(storedStartTime) : null,
+      mode: (localStorage.getItem(STORAGE_KEYS.MODE) as GameMode) || 'exam',
+      lives: localStorage.getItem(STORAGE_KEYS.LIVES) ? parseInt(localStorage.getItem(STORAGE_KEYS.LIVES)!) : 3,
     };
   };
 
@@ -131,6 +148,8 @@ export default function ExamPage() {
     localStorage.removeItem(STORAGE_KEYS.CATEGORY);
     localStorage.removeItem(STORAGE_KEYS.QUESTION_COUNT);
     localStorage.removeItem(STORAGE_KEYS.START_TIME);
+    localStorage.removeItem(STORAGE_KEYS.MODE);
+    localStorage.removeItem(STORAGE_KEYS.LIVES);
   };
 
   // ==================== RESTORE STATE ON MOUNT ====================
@@ -149,6 +168,8 @@ export default function ExamPage() {
       if (stored.category) setCategory(stored.category);
       if (stored.questionCount) setQuestionCount(stored.questionCount);
       if (stored.startTime) setStartTime(stored.startTime);
+      setGameMode(stored.mode);
+      setLives(stored.lives);
 
       if (stored.answers && Array.isArray(stored.answers)) {
         setAnswers(stored.answers);
@@ -193,22 +214,19 @@ export default function ExamPage() {
   const startNewSession = async () => {
     setIsLoading(true);
     try {
-      // Step 1 & 4: Fetch questions filtered by category
       const pool: RawQuestion[] = await fetchQuestions(category);
-
-      // Steps 2-3: Shuffle and slice to the selected question count
-      const prepared = prepareSessionQuestions(pool, questionCount);
+      const count = isSurvival ? pool.length : questionCount;
+      const prepared = prepareSessionQuestions(pool, count);
 
       setSessionQuestions(prepared);
       setAnswers(Array(prepared.length).fill(null));
       setCurrent(0);
 
-      // Persist session data
       saveQuestionsToStorage(prepared);
       saveAnswersToStorage(Array(prepared.length).fill(null));
       saveCurrentQuestionToStorage(0);
       saveCategoryToStorage(category);
-      saveQuestionCountToStorage(questionCount);
+      saveQuestionCountToStorage(count);
     } catch (err) {
       console.error('Failed to prepare session:', err);
     } finally {
@@ -218,6 +236,12 @@ export default function ExamPage() {
 
   const startExam = async () => {
     saveNameToStorage(name);
+    saveModeToStorage(gameMode);
+    if (isSurvival) {
+      setLives(3);
+      saveLivesToStorage(3);
+      setScore(0);
+    }
     goToStep(PREPARING_STEP);
     await startNewSession();
     const now = Date.now();
@@ -255,17 +279,40 @@ export default function ExamPage() {
     });
   };
 
+  const endSession = () => {
+    if (!isSurvival) {
+      const finalScore = calculateScore();
+      setScore(finalScore);
+    }
+    setEndTime(Date.now());
+    goToStep(6);
+  };
+
   const nextQuestion = () => {
+    // In survival mode, evaluate the answer when they click Next
+    if (isSurvival && currentQuestion) {
+      const selectedAnswer = answers[current];
+      const correctOpt = currentQuestion.options.find(o => o.label === currentQuestion.correct_label);
+      if (correctOpt && selectedAnswer === correctOpt.text) {
+        setScore(prev => prev + 1);
+      } else {
+        const newLives = lives - 1;
+        setLives(newLives);
+        saveLivesToStorage(newLives);
+        if (newLives <= 0) {
+          endSession();
+          return;
+        }
+      }
+    }
+
     if (current < total - 1) {
       const nextIdx = current + 1;
       setCurrent(nextIdx);
       saveCurrentQuestionToStorage(nextIdx);
       scrollToQuestionTop();
     } else {
-      const finalScore = calculateScore();
-      setScore(finalScore);
-      setEndTime(Date.now());
-      goToStep(6);
+      endSession();
     }
   };
 
@@ -276,11 +323,12 @@ export default function ExamPage() {
       saveCurrentQuestionToStorage(nextIdx);
       scrollToQuestionTop();
     } else {
-      const finalScore = calculateScore();
-      setScore(finalScore);
-      setEndTime(Date.now());
-      goToStep(6);
+      endSession();
     }
+  };
+
+  const surrender = () => {
+    endSession();
   };
 
   const restart = () => {
@@ -294,6 +342,8 @@ export default function ExamPage() {
     setScore(0);
     setStartTime(null);
     setEndTime(null);
+    setGameMode('exam');
+    setLives(3);
     setSaved(false);
     clearStorage();
   };
@@ -329,7 +379,8 @@ export default function ExamPage() {
           user_answers: answersArray,
           start_time: finalStartTime,
           end_time: finalEndTime,
-          duration_seconds: durationSeconds
+          duration_seconds: durationSeconds,
+          mode: gameMode,
         }]);
 
       if (error) throw error;
@@ -340,7 +391,7 @@ export default function ExamPage() {
     } finally {
       setSaving(false);
     }
-  }, [answers, category, name, questionCount, score, sessionQuestions, total, startTime, endTime]);
+  }, [answers, category, name, questionCount, score, sessionQuestions, total, startTime, endTime, gameMode]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -373,6 +424,31 @@ export default function ExamPage() {
             Take The<br />Exam.
           </h1>
           <div className="max-w-md w-full space-y-6">
+            {/* Game Mode Selector */}
+            <label className="block">
+              <span className="block text-[16px] font-medium text-nike-black mb-2">MODE</span>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setGameMode('exam')}
+                  className={`flex-1 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${gameMode === 'exam'
+                    ? 'bg-nike-black text-nike-white'
+                    : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
+                    }`}
+                >
+                  📝 Exam
+                </button>
+                <button
+                  onClick={() => setGameMode('survival')}
+                  className={`flex-1 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${gameMode === 'survival'
+                    ? 'bg-nike-red text-nike-white'
+                    : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-red hover:bg-red-50'
+                    }`}
+                >
+                  ⚔️ Survival
+                </button>
+              </div>
+            </label>
+
             {/* Name Input */}
             <label className="block">
               <span className="block text-[16px] font-medium text-nike-black mb-2">MASUKKAN NAMA ANDA</span>
@@ -421,24 +497,26 @@ export default function ExamPage() {
               </div>
             </label>
 
-            {/* Question Count Selector */}
-            <label className="block">
-              <span className="block text-[16px] font-medium text-nike-black mb-2">BANYAK PERTANYAAN</span>
-              <div className="flex gap-3">
-                {QUESTION_COUNTS.map((count) => (
-                  <button
-                    key={count}
-                    onClick={() => setQuestionCount(count)}
-                    className={`w-[72px] h-[44px] rounded-[30px] text-[16px] font-bold transition-all ${questionCount === count
-                      ? 'bg-nike-black text-nike-white'
-                      : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
-                      }`}
-                  >
-                    {count}
-                  </button>
-                ))}
-              </div>
-            </label>
+            {/* Question Count Selector — hidden in Survival mode */}
+            {!isSurvival && (
+              <label className="block">
+                <span className="block text-[16px] font-medium text-nike-black mb-2">BANYAK PERTANYAAN</span>
+                <div className="flex gap-3">
+                  {QUESTION_COUNTS.map((count) => (
+                    <button
+                      key={count}
+                      onClick={() => setQuestionCount(count)}
+                      className={`w-[72px] h-[44px] rounded-[30px] text-[16px] font-bold transition-all ${questionCount === count
+                        ? 'bg-nike-black text-nike-white'
+                        : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
+                        }`}
+                    >
+                      {count}
+                    </button>
+                  ))}
+                </div>
+              </label>
+            )}
 
             <button
               onClick={() => setStep(2)}
@@ -467,15 +545,25 @@ export default function ExamPage() {
                 <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Candidate</p>
                 <p className="text-[24px] font-bold text-nike-black uppercase">{name}</p>
               </div>
-              <div className="flex gap-8">
+              <div className="flex gap-8 flex-wrap">
+                <div>
+                  <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Mode</p>
+                  <p className={`text-[16px] font-bold uppercase ${isSurvival ? 'text-nike-red' : 'text-nike-black'}`}>{isSurvival ? '⚔️ Survival' : '📝 Exam'}</p>
+                </div>
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Category</p>
                   <p className="text-[16px] font-bold text-nike-black uppercase">{categoryLabel}</p>
                 </div>
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Questions</p>
-                  <p className="text-[16px] font-bold text-nike-black">{questionCount}</p>
+                  <p className="text-[16px] font-bold text-nike-black">{isSurvival ? 'All' : questionCount}</p>
                 </div>
+                {isSurvival && (
+                  <div>
+                    <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Lives</p>
+                    <p className="text-[16px] font-bold text-nike-red">❤️ ❤️ ❤️</p>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -515,6 +603,23 @@ export default function ExamPage() {
     return (
       <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16">
         <div className="max-w-6xl mx-auto w-full">
+          {/* Survival: Score Counter */}
+          {isSurvival && (
+            <div className="flex items-center justify-between mb-4 px-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[24px] font-bold text-nike-black">{score}</span>
+                <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-widest">Score</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <span key={i} className={`text-[24px] transition-all ${i < lives ? '' : 'grayscale opacity-30'}`}>
+                    ❤️
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Progress & Status */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-4 border-b border-nike-grey-200 gap-4">
             <div className="flex flex-col">
@@ -522,7 +627,7 @@ export default function ExamPage() {
                 {name}
               </span>
               <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-                Kategori: {categoryLabel}
+                Kategori: {categoryLabel} {isSurvival && '· Survival'}
               </span>
               <span className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest">
                 Question {current + 1} / {total}
@@ -556,13 +661,56 @@ export default function ExamPage() {
             >
               Next Question
             </button>
-            <button
-              onClick={skipQuestion}
-              className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-grey-500 text-[16px] font-medium hover:text-nike-black transition-colors uppercase tracking-wider"
-            >
-              Skip
-            </button>
+            {isSurvival ? (
+              <button
+                onClick={() => setShowSurrenderConfirm(true)}
+                className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-red text-[16px] font-medium hover:bg-red-50 border border-nike-red/30 transition-colors uppercase tracking-wider"
+              >
+                🏳️ Surrender
+              </button>
+            ) : (
+              <button
+                onClick={skipQuestion}
+                className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-grey-500 text-[16px] font-medium hover:text-nike-black transition-colors uppercase tracking-wider"
+              >
+                Skip
+              </button>
+            )}
           </div>
+
+          {/* Surrender Confirmation Dialog */}
+          {showSurrenderConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-6">
+              <div className="bg-white rounded-[24px] p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">🏳️</span>
+                  </div>
+                  <h3 className="font-display text-[32px] text-nike-black leading-none uppercase mb-2">Are you sure?</h3>
+                  <p className="text-[14px] text-nike-grey-500 font-medium">
+                    Surrendering will immediately end your current session and record your score.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      setShowSurrenderConfirm(false);
+                      surrender();
+                    }}
+                    className="w-full h-[54px] rounded-[30px] bg-nike-red text-white text-[16px] font-bold uppercase tracking-wider hover:bg-red-600 transition-colors"
+                  >
+                    Yes, Surrender
+                  </button>
+                  <button
+                    onClick={() => setShowSurrenderConfirm(false)}
+                    className="w-full h-[54px] rounded-[30px] bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black text-[16px] font-bold uppercase tracking-wider hover:bg-nike-grey-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -605,7 +753,7 @@ export default function ExamPage() {
     const hours = Math.floor(durationSeconds / 3600);
     const minutes = Math.floor((durationSeconds % 3600) / 60);
     const seconds = durationSeconds % 60;
-    
+
     let formattedDuration = '';
     if (hours > 0) formattedDuration += `${hours} Hours, `;
     if (minutes > 0 || hours > 0) formattedDuration += `${minutes} Minutes, `;
@@ -637,7 +785,9 @@ export default function ExamPage() {
           </div>
 
           <div className="space-y-6 mb-12">
-            {sessionQuestions.map((q, idx) => {
+            {sessionQuestions
+              .filter((_, idx) => !isSurvival || idx <= current)
+              .map((q, idx) => {
               const userAnswer = answers[idx];
               const correctOpt = q.options.find(o => o.label === q.correct_label);
               const isCorrect = userAnswer === correctOpt?.text;

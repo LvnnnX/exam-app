@@ -23,6 +23,7 @@ type ExamResult = {
   start_time?: string;
   end_time?: string;
   duration_seconds?: number;
+  mode?: string;
 };
 
 type QuestionDraft = {
@@ -94,6 +95,7 @@ export default function AdminPage() {
   const [sessionInfo, setSessionInfo] = useState<string | null>(null);
   const [activeResCategory, setActiveResCategory] = useState<string>('all');
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
+  const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
 
   // Check for existing session on mount
   useEffect(() => {
@@ -193,7 +195,7 @@ export default function AdminPage() {
     }
   };
 
-  const fetchResults = async (page = 0, category = activeResCategory) => {
+  const fetchResults = async (page = 0, category = activeResCategory, mode = activeModeFilter) => {
     setLoading(true);
     try {
       // 1. Fetch paginated data for the table
@@ -206,6 +208,9 @@ export default function AdminPage() {
 
       if (category !== 'all') {
         paginatedQuery = paginatedQuery.eq('category', category);
+      }
+      if (mode !== 'all') {
+        paginatedQuery = paginatedQuery.eq('mode', mode);
       }
 
       const { data, error, count } = await paginatedQuery
@@ -228,6 +233,9 @@ export default function AdminPage() {
       if (category !== 'all') {
         statsQuery = statsQuery.eq('category', category);
       }
+      if (mode !== 'all') {
+        statsQuery = statsQuery.eq('mode', mode);
+      }
 
       const { data: statRows, error: statError } = await statsQuery;
       if (statError) {
@@ -244,7 +252,12 @@ export default function AdminPage() {
 
   const handleResCategoryChange = (category: string) => {
     setActiveResCategory(category);
-    void fetchResults(0, category);
+    void fetchResults(0, category, activeModeFilter);
+  };
+
+  const handleModeFilterChange = (mode: string) => {
+    setActiveModeFilter(mode);
+    void fetchResults(0, activeResCategory, mode);
   };
 
   const handleFetchResultDetail = async (result: ExamResult) => {
@@ -621,6 +634,21 @@ export default function AdminPage() {
                 </button>
               ))}
             </div>
+
+            <div className="flex flex-wrap gap-2">
+              {['all', 'exam', 'survival'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => handleModeFilterChange(mode)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeModeFilter === mode
+                    ? mode === 'survival' ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
+                    }`}
+                >
+                  {mode === 'all' ? 'All Modes' : mode === 'exam' ? '📝 Exam' : '⚔️ Survival'}
+                </button>
+              ))}
+            </div>
           </div>
 
           {statsData.length > 0 && (
@@ -664,6 +692,7 @@ export default function AdminPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
@@ -678,6 +707,11 @@ export default function AdminPage() {
                     {results.map((result) => (
                       <tr key={result.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${result.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                            {result.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <span className="capitalize">{result.category?.replaceAll('_', ' ')}</span>
                         </td>
