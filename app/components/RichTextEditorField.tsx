@@ -90,7 +90,7 @@ export default function RichTextEditorField({
   });
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || editor.isDestroyed || editor.isFocused) {
       return;
     }
 
@@ -151,7 +151,7 @@ export default function RichTextEditorField({
     if (!editor) return;
     const latex = prompt('Enter inline LaTeX formula:', '\\frac{a}{b}');
     if (latex) {
-      editor.commands.insertInlineMath({ latex });
+      editor.chain().focus().insertInlineMath({ latex }).run();
     }
   };
 
@@ -159,7 +159,7 @@ export default function RichTextEditorField({
     if (!editor) return;
     const latex = prompt('Enter block LaTeX formula:', '\\sum_{i=1}^{n} x_i');
     if (latex) {
-      editor.commands.insertBlockMath({ latex });
+      editor.chain().focus().insertBlockMath({ latex }).run();
     }
   };
 

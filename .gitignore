@@ -45,3 +45,5 @@ supabase/.temp/
 next-env.d.ts
 
 tes-schema.sql
+skills-lock.json
+.agents

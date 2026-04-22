@@ -37,7 +37,7 @@ type QuestionDraft = {
   categories: string[];
 };
 
-const ADMIN_PIN = '123456';
+const ADMIN_PIN = 'smanda';
 
 const EMPTY_DRAFT: QuestionDraft = {
   question_text: '<p></p>',

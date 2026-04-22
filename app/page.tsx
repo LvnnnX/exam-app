@@ -841,8 +841,8 @@ export default function ExamPage() {
                 return (
                   <div key={idx} className="bg-nike-grey-100 p-6 sm:p-8 rounded-[20px]">
                     <div className="flex gap-4 mb-4">
-                      <span className="font-display text-[24px] text-nike-grey-300">{(idx + 1).toString().padStart(2, '0')}</span>
-                      <RichContent html={q.question_text} className="font-bold text-[18px] sm:text-[20px] text-nike-black pt-1 leading-tight" />
+                      <span className="font-display text-[24px] text-nike-grey-300 shrink-0">{(idx + 1).toString().padStart(2, '0')}</span>
+                      <RichContent html={q.question_text} className="font-bold text-[18px] sm:text-[20px] text-nike-black pt-1 leading-tight flex-1 min-w-0" />
                     </div>
 
                     <div className="ml-[10px] sm:ml-[40px] pl-6 border-l-[2px] border-nike-grey-300">
@@ -850,8 +850,8 @@ export default function ExamPage() {
                         <p className="text-[14px] font-medium text-nike-grey-500 uppercase">No Answer</p>
                       ) : isCorrect ? (
                         <div className="flex items-start gap-3">
-                          <div className="w-2 h-2 rounded-full bg-nike-green"></div>
-                          <div className="text-[16px] font-bold text-nike-green">
+                          <div className="w-2 h-2 rounded-full bg-nike-green mt-2 shrink-0"></div>
+                          <div className="text-[16px] font-bold text-nike-green flex-1 min-w-0">
                             <p className="uppercase mb-1">CORRECT</p>
                             <RichContent html={userOptionHtml ?? ''} />
                           </div>
@@ -859,8 +859,8 @@ export default function ExamPage() {
                       ) : (
                         <div className="flex flex-col gap-1">
                           <div className="flex items-start gap-3">
-                            <div className="w-2 h-2 rounded-full bg-nike-red"></div>
-                            <div className="text-[16px] font-bold text-nike-red">
+                            <div className="w-2 h-2 rounded-full bg-nike-red mt-2 shrink-0"></div>
+                            <div className="text-[16px] font-bold text-nike-red flex-1 min-w-0">
                               <p className="uppercase mb-1">WRONG ANSWER</p>
                               <RichContent html={userOptionHtml ?? ''} />
                             </div>
