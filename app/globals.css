@@ -85,14 +85,12 @@ body {
 
   .rich-content pre,
   .exam-question-content pre {
-    max-height: 280px !important;
+    max-height: none !important;
     max-width: 100% !important;
     padding: 1rem !important;
-    overflow: hidden !important;
-    /* Step 6: Remove scrollbars */
+    overflow-x: auto !important;
     white-space: pre-wrap !important;
-    /* Step 7: Ensure visibility/fit */
-    word-break: break-all !important;
+    word-break: normal !important;
     margin: 0.8rem 0 !important;
   }
 }
@@ -109,7 +107,7 @@ body {
 }
 
 .exam-question-content pre {
-  max-height: 180px;
+  max-height: none;
 }
 
 .exam-option-content {
@@ -228,15 +226,13 @@ body {
 
   .rich-content pre,
   .exam-question-content pre {
-    max-height: 140px !important;
+    max-height: none !important;
     max-width: 100% !important;
     padding: 0.5rem !important;
-    overflow: hidden !important;
-    /* Step 5: Remove scrollbars */
+    overflow-x: auto !important;
     margin: 0.4rem 0 !important;
     white-space: pre-wrap !important;
-    /* Step 6: Ensure it fits/wraps */
-    word-break: break-all !important;
+    word-break: normal !important;
   }
 
   /* Step 9: Position question text at the top */
