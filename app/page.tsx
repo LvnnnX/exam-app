@@ -54,6 +54,7 @@ export default function ExamPage() {
   const [gameMode, setGameMode] = useState<GameMode>('exam');
   const [lives, setLives] = useState(3);
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
+  const [feedbackResult, setFeedbackResult] = useState<'correct' | 'wrong' | null>(null);
   const isSurvival = gameMode === 'survival';
 
   const total = sessionQuestions.length;
@@ -289,21 +290,40 @@ export default function ExamPage() {
   };
 
   const nextQuestion = () => {
+    if (feedbackResult) return;
+
     // In survival mode, evaluate the answer when they click Next
     if (isSurvival && currentQuestion) {
       const selectedAnswer = answers[current];
       const correctOpt = currentQuestion.options.find(o => o.label === currentQuestion.correct_label);
-      if (correctOpt && selectedAnswer === correctOpt.text) {
-        setScore(prev => prev + 1);
-      } else {
-        const newLives = lives - 1;
-        setLives(newLives);
-        saveLivesToStorage(newLives);
-        if (newLives <= 0) {
-          endSession();
-          return;
+      const isCorrect = correctOpt && selectedAnswer === correctOpt.text;
+
+      setFeedbackResult(isCorrect ? 'correct' : 'wrong');
+
+      setTimeout(() => {
+        setFeedbackResult(null);
+        if (isCorrect) {
+          setScore(prev => prev + 1);
+        } else {
+          const newLives = lives - 1;
+          setLives(newLives);
+          saveLivesToStorage(newLives);
+          if (newLives <= 0) {
+            endSession();
+            return;
+          }
         }
-      }
+
+        if (current < total - 1) {
+          const nextIdx = current + 1;
+          setCurrent(nextIdx);
+          saveCurrentQuestionToStorage(nextIdx);
+          scrollToQuestionTop();
+        } else {
+          endSession();
+        }
+      }, 1500);
+      return;
     }
 
     if (current < total - 1) {
@@ -656,7 +676,7 @@ export default function ExamPage() {
           <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-nike-grey-200 pt-8">
             <button
               onClick={nextQuestion}
-              disabled={!hasAnswerSelected}
+              disabled={!hasAnswerSelected || feedbackResult !== null}
               className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider"
             >
               Next Question
@@ -677,6 +697,29 @@ export default function ExamPage() {
               </button>
             )}
           </div>
+
+          {/* Feedback Popup */}
+          {feedbackResult && (
+            <div className="fixed top-0 left-0 w-screen h-[100dvh] z-50 flex items-center justify-center pointer-events-none px-4 sm:px-6 backdrop-blur-[4px] bg-white/5 transition-all duration-300">
+              <div className={`rounded-[32px] p-6 sm:p-10 max-w-[calc(100vw-32px)] sm:max-w-sm w-full shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] backdrop-blur-2xl border-2 animate-in zoom-in-95 fade-in duration-300 flex flex-col items-center justify-center ${feedbackResult === 'correct' ? 'bg-nike-green/10 border-nike-green/40 text-nike-green' : 'bg-nike-red/10 border-nike-red/40 text-nike-red'}`}>
+                <div className="mb-4 sm:mb-6 drop-shadow-md">
+                  {feedbackResult === 'correct' ? (
+                    <svg className="w-20 h-20 sm:w-24 sm:h-24 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-20 h-20 sm:w-24 sm:h-24 animate-pulse scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" className="opacity-40" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7l-2 5h4l-2 5" strokeWidth={2.5} />
+                    </svg>
+                  )}
+                </div>
+                <h3 className="font-display text-[28px] sm:text-[36px] leading-[0.9] uppercase text-center tracking-wide">
+                  {feedbackResult === 'correct' ? 'Correct Answer' : 'WRONG ANSWER'}
+                </h3>
+              </div>
+            </div>
+          )}
 
           {/* Surrender Confirmation Dialog */}
           {showSurrenderConfirm && (
@@ -788,46 +831,46 @@ export default function ExamPage() {
             {sessionQuestions
               .filter((_, idx) => !isSurvival || idx <= current)
               .map((q, idx) => {
-              const userAnswer = answers[idx];
-              const correctOpt = q.options.find(o => o.label === q.correct_label);
-              const isCorrect = userAnswer === correctOpt?.text;
-              const isSkipped = !userAnswer;
+                const userAnswer = answers[idx];
+                const correctOpt = q.options.find(o => o.label === q.correct_label);
+                const isCorrect = userAnswer === correctOpt?.text;
+                const isSkipped = !userAnswer;
 
-              const userOptionHtml = userAnswer || null;
+                const userOptionHtml = userAnswer || null;
 
-              return (
-                <div key={idx} className="bg-nike-grey-100 p-6 sm:p-8 rounded-[20px]">
-                  <div className="flex gap-4 mb-4">
-                    <span className="font-display text-[24px] text-nike-grey-300">{(idx + 1).toString().padStart(2, '0')}</span>
-                    <RichContent html={q.question_text} className="font-bold text-[18px] sm:text-[20px] text-nike-black pt-1 leading-tight" />
-                  </div>
+                return (
+                  <div key={idx} className="bg-nike-grey-100 p-6 sm:p-8 rounded-[20px]">
+                    <div className="flex gap-4 mb-4">
+                      <span className="font-display text-[24px] text-nike-grey-300">{(idx + 1).toString().padStart(2, '0')}</span>
+                      <RichContent html={q.question_text} className="font-bold text-[18px] sm:text-[20px] text-nike-black pt-1 leading-tight" />
+                    </div>
 
-                  <div className="ml-[10px] sm:ml-[40px] pl-6 border-l-[2px] border-nike-grey-300">
-                    {isSkipped ? (
-                      <p className="text-[14px] font-medium text-nike-grey-500 uppercase">No Answer</p>
-                    ) : isCorrect ? (
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 rounded-full bg-nike-green"></div>
-                        <div className="text-[16px] font-bold text-nike-green">
-                          <p className="uppercase mb-1">CORRECT</p>
-                          <RichContent html={userOptionHtml ?? ''} />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-1">
+                    <div className="ml-[10px] sm:ml-[40px] pl-6 border-l-[2px] border-nike-grey-300">
+                      {isSkipped ? (
+                        <p className="text-[14px] font-medium text-nike-grey-500 uppercase">No Answer</p>
+                      ) : isCorrect ? (
                         <div className="flex items-start gap-3">
-                          <div className="w-2 h-2 rounded-full bg-nike-red"></div>
-                          <div className="text-[16px] font-bold text-nike-red">
-                            <p className="uppercase mb-1">WRONG ANSWER</p>
+                          <div className="w-2 h-2 rounded-full bg-nike-green"></div>
+                          <div className="text-[16px] font-bold text-nike-green">
+                            <p className="uppercase mb-1">CORRECT</p>
                             <RichContent html={userOptionHtml ?? ''} />
                           </div>
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 rounded-full bg-nike-red"></div>
+                            <div className="text-[16px] font-bold text-nike-red">
+                              <p className="uppercase mb-1">WRONG ANSWER</p>
+                              <RichContent html={userOptionHtml ?? ''} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
 
           <div className="border-t border-nike-grey-200 pt-8">

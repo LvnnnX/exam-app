@@ -112,7 +112,8 @@ body {
 
 .exam-option-content {
   min-height: 0;
-  overflow: visible; /* Fix option getting cut off */
+  overflow: visible;
+  /* Fix option getting cut off */
   width: 100%;
 }
 
@@ -136,6 +137,20 @@ body {
   letter-spacing: -0.025em !important;
   line-height: 1.25 !important;
 }
+
+@media (max-width: 767px) {
+  .rich-content pre,
+  .exam-question-content pre,
+  .exam-option-content pre {
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    white-space: pre !important;
+    word-break: normal !important;
+    box-sizing: border-box !important;
+  }
+}
+
 
 .tiptap-editor {
   outline: none;
