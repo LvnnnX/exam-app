@@ -12,10 +12,11 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 
 ### 👤 Fitur Pengguna (Peserta)
 *   **Registrasi Instan**: Sistem pendaftaran nama yang cepat sebelum memulai ujian.
-*   **Kustomisasi Ujian**: Pilih jumlah soal (5, 10, 20) dan kategori yang diinginkan.
-*   **Kategori Dinamis**: Daftar kategori ditarik langsung dari database secara real-time.
+*   **Kustomisasi Ujian**: Pilih mode permainan (Exam atau Survival), jumlah soal, dan kategori yang diinginkan.
+*   **Survival Mode (BARU)**: Mode tantangan ekstrim dengan sistem 3-Nyawa (Lives). Terdapat fitur pelacakan skor real-time, *visual feedback* instan beranimasi (SVG + Glassmorphism), dan opsi *Surrender*.
+*   **Kategori Dinamis (Multi-Tag)**: Pertanyaan kini mendukung banyak kategori sekaligus, memberikan fleksibilitas ekstra untuk pengelompokan materi.
 *   **Pengacakan Cerdas**: Implementasi algoritma *Fisher-Yates Shuffle* untuk mengacak soal dan opsi jawaban secara dinamis.
-*   **Sesi Lokal (Persistence)**: Fitur auto-save sesi ujian di LocalStorage, memungkinkan peserta melanjutkan ujian jika halaman tidak sengaja tertutup.
+*   **Sesi Lokal (Persistence)**: Fitur auto-save sesi ujian di LocalStorage, memungkinkan peserta melanjutkan ujian jika halaman tidak sengaja tertutup. Mode dan nyawa (lives) juga tersimpan aman.
 *   **Time Tracking Presisi**: Melacak waktu pengerjaan ujian secara akurat, mencakup waktu mulai, waktu selesai, dan total durasi.
 *   **Data Tracking Canggih**: Merekam opsi jawaban yang dipilih secara *exact string*, menjamin data peserta tidak akan tertukar meski terjadi proses pengacakan.
 *   **Laporan Skor Terperinci**: Tampilan skor akhir otomatis beserta persentase kelulusan dan durasi pengerjaan.
@@ -23,11 +24,12 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 ### 🔐 Fitur Admin (Dashboard)
 *   **Autentikasi PIN**: Sistem login aman menggunakan 6-digit PIN khusus.
 *   **Dashboard Hasil Berhalaman**: Manajemen hasil ujian dengan fitur paginasi (20 item per halaman) untuk performa optimal.
+*   **Manajemen Hasil & Mode**: Lihat performa peserta dengan filter interaktif untuk memisahkan hasil pengerjaan mode *Exam* dan mode *Survival*.
 *   **Analitik Waktu Pengerjaan**: Kolom tambahan di *Results Dashboard* untuk melacak Start Time, End Time, dan Durasi setiap peserta.
 *   **Inspeksi Sesi Mendalam**: Fitur "View Details" untuk melihat breakdown pengerjaan user secara persis (teks jawaban pengguna vs jawaban yang benar).
 *   **Smart Search (Pencarian Pintar)**: *Search bar* dinamis untuk memfilter dan mencari soal berdasarkan kategori atau potongan teks secara instan.
 *   **Manajemen Soal (CRUD)**:
-    *   **Rich Text Editor (TipTap)**: Editor teks canggih untuk membuat soal dengan pemformatan tebal, miring, daftar, dan blok kode.
+    *   **Rich Text Editor (TipTap) & LaTeX**: Editor teks canggih yang mendukung format matematika kompleks (KaTeX), tebal, miring, daftar, tabel, dan blok kode.
     *   **Integrasi Gambar**: Upload gambar langsung ke Supabase Storage dan masukkan ke dalam soal.
     *   **Category Creator**: Tambahkan kategori baru langsung saat membuat soal tanpa repot.
 
