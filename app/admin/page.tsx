@@ -786,7 +786,9 @@ export default function AdminPage() {
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pass Rate (70%+)</div>
               </div>
             </div>
-          )          {isLiveMode ? (
+          )}
+
+          {isLiveMode ? (
             liveLoading ? (
               <p>Fetching active sessions...</p>
             ) : liveSessions.length === 0 ? (
