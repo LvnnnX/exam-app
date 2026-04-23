@@ -15,6 +15,7 @@ import {
   saveSessionAnswerViaRpc,
   submitSessionExamViaRpc,
 } from '@/lib/questions';
+import { secureSave, secureLoad, secureClear, secureRemove } from '@/lib/security';
 
 type Answer = string | null;
 type GameMode = 'exam' | 'survival';
@@ -72,80 +73,62 @@ export default function ExamPage() {
   // ==================== LOCAL STORAGE FUNCTIONS ====================
 
   const saveNameToStorage = (userName: string) => {
-    localStorage.setItem(STORAGE_KEYS.NAME, userName);
+    secureSave(STORAGE_KEYS.NAME, userName);
   };
 
   const saveStepToStorage = (stepValue: number) => {
-    localStorage.setItem(STORAGE_KEYS.STEP, stepValue.toString());
+    secureSave(STORAGE_KEYS.STEP, stepValue);
   };
 
   const saveCurrentQuestionToStorage = (questionIndex: number) => {
-    localStorage.setItem(STORAGE_KEYS.CURRENT, questionIndex.toString());
+    secureSave(STORAGE_KEYS.CURRENT, questionIndex);
   };
 
   const saveAnswersToStorage = (answersArray: Answer[]) => {
-    localStorage.setItem(STORAGE_KEYS.ANSWERS, JSON.stringify(answersArray));
+    secureSave(STORAGE_KEYS.ANSWERS, answersArray);
   };
 
   const saveSessionIdToStorage = (id: string) => {
-    localStorage.setItem(STORAGE_KEYS.SESSION_ID, id);
+    secureSave(STORAGE_KEYS.SESSION_ID, id);
   };
 
   const saveTotalQuestionsToStorage = (count: number) => {
-    localStorage.setItem(STORAGE_KEYS.TOTAL, count.toString());
+    secureSave(STORAGE_KEYS.TOTAL, count);
   };
 
   const saveCategoryToStorage = (cat: string) => {
-    localStorage.setItem(STORAGE_KEYS.CATEGORY, cat);
+    secureSave(STORAGE_KEYS.CATEGORY, cat);
   };
 
   const saveStartTimeToStorage = (time: number) => {
-    localStorage.setItem(STORAGE_KEYS.START_TIME, time.toString());
+    secureSave(STORAGE_KEYS.START_TIME, time);
   };
 
-  const saveModeToStorage = (mode: GameMode) => {
-    localStorage.setItem(STORAGE_KEYS.MODE, mode);
+  const saveModeToStorage = (m: GameMode) => {
+    secureSave(STORAGE_KEYS.MODE, m);
   };
 
   const saveLivesToStorage = (l: number) => {
-    localStorage.setItem(STORAGE_KEYS.LIVES, l.toString());
+    secureSave(STORAGE_KEYS.LIVES, l);
   };
 
   const loadFromStorage = () => {
-    const storedName = localStorage.getItem(STORAGE_KEYS.NAME);
-    const storedStep = localStorage.getItem(STORAGE_KEYS.STEP);
-    const storedCurrent = localStorage.getItem(STORAGE_KEYS.CURRENT);
-    const storedAnswers = localStorage.getItem(STORAGE_KEYS.ANSWERS);
-    const storedSessionId = localStorage.getItem(STORAGE_KEYS.SESSION_ID);
-    const storedTotal = localStorage.getItem(STORAGE_KEYS.TOTAL);
-    const storedCategory = localStorage.getItem(STORAGE_KEYS.CATEGORY);
-    const storedStartTime = localStorage.getItem(STORAGE_KEYS.START_TIME);
-
     return {
-      name: storedName,
-      step: storedStep ? parseInt(storedStep) : null,
-      current: storedCurrent ? parseInt(storedCurrent) : 0,
-      answers: storedAnswers ? JSON.parse(storedAnswers) : null,
-      sessionId: storedSessionId,
-      total: storedTotal ? parseInt(storedTotal) : 0,
-      category: storedCategory as string | null,
-      startTime: storedStartTime ? parseInt(storedStartTime) : null,
-      mode: (localStorage.getItem(STORAGE_KEYS.MODE) as GameMode) || 'exam',
-      lives: localStorage.getItem(STORAGE_KEYS.LIVES) ? parseInt(localStorage.getItem(STORAGE_KEYS.LIVES)!) : 3,
+      name: secureLoad<string>(STORAGE_KEYS.NAME),
+      step: secureLoad<number>(STORAGE_KEYS.STEP),
+      current: secureLoad<number>(STORAGE_KEYS.CURRENT),
+      answers: secureLoad<Answer[]>(STORAGE_KEYS.ANSWERS),
+      sessionId: secureLoad<string>(STORAGE_KEYS.SESSION_ID),
+      total: secureLoad<number>(STORAGE_KEYS.TOTAL) || 0,
+      category: secureLoad<string>(STORAGE_KEYS.CATEGORY),
+      startTime: secureLoad<number>(STORAGE_KEYS.START_TIME),
+      mode: secureLoad<GameMode>(STORAGE_KEYS.MODE) || 'exam',
+      lives: secureLoad<number>(STORAGE_KEYS.LIVES) || 3,
     };
   };
 
   const clearStorage = () => {
-    localStorage.removeItem(STORAGE_KEYS.NAME);
-    localStorage.removeItem(STORAGE_KEYS.STEP);
-    localStorage.removeItem(STORAGE_KEYS.CURRENT);
-    localStorage.removeItem(STORAGE_KEYS.ANSWERS);
-    localStorage.removeItem(STORAGE_KEYS.SESSION_ID);
-    localStorage.removeItem(STORAGE_KEYS.TOTAL);
-    localStorage.removeItem(STORAGE_KEYS.CATEGORY);
-    localStorage.removeItem(STORAGE_KEYS.START_TIME);
-    localStorage.removeItem(STORAGE_KEYS.MODE);
-    localStorage.removeItem(STORAGE_KEYS.LIVES);
+    secureClear();
   };
 
   // ==================== RESTORE STATE ON MOUNT ====================
@@ -154,70 +137,53 @@ export default function ExamPage() {
   useEffect(() => {
     const stored = loadFromStorage();
 
-    if (stored.name && stored.step !== null && stored.sessionId) {
-      const restoredStep = stored.step === PREPARING_STEP ? 3 : stored.step;
+    // Prioritize session restore if ID exists
+    if (stored.sessionId) {
+      setIsLoading(true);
+      getSessionStateViaRpc(stored.sessionId).then(state => {
+        if (!state || state.is_finished) {
+          // No active session or finished -> show start screen
+          if (stored.name) setName(stored.name);
+          setIsRestored(true);
+          setIsLoading(false);
+          return;
+        }
 
-      if (restoredStep === 3 || restoredStep === 6) {
-        setIsLoading(true);
-        getSessionStateViaRpc(stored.sessionId).then(state => {
-          if (!state || state.is_finished) {
-            clearStorage();
-            setIsRestored(true);
-            setIsLoading(false);
-            return;
-          }
-          setName(state.name);
-          setSessionId(stored.sessionId);
-          setTotalQuestions(state.question_count);
-          setCurrent(state.current_index);
-          setStep(restoredStep);
-          setCategory(state.category);
-          setGameMode(state.mode);
-          setLives(state.lives);
-          if (stored.startTime) setStartTime(stored.startTime);
+        // Restore everything from Server State
+        setName(state.name);
+        setSessionId(stored.sessionId!);
+        setTotalQuestions(state.question_count);
+        setCurrent(state.current_index);
+        setStep(state.current_index >= state.question_count ? 6 : 3);
+        setCategory(state.category);
+        setGameMode(state.mode);
+        setLives(state.lives);
+        if (stored.startTime) setStartTime(stored.startTime);
 
-          const newAnswers = Array(state.question_count).fill(null);
-          if (state.user_answers) {
-            Object.keys(state.user_answers).forEach(k => {
-              newAnswers[parseInt(k)] = state.user_answers[k];
-            });
-          }
-          // Preserve any un-saved local changes if any, though there shouldn't be
-          if (stored.answers && Array.isArray(stored.answers)) {
-            stored.answers.forEach((ans, i) => {
-               if (ans && !newAnswers[i]) newAnswers[i] = ans;
-            });
-          }
-          setAnswers(newAnswers);
+        // Map user_answers to local state
+        const newAnswers = Array(state.question_count).fill(null);
+        if (state.user_answers) {
+          Object.keys(state.user_answers).forEach(k => {
+            newAnswers[parseInt(k)] = state.user_answers[k];
+          });
+        }
+        setAnswers(newAnswers);
 
-          if (restoredStep === 3) {
-            getSessionQuestionViaRpc(stored.sessionId!, state.current_index).then(q => {
-              setCurrentQuestion(q);
-            }).finally(() => {
-              setIsRestored(true);
-              setIsLoading(false);
-            });
-          } else {
-            setIsRestored(true);
-            setIsLoading(false);
-          }
-        }).catch(e => {
-          console.error(e);
+        // Fetch current question data
+        getSessionQuestionViaRpc(stored.sessionId!, state.current_index).then(q => {
+          setCurrentQuestion(q);
+        }).finally(() => {
           setIsRestored(true);
           setIsLoading(false);
         });
-      } else {
-        setName(stored.name);
-        setSessionId(stored.sessionId);
-        setTotalQuestions(stored.total);
-        setCurrent(stored.current || 0);
-        setStep(restoredStep);
-        if (stored.category) setCategory(stored.category);
-        if (stored.startTime) setStartTime(stored.startTime);
-        setGameMode(stored.mode);
-        setLives(stored.lives);
+      }).catch(e => {
+        console.error('Session restore failed:', e);
         setIsRestored(true);
-      }
+        setIsLoading(false);
+      });
+    } else if (stored.name) {
+      setName(stored.name);
+      setIsRestored(true);
     } else {
       setIsRestored(true);
     }

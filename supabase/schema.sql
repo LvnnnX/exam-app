@@ -293,7 +293,8 @@ CREATE TABLE exam_logs (
   user_answers JSONB NOT NULL DEFAULT '{}'::jsonb,
   lives INTEGER NOT NULL DEFAULT 3,
   is_finished BOOLEAN NOT NULL DEFAULT false,
-  start_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  start_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '2 days')
 );
 
 ALTER TABLE exam_logs ENABLE ROW LEVEL SECURITY;
@@ -510,5 +511,19 @@ BEGIN
   DELETE FROM exam_logs WHERE session_id = p_session_id;
   
   RETURN jsonb_build_object('score', v_score, 'recap', v_recap);
+END;
+$$;
+
+-- 6. Cleanup Expired Sessions
+-- This function can be scheduled via pg_cron or called periodically
+CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  DELETE FROM exam_logs
+  WHERE expires_at < NOW()
+    AND is_finished = false;
 END;
 $$;
