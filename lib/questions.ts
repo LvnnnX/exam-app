@@ -145,6 +145,19 @@ export async function startExamSessionViaRpc(name: string, category: string, mod
   };
 }
 
+export async function getSessionStateViaRpc(sessionId: string): Promise<any> {
+  const { data, error } = await supabase.rpc('get_session_state', {
+    p_session_id: sessionId
+  });
+
+  if (error) {
+    console.error('get_session_state rpc failed:', error.message);
+    return null;
+  }
+
+  return data;
+}
+
 export async function getSessionQuestionViaRpc(sessionId: string, index: number): Promise<ShuffledQuestion | null> {
   const { data, error } = await supabase.rpc('get_session_question', {
     p_session_id: sessionId,
@@ -161,15 +174,15 @@ export async function getSessionQuestionViaRpc(sessionId: string, index: number)
   return shuffleOptions(data as PublicQuestion);
 }
 
-export async function checkSessionAnswerViaRpc(sessionId: string, index: number, answerText: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc('check_session_answer', {
+export async function saveSessionAnswerViaRpc(sessionId: string, index: number, answerText: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('save_session_answer', {
     p_session_id: sessionId,
     p_index: index,
     p_answer_text: answerText
   });
   
   if (error) {
-    console.error('check_session_answer rpc failed:', error.message);
+    console.error('save_session_answer rpc failed:', error.message);
     return false;
   }
   return !!data;
@@ -177,12 +190,10 @@ export async function checkSessionAnswerViaRpc(sessionId: string, index: number,
 
 export async function submitSessionExamViaRpc(
   sessionId: string,
-  answers: { question_index: number; user_answer: string | null }[],
   endTime: string
 ): Promise<{ score: number, recap: any[] }> {
   const { data, error } = await supabase.rpc('submit_session_exam', {
     p_session_id: sessionId,
-    p_answers: answers,
     p_end_time: endTime
   });
 

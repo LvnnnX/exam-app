@@ -280,13 +280,19 @@ $$;
 -- Security Enhancements v2: Session Logs (Masked IDs)
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS exam_logs (
+DROP TABLE IF EXISTS exam_logs CASCADE;
+
+CREATE TABLE exam_logs (
   session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   category TEXT NOT NULL,
   mode TEXT NOT NULL,
   question_count INTEGER NOT NULL,
   question_ids INT[] NOT NULL,
+  current_index INTEGER NOT NULL DEFAULT 0,
+  user_answers JSONB NOT NULL DEFAULT '{}'::jsonb,
+  lives INTEGER NOT NULL DEFAULT 3,
+  is_finished BOOLEAN NOT NULL DEFAULT false,
   start_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -330,7 +336,32 @@ BEGIN
 END;
 $$;
 
--- 2. Get Session Question
+-- 2. Get Session State
+CREATE OR REPLACE FUNCTION get_session_state(p_session_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_log exam_logs%ROWTYPE;
+BEGIN
+  SELECT * INTO v_log FROM exam_logs WHERE session_id = p_session_id;
+  IF v_log.session_id IS NULL THEN RETURN NULL; END IF;
+  
+  RETURN jsonb_build_object(
+    'current_index', v_log.current_index,
+    'user_answers', v_log.user_answers,
+    'lives', v_log.lives,
+    'is_finished', v_log.is_finished,
+    'question_count', v_log.question_count,
+    'mode', v_log.mode,
+    'category', v_log.category,
+    'name', v_log.name
+  );
+END;
+$$;
+
+-- 3. Get Session Question
 CREATE OR REPLACE FUNCTION get_session_question(p_session_id UUID, p_index INT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -364,40 +395,54 @@ BEGIN
 END;
 $$;
 
--- 3. Check Session Answer
-CREATE OR REPLACE FUNCTION check_session_answer(p_session_id UUID, p_index INT, p_answer_text TEXT)
+-- 4. Save Session Answer
+CREATE OR REPLACE FUNCTION save_session_answer(p_session_id UUID, p_index INT, p_answer_text TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
+  v_log exam_logs%ROWTYPE;
   v_question_id INT;
   v_correct_label CHAR(1);
   v_correct_text TEXT;
+  v_is_correct BOOLEAN := false;
 BEGIN
-  SELECT question_ids[p_index + 1] INTO v_question_id
-  FROM exam_logs
-  WHERE session_id = p_session_id;
-
-  IF v_question_id IS NULL THEN
-    RETURN FALSE;
-  END IF;
-
-  SELECT correct_answer INTO v_correct_label FROM questions WHERE id = v_question_id;
+  SELECT * INTO v_log FROM exam_logs WHERE session_id = p_session_id;
+  IF v_log.session_id IS NULL OR v_log.is_finished THEN RETURN FALSE; END IF;
   
-  IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_question_id;
-  ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_question_id;
-  ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_question_id;
-  ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_question_id;
-  ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_question_id;
+  UPDATE exam_logs
+  SET user_answers = jsonb_set(user_answers, ARRAY[p_index::text], to_jsonb(p_answer_text)),
+      current_index = p_index
+  WHERE session_id = p_session_id;
+  
+  IF v_log.mode = 'survival' THEN
+    v_question_id := v_log.question_ids[p_index + 1];
+    IF v_question_id IS NOT NULL THEN
+      SELECT correct_answer INTO v_correct_label FROM questions WHERE id = v_question_id;
+      IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_question_id;
+      ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_question_id;
+      ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_question_id;
+      ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_question_id;
+      ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_question_id;
+      END IF;
+      
+      v_is_correct := (strip_html(p_answer_text) = strip_html(v_correct_text));
+      
+      IF NOT v_is_correct THEN
+        UPDATE exam_logs SET lives = GREATEST(0, lives - 1) WHERE session_id = p_session_id;
+      END IF;
+      
+      RETURN v_is_correct;
+    END IF;
   END IF;
-
-  RETURN strip_html(p_answer_text) = strip_html(v_correct_text);
+  
+  RETURN true;
 END;
 $$;
 
--- 4. Submit Session Exam
-CREATE OR REPLACE FUNCTION submit_session_exam(p_session_id UUID, p_answers JSONB, p_end_time TIMESTAMPTZ)
+-- 5. Submit Session Exam
+CREATE OR REPLACE FUNCTION submit_session_exam(p_session_id UUID, p_end_time TIMESTAMPTZ)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -405,7 +450,6 @@ AS $$
 DECLARE
   v_log exam_logs%ROWTYPE;
   v_score INTEGER := 0;
-  v_elem JSONB;
   v_q_index INT;
   v_q_id INT;
   v_user_ans_text TEXT;
@@ -421,11 +465,12 @@ BEGIN
   IF v_log.session_id IS NULL THEN
     RAISE EXCEPTION 'Session not found';
   END IF;
+  
+  UPDATE exam_logs SET is_finished = true WHERE session_id = p_session_id;
 
-  FOR v_elem IN SELECT * FROM jsonb_array_elements(p_answers)
+  FOR v_q_index IN 0..(v_log.question_count - 1)
   LOOP
-    v_q_index := (v_elem->>'question_index')::INT;
-    v_user_ans_text := v_elem->>'user_answer';
+    v_user_ans_text := v_log.user_answers->>(v_q_index::text);
     v_q_id := v_log.question_ids[v_q_index + 1];
     
     IF v_q_id IS NOT NULL THEN

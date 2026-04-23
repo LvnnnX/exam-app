@@ -11,7 +11,8 @@ import {
   fetchCategories,
   startExamSessionViaRpc,
   getSessionQuestionViaRpc,
-  checkSessionAnswerViaRpc,
+  getSessionStateViaRpc,
+  saveSessionAnswerViaRpc,
   submitSessionExamViaRpc,
 } from '@/lib/questions';
 
@@ -155,36 +156,66 @@ export default function ExamPage() {
 
     if (stored.name && stored.step !== null && stored.sessionId) {
       const restoredStep = stored.step === PREPARING_STEP ? 3 : stored.step;
-      setName(stored.name);
-      setSessionId(stored.sessionId);
-      setTotalQuestions(stored.total);
-      setCurrent(stored.current || 0);
-      setStep(restoredStep);
 
-      if (stored.category) setCategory(stored.category);
-      if (stored.startTime) setStartTime(stored.startTime);
-      setGameMode(stored.mode);
-      setLives(stored.lives);
-
-      if (stored.answers && Array.isArray(stored.answers)) {
-        setAnswers(stored.answers);
-      } else {
-        setAnswers(Array(stored.total).fill(null));
-      }
-
-      // Fetch the current question if in quiz step
-      if (restoredStep === 3) {
+      if (restoredStep === 3 || restoredStep === 6) {
         setIsLoading(true);
-        getSessionQuestionViaRpc(stored.sessionId, stored.current || 0)
-          .then(q => {
-            setCurrentQuestion(q);
-          })
-          .catch(e => console.error(e))
-          .finally(() => {
-            setIsLoading(false);
+        getSessionStateViaRpc(stored.sessionId).then(state => {
+          if (!state || state.is_finished) {
+            clearStorage();
             setIsRestored(true);
-          });
+            setIsLoading(false);
+            return;
+          }
+          setName(state.name);
+          setSessionId(stored.sessionId);
+          setTotalQuestions(state.question_count);
+          setCurrent(state.current_index);
+          setStep(restoredStep);
+          setCategory(state.category);
+          setGameMode(state.mode);
+          setLives(state.lives);
+          if (stored.startTime) setStartTime(stored.startTime);
+
+          const newAnswers = Array(state.question_count).fill(null);
+          if (state.user_answers) {
+            Object.keys(state.user_answers).forEach(k => {
+              newAnswers[parseInt(k)] = state.user_answers[k];
+            });
+          }
+          // Preserve any un-saved local changes if any, though there shouldn't be
+          if (stored.answers && Array.isArray(stored.answers)) {
+            stored.answers.forEach((ans, i) => {
+               if (ans && !newAnswers[i]) newAnswers[i] = ans;
+            });
+          }
+          setAnswers(newAnswers);
+
+          if (restoredStep === 3) {
+            getSessionQuestionViaRpc(stored.sessionId!, state.current_index).then(q => {
+              setCurrentQuestion(q);
+            }).finally(() => {
+              setIsRestored(true);
+              setIsLoading(false);
+            });
+          } else {
+            setIsRestored(true);
+            setIsLoading(false);
+          }
+        }).catch(e => {
+          console.error(e);
+          setIsRestored(true);
+          setIsLoading(false);
+        });
       } else {
+        setName(stored.name);
+        setSessionId(stored.sessionId);
+        setTotalQuestions(stored.total);
+        setCurrent(stored.current || 0);
+        setStep(restoredStep);
+        if (stored.category) setCategory(stored.category);
+        if (stored.startTime) setStartTime(stored.startTime);
+        setGameMode(stored.mode);
+        setLives(stored.lives);
         setIsRestored(true);
       }
     } else {
@@ -197,15 +228,9 @@ export default function ExamPage() {
         setFetchError(null);
         const data = await fetchCategories();
         if (data.length === 0) {
-          // If no categories returned, it might be an empty DB or a connection issue
           console.warn("No categories found in Supabase.");
         }
         setAvailableCategories(data);
-        /* 
-        if (data.length > 0 && !stored.category) {
-          setCategory(data[0].value);
-        }
-        */
       } catch (err: any) {
         console.error("Failed to load categories:", err);
         setFetchError(err.message || "Failed to connect to server");
@@ -213,7 +238,6 @@ export default function ExamPage() {
     };
 
     loadCategories();
-    // Expose for retry button usage if needed
     (window as any).__retryCategoryFetch = loadCategories;
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -296,18 +320,26 @@ export default function ExamPage() {
     });
   };
 
-  const endSession = () => {
-    setEndTime(Date.now());
-    goToStep(6);
+  const endSession = async () => {
+    setIsLoading(true);
+    try {
+      await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+      setEndTime(Date.now());
+      goToStep(6);
+    }
   };
 
   const proceedToNext = async (nextIdx: number) => {
     setIsLoading(true);
     try {
+      await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
       const nextQ = await getSessionQuestionViaRpc(sessionId!, nextIdx);
       setCurrentQuestion(nextQ);
       setCurrent(nextIdx);
-      saveCurrentQuestionToStorage(nextIdx);
       scrollToQuestionTop();
     } catch (e) {
       console.error(e);
@@ -320,13 +352,11 @@ export default function ExamPage() {
   const nextQuestion = async () => {
     if (feedbackResult) return;
 
-    // In survival mode, evaluate the answer when they click Next via Server
     if (isSurvival && currentQuestion) {
       const selectedAnswer = answers[current];
       
-      // Wait for server to validate answer securely
       setIsLoading(true);
-      const isCorrect = await checkSessionAnswerViaRpc(sessionId!, current, selectedAnswer || '');
+      const isCorrect = await saveSessionAnswerViaRpc(sessionId!, current, selectedAnswer || 'skipped');
       setIsLoading(false);
 
       setFeedbackResult(isCorrect ? 'correct' : 'wrong');
@@ -338,7 +368,6 @@ export default function ExamPage() {
         } else {
           const newLives = lives - 1;
           setLives(newLives);
-          saveLivesToStorage(newLives);
           if (newLives <= 0) {
             endSession();
             return;
@@ -399,19 +428,11 @@ export default function ExamPage() {
     if (!name || total === 0 || saved || !sessionId) return;
     setSaving(true);
     try {
-      const answersArray = answers.map((answer, idx) => {
-        return {
-          question_index: idx,
-          user_answer: answer,
-        };
-      });
-
       const finalEndTime = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
 
-      // Submit all answers securely to server for grading and saving
+      // Server already has all answers, just submit to finish
       const result = await submitSessionExamViaRpc(
         sessionId,
-        answersArray,
         finalEndTime
       );
 
@@ -424,7 +445,7 @@ export default function ExamPage() {
     } finally {
       setSaving(false);
     }
-  }, [answers, name, total, endTime, saved, sessionId]);
+  }, [name, total, endTime, saved, sessionId]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
