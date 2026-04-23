@@ -1,13 +1,4 @@
-Act as an expert frontend developer. You must fix a code block bug in the Platejs rich text editor. Execute these steps sequentially.
-
-Step 1. Open the Platejs rich text editor component located in the Admin panel.
-Step 2. Locate the code block plugin configuration.
-Step 3. Inspect the keyboard event handlers for the code block element.
-Step 4. Identify the logic triggered by the Enter key press.
-Step 5. Fix the default behavior that splits the node into a new code block.
-Step 6. Update the event handler to insert a new line character within the existing code block.
-Step 7. Ensure pressing Enter creates a new line inside the current block without breaking the container.
-Step 8. Provide the updated Platejs configuration and component code."use client";
+"use client";
 
 import React, { useMemo, useState, useEffect } from 'react';
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
