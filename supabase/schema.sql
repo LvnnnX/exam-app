@@ -183,6 +183,12 @@ CREATE POLICY "Authenticated Delete Access" ON storage.objects FOR DELETE TO aut
 -- Security Enhancements: Server-Side Grading
 -- ============================================================
 
+CREATE OR REPLACE FUNCTION strip_html(html_text TEXT) RETURNS TEXT AS $$
+BEGIN
+    RETURN trim(regexp_replace(coalesce(html_text, ''), '<[^>]*>', '', 'g'));
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 -- 1. Create a secure view for public fetching (without correct_answer)
 CREATE OR REPLACE VIEW public_questions AS
 SELECT id, question_text, option_a, option_b, option_c, option_d, option_e, category
@@ -195,16 +201,25 @@ DROP POLICY IF EXISTS "questions_select" ON questions;
 CREATE POLICY "questions_select" ON questions FOR SELECT TO authenticated USING (auth.jwt() ->> 'email' = 'admin@exam.local');
 
 -- 3. Create RPC to check a single answer (for Survival mode)
-CREATE OR REPLACE FUNCTION check_answer(p_question_id INT, p_answer_key TEXT)
+CREATE OR REPLACE FUNCTION check_answer(p_question_id INT, p_answer_text TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
   v_correct_label CHAR(1);
+  v_correct_text TEXT;
 BEGIN
   SELECT correct_answer INTO v_correct_label FROM questions WHERE id = p_question_id;
-  RETURN p_answer_key = v_correct_label;
+  
+  IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = p_question_id;
+  ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = p_question_id;
+  ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = p_question_id;
+  ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = p_question_id;
+  ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = p_question_id;
+  END IF;
+
+  RETURN strip_html(p_answer_text) = strip_html(v_correct_text);
 END;
 $$;
 
@@ -220,8 +235,8 @@ DECLARE
   v_elem JSONB;
   v_q_id INT;
   v_user_ans_text TEXT;
-  v_user_ans_key TEXT;
   v_correct_label CHAR(1);
+  v_correct_text TEXT;
   v_is_correct BOOLEAN;
   v_processed_answers JSONB := '[]'::jsonb;
 BEGIN
@@ -231,11 +246,17 @@ BEGIN
   LOOP
     v_q_id := (v_elem->>'question_id')::INT;
     v_user_ans_text := v_elem->>'user_answer';
-    v_user_ans_key := v_elem->>'user_answer_key';
     
     SELECT correct_answer INTO v_correct_label FROM questions WHERE id = v_q_id;
     
-    v_is_correct := (v_user_ans_key = v_correct_label AND v_user_ans_key IS NOT NULL);
+    IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
+    END IF;
+    
+    v_is_correct := (strip_html(v_user_ans_text) = strip_html(v_correct_text) AND v_user_ans_text IS NOT NULL AND v_user_ans_text != 'skipped');
     
     IF v_is_correct THEN
       v_score := v_score + 1;

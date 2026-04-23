@@ -30,7 +30,6 @@ export type PublicQuestion = Omit<RawQuestion, 'correct_answer'>;
 export type ShuffledOption = {
   label: string;   // display label: 'A', 'B', 'C', 'D', 'E'
   text: string;     // the option text
-  originalLabel: string; // The original db option key ('A', 'B', etc)
 };
 
 // A fully prepared question with shuffled options
@@ -151,10 +150,10 @@ export async function fetchPublicQuestions(category?: string): Promise<PublicQue
   return data.map((q: any) => normalizePublicQuestion(q as PublicQuestion));
 }
 
-export async function checkAnswerViaRpc(questionId: number, answerKey: string): Promise<boolean> {
+export async function checkAnswerViaRpc(questionId: number, answerText: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('check_answer', {
     p_question_id: questionId,
-    p_answer_key: answerKey
+    p_answer_text: answerText
   });
   
   if (error) {
@@ -169,7 +168,7 @@ export async function submitExamViaRpc(
   category: string,
   mode: string,
   questionCount: number,
-  answers: { question_id: number; user_answer: string | null; user_answer_key: string | null }[],
+  answers: { question_id: number; user_answer: string | null }[],
   startTime: string,
   endTime: string
 ): Promise<number> {
@@ -228,17 +227,17 @@ function shuffleOptions(raw: PublicQuestion): ShuffledQuestion {
   const normalized = normalizePublicQuestion(raw);
 
   const originalOptions = [
-    { originalLabel: 'A', text: normalized.option_a },
-    { originalLabel: 'B', text: normalized.option_b },
-    { originalLabel: 'C', text: normalized.option_c },
-    { originalLabel: 'D', text: normalized.option_d },
-    { originalLabel: 'E', text: normalized.option_e },
+    { text: normalized.option_a },
+    { text: normalized.option_b },
+    { text: normalized.option_c },
+    { text: normalized.option_d },
+    { text: normalized.option_e },
   ];
 
   const shuffledOpts = fisherYatesShuffle(originalOptions);
 
   const options: ShuffledOption[] = shuffledOpts.map((opt, idx) => {
-    return { label: LABELS[idx], text: opt.text, originalLabel: opt.originalLabel };
+    return { label: LABELS[idx], text: opt.text };
   });
 
   return {
