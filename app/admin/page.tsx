@@ -26,6 +26,19 @@ type ExamResult = {
   mode?: string;
 };
 
+type LiveSession = {
+  session_id: string;
+  name: string;
+  category: string;
+  mode: string;
+  question_count: number;
+  question_ids: number[];
+  current_index: number;
+  user_answers: Record<string, string>;
+  lives: number;
+  start_time: string;
+};
+
 type QuestionDraft = {
   question_text: string;
   option_a: string;
@@ -99,6 +112,11 @@ export default function AdminPage() {
   const [activeResCategory, setActiveResCategory] = useState<string>('all');
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
   const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
+  
+  // Live Tracking state
+  const [isLiveMode, setIsLiveMode] = useState(false);
+  const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -296,6 +314,57 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error('Error fetching result details:', err);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const fetchLiveSessions = async () => {
+    setLiveLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('exam_logs')
+        .select('*')
+        .eq('is_finished', false)
+        .order('start_time', { ascending: false });
+
+      if (error) throw error;
+      setLiveSessions(data || []);
+    } catch (err) {
+      console.error('Error fetching live sessions:', err);
+    } finally {
+      setLiveLoading(false);
+    }
+  };
+
+  const handleFetchLiveDetail = async (session: LiveSession) => {
+    // Reuse ExamResult modal structure by mapping LiveSession to a pseudo-ExamResult
+    const pseudoResult: ExamResult = {
+      id: 0, // Not in exam_results
+      name: session.name,
+      score: 0,
+      total_questions: session.question_count,
+      category: session.category,
+      taken_at: session.start_time,
+      mode: session.mode,
+      user_answers: Object.entries(session.user_answers).map(([idx, ans]) => ({
+        question_id: session.question_ids[parseInt(idx)],
+        user_answer: ans,
+        is_correct: false // We don't know yet for all, but for survival we might
+      }))
+    };
+    
+    setViewingResult(pseudoResult);
+    setDetailLoading(true);
+    setDetailQuestions([]);
+
+    try {
+      if (session.question_ids.length > 0) {
+        const questions = await fetchQuestionsByIds(session.question_ids);
+        setDetailQuestions(questions);
+      }
+    } catch (err) {
+      console.error('Error fetching live details:', err);
     } finally {
       setDetailLoading(false);
     }
@@ -660,8 +729,11 @@ export default function AdminPage() {
               {['all', 'exam', 'survival'].map((mode) => (
                 <button
                   key={mode}
-                  onClick={() => handleModeFilterChange(mode)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeModeFilter === mode
+                  onClick={() => {
+                    setIsLiveMode(false);
+                    handleModeFilterChange(mode);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeModeFilter === mode && !isLiveMode
                     ? mode === 'survival' ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
                     }`}
@@ -669,6 +741,23 @@ export default function AdminPage() {
                   {mode === 'all' ? 'All Modes' : mode === 'exam' ? '📝 Exam' : '⚔️ Survival'}
                 </button>
               ))}
+
+              <button
+                onClick={() => {
+                  setIsLiveMode(true);
+                  void fetchLiveSessions();
+                }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${isLiveMode
+                  ? 'bg-nike-green border-nike-green text-white shadow-sm'
+                  : 'bg-white border-gray-200 text-gray-600 hover:border-nike-green'
+                  }`}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                Live User
+              </button>
             </div>
           </div>
 
@@ -697,107 +786,172 @@ export default function AdminPage() {
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pass Rate (70%+)</div>
               </div>
             </div>
-          )}
-
-
-          {loading ? (
-            <p>Loading results...</p>
-          ) : results.length === 0 ? (
-            <div className="bg-white rounded-lg p-6 text-center">
-              <p className="text-gray-500">No exam results yet. Users need to complete the exam first.</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {results.map((result) => (
-                      <tr key={result.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${result.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                            {result.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <span className="capitalize">{result.category?.replaceAll('_', ' ')}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {result.score} / {result.total_questions}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-1 rounded ${(result.score / result.total_questions) >= 0.7 ? 'bg-green-100 text-green-800' :
-                            (result.score / result.total_questions) >= 0.5 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                            {Math.round((result.score / result.total_questions) * 100)}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(result.taken_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {result.start_time ? new Date(result.start_time).toLocaleTimeString() : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {result.end_time ? new Date(result.end_time).toLocaleTimeString() : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {result.duration_seconds != null ? `${Math.floor(result.duration_seconds / 60)}m ${result.duration_seconds % 60}s` : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleFetchResultDetail(result)}
-                            className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
-                          >
-                            View Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          )          {isLiveMode ? (
+            liveLoading ? (
+              <p>Fetching active sessions...</p>
+            ) : liveSessions.length === 0 ? (
+              <div className="bg-white rounded-lg p-6 text-center border">
+                <p className="text-gray-500">No active users found. Real-time tracking is empty.</p>
               </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {liveSessions.map((session) => {
+                  const answeredCount = Object.keys(session.user_answers).length;
+                  const progress = Math.round((answeredCount / session.question_count) * 100);
 
-              {/* Pagination Controls */}
-              {totalResults > ITEMS_PER_PAGE && (
-                <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{resultPage * ITEMS_PER_PAGE + 1}</span> to <span className="font-medium">{Math.min((resultPage + 1) * ITEMS_PER_PAGE, totalResults)}</span> of <span className="font-medium">{totalResults}</span> results
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => fetchResults(resultPage - 1)}
-                      disabled={resultPage === 0}
-                      className="px-3 py-1 border rounded bg-white text-sm disabled:opacity-50 hover:bg-gray-50"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => fetchResults(resultPage + 1)}
-                      disabled={(resultPage + 1) * ITEMS_PER_PAGE >= totalResults}
-                      className="px-3 py-1 border rounded bg-white text-sm disabled:opacity-50 hover:bg-gray-50"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  return (
+                    <div key={session.session_id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-900">{session.name}</h3>
+                            <p className="text-xs text-gray-400 uppercase tracking-widest">{session.category}</p>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${session.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                            {session.mode}
+                          </span>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex justify-between text-xs font-bold text-gray-500 uppercase mb-1">
+                              <span>Progress</span>
+                              <span>{answeredCount} / {session.question_count}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-500 ${session.mode === 'survival' ? 'bg-red-500' : 'bg-indigo-600'}`}
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 pt-2">
+                            <div className="bg-gray-50 p-3 rounded-xl">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Started</p>
+                              <p className="text-sm font-bold text-gray-700">{new Date(session.start_time).toLocaleTimeString()}</p>
+                            </div>
+                            {session.mode === 'survival' && (
+                              <div className="bg-red-50 p-3 rounded-xl">
+                                <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1">Lives</p>
+                                <p className="text-sm font-bold text-red-700">{session.lives} HP</p>
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => handleFetchLiveDetail(session)}
+                            className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-gray-800 transition-colors"
+                          >
+                            Track Live Progress
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            loading ? (
+              <p>Loading results...</p>
+            ) : results.length === 0 ? (
+              <div className="bg-white rounded-lg p-6 text-center">
+                <p className="text-gray-500">No exam results yet. Users need to complete the exam first.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {results.map((result) => (
+                        <tr key={result.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${result.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                              {result.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span className="capitalize">{result.category?.replaceAll('_', ' ')}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {result.score} / {result.total_questions}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={`px-2 py-1 rounded ${(result.score / result.total_questions) >= 0.7 ? 'bg-green-100 text-green-800' :
+                              (result.score / result.total_questions) >= 0.5 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                              {Math.round((result.score / result.total_questions) * 100)}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(result.taken_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {result.start_time ? new Date(result.start_time).toLocaleTimeString() : '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {result.end_time ? new Date(result.end_time).toLocaleTimeString() : '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {result.duration_seconds != null ? `${Math.floor(result.duration_seconds / 60)}m ${result.duration_seconds % 60}s` : '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleFetchResultDetail(result)}
+                              className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
+
+                {/* Pagination Controls */}
+                {totalResults > ITEMS_PER_PAGE && (
+                  <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{resultPage * ITEMS_PER_PAGE + 1}</span> to <span className="font-medium">{Math.min((resultPage + 1) * ITEMS_PER_PAGE, totalResults)}</span> of <span className="font-medium">{totalResults}</span> results
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => fetchResults(resultPage - 1)}
+                        disabled={resultPage === 0}
+                        className="px-3 py-1 border rounded bg-white text-sm disabled:opacity-50 hover:bg-gray-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => fetchResults(resultPage + 1)}
+                        disabled={(resultPage + 1) * ITEMS_PER_PAGE >= totalResults}
+                        className="px-3 py-1 border rounded bg-white text-sm disabled:opacity-50 hover:bg-gray-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
           )}
 
 
@@ -1015,8 +1169,12 @@ export default function AdminPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
             <div className="p-6 border-b flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-bold">Exam Breakdown: {viewingResult.name}</h2>
-                <p className="text-sm text-gray-500">{new Date(viewingResult.taken_at).toLocaleString()} • {viewingResult.category}</p>
+                <h2 className="text-xl font-bold">
+                  {viewingResult.id === 0 ? 'Live Progress' : 'Exam Breakdown'}: {viewingResult.name}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {viewingResult.id === 0 ? 'Started at ' : ''}{new Date(viewingResult.taken_at).toLocaleString()} • {viewingResult.category}
+                </p>
               </div>
               <button
                 onClick={() => setViewingResult(null)}
@@ -1038,9 +1196,21 @@ export default function AdminPage() {
                       <div key={idx} className="bg-white rounded-lg border shadow-sm overflow-hidden">
                         <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
                           <span className="font-bold text-gray-700">Question {idx + 1}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${answer.is_correct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {answer.is_correct ? 'Correct' : 'Incorrect'}
-                          </span>
+                          {viewingResult.id !== 0 ? (
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${answer.is_correct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {answer.is_correct ? 'Correct' : 'Incorrect'}
+                            </span>
+                          ) : (
+                            question && answer.user_answer !== 'skipped' ? (
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${stripHtml(answer.user_answer) === stripHtml(question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {stripHtml(answer.user_answer) === stripHtml(question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string) ? 'Correct' : 'Incorrect'}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-gray-100 text-gray-500">
+                                {answer.user_answer === 'skipped' ? 'Skipped' : 'Pending'}
+                              </span>
+                            )
+                          )}
                         </div>
                         <div className="p-4 space-y-4">
                           {question ? (
@@ -1082,7 +1252,10 @@ export default function AdminPage() {
 
             <div className="p-6 border-t flex justify-between items-center bg-white rounded-b-xl">
               <div className="text-sm font-bold text-gray-700 uppercase">
-                Final Score: <span className={viewingResult.score / viewingResult.total_questions >= 0.7 ? 'text-green-600' : 'text-red-600'}>{viewingResult.score} / {viewingResult.total_questions}</span>
+                {viewingResult.id === 0 ? 'Current Progress: ' : 'Final Score: '}
+                <span className={viewingResult.id !== 0 && viewingResult.score / viewingResult.total_questions >= 0.7 ? 'text-green-600' : 'text-indigo-600'}>
+                  {viewingResult.id === 0 ? viewingResult.user_answers.length : viewingResult.score} / {viewingResult.total_questions}
+                </span>
               </div>
               <button
                 onClick={() => setViewingResult(null)}
