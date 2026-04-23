@@ -286,10 +286,12 @@ export default function ExamPage() {
     });
   };
 
-  const endSession = async () => {
+  const endSession = async (skipSave = false) => {
     setIsLoading(true);
     try {
-      await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
+      if (!skipSave) {
+        await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -299,10 +301,12 @@ export default function ExamPage() {
     }
   };
 
-  const proceedToNext = async (nextIdx: number) => {
+  const proceedToNext = async (nextIdx: number, skipSave = false) => {
     setIsLoading(true);
     try {
-      await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
+      if (!skipSave) {
+        await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
+      }
       const nextQ = await getSessionQuestionViaRpc(sessionId!, nextIdx);
       setCurrentQuestion(nextQ);
       setCurrent(nextIdx);
@@ -335,15 +339,15 @@ export default function ExamPage() {
           const newLives = lives - 1;
           setLives(newLives);
           if (newLives <= 0) {
-            endSession();
+            void endSession(true);
             return;
           }
         }
 
         if (current < total - 1) {
-          void proceedToNext(current + 1);
+          void proceedToNext(current + 1, true);
         } else {
-          endSession();
+          void endSession(true);
         }
       }, 1500);
       return;
@@ -648,7 +652,7 @@ export default function ExamPage() {
                 {name}
               </span>
               <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-                Kategori: {categoryLabel} {isSurvival && '· Survival'} · {current + 1}
+                Kategori: {categoryLabel} {isSurvival && '· Survival'} · Soal Nomor {current + 1}
               </span>
             </div>
             <div className="sm:text-right">

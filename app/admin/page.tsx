@@ -140,6 +140,21 @@ export default function AdminPage() {
     void checkSession();
   }, []);
 
+  // Live User Polling: Refresh data every 2 minutes when in Live Mode
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isAuthenticated && isLiveMode) {
+      interval = setInterval(() => {
+        void fetchLiveSessions();
+      }, 120000); // 2 minutes
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isAuthenticated, isLiveMode]);
+
   const questionsByCategory = useMemo(() => {
     return adminQuestions.reduce<Record<string, RawQuestion[]>>((accumulator, question) => {
       const keys = question.categories && question.categories.length > 0 ? question.categories : ['uncategorized'];
@@ -326,6 +341,7 @@ export default function AdminPage() {
         .from('exam_logs')
         .select('*')
         .eq('is_finished', false)
+        .gt('expires_at', new Date().toISOString())
         .order('start_time', { ascending: false });
 
       if (error) throw error;
@@ -710,58 +726,71 @@ export default function AdminPage() {
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {categoryTabs.map((cat) => (
+            <div className="flex flex-col gap-4">
+              {/* Row 1: View Mode */}
+              <div className="flex flex-wrap gap-2">
                 <button
-                  key={cat}
-                  onClick={() => handleResCategoryChange(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeResCategory === cat
+                  onClick={() => {
+                    setIsLiveMode(true);
+                    void fetchLiveSessions();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${isLiveMode
+                    ? 'bg-nike-green border-nike-green text-white shadow-sm'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-nike-green'
+                    }`}
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  Live User
+                </button>
+                <button
+                  onClick={() => setIsLiveMode(false)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${!isLiveMode
                     ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
                     }`}
                 >
-                  {getCategoryLabel(cat)}
+                  📜 History
                 </button>
-              ))}
-            </div>
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              {['all', 'exam', 'survival'].map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => {
-                    setIsLiveMode(false);
-                    handleModeFilterChange(mode);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeModeFilter === mode && !isLiveMode
-                    ? mode === 'survival' ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
-                    }`}
-                >
-                  {mode === 'all' ? 'All Modes' : mode === 'exam' ? '📝 Exam' : '⚔️ Survival'}
-                </button>
-              ))}
+              {/* Row 2: Category selection */}
+              <div className="flex flex-wrap gap-2">
+                {categoryTabs.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => handleResCategoryChange(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeResCategory === cat
+                      ? 'bg-gray-800 border-gray-800 text-white shadow-sm'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                      }`}
+                  >
+                    {getCategoryLabel(cat)}
+                  </button>
+                ))}
+              </div>
 
-              <button
-                onClick={() => {
-                  setIsLiveMode(true);
-                  void fetchLiveSessions();
-                }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${isLiveMode
-                  ? 'bg-nike-green border-nike-green text-white shadow-sm'
-                  : 'bg-white border-gray-200 text-gray-600 hover:border-nike-green'
-                  }`}
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                Live User
-              </button>
+              {/* Row 3: Mode selection */}
+              <div className="flex flex-wrap gap-2">
+                {['all', 'exam', 'survival'].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => handleModeFilterChange(mode)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeModeFilter === mode
+                      ? mode === 'survival' ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-blue-400'
+                      }`}
+                  >
+                    {mode === 'all' ? 'All Modes' : mode === 'exam' ? '📝 Exam' : '⚔️ Survival'}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {statsData.length > 0 && (
+          {!isLiveMode && statsData.length > 0 && (
             <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
                 <div className="text-2xl font-bold text-indigo-600">{statsData.length}</div>
@@ -796,62 +825,83 @@ export default function AdminPage() {
                 <p className="text-gray-500">No active users found. Real-time tracking is empty.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {liveSessions.map((session) => {
-                  const answeredCount = Object.keys(session.user_answers).length;
-                  const progress = Math.round((answeredCount / session.question_count) * 100);
+              <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Answered</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lives</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started At</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {liveSessions
+                        .filter(s => (activeResCategory === 'all' || s.category === activeResCategory) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
+                        .map((session) => {
+                          const answeredCount = Object.keys(session.user_answers).length;
+                          const progress = Math.round((answeredCount / session.question_count) * 100);
 
-                  return (
-                    <div key={session.session_id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                      <div className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900">{session.name}</h3>
-                            <p className="text-xs text-gray-400 uppercase tracking-widest">{session.category}</p>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${session.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                            {session.mode}
-                          </span>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex justify-between text-xs font-bold text-gray-500 uppercase mb-1">
-                              <span>Progress</span>
-                              <span>{answeredCount} / {session.question_count}</span>
-                            </div>
-                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full transition-all duration-500 ${session.mode === 'survival' ? 'bg-red-500' : 'bg-indigo-600'}`}
-                                style={{ width: `${progress}%` }}
-                              ></div>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4 pt-2">
-                            <div className="bg-gray-50 p-3 rounded-xl">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Started</p>
-                              <p className="text-sm font-bold text-gray-700">{new Date(session.start_time).toLocaleTimeString()}</p>
-                            </div>
-                            {session.mode === 'survival' && (
-                              <div className="bg-red-50 p-3 rounded-xl">
-                                <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1">Lives</p>
-                                <p className="text-sm font-bold text-red-700">{session.lives} HP</p>
-                              </div>
-                            )}
-                          </div>
-
-                          <button
-                            onClick={() => handleFetchLiveDetail(session)}
-                            className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-gray-800 transition-colors"
-                          >
-                            Track Live Progress
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                        return (
+                          <tr key={session.session_id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{session.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${session.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                {session.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className="capitalize">{session.category?.replaceAll('_', ' ')}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
+                              {session.mode === 'survival' ? answeredCount : `${answeredCount} / ${session.question_count}`}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {session.mode === 'survival' ? (
+                                <div className="flex gap-0.5">
+                                  {Array.from({ length: Number(session.lives || 0) }).map((_, i) => (
+                                    <span key={i} className="text-red-500">❤️</span>
+                                  ))}
+                                  {Array.from({ length: Math.max(0, 3 - Number(session.lives || 0)) }).map((_, i) => (
+                                    <span key={i} className="text-gray-300">🖤</span>
+                                  ))}
+                                </div>
+                              ) : '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {session.mode === 'survival' ? (
+                                <span className="text-green-600 font-bold uppercase text-[10px] tracking-wider animate-pulse">On Going</span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-24 bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                    <div className="bg-indigo-600 h-full transition-all" style={{ width: `${progress}%` }}></div>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-gray-500">{progress}%</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(session.start_time).toLocaleTimeString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button
+                                onClick={() => handleFetchLiveDetail(session)}
+                                className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
+                              >
+                                Track Live Progress
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )
           ) : (
