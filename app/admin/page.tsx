@@ -37,7 +37,7 @@ type QuestionDraft = {
   categories: string[];
 };
 
-const ADMIN_PIN = '123456'; //gonna be in env
+const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '';
 
 const EMPTY_DRAFT: QuestionDraft = {
   question_text: '<p></p>',
