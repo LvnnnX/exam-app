@@ -40,7 +40,7 @@ type QuestionDraft = {
 // Authentication is now strictly server-side via Supabase.
 // Using a static email for the single admin account.
 const ADMIN_EMAIL = 'admin@exam.local';
-const AUTH_VERSION = '2'; // Increment this to force all admins to logout
+const AUTH_VERSION = '3'; // Increment this to force all admins to logout
 
 const EMPTY_DRAFT: QuestionDraft = {
   question_text: '<p></p>',
