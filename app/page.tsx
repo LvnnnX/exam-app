@@ -215,7 +215,7 @@ export default function ExamPage() {
     try {
       const count = isSurvival ? 9999 : questionCount;
       const { sessionId: newSessionId, total: newTotal } = await startExamSessionViaRpc(name, category, gameMode, count);
-      
+
       if (newTotal === 0) {
         throw new Error('Tidak ada soal di kategori ini.');
       }
@@ -320,7 +320,7 @@ export default function ExamPage() {
 
     if (isSurvival && currentQuestion) {
       const selectedAnswer = answers[current];
-      
+
       setIsLoading(true);
       const isCorrect = await saveSessionAnswerViaRpc(sessionId!, current, selectedAnswer || 'skipped');
       setIsLoading(false);
@@ -762,10 +762,24 @@ export default function ExamPage() {
     return (
       <div className="flex-1 flex flex-col pt-16 md:pt-32 px-6">
         <div className="max-w-3xl mx-auto w-full text-center">
-          <h2 className="font-display text-[96px] sm:text-[120px] text-nike-black leading-[0.85] tracking-[0.03em] uppercase mb-4">
-            {score}/{total}
-          </h2>
-          <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase">{percentage}% Correct Answer</p>
+          {
+            isSurvival ? (
+              <div>
+                <h2 className="font-display text-[96px] sm:text-[120px] text-nike-black leading-[0.85] tracking-[0.03em] uppercase mb-4">
+                  {score}
+                </h2>
+                <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase pt-4">Question Answered</p>
+              </div>
+            ) : (
+              <div>
+                <h2 className="font-display text-[96px] sm:text-[120px] text-nike-black leading-[0.85] tracking-[0.03em] uppercase mb-4">
+                  {percentage}%
+                  <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase pt-4">{score}/{total} Question Answered</p>
+                </h2>
+              </div>
+            )
+          }
+
           <p className="text-[14px] font-medium text-nike-grey-300 mb-12 uppercase tracking-widest">{categoryLabel}</p>
 
           <div className="h-[24px] mb-8">
@@ -812,76 +826,80 @@ export default function ExamPage() {
               </h2>
               <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{name}</p>
               <p className="text-[16px] font-medium text-nike-grey-500 uppercase">
-                {isSurvival 
-                  ? `Kamu telah menyelesaikan sebanyak ${recapData.filter((_, idx) => idx <= current).length} soal` 
-                  : `${categoryLabel} — ${score} / ${total}`}
+                {isSurvival ? (
+                  <>
+                    You have answered <span className="font-bold text-nike-black">{recapData.filter((_, idx) => idx <= current).length}</span> questions
+                  </>
+                ) : (
+                  `${categoryLabel} — ${score} / ${total}`
+                )}
               </p>
-            </div>
-            <div>
-              {saved ? (
-                <span className="inline-block px-4 py-2 bg-nike-green text-nike-white text-[12px] font-bold uppercase rounded-[30px]">Recorded</span>
-              ) : (
-                <span className="inline-block px-4 py-2 bg-nike-grey-200 text-nike-grey-500 text-[12px] font-bold uppercase rounded-[30px]">Syncing</span>
-              )}
-            </div>
           </div>
+          <div>
+            {saved ? (
+              <span className="inline-block px-4 py-2 bg-nike-green text-nike-white text-[12px] font-bold uppercase rounded-[30px]">Recorded</span>
+            ) : (
+              <span className="inline-block px-4 py-2 bg-nike-grey-200 text-nike-grey-500 text-[12px] font-bold uppercase rounded-[30px]">Syncing</span>
+            )}
+          </div>
+        </div>
 
-          <div className="space-y-6 mb-12">
-            {recapData
-              .filter((_, idx) => !isSurvival || idx <= current)
-              .map((item, idx) => {
-                const userAnswer = item.user_answer;
-                const correctText = item.correct_text;
-                const isCorrect = item.is_correct;
-                const isSkipped = !userAnswer;
+        <div className="space-y-6 mb-12">
+          {recapData
+            .filter((_, idx) => !isSurvival || idx <= current)
+            .map((item, idx) => {
+              const userAnswer = item.user_answer;
+              const correctText = item.correct_text;
+              const isCorrect = item.is_correct;
+              const isSkipped = !userAnswer;
 
-                const userOptionHtml = userAnswer || null;
+              const userOptionHtml = userAnswer || null;
 
-                return (
-                  <div key={idx} className="bg-nike-grey-100 p-6 sm:p-8 rounded-[20px]">
-                    <div className="flex gap-4 mb-4">
-                      <span className="font-display text-[24px] text-nike-grey-300 shrink-0">{(idx + 1).toString().padStart(2, '0')}</span>
-                      <RichContent html={item.question_text} className="font-bold text-[18px] sm:text-[20px] text-nike-black pt-1 leading-tight flex-1 min-w-0" />
-                    </div>
+              return (
+                <div key={idx} className="bg-nike-grey-100 p-6 sm:p-8 rounded-[20px]">
+                  <div className="flex gap-4 mb-4">
+                    <span className="font-display text-[24px] text-nike-grey-300 shrink-0">{(idx + 1).toString().padStart(2, '0')}</span>
+                    <RichContent html={item.question_text} className="font-bold text-[18px] sm:text-[20px] text-nike-black pt-1 leading-tight flex-1 min-w-0" />
+                  </div>
 
-                    <div className="ml-[10px] sm:ml-[40px] pl-6 border-l-[2px] border-nike-grey-300">
-                      {isSkipped ? (
-                        <p className="text-[14px] font-medium text-nike-grey-500 uppercase">No Answer</p>
-                      ) : isCorrect ? (
+                  <div className="ml-[10px] sm:ml-[40px] pl-6 border-l-[2px] border-nike-grey-300">
+                    {isSkipped ? (
+                      <p className="text-[14px] font-medium text-nike-grey-500 uppercase">No Answer</p>
+                    ) : isCorrect ? (
+                      <div className="flex items-start gap-3">
+                        <div className="w-2 h-2 rounded-full bg-nike-green mt-2 shrink-0"></div>
+                        <div className="text-[16px] font-bold text-nike-green flex-1 min-w-0">
+                          <p className="uppercase mb-1">CORRECT</p>
+                          <RichContent html={userOptionHtml ?? ''} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4">
                         <div className="flex items-start gap-3">
-                          <div className="w-2 h-2 rounded-full bg-nike-green mt-2 shrink-0"></div>
-                          <div className="text-[16px] font-bold text-nike-green flex-1 min-w-0">
-                            <p className="uppercase mb-1">CORRECT</p>
+                          <div className="w-2 h-2 rounded-full bg-nike-red mt-2 shrink-0"></div>
+                          <div className="text-[16px] font-bold text-nike-red flex-1 min-w-0">
+                            <p className="uppercase mb-1">WRONG</p>
                             <RichContent html={userOptionHtml ?? ''} />
                           </div>
                         </div>
-                      ) : (
-                        <div className="flex flex-col gap-4">
-                          <div className="flex items-start gap-3">
-                            <div className="w-2 h-2 rounded-full bg-nike-red mt-2 shrink-0"></div>
-                            <div className="text-[16px] font-bold text-nike-red flex-1 min-w-0">
-                              <p className="uppercase mb-1">WRONG</p>
-                              <RichContent html={userOptionHtml ?? ''} />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-          </div>
+                </div>
+              );
+            })}
+        </div>
 
-          <div className="border-t border-nike-grey-200 pt-8">
-            <button
-              onClick={restart}
-              className="w-full sm:w-auto px-12 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors uppercase tracking-wider"
-            >
-              Start Over
-            </button>
-          </div>
+        <div className="border-t border-nike-grey-200 pt-8">
+          <button
+            onClick={restart}
+            className="w-full sm:w-auto px-12 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors uppercase tracking-wider"
+          >
+            Start Over
+          </button>
         </div>
       </div>
+      </div >
     );
   }
 
