@@ -9,9 +9,11 @@ import {
   type QuestionCount,
   type CategoryInfo,
   QUESTION_COUNTS,
-  fetchQuestions,
+  fetchPublicQuestions,
   fetchCategories,
   prepareSessionQuestions,
+  checkAnswerViaRpc,
+  submitExamViaRpc,
 } from '@/lib/questions';
 
 type Answer = string | null;
@@ -62,17 +64,8 @@ export default function ExamPage() {
   const hasAnswerSelected = total > 0 && answers[current] !== null;
 
   // ==================== SCORE CALCULATION ====================
-
-  const calculateScore = useCallback(() => {
-    let s = 0;
-    answers.forEach((a, idx) => {
-      if (a && sessionQuestions[idx]) {
-        const correctOpt = sessionQuestions[idx].options.find(o => o.label === sessionQuestions[idx].correct_label);
-        if (correctOpt && a === correctOpt.text) s++;
-      }
-    });
-    return s;
-  }, [answers, sessionQuestions]);
+  // Score is now calculated securely on the server via RPC.
+  // Local score state is updated by the server response.
 
   // ==================== LOCAL STORAGE FUNCTIONS ====================
 
@@ -215,7 +208,7 @@ export default function ExamPage() {
   const startNewSession = async () => {
     setIsLoading(true);
     try {
-      const pool: RawQuestion[] = await fetchQuestions(category);
+      const pool = await fetchPublicQuestions(category);
       const count = isSurvival ? pool.length : questionCount;
       const prepared = prepareSessionQuestions(pool, count);
 
@@ -281,22 +274,19 @@ export default function ExamPage() {
   };
 
   const endSession = () => {
-    if (!isSurvival) {
-      const finalScore = calculateScore();
-      setScore(finalScore);
-    }
     setEndTime(Date.now());
     goToStep(6);
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = async () => {
     if (feedbackResult) return;
 
-    // In survival mode, evaluate the answer when they click Next
+    // In survival mode, evaluate the answer when they click Next via Server
     if (isSurvival && currentQuestion) {
       const selectedAnswer = answers[current];
-      const correctOpt = currentQuestion.options.find(o => o.label === currentQuestion.correct_label);
-      const isCorrect = correctOpt && selectedAnswer === correctOpt.text;
+      
+      // Wait for server to validate answer securely
+      const isCorrect = await checkAnswerViaRpc(currentQuestion.id, selectedAnswer || '');
 
       setFeedbackResult(isCorrect ? 'correct' : 'wrong');
 
@@ -371,39 +361,31 @@ export default function ExamPage() {
   // ==================== AUTO-SAVE TO SUPABASE ====================
 
   const autoSaveToSupabase = useCallback(async () => {
-    if (!name || total === 0) return;
+    if (!name || total === 0 || saved) return;
     setSaving(true);
     try {
       const answersArray = answers.map((answer, idx) => {
-        const correctOpt = sessionQuestions[idx]?.options.find(o => o.label === sessionQuestions[idx].correct_label);
         return {
           question_id: sessionQuestions[idx]?.id ?? idx + 1,
-          user_answer: answer || 'skipped',
-          is_correct: answer !== null && correctOpt && answer === correctOpt.text
+          user_answer: answer,
         };
       });
 
       const finalStartTime = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
       const finalEndTime = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
-      const durationSeconds = startTime && endTime ? Math.floor((endTime - startTime) / 1000) : null;
 
-      const { error } = await supabase
-        .from('exam_results')
-        .insert([{
-          name,
-          score,
-          total_questions: total,
-          category,
-          question_count: questionCount,
-          taken_at: finalEndTime,
-          user_answers: answersArray,
-          start_time: finalStartTime,
-          end_time: finalEndTime,
-          duration_seconds: durationSeconds,
-          mode: gameMode,
-        }]);
+      // Submit all answers securely to server for grading and saving
+      const serverCalculatedScore = await submitExamViaRpc(
+        name,
+        category,
+        gameMode,
+        questionCount,
+        answersArray,
+        finalStartTime,
+        finalEndTime
+      );
 
-      if (error) throw error;
+      setScore(serverCalculatedScore);
       setSaved(true);
       clearStorage();
     } catch (err) {
@@ -411,7 +393,7 @@ export default function ExamPage() {
     } finally {
       setSaving(false);
     }
-  }, [answers, category, name, questionCount, score, sessionQuestions, total, startTime, endTime, gameMode]);
+  }, [answers, category, name, questionCount, sessionQuestions, total, startTime, endTime, gameMode, saved]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {

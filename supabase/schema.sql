@@ -178,3 +178,94 @@ CREATE POLICY "Authenticated Upload Access" ON storage.objects FOR INSERT TO aut
 -- 3. Allow authenticated users to update/delete their own uploads (basic simple policy for dev)
 CREATE POLICY "Authenticated Manage Access" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'exam-images');
 CREATE POLICY "Authenticated Delete Access" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'exam-images');
+
+-- ============================================================
+-- Security Enhancements: Server-Side Grading
+-- ============================================================
+
+-- 1. Create a secure view for public fetching (without correct_answer)
+CREATE OR REPLACE VIEW public_questions AS
+SELECT id, question_text, option_a, option_b, option_c, option_d, option_e, category
+FROM questions;
+
+GRANT SELECT ON public_questions TO anon, authenticated;
+
+-- 2. Restrict direct access to questions table (revoke public access)
+DROP POLICY IF EXISTS "questions_select" ON questions;
+CREATE POLICY "questions_select" ON questions FOR SELECT TO authenticated USING (auth.jwt() ->> 'email' = 'admin@exam.local');
+
+-- 3. Create RPC to check a single answer (for Survival mode)
+CREATE OR REPLACE FUNCTION check_answer(p_question_id INT, p_answer TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_correct_label CHAR(1);
+  v_correct_text TEXT;
+BEGIN
+  SELECT correct_answer INTO v_correct_label FROM questions WHERE id = p_question_id;
+  
+  IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = p_question_id;
+  ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = p_question_id;
+  ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = p_question_id;
+  ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = p_question_id;
+  ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = p_question_id;
+  END IF;
+
+  RETURN p_answer = v_correct_text;
+END;
+$$;
+
+-- 4. Create RPC to submit an entire exam and calculate score
+CREATE OR REPLACE FUNCTION submit_exam(p_name TEXT, p_category TEXT, p_mode TEXT, p_question_count INT, p_answers JSONB, p_start_time TIMESTAMPTZ, p_end_time TIMESTAMPTZ)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_score INTEGER := 0;
+  v_total INTEGER;
+  v_elem JSONB;
+  v_q_id INT;
+  v_user_ans TEXT;
+  v_correct_label CHAR(1);
+  v_correct_text TEXT;
+  v_is_correct BOOLEAN;
+  v_processed_answers JSONB := '[]'::jsonb;
+BEGIN
+  v_total := jsonb_array_length(p_answers);
+  
+  FOR v_elem IN SELECT * FROM jsonb_array_elements(p_answers)
+  LOOP
+    v_q_id := (v_elem->>'question_id')::INT;
+    v_user_ans := v_elem->>'user_answer';
+    
+    SELECT correct_answer INTO v_correct_label FROM questions WHERE id = v_q_id;
+    
+    IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
+    END IF;
+    
+    v_is_correct := (v_user_ans = v_correct_text AND v_user_ans IS NOT NULL AND v_user_ans != 'skipped');
+    
+    IF v_is_correct THEN
+      v_score := v_score + 1;
+    END IF;
+    
+    v_processed_answers := v_processed_answers || jsonb_build_object(
+      'question_id', v_q_id,
+      'user_answer', v_user_ans,
+      'is_correct', v_is_correct
+    );
+  END LOOP;
+  
+  INSERT INTO exam_results (name, score, total_questions, category, question_count, taken_at, user_answers)
+  VALUES (p_name, v_score, v_total, p_category, p_question_count, p_end_time, v_processed_answers);
+  
+  RETURN v_score;
+END;
+$$;

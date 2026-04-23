@@ -24,6 +24,8 @@ export type RawQuestion = {
   categories: string[];
 };
 
+export type PublicQuestion = Omit<RawQuestion, 'correct_answer'>;
+
 // A single shuffled option for rendering
 export type ShuffledOption = {
   label: string;   // display label: 'A', 'B', 'C', 'D', 'E'
@@ -55,6 +57,18 @@ function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
     option_d: ensureHtmlDocument(String(raw.option_d ?? '')),
     option_e: ensureHtmlDocument(String(raw.option_e ?? '')),
     correct_answer: normalizeCorrectAnswer(raw.correct_answer),
+  };
+}
+
+export function normalizePublicQuestion(raw: PublicQuestion): PublicQuestion {
+  return {
+    ...raw,
+    question_text: ensureHtmlDocument(String(raw.question_text ?? '')),
+    option_a: ensureHtmlDocument(String(raw.option_a ?? '')),
+    option_b: ensureHtmlDocument(String(raw.option_b ?? '')),
+    option_c: ensureHtmlDocument(String(raw.option_c ?? '')),
+    option_d: ensureHtmlDocument(String(raw.option_d ?? '')),
+    option_e: ensureHtmlDocument(String(raw.option_e ?? '')),
   };
 }
 
@@ -112,6 +126,70 @@ export async function fetchQuestions(category?: string): Promise<RawQuestion[]> 
   return (data as RawQuestion[]).map(normalizeRawQuestion);
 }
 
+export async function fetchPublicQuestions(category?: string): Promise<PublicQuestion[]> {
+  let query = supabase
+    .from('public_questions')
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, categories');
+
+  // We skip filtering if the chosen category is somehow the placeholder 'All Categories', or just filter normally.
+  if (category && category !== 'All Categories') {
+    query = query.contains('categories', [category]);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Supabase fetch failed:', error.message);
+    throw new Error(`Failed to fetch questions: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  return data.map((q: any) => normalizePublicQuestion(q as PublicQuestion));
+}
+
+export async function checkAnswerViaRpc(questionId: number, answerText: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('check_answer', {
+    p_question_id: questionId,
+    p_answer: answerText
+  });
+  
+  if (error) {
+    console.error('check_answer rpc failed:', error.message);
+    return false;
+  }
+  return !!data;
+}
+
+export async function submitExamViaRpc(
+  name: string,
+  category: string,
+  mode: string,
+  questionCount: number,
+  answers: { question_id: number; user_answer: string | null }[],
+  startTime: string,
+  endTime: string
+): Promise<number> {
+  const { data, error } = await supabase.rpc('submit_exam', {
+    p_name: name,
+    p_category: category,
+    p_mode: mode,
+    p_question_count: questionCount,
+    p_answers: answers,
+    p_start_time: startTime,
+    p_end_time: endTime
+  });
+
+  if (error) {
+    console.error('submit_exam rpc failed:', error.message);
+    throw new Error(`Failed to submit exam: ${error.message}`);
+  }
+  
+  return data as number;
+}
+
 // ==================== Fetch specific questions by IDs ====================
 
 export async function fetchQuestionsByIds(ids: number[]): Promise<RawQuestion[]> {
@@ -145,39 +223,34 @@ function fisherYatesShuffle<T>(array: T[]): T[] {
 
 const LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
 
-function shuffleOptions(raw: RawQuestion): ShuffledQuestion {
-  const normalized = normalizeRawQuestion(raw);
+function shuffleOptions(raw: PublicQuestion): ShuffledQuestion {
+  const normalized = normalizePublicQuestion(raw);
 
   const originalOptions = [
-    { originalLabel: 'A', text: normalized.option_a },
-    { originalLabel: 'B', text: normalized.option_b },
-    { originalLabel: 'C', text: normalized.option_c },
-    { originalLabel: 'D', text: normalized.option_d },
-    { originalLabel: 'E', text: normalized.option_e },
+    { text: normalized.option_a },
+    { text: normalized.option_b },
+    { text: normalized.option_c },
+    { text: normalized.option_d },
+    { text: normalized.option_e },
   ];
 
   const shuffledOpts = fisherYatesShuffle(originalOptions);
 
-  let correctLabel = 'A';
   const options: ShuffledOption[] = shuffledOpts.map((opt, idx) => {
-    const newLabel = LABELS[idx];
-    if (opt.originalLabel === normalized.correct_answer) {
-      correctLabel = newLabel;
-    }
-    return { label: newLabel, text: opt.text };
+    return { label: LABELS[idx], text: opt.text };
   });
 
   return {
     id: normalized.id,
     question_text: normalized.question_text,
     options,
-    correct_label: correctLabel,
+    correct_label: 'HIDDEN',
   };
 }
 
 // ==================== Prepare Session Questions ====================
 
-export function prepareSessionQuestions(pool: RawQuestion[], count: number = 20): ShuffledQuestion[] {
+export function prepareSessionQuestions(pool: PublicQuestion[], count: number = 20): ShuffledQuestion[] {
   // Shuffle the entire pool
   const shuffledPool = fisherYatesShuffle(pool);
 
