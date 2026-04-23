@@ -437,6 +437,8 @@ export default function AdminPage() {
       categories: formData.categories,
     };
 
+    const hasMedia = (html: string) => /<(img|iframe)[^>]*>/i.test(html);
+
     const missingContent = [
       payload.question_text,
       payload.option_a,
@@ -444,10 +446,14 @@ export default function AdminPage() {
       payload.option_c,
       payload.option_d,
       payload.option_e,
-    ].some((entry) => stripHtml(entry).length === 0);
+    ].some((entry) => stripHtml(entry).length === 0 && !hasMedia(entry));
 
     if (missingContent) {
       throw new Error('Please fill in the question and all answer options before saving.');
+    }
+
+    if (payload.categories.length === 0) {
+      throw new Error('Please select at least one category for the question.');
     }
 
     return payload;

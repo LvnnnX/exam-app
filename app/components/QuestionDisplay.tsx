@@ -43,20 +43,20 @@ export default function QuestionDisplay({
                 <button
                   key={option.label}
                   onClick={() => onSelectAnswer(option.text)}
-                  className={`w-full group flex items-center p-4 md:p-5 rounded-[16px] text-left transition-all duration-200 border-[1.5px] ${
+                  className={`w-full min-w-0 group flex items-center p-4 md:p-5 rounded-[16px] text-left transition-all duration-200 border-[1.5px] ${
                     isSelected
                       ? 'bg-nike-black border-nike-black text-nike-white'
                       : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
                   }`}
                 >
-                  <div className="flex items-center gap-4 w-full">
-                    <span className={`font-display text-[18px] md:text-[20px] transition-colors ${isSelected ? 'text-nike-grey-300' : 'text-nike-grey-500 group-hover:text-nike-black'}`}>
+                  <div className="flex items-center gap-4 w-full min-w-0">
+                    <span className={`font-display shrink-0 text-[18px] md:text-[20px] transition-colors ${isSelected ? 'text-nike-grey-300' : 'text-nike-grey-500 group-hover:text-nike-black'}`}>
                       {option.label}
                     </span>
-                    <div className="w-px h-6 bg-nike-grey-200 group-hover:bg-nike-grey-300 transition-colors" />
+                    <div className="w-px h-6 shrink-0 bg-nike-grey-200 group-hover:bg-nike-grey-300 transition-colors" />
                     <RichContent
                       html={option.text}
-                      className={`exam-option-content flex-1 text-[15px] md:text-[17px] font-medium tracking-tight leading-tight ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
+                      className={`exam-option-content flex-1 min-w-0 text-[15px] md:text-[17px] font-medium tracking-tight leading-tight ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
                     />
                   </div>
                 </button>

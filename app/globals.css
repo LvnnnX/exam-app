@@ -113,8 +113,6 @@ body {
 .exam-option-content {
   min-height: 0;
   overflow: visible;
-  /* Fix option getting cut off */
-  width: 100%;
 }
 
 .exam-option-content p {
@@ -329,21 +327,5 @@ body {
     margin: 0.4rem 0 !important;
     white-space: pre !important;
     word-break: normal !important;
-  }
-
-  /* Step 9: Position question text at the top ONLY for questions */
-  .exam-question-content.rich-content {
-    display: flex !important;
-    flex-direction: column !important;
-  }
-
-  .exam-question-content.rich-content p {
-    order: 1 !important;
-    /* Force prompt/text below code */
-  }
-
-  .exam-question-content.rich-content pre {
-    order: -1 !important;
-    /* Force code block to the top */
   }
 }

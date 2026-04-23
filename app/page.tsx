@@ -57,6 +57,8 @@ export default function ExamPage() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [endTime, setEndTime] = useState<number | null>(null);
   const [gameMode, setGameMode] = useState<GameMode>('exam');
+  const [saveFailed, setSaveFailed] = useState(false);
+
   const [lives, setLives] = useState(3);
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<'correct' | 'wrong' | null>(null);
@@ -388,6 +390,7 @@ export default function ExamPage() {
     setGameMode('exam');
     setLives(3);
     setSaved(false);
+    setSaveFailed(false);
     setRecapData([]);
     clearStorage();
   };
@@ -410,9 +413,11 @@ export default function ExamPage() {
       if (gameMode === 'survival') setTotalQuestions(result.total_attempted);
       setRecapData(result.recap);
       setSaved(true);
+      setSaveFailed(false);
       clearStorage();
     } catch (err) {
       console.error('Auto-save error:', err);
+      setSaveFailed(true);
     } finally {
       setSaving(false);
     }
@@ -420,10 +425,10 @@ export default function ExamPage() {
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (step === 6 && !saved && name && isRestored && total > 0) {
+    if (step === 6 && !saved && !saveFailed && name && isRestored && total > 0) {
       void autoSaveToSupabase();
     }
-  }, [autoSaveToSupabase, isRestored, name, saved, step, total]);
+  }, [autoSaveToSupabase, isRestored, name, saved, saveFailed, step, total]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // ==================== HELPERS ====================
@@ -792,6 +797,8 @@ export default function ExamPage() {
               <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest">Syncing Results...</p>
             ) : saved ? (
               <p className="text-[14px] font-medium text-nike-green uppercase tracking-widest">Results Preserved</p>
+            ) : saveFailed ? (
+              <p className="text-[14px] font-medium text-nike-red uppercase tracking-widest">Sync Failed. Try Again.</p>
             ) : null}
           </div>
 
