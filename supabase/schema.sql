@@ -460,6 +460,7 @@ DECLARE
   v_processed_answers JSONB := '[]'::jsonb;
   v_recap JSONB := '[]'::jsonb;
   v_question_text TEXT;
+  v_attempted INT := 0;
 BEGIN
   SELECT * INTO v_log FROM exam_logs WHERE session_id = p_session_id;
   
@@ -474,7 +475,14 @@ BEGIN
     v_user_ans_text := v_log.user_answers->>(v_q_index::text);
     v_q_id := v_log.question_ids[v_q_index + 1];
     
-    IF v_q_id IS NOT NULL THEN
+    -- In Survival Mode, we strictly only care about questions encountered/attempted.
+    -- In Normal Mode, we follow traditional scoring (total count is the denominator).
+    IF v_q_id IS NOT NULL AND v_user_ans_text IS NOT NULL THEN
+        -- It's an attempt if it's not skipped
+        IF v_user_ans_text != 'skipped' THEN
+          v_attempted := v_attempted + 1;
+        END IF;
+
         SELECT question_text, correct_answer INTO v_question_text, v_correct_label FROM questions WHERE id = v_q_id;
         
         IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
@@ -484,7 +492,7 @@ BEGIN
         ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
         END IF;
         
-        v_is_correct := (strip_html(v_user_ans_text) = strip_html(v_correct_text) AND v_user_ans_text IS NOT NULL AND v_user_ans_text != 'skipped');
+        v_is_correct := (strip_html(v_user_ans_text) = strip_html(v_correct_text) AND v_user_ans_text != 'skipped');
         
         IF v_is_correct THEN
           v_score := v_score + 1;
@@ -505,12 +513,18 @@ BEGIN
     END IF;
   END LOOP;
   
-  INSERT INTO exam_results (name, score, total_questions, category, question_count, taken_at, user_answers, start_time, end_time, mode)
-  VALUES (v_log.name, v_score, v_log.question_count, v_log.category, v_log.question_count, p_end_time, v_processed_answers, v_log.start_time, p_end_time, v_log.mode);
+  -- Use v_attempted for Survival Mode, v_log.question_count for Normal Mode
+  IF v_log.mode = 'survival' THEN
+    INSERT INTO exam_results (name, score, total_questions, category, question_count, taken_at, user_answers, start_time, end_time, mode)
+    VALUES (v_log.name, v_score, v_attempted, v_log.category, v_attempted, p_end_time, v_processed_answers, v_log.start_time, p_end_time, v_log.mode);
+  ELSE
+    INSERT INTO exam_results (name, score, total_questions, category, question_count, taken_at, user_answers, start_time, end_time, mode)
+    VALUES (v_log.name, v_score, v_log.question_count, v_log.category, v_log.question_count, p_end_time, v_processed_answers, v_log.start_time, p_end_time, v_log.mode);
+  END IF;
   
   DELETE FROM exam_logs WHERE session_id = p_session_id;
   
-  RETURN jsonb_build_object('score', v_score, 'recap', v_recap);
+  RETURN jsonb_build_object('score', v_score, 'recap', v_recap, 'total_attempted', v_attempted);
 END;
 $$;
 

@@ -403,6 +403,7 @@ export default function ExamPage() {
       );
 
       setScore(result.score);
+      if (gameMode === 'survival') setTotalQuestions(result.total_attempted);
       setRecapData(result.recap);
       setSaved(true);
       clearStorage();
@@ -766,7 +767,7 @@ export default function ExamPage() {
             isSurvival ? (
               <div>
                 <h2 className="font-display text-[96px] sm:text-[120px] text-nike-black leading-[0.85] tracking-[0.03em] uppercase mb-4">
-                  {score}
+                  {score}/{total}
                 </h2>
                 <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase pt-4">Question Answered</p>
               </div>

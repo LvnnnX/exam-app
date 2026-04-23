@@ -191,7 +191,7 @@ export async function saveSessionAnswerViaRpc(sessionId: string, index: number, 
 export async function submitSessionExamViaRpc(
   sessionId: string,
   endTime: string
-): Promise<{ score: number, recap: any[] }> {
+): Promise<{ score: number, recap: any[], total_attempted: number }> {
   const { data, error } = await supabase.rpc('submit_session_exam', {
     p_session_id: sessionId,
     p_end_time: endTime
@@ -202,7 +202,7 @@ export async function submitSessionExamViaRpc(
     throw new Error(`Failed to submit exam: ${error.message}`);
   }
   
-  return data as { score: number, recap: any[] };
+  return data as { score: number, recap: any[], total_attempted: number };
 }
 
 // ==================== Fetch specific questions by IDs ====================
