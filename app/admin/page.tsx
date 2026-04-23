@@ -37,7 +37,9 @@ type QuestionDraft = {
   categories: string[];
 };
 
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '';
+// Authentication is now strictly server-side via Supabase.
+// Using a static email for the single admin account.
+const ADMIN_EMAIL = 'admin@exam.local';
 const AUTH_VERSION = '2'; // Increment this to force all admins to logout
 
 const EMPTY_DRAFT: QuestionDraft = {
@@ -168,32 +170,31 @@ export default function AdminPage() {
 
   const handlePasswordSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (passwordInput === ADMIN_PASSWORD) {
-      try {
-        // Authenticate with Supabase to get a valid JWT for RLS
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error) throw error;
+    try {
+      // Authenticate securely via Supabase Auth (No more anonymous loopholes)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: ADMIN_EMAIL,
+        password: passwordInput,
+      });
 
-        setIsAuthenticated(true);
-        setSessionInfo(data.session?.user.id || 'anonymous');
-        setPasswordError('');
-        localStorage.setItem('admin_auth_version', AUTH_VERSION);
+      if (error) throw error;
 
-        if (activeTab === 'results') {
-          void fetchResults();
-        } else {
-          void fetchAdminQuestions();
-          void loadAllCategories();
-        }
-      } catch (err: any) {
-        console.error('Auth failed:', err.message);
-        setPasswordError(`Auth Failed: ${err.message}`);
+      setIsAuthenticated(true);
+      setSessionInfo(data.session?.user.id || 'admin');
+      setPasswordError('');
+      localStorage.setItem('admin_auth_version', AUTH_VERSION);
+
+      if (activeTab === 'results') {
+        void fetchResults();
+      } else {
+        void fetchAdminQuestions();
+        void loadAllCategories();
       }
-      return;
+    } catch (err: any) {
+      console.error('Auth failed:', err.message);
+      setPasswordError('Invalid password or auth error.');
+      setPasswordInput('');
     }
-
-    setPasswordError('Invalid password');
-    setPasswordInput('');
   };
 
   const handleLogout = async () => {
