@@ -126,68 +126,72 @@ export async function fetchQuestions(category?: string): Promise<RawQuestion[]> 
   return (data as RawQuestion[]).map(normalizeRawQuestion);
 }
 
-export async function fetchPublicQuestions(category?: string): Promise<PublicQuestion[]> {
-  let query = supabase
-    .from('public_questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, categories');
+export async function startExamSessionViaRpc(name: string, category: string, mode: string, count: number): Promise<{ sessionId: string; total: number }> {
+  const { data, error } = await supabase.rpc('start_exam_session', {
+    p_name: name,
+    p_category: category,
+    p_mode: mode,
+    p_count: count
+  });
 
-  // We skip filtering if the chosen category is somehow the placeholder 'All Categories', or just filter normally.
-  if (category && category !== 'All Categories') {
-    query = query.contains('categories', [category]);
+  if (error || !data) {
+    console.error('start_exam_session rpc failed:', error?.message);
+    throw new Error(`Failed to start exam session: ${error?.message}`);
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Supabase fetch failed:', error.message);
-    throw new Error(`Failed to fetch questions: ${error.message}`);
-  }
-
-  if (!data || data.length === 0) {
-    return [];
-  }
-
-  return data.map((q: any) => normalizePublicQuestion(q as PublicQuestion));
+  return {
+    sessionId: data.session_id,
+    total: data.question_count
+  };
 }
 
-export async function checkAnswerViaRpc(questionId: number, answerText: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc('check_answer', {
-    p_question_id: questionId,
+export async function getSessionQuestionViaRpc(sessionId: string, index: number): Promise<ShuffledQuestion | null> {
+  const { data, error } = await supabase.rpc('get_session_question', {
+    p_session_id: sessionId,
+    p_index: index
+  });
+
+  if (error) {
+    console.error('get_session_question rpc failed:', error.message);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return shuffleOptions(data as PublicQuestion);
+}
+
+export async function checkSessionAnswerViaRpc(sessionId: string, index: number, answerText: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('check_session_answer', {
+    p_session_id: sessionId,
+    p_index: index,
     p_answer_text: answerText
   });
   
   if (error) {
-    console.error('check_answer rpc failed:', error.message);
+    console.error('check_session_answer rpc failed:', error.message);
     return false;
   }
   return !!data;
 }
 
-export async function submitExamViaRpc(
-  name: string,
-  category: string,
-  mode: string,
-  questionCount: number,
-  answers: { question_id: number; user_answer: string | null }[],
-  startTime: string,
+export async function submitSessionExamViaRpc(
+  sessionId: string,
+  answers: { question_index: number; user_answer: string | null }[],
   endTime: string
-): Promise<number> {
-  const { data, error } = await supabase.rpc('submit_exam', {
-    p_name: name,
-    p_category: category,
-    p_mode: mode,
-    p_question_count: questionCount,
+): Promise<{ score: number, recap: any[] }> {
+  const { data, error } = await supabase.rpc('submit_session_exam', {
+    p_session_id: sessionId,
     p_answers: answers,
-    p_start_time: startTime,
     p_end_time: endTime
   });
 
   if (error) {
-    console.error('submit_exam rpc failed:', error.message);
+    console.error('submit_session_exam rpc failed:', error.message);
     throw new Error(`Failed to submit exam: ${error.message}`);
   }
   
-  return data as number;
+  return data as { score: number, recap: any[] };
 }
 
 // ==================== Fetch specific questions by IDs ====================
@@ -248,15 +252,4 @@ function shuffleOptions(raw: PublicQuestion): ShuffledQuestion {
   };
 }
 
-// ==================== Prepare Session Questions ====================
 
-export function prepareSessionQuestions(pool: PublicQuestion[], count: number = 20): ShuffledQuestion[] {
-  // Shuffle the entire pool
-  const shuffledPool = fisherYatesShuffle(pool);
-
-  // Slice to the desired count (max available)
-  const selected = shuffledPool.slice(0, Math.min(count, shuffledPool.length));
-
-  // Shuffle options within each selected question
-  return selected.map(shuffleOptions);
-}

@@ -5,15 +5,14 @@ import QuestionDisplay from '@/app/components/QuestionDisplay';
 import RichContent from '@/app/components/RichContent';
 import {
   type ShuffledQuestion,
-  type RawQuestion,
   type QuestionCount,
   type CategoryInfo,
   QUESTION_COUNTS,
-  fetchPublicQuestions,
   fetchCategories,
-  prepareSessionQuestions,
-  checkAnswerViaRpc,
-  submitExamViaRpc,
+  startExamSessionViaRpc,
+  getSessionQuestionViaRpc,
+  checkSessionAnswerViaRpc,
+  submitSessionExamViaRpc,
 } from '@/lib/questions';
 
 type Answer = string | null;
@@ -27,9 +26,9 @@ const STORAGE_KEYS = {
   STEP: 'exam_step',
   CURRENT: 'exam_current',
   ANSWERS: 'exam_answers',
-  QUESTIONS: 'exam_questions',
+  SESSION_ID: 'exam_session_id',
+  TOTAL: 'exam_total_questions',
   CATEGORY: 'exam_category',
-  QUESTION_COUNT: 'exam_question_count',
   START_TIME: 'exam_start_time',
   MODE: 'exam_mode',
   LIVES: 'exam_lives',
@@ -43,7 +42,9 @@ export default function ExamPage() {
   const [questionCount, setQuestionCount] = useState<QuestionCount>(20);
   const [step, setStep] = useState(1); // 1=Name, 2=Confirm, 25=Preparing, 3=Quiz, 6=Score, 7=Results
   const [current, setCurrent] = useState(0);
-  const [sessionQuestions, setSessionQuestions] = useState<ShuffledQuestion[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [totalQuestions, setTotalQuestions] = useState<number>(0);
+  const [currentQuestion, setCurrentQuestion] = useState<ShuffledQuestion | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [score, setScore] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -57,11 +58,11 @@ export default function ExamPage() {
   const [lives, setLives] = useState(3);
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<'correct' | 'wrong' | null>(null);
+  const [recapData, setRecapData] = useState<any[]>([]);
   const isSurvival = gameMode === 'survival';
 
-  const total = sessionQuestions.length;
-  const currentQuestion = sessionQuestions[current] ?? null;
-  const hasAnswerSelected = total > 0 && answers[current] !== null;
+  const total = totalQuestions;
+  const hasAnswerSelected = total > 0 && answers[current] !== undefined && answers[current] !== null;
 
   // ==================== SCORE CALCULATION ====================
   // Score is now calculated securely on the server via RPC.
@@ -85,16 +86,16 @@ export default function ExamPage() {
     localStorage.setItem(STORAGE_KEYS.ANSWERS, JSON.stringify(answersArray));
   };
 
-  const saveQuestionsToStorage = (questions: ShuffledQuestion[]) => {
-    localStorage.setItem(STORAGE_KEYS.QUESTIONS, JSON.stringify(questions));
+  const saveSessionIdToStorage = (id: string) => {
+    localStorage.setItem(STORAGE_KEYS.SESSION_ID, id);
+  };
+
+  const saveTotalQuestionsToStorage = (count: number) => {
+    localStorage.setItem(STORAGE_KEYS.TOTAL, count.toString());
   };
 
   const saveCategoryToStorage = (cat: string) => {
     localStorage.setItem(STORAGE_KEYS.CATEGORY, cat);
-  };
-
-  const saveQuestionCountToStorage = (count: number) => {
-    localStorage.setItem(STORAGE_KEYS.QUESTION_COUNT, count.toString());
   };
 
   const saveStartTimeToStorage = (time: number) => {
@@ -114,9 +115,9 @@ export default function ExamPage() {
     const storedStep = localStorage.getItem(STORAGE_KEYS.STEP);
     const storedCurrent = localStorage.getItem(STORAGE_KEYS.CURRENT);
     const storedAnswers = localStorage.getItem(STORAGE_KEYS.ANSWERS);
-    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
+    const storedSessionId = localStorage.getItem(STORAGE_KEYS.SESSION_ID);
+    const storedTotal = localStorage.getItem(STORAGE_KEYS.TOTAL);
     const storedCategory = localStorage.getItem(STORAGE_KEYS.CATEGORY);
-    const storedQuestionCount = localStorage.getItem(STORAGE_KEYS.QUESTION_COUNT);
     const storedStartTime = localStorage.getItem(STORAGE_KEYS.START_TIME);
 
     return {
@@ -124,9 +125,9 @@ export default function ExamPage() {
       step: storedStep ? parseInt(storedStep) : null,
       current: storedCurrent ? parseInt(storedCurrent) : 0,
       answers: storedAnswers ? JSON.parse(storedAnswers) : null,
-      questions: storedQuestions ? JSON.parse(storedQuestions) as ShuffledQuestion[] : null,
+      sessionId: storedSessionId,
+      total: storedTotal ? parseInt(storedTotal) : 0,
       category: storedCategory as string | null,
-      questionCount: storedQuestionCount ? parseInt(storedQuestionCount) as QuestionCount : null,
       startTime: storedStartTime ? parseInt(storedStartTime) : null,
       mode: (localStorage.getItem(STORAGE_KEYS.MODE) as GameMode) || 'exam',
       lives: localStorage.getItem(STORAGE_KEYS.LIVES) ? parseInt(localStorage.getItem(STORAGE_KEYS.LIVES)!) : 3,
@@ -138,9 +139,9 @@ export default function ExamPage() {
     localStorage.removeItem(STORAGE_KEYS.STEP);
     localStorage.removeItem(STORAGE_KEYS.CURRENT);
     localStorage.removeItem(STORAGE_KEYS.ANSWERS);
-    localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
+    localStorage.removeItem(STORAGE_KEYS.SESSION_ID);
+    localStorage.removeItem(STORAGE_KEYS.TOTAL);
     localStorage.removeItem(STORAGE_KEYS.CATEGORY);
-    localStorage.removeItem(STORAGE_KEYS.QUESTION_COUNT);
     localStorage.removeItem(STORAGE_KEYS.START_TIME);
     localStorage.removeItem(STORAGE_KEYS.MODE);
     localStorage.removeItem(STORAGE_KEYS.LIVES);
@@ -152,15 +153,15 @@ export default function ExamPage() {
   useEffect(() => {
     const stored = loadFromStorage();
 
-    if (stored.name && stored.step !== null && stored.questions && stored.questions.length > 0) {
+    if (stored.name && stored.step !== null && stored.sessionId) {
       const restoredStep = stored.step === PREPARING_STEP ? 3 : stored.step;
       setName(stored.name);
-      setSessionQuestions(stored.questions);
+      setSessionId(stored.sessionId);
+      setTotalQuestions(stored.total);
       setCurrent(stored.current || 0);
       setStep(restoredStep);
 
       if (stored.category) setCategory(stored.category);
-      if (stored.questionCount) setQuestionCount(stored.questionCount);
       if (stored.startTime) setStartTime(stored.startTime);
       setGameMode(stored.mode);
       setLives(stored.lives);
@@ -168,10 +169,24 @@ export default function ExamPage() {
       if (stored.answers && Array.isArray(stored.answers)) {
         setAnswers(stored.answers);
       } else {
-        setAnswers(Array(stored.questions.length).fill(null));
+        setAnswers(Array(stored.total).fill(null));
       }
 
-      setIsRestored(true);
+      // Fetch the current question if in quiz step
+      if (restoredStep === 3) {
+        setIsLoading(true);
+        getSessionQuestionViaRpc(stored.sessionId, stored.current || 0)
+          .then(q => {
+            setCurrentQuestion(q);
+          })
+          .catch(e => console.error(e))
+          .finally(() => {
+            setIsLoading(false);
+            setIsRestored(true);
+          });
+      } else {
+        setIsRestored(true);
+      }
     } else {
       setIsRestored(true);
     }
@@ -208,21 +223,29 @@ export default function ExamPage() {
   const startNewSession = async () => {
     setIsLoading(true);
     try {
-      const pool = await fetchPublicQuestions(category);
-      const count = isSurvival ? pool.length : questionCount;
-      const prepared = prepareSessionQuestions(pool, count);
+      const count = isSurvival ? 9999 : questionCount;
+      const { sessionId: newSessionId, total: newTotal } = await startExamSessionViaRpc(name, category, gameMode, count);
+      
+      if (newTotal === 0) {
+        throw new Error('Tidak ada soal di kategori ini.');
+      }
 
-      setSessionQuestions(prepared);
-      setAnswers(Array(prepared.length).fill(null));
+      setSessionId(newSessionId);
+      setTotalQuestions(newTotal);
+      setAnswers(Array(newTotal).fill(null));
       setCurrent(0);
 
-      saveQuestionsToStorage(prepared);
-      saveAnswersToStorage(Array(prepared.length).fill(null));
+      saveSessionIdToStorage(newSessionId);
+      saveTotalQuestionsToStorage(newTotal);
+      saveAnswersToStorage(Array(newTotal).fill(null));
       saveCurrentQuestionToStorage(0);
       saveCategoryToStorage(category);
-      saveQuestionCountToStorage(count);
-    } catch (err) {
+
+      const firstQuestion = await getSessionQuestionViaRpc(newSessionId, 0);
+      setCurrentQuestion(firstQuestion);
+    } catch (err: any) {
       console.error('Failed to prepare session:', err);
+      alert(err.message || 'Gagal memulai sesi ujian.');
     } finally {
       setIsLoading(false);
     }
@@ -278,6 +301,22 @@ export default function ExamPage() {
     goToStep(6);
   };
 
+  const proceedToNext = async (nextIdx: number) => {
+    setIsLoading(true);
+    try {
+      const nextQ = await getSessionQuestionViaRpc(sessionId!, nextIdx);
+      setCurrentQuestion(nextQ);
+      setCurrent(nextIdx);
+      saveCurrentQuestionToStorage(nextIdx);
+      scrollToQuestionTop();
+    } catch (e) {
+      console.error(e);
+      alert('Gagal mengambil soal berikutnya.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const nextQuestion = async () => {
     if (feedbackResult) return;
 
@@ -286,7 +325,9 @@ export default function ExamPage() {
       const selectedAnswer = answers[current];
       
       // Wait for server to validate answer securely
-      const isCorrect = await checkAnswerViaRpc(currentQuestion.id, selectedAnswer || '');
+      setIsLoading(true);
+      const isCorrect = await checkSessionAnswerViaRpc(sessionId!, current, selectedAnswer || '');
+      setIsLoading(false);
 
       setFeedbackResult(isCorrect ? 'correct' : 'wrong');
 
@@ -305,10 +346,7 @@ export default function ExamPage() {
         }
 
         if (current < total - 1) {
-          const nextIdx = current + 1;
-          setCurrent(nextIdx);
-          saveCurrentQuestionToStorage(nextIdx);
-          scrollToQuestionTop();
+          void proceedToNext(current + 1);
         } else {
           endSession();
         }
@@ -317,21 +355,15 @@ export default function ExamPage() {
     }
 
     if (current < total - 1) {
-      const nextIdx = current + 1;
-      setCurrent(nextIdx);
-      saveCurrentQuestionToStorage(nextIdx);
-      scrollToQuestionTop();
+      await proceedToNext(current + 1);
     } else {
       endSession();
     }
   };
 
-  const skipQuestion = () => {
+  const skipQuestion = async () => {
     if (current < total - 1) {
-      const nextIdx = current + 1;
-      setCurrent(nextIdx);
-      saveCurrentQuestionToStorage(nextIdx);
-      scrollToQuestionTop();
+      await proceedToNext(current + 1);
     } else {
       endSession();
     }
@@ -347,7 +379,9 @@ export default function ExamPage() {
     setQuestionCount(20);
     setStep(1);
     setCurrent(0);
-    setSessionQuestions([]);
+    setSessionId(null);
+    setCurrentQuestion(null);
+    setTotalQuestions(0);
     setAnswers([]);
     setScore(0);
     setStartTime(null);
@@ -355,37 +389,34 @@ export default function ExamPage() {
     setGameMode('exam');
     setLives(3);
     setSaved(false);
+    setRecapData([]);
     clearStorage();
   };
 
   // ==================== AUTO-SAVE TO SUPABASE ====================
 
   const autoSaveToSupabase = useCallback(async () => {
-    if (!name || total === 0 || saved) return;
+    if (!name || total === 0 || saved || !sessionId) return;
     setSaving(true);
     try {
       const answersArray = answers.map((answer, idx) => {
         return {
-          question_id: sessionQuestions[idx]?.id ?? idx + 1,
+          question_index: idx,
           user_answer: answer,
         };
       });
 
-      const finalStartTime = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
       const finalEndTime = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
 
       // Submit all answers securely to server for grading and saving
-      const serverCalculatedScore = await submitExamViaRpc(
-        name,
-        category,
-        gameMode,
-        questionCount,
+      const result = await submitSessionExamViaRpc(
+        sessionId,
         answersArray,
-        finalStartTime,
         finalEndTime
       );
 
-      setScore(serverCalculatedScore);
+      setScore(result.score);
+      setRecapData(result.recap);
       setSaved(true);
       clearStorage();
     } catch (err) {
@@ -393,7 +424,7 @@ export default function ExamPage() {
     } finally {
       setSaving(false);
     }
-  }, [answers, category, name, questionCount, sessionQuestions, total, startTime, endTime, gameMode, saved]);
+  }, [answers, name, total, endTime, saved, sessionId]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -810,12 +841,12 @@ export default function ExamPage() {
           </div>
 
           <div className="space-y-6 mb-12">
-            {sessionQuestions
+            {recapData
               .filter((_, idx) => !isSurvival || idx <= current)
-              .map((q, idx) => {
-                const userAnswer = answers[idx];
-                const correctOpt = q.options.find(o => o.label === q.correct_label);
-                const isCorrect = userAnswer === correctOpt?.text;
+              .map((item, idx) => {
+                const userAnswer = item.user_answer;
+                const correctText = item.correct_text;
+                const isCorrect = item.is_correct;
                 const isSkipped = !userAnswer;
 
                 const userOptionHtml = userAnswer || null;
@@ -824,7 +855,7 @@ export default function ExamPage() {
                   <div key={idx} className="bg-nike-grey-100 p-6 sm:p-8 rounded-[20px]">
                     <div className="flex gap-4 mb-4">
                       <span className="font-display text-[24px] text-nike-grey-300 shrink-0">{(idx + 1).toString().padStart(2, '0')}</span>
-                      <RichContent html={q.question_text} className="font-bold text-[18px] sm:text-[20px] text-nike-black pt-1 leading-tight flex-1 min-w-0" />
+                      <RichContent html={item.question_text} className="font-bold text-[18px] sm:text-[20px] text-nike-black pt-1 leading-tight flex-1 min-w-0" />
                     </div>
 
                     <div className="ml-[10px] sm:ml-[40px] pl-6 border-l-[2px] border-nike-grey-300">
@@ -839,12 +870,19 @@ export default function ExamPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-4">
                           <div className="flex items-start gap-3">
                             <div className="w-2 h-2 rounded-full bg-nike-red mt-2 shrink-0"></div>
                             <div className="text-[16px] font-bold text-nike-red flex-1 min-w-0">
                               <p className="uppercase mb-1">WRONG ANSWER</p>
                               <RichContent html={userOptionHtml ?? ''} />
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <span className="text-[18px] mt-0.5">✅</span>
+                            <div>
+                              <span className="block text-[12px] font-bold text-nike-grey-500 uppercase tracking-wider mb-1">Correct Answer</span>
+                              <RichContent html={correctText} className="text-[16px] font-medium text-nike-green" />
                             </div>
                           </div>
                         </div>

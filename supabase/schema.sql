@@ -275,3 +275,195 @@ BEGIN
   RETURN v_score;
 END;
 $$;
+
+-- ============================================================
+-- Security Enhancements v2: Session Logs (Masked IDs)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS exam_logs (
+  session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  question_count INTEGER NOT NULL,
+  question_ids INT[] NOT NULL,
+  start_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE exam_logs ENABLE ROW LEVEL SECURITY;
+
+-- 1. Start Exam Session
+CREATE OR REPLACE FUNCTION start_exam_session(p_name TEXT, p_category TEXT, p_mode TEXT, p_count INT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_session_id UUID;
+  v_question_ids INT[];
+  v_actual_count INT;
+BEGIN
+  IF p_category = 'All Categories' THEN
+    SELECT array_agg(id) INTO v_question_ids FROM (
+      SELECT id FROM questions ORDER BY random() LIMIT p_count
+    ) sq;
+  ELSE
+    SELECT array_agg(id) INTO v_question_ids FROM (
+      SELECT id FROM questions WHERE p_category = ANY(categories) ORDER BY random() LIMIT p_count
+    ) sq;
+  END IF;
+  
+  IF v_question_ids IS NULL THEN
+    v_question_ids := ARRAY[]::INT[];
+  END IF;
+
+  v_actual_count := COALESCE(array_length(v_question_ids, 1), 0);
+
+  INSERT INTO exam_logs (name, category, mode, question_count, question_ids)
+  VALUES (p_name, p_category, p_mode, v_actual_count, v_question_ids)
+  RETURNING session_id INTO v_session_id;
+
+  RETURN jsonb_build_object(
+    'session_id', v_session_id,
+    'question_count', v_actual_count
+  );
+END;
+$$;
+
+-- 2. Get Session Question
+CREATE OR REPLACE FUNCTION get_session_question(p_session_id UUID, p_index INT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_question_id INT;
+  v_question_data JSONB;
+BEGIN
+  SELECT question_ids[p_index + 1] INTO v_question_id
+  FROM exam_logs
+  WHERE session_id = p_session_id;
+
+  IF v_question_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT jsonb_build_object(
+    'question_text', question_text,
+    'option_a', option_a,
+    'option_b', option_b,
+    'option_c', option_c,
+    'option_d', option_d,
+    'option_e', option_e,
+    'categories', categories
+  ) INTO v_question_data
+  FROM questions
+  WHERE id = v_question_id;
+
+  RETURN v_question_data;
+END;
+$$;
+
+-- 3. Check Session Answer
+CREATE OR REPLACE FUNCTION check_session_answer(p_session_id UUID, p_index INT, p_answer_text TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_question_id INT;
+  v_correct_label CHAR(1);
+  v_correct_text TEXT;
+BEGIN
+  SELECT question_ids[p_index + 1] INTO v_question_id
+  FROM exam_logs
+  WHERE session_id = p_session_id;
+
+  IF v_question_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  SELECT correct_answer INTO v_correct_label FROM questions WHERE id = v_question_id;
+  
+  IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_question_id;
+  ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_question_id;
+  ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_question_id;
+  ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_question_id;
+  ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_question_id;
+  END IF;
+
+  RETURN strip_html(p_answer_text) = strip_html(v_correct_text);
+END;
+$$;
+
+-- 4. Submit Session Exam
+CREATE OR REPLACE FUNCTION submit_session_exam(p_session_id UUID, p_answers JSONB, p_end_time TIMESTAMPTZ)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_log exam_logs%ROWTYPE;
+  v_score INTEGER := 0;
+  v_elem JSONB;
+  v_q_index INT;
+  v_q_id INT;
+  v_user_ans_text TEXT;
+  v_correct_label CHAR(1);
+  v_correct_text TEXT;
+  v_is_correct BOOLEAN;
+  v_processed_answers JSONB := '[]'::jsonb;
+  v_recap JSONB := '[]'::jsonb;
+  v_question_text TEXT;
+BEGIN
+  SELECT * INTO v_log FROM exam_logs WHERE session_id = p_session_id;
+  
+  IF v_log.session_id IS NULL THEN
+    RAISE EXCEPTION 'Session not found';
+  END IF;
+
+  FOR v_elem IN SELECT * FROM jsonb_array_elements(p_answers)
+  LOOP
+    v_q_index := (v_elem->>'question_index')::INT;
+    v_user_ans_text := v_elem->>'user_answer';
+    v_q_id := v_log.question_ids[v_q_index + 1];
+    
+    IF v_q_id IS NOT NULL THEN
+        SELECT question_text, correct_answer INTO v_question_text, v_correct_label FROM questions WHERE id = v_q_id;
+        
+        IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
+        ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_q_id;
+        ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_q_id;
+        ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_q_id;
+        ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
+        END IF;
+        
+        v_is_correct := (strip_html(v_user_ans_text) = strip_html(v_correct_text) AND v_user_ans_text IS NOT NULL AND v_user_ans_text != 'skipped');
+        
+        IF v_is_correct THEN
+          v_score := v_score + 1;
+        END IF;
+        
+        v_processed_answers := v_processed_answers || jsonb_build_object(
+          'question_id', v_q_id,
+          'user_answer', v_user_ans_text,
+          'is_correct', v_is_correct
+        );
+
+        v_recap := v_recap || jsonb_build_object(
+          'question_text', v_question_text,
+          'user_answer', v_user_ans_text,
+          'correct_text', v_correct_text,
+          'is_correct', v_is_correct
+        );
+    END IF;
+  END LOOP;
+  
+  INSERT INTO exam_results (name, score, total_questions, category, question_count, taken_at, user_answers, start_time, end_time, mode)
+  VALUES (v_log.name, v_score, v_log.question_count, v_log.category, v_log.question_count, p_end_time, v_processed_answers, v_log.start_time, p_end_time, v_log.mode);
+  
+  DELETE FROM exam_logs WHERE session_id = p_session_id;
+  
+  RETURN jsonb_build_object('score', v_score, 'recap', v_recap);
+END;
+$$;
