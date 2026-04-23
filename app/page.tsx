@@ -874,15 +874,8 @@ export default function ExamPage() {
                           <div className="flex items-start gap-3">
                             <div className="w-2 h-2 rounded-full bg-nike-red mt-2 shrink-0"></div>
                             <div className="text-[16px] font-bold text-nike-red flex-1 min-w-0">
-                              <p className="uppercase mb-1">WRONG ANSWER</p>
+                              <p className="uppercase mb-1">WRONG</p>
                               <RichContent html={userOptionHtml ?? ''} />
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <span className="text-[18px] mt-0.5">✅</span>
-                            <div>
-                              <span className="block text-[12px] font-bold text-nike-grey-500 uppercase tracking-wider mb-1">Correct Answer</span>
-                              <RichContent html={correctText} className="text-[16px] font-medium text-nike-green" />
                             </div>
                           </div>
                         </div>
