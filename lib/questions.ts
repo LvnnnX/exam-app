@@ -58,6 +58,9 @@ function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
   };
 }
 
+// Categories hidden from user selection (still available in admin)
+const HIDDEN_CATEGORIES = ['bonus'];
+
 export async function fetchCategories(): Promise<CategoryInfo[]> {
   const { data, error } = await supabase
     .from('questions')
@@ -71,15 +74,17 @@ export async function fetchCategories(): Promise<CategoryInfo[]> {
   // Deduplicate manually 
   const uniqueCategories = Array.from(new Set(data.flatMap((q) => q.categories || [])));
   
-  return uniqueCategories.map((cat) => {
-    // Basic Title Casing for the display label: 'general_informatics' -> 'General Informatics'
-    const label = cat
-      .split('_')
-      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    
-    return { value: cat, label };
-  });
+  return uniqueCategories
+    .filter((cat) => !HIDDEN_CATEGORIES.includes(cat))
+    .map((cat) => {
+      // Basic Title Casing for the display label: 'general_informatics' -> 'General Informatics'
+      const label = cat
+        .split('_')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      
+      return { value: cat, label };
+    });
 }
 
 export async function fetchQuestions(category?: string): Promise<RawQuestion[]> {
