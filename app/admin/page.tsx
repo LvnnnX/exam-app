@@ -37,7 +37,7 @@ type QuestionDraft = {
   categories: string[];
 };
 
-const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '';
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '';
 
 const EMPTY_DRAFT: QuestionDraft = {
   question_text: '<p></p>',
@@ -63,8 +63,8 @@ function sanitizeRichHtml(value: string): string {
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   const [activeTab, setActiveTab] = useState<'questions' | 'results'>('questions');
   const [selectedQuestion, setSelectedQuestion] = useState<RawQuestion | null>(null);
@@ -157,9 +157,9 @@ export default function AdminPage() {
       .replace(/\b\w/g, (match) => match.toUpperCase());
   };
 
-  const handlePinSubmit = async (event: React.FormEvent) => {
+  const handlePasswordSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (pinInput === ADMIN_PIN) {
+    if (passwordInput === ADMIN_PASSWORD) {
       try {
         // Authenticate with Supabase to get a valid JWT for RLS
         const { data, error } = await supabase.auth.signInAnonymously();
@@ -167,7 +167,7 @@ export default function AdminPage() {
 
         setIsAuthenticated(true);
         setSessionInfo(data.session?.user.id || 'anonymous');
-        setPinError('');
+        setPasswordError('');
 
         if (activeTab === 'results') {
           void fetchResults();
@@ -177,13 +177,13 @@ export default function AdminPage() {
         }
       } catch (err: any) {
         console.error('Auth failed:', err.message);
-        setPinError(`Auth Failed: ${err.message}`);
+        setPasswordError(`Auth Failed: ${err.message}`);
       }
       return;
     }
 
-    setPinError('Invalid PIN');
-    setPinInput('');
+    setPasswordError('Invalid password');
+    setPasswordInput('');
   };
 
   const loadAllCategories = async () => {
@@ -437,18 +437,17 @@ export default function AdminPage() {
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Admin Login</h1>
-          <form onSubmit={handlePinSubmit}>
+          <form onSubmit={handlePasswordSubmit}>
             <div className="mb-4">
-              <label className="block text-gray-700 mb-2">Enter PIN</label>
+              <label className="block text-gray-700 mb-2">Enter Password</label>
               <input
                 type="password"
-                value={pinInput}
-                onChange={(event) => setPinInput(event.target.value)}
-                placeholder="Enter your PIN"
+                value={passwordInput}
+                onChange={(event) => setPasswordInput(event.target.value)}
+                placeholder="Enter admin password"
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                maxLength={6}
               />
-              {pinError && <p className="text-red-500 text-sm mt-1">{pinError}</p>}
+              {passwordError && <p className="text-red-500 text-sm mt-1">{passwordError}</p>}
             </div>
             <button
               type="submit"
