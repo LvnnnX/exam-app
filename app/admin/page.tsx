@@ -5,7 +5,7 @@ import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
 import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchCategories, type CategoryInfo } from '@/lib/questions';
-import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
+import { ensureHtmlDocument, stripHtml, isPlateEmpty } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
 
 type ExamResult = {
@@ -37,7 +37,7 @@ type QuestionDraft = {
   categories: string[];
 };
 
-const ADMIN_PIN = 'smanda';
+const ADMIN_PIN = '123456';
 
 const EMPTY_DRAFT: QuestionDraft = {
   question_text: '<p></p>',

@@ -47,3 +47,4 @@ next-env.d.ts
 tes-schema.sql
 skills-lock.json
 .agents
+*.exe

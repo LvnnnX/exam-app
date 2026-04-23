@@ -1,108 +1,153 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
-import hljs from 'highlight.js';
-import katex from 'katex';
-import { ensureHtmlDocument } from '@/lib/rich-text';
+import React, { useMemo, useEffect } from 'react';
+import { Plate, PlateContent, usePlateEditor, PlateElement, type PlateElementProps } from 'platejs/react';
+import { ParagraphPlugin } from 'platejs/react';
+import { 
+  BoldPlugin, 
+  ItalicPlugin, 
+  StrikethroughPlugin, 
+  CodePlugin,
+  HeadingPlugin,
+  BlockquotePlugin,
+  HorizontalRulePlugin
+} from '@platejs/basic-nodes/react';
+import { ListPlugin } from '@platejs/list-classic/react';
+import { ImagePlugin } from '@platejs/media/react';
+import { CodeBlockPlugin } from '@platejs/code-block/react';
+import { EquationPlugin, InlineEquationPlugin, useEquationElement } from '@platejs/math/react';
+import DOMPurify from 'dompurify';
 
 import 'katex/dist/katex.min.css';
 
 type RichContentProps = {
-  html: string;
+  html: string; // Now this might be stringified JSON
   className?: string;
 };
 
-const SANITIZE_OPTIONS: DomPurifyConfig = {
-  USE_PROFILES: { html: true },
-  FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
-  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
-  ALLOWED_ATTR: [
-    'href',
-    'target',
-    'rel',
-    'src',
-    'alt',
-    'title',
-    'class',
-    'data-language',
-    'data-type',
-    'data-latex',
-    'loading',
-    'decoding',
-    'referrerpolicy',
-  ],
+const isJson = (str: string) => {
+  if (!str) return false;
+  try {
+    const parsed = JSON.parse(str);
+    return Array.isArray(parsed);
+  } catch (e) {
+    return false;
+  }
 };
 
-function RichContent({ html, className = '' }: RichContentProps) {
-  const [mounted, setMounted] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+function ReadOnlyEquation(props: PlateElementProps) {
+  const katexRef = React.useRef<HTMLDivElement>(null);
+  useEquationElement({ element: props.element as any, katexRef });
+  return (
+    <PlateElement as="div" className="my-4 flex justify-center" {...props}>
+      <div ref={katexRef} className="text-lg" />
+      {props.children}
+    </PlateElement>
+  );
+}
 
+function ReadOnlyInlineEquation(props: PlateElementProps) {
+  const katexRef = React.useRef<HTMLDivElement>(null);
+  useEquationElement({ element: props.element as any, katexRef });
+  return (
+    <PlateElement as="span" className="inline-block mx-1 align-middle" {...props}>
+      <span ref={katexRef} className="text-base" />
+      {props.children}
+    </PlateElement>
+  );
+}
+
+export default function RichContent({ html, className = '' }: RichContentProps) {
+  const isPlate = useMemo(() => isJson(html), [html]);
+
+  const editorValue = useMemo(() => {
+    if (isPlate) return JSON.parse(html);
+    return [];
+  }, [html, isPlate]);
+
+  const editor = usePlateEditor({
+    value: editorValue,
+    plugins: [
+      ParagraphPlugin,
+      HeadingPlugin,
+      BlockquotePlugin,
+      BoldPlugin,
+      ItalicPlugin,
+      StrikethroughPlugin,
+      CodePlugin,
+      ListPlugin,
+      HorizontalRulePlugin,
+      ImagePlugin,
+      CodeBlockPlugin,
+      EquationPlugin,
+      InlineEquationPlugin,
+    ],
+    override: {
+      components: {
+        blockquote: (props: PlateElementProps) => (
+          <PlateElement as="blockquote" className="border-l-4 border-gray-200 pl-4 italic text-gray-600 my-4" {...props} />
+        ),
+        h1: (props: PlateElementProps) => <PlateElement as="h1" className="text-3xl font-bold my-4" {...props} />,
+        h2: (props: PlateElementProps) => <PlateElement as="h2" className="text-2xl font-bold my-3" {...props} />,
+        h3: (props: PlateElementProps) => <PlateElement as="h3" className="text-xl font-bold my-2" {...props} />,
+        hr: (props: PlateElementProps) => {
+          const { children, ...rest } = props;
+          return (
+            <PlateElement as="div" {...rest}>
+              <hr className="my-4 border-t-2 border-gray-200" />
+              {children}
+            </PlateElement>
+          );
+        },
+        img: (props: PlateElementProps) => (
+          <PlateElement as="div" className="my-4" {...props}>
+            <img src={props.element.url as string} alt="" className="max-w-full rounded-lg shadow-sm" />
+            {props.children}
+          </PlateElement>
+        ),
+        code_block: (props: PlateElementProps) => (
+          <PlateElement as="pre" className="bg-gray-900 text-gray-100 p-4 rounded-lg my-4 font-mono text-sm overflow-x-auto" {...props}>
+            <code>{props.children}</code>
+          </PlateElement>
+        ),
+        code_line: (props: PlateElementProps) => (
+          <PlateElement as="div" {...props} />
+        ),
+        equation: ReadOnlyEquation,
+        inline_equation: ReadOnlyInlineEquation,
+      }
+    }
+  });
+
+  // Sync value for read-only editor
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (isPlate && editor) {
+      editor.tf.setValue(editorValue);
+    }
+  }, [editorValue, editor, isPlate]);
 
+  // If it's legacy HTML, we still use the old sanitizer + dangerouslySetInnerHTML
   const safeHtml = useMemo(() => {
-    if (!mounted) {
-      return '';
-    }
-    const normalized = ensureHtmlDocument(html);
-    return String(DOMPurify.sanitize(normalized, SANITIZE_OPTIONS));
-  }, [html, mounted]);
-
-  useEffect(() => {
-    if (!mounted || !containerRef.current) {
-      return;
-    }
-
-    const codeBlocks = containerRef.current.querySelectorAll('pre code');
-    codeBlocks.forEach((block) => {
-      const element = block as HTMLElement;
-      if (element.className.includes('language-pseudocode')) {
-        element.classList.remove('language-pseudocode');
-        element.classList.add('language-plaintext');
-      }
-
-      if (!element.dataset.hljsDone) {
-        hljs.highlightElement(element);
-        element.dataset.hljsDone = 'true';
-      }
+    if (isPlate) return '';
+    return DOMPurify.sanitize(html || '', {
+      USE_PROFILES: { html: true },
     });
+  }, [html, isPlate]);
 
-    const images = containerRef.current.querySelectorAll('img');
-    images.forEach((image) => {
-      image.setAttribute('loading', 'lazy');
-      image.setAttribute('decoding', 'async');
-      image.setAttribute('referrerpolicy', 'no-referrer');
-    });
-
-    // Render KaTeX math nodes that come from TipTap's Mathematics extension
-    const mathNodes = containerRef.current.querySelectorAll('[data-type="inline-math"], [data-type="block-math"]');
-    mathNodes.forEach((node) => {
-      const element = node as HTMLElement;
-      const latex = element.getAttribute('data-latex') || element.textContent || '';
-      const isBlock = element.getAttribute('data-type') === 'block-math';
-
-      if (latex && !element.dataset.katexDone) {
-        try {
-          element.innerHTML = katex.renderToString(latex, {
-            throwOnError: false,
-            displayMode: isBlock,
-          });
-          element.dataset.katexDone = 'true';
-        } catch {
-          // Leave content as-is if KaTeX fails
-        }
-      }
-    });
-  }, [safeHtml, mounted]);
+  if (isPlate) {
+    return (
+      <div className={`rich-content-plate ${className}`}>
+        <Plate editor={editor} readOnly>
+          <PlateContent className="prose prose-slate max-w-none" />
+        </Plate>
+      </div>
+    );
+  }
 
   return (
     <div
-      ref={containerRef}
-      className={`rich-content ${className}`.trim()}
+      className={`rich-content-legacy ${className}`}
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );
 }
-export default React.memo(RichContent);

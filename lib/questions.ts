@@ -14,12 +14,12 @@ export type QuestionCount = typeof QUESTION_COUNTS[number];
 // Raw question shape from Supabase (also used as fallback)
 export type RawQuestion = {
   id: number;
-  question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
-  option_e: string;
+  question_text: string | any;
+  option_a: string | any;
+  option_b: string | any;
+  option_c: string | any;
+  option_d: string | any;
+  option_e: string | any;
   correct_answer: string; // 'A' | 'B' | 'C' | 'D' | 'E'
   categories: string[];
 };
