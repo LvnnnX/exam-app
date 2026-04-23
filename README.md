@@ -13,13 +13,15 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 ### 👤 Fitur Pengguna (Peserta)
 *   **Registrasi Instan**: Sistem pendaftaran nama yang cepat sebelum memulai ujian.
 *   **Kustomisasi Ujian**: Pilih mode permainan (Exam atau Survival), jumlah soal, dan kategori yang diinginkan.
-*   **Survival Mode (BARU)**: Mode tantangan ekstrim dengan sistem 3-Nyawa (Lives). Terdapat fitur pelacakan skor real-time, *visual feedback* instan beranimasi (SVG + Glassmorphism), dan opsi *Surrender*.
-*   **Kategori Dinamis (Multi-Tag)**: Pertanyaan kini mendukung banyak kategori sekaligus, memberikan fleksibilitas ekstra untuk pengelompokan materi.
-*   **Pengacakan Cerdas**: Implementasi algoritma *Fisher-Yates Shuffle* untuk mengacak soal dan opsi jawaban secara dinamis.
-*   **Sesi Lokal (Persistence)**: Fitur auto-save sesi ujian di LocalStorage, memungkinkan peserta melanjutkan ujian jika halaman tidak sengaja tertutup. Mode dan nyawa (lives) juga tersimpan aman.
-*   **Time Tracking Presisi**: Melacak waktu pengerjaan ujian secara akurat, mencakup waktu mulai, waktu selesai, dan total durasi.
-*   **Data Tracking Canggih**: Merekam opsi jawaban yang dipilih secara *exact string*, menjamin data peserta tidak akan tertukar meski terjadi proses pengacakan.
-*   **Laporan Skor Terperinci**: Tampilan skor akhir otomatis beserta persentase kelulusan dan durasi pengerjaan.
+*   **Survival Mode (BARU)**: Mode tantangan ekstrim dengan sistem 3-Nyawa (Lives).
+*   **Zero-Trust Security (ANTI-HACK)**:
+    *   **JIT Question Fetching**: Soal diambil dari server **satu per satu** (Just-In-Time). Tidak ada soal masa depan di browser.
+    *   **Encrypted Storage**: Data lokal di-enkripsi (**AES-256**) dan diverifikasi (**HMAC-SHA256**).
+    *   **Obfuscated Keys**: Nama storage key di-hash (SHA256).
+    *   **Server-Side Authority**: Kalkulasi skor dan nyawa dilakukan di database (Supabase RPC).
+*   **Session Persistence**: Sinkronisasi status otomatis dari database setelah *page reload*.
+*   **Auto-Cleanup**: Pembersihan otomatis sesi ujian kadaluarsa (>2 hari).
+*   **Laporan Skor Terperinci**: Hasil pengerjaan instan tanpa kebocoran kunci jawaban.
 
 ### 🔐 Fitur Admin (Dashboard)
 *   **Autentikasi PIN**: Sistem login aman menggunakan 6-digit PIN khusus.
@@ -38,9 +40,10 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 ## 🛠️ Tech Stack
 
 *   **Frontend**: Next.js 15 (App Router), React, Tailwind CSS 4.
-*   **Backend & DB**: Supabase (PostgreSQL, Auth, Storage).
-*   **Rich Text**: TipTap Content Editor.
-*   **Utility**: DOMPurify (Sanitization), Highlight.js (Syntax Highlighting).
+*   **Backend & DB**: Supabase (PostgreSQL, RPC Functions, Storage).
+*   **Security**: CryptoJS (AES-256, HMAC-SHA256, SHA256 Hashing).
+*   **Rich Text**: TipTap Content Editor, KaTeX.
+*   **Utility**: DOMPurify, Highlight.js.
 
 ---
 
@@ -50,17 +53,17 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 exam-app/
 ├── app/
 │   ├── admin/             # Dashboard Admin & Manajemen Hasil
-│   ├── components/        # Komponen UI Reusable (RichContent, dll)
-│   └── page.tsx           # Halaman Utama & Interface Ujian
+│   ├── components/        # Komponen UI (RichContent, QuestionDisplay)
+│   └── page.tsx           # Logika Utama & Interface Ujian (Anti-Hack)
 ├── lib/
-│   ├── questions.ts       # Logika pengambilan data & pengacakan
+│   ├── security.ts        # Layer Enkripsi & Integrity Check
+│   ├── questions.ts       # RPC Wrappers & JIT Fetching
 │   ├── rich-text.ts       # Sanitasi HTML & utilitas teks
 │   └── supabase.ts        # Konfigurasi Supabase Client
 ├── scripts/
 │   └── seed-questions.ts  # Script untuk seeding data awal
 ├── supabase/
-│   └── schema.sql         # Skema Database & Kebijakan RLS
-├── public/                # Asset statis (logo, gambar)
+│   └── schema.sql         # Skema Database, RPC & Auto-Cleanup
 └── README.md              # Dokumentasi proyek
 ```
 
@@ -116,6 +119,7 @@ Ikuti langkah-langkah berikut untuk menjalankan proyek di mesin lokal Anda:
 | :--- | :--- |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL API Project Supabase Anda. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Anon Key dari Project Supabase Anda. |
+| `NEXT_PUBLIC_EXAM_SECRET_KEY` | Kunci rahasia untuk enkripsi LocalStorage (AES/HMAC). |
 
 ---
 
