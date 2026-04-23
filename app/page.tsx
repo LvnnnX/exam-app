@@ -647,10 +647,7 @@ export default function ExamPage() {
                 {name}
               </span>
               <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-                Kategori: {categoryLabel} {isSurvival && '· Survival'}
-              </span>
-              <span className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest">
-                Question {current + 1} / {total}
+                Kategori: {categoryLabel} {isSurvival && '· Survival'} · {current + 1}
               </span>
             </div>
             <div className="sm:text-right">
@@ -815,7 +812,9 @@ export default function ExamPage() {
               </h2>
               <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{name}</p>
               <p className="text-[16px] font-medium text-nike-grey-500 uppercase">
-                {categoryLabel} — {score} / {total}
+                {isSurvival 
+                  ? `Kamu telah menyelesaikan sebanyak ${recapData.filter((_, idx) => idx <= current).length} soal` 
+                  : `${categoryLabel} — ${score} / ${total}`}
               </p>
             </div>
             <div>
