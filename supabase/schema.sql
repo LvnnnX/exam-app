@@ -195,25 +195,16 @@ DROP POLICY IF EXISTS "questions_select" ON questions;
 CREATE POLICY "questions_select" ON questions FOR SELECT TO authenticated USING (auth.jwt() ->> 'email' = 'admin@exam.local');
 
 -- 3. Create RPC to check a single answer (for Survival mode)
-CREATE OR REPLACE FUNCTION check_answer(p_question_id INT, p_answer TEXT)
+CREATE OR REPLACE FUNCTION check_answer(p_question_id INT, p_answer_key TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
   v_correct_label CHAR(1);
-  v_correct_text TEXT;
 BEGIN
   SELECT correct_answer INTO v_correct_label FROM questions WHERE id = p_question_id;
-  
-  IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = p_question_id;
-  END IF;
-
-  RETURN p_answer = v_correct_text;
+  RETURN p_answer_key = v_correct_label;
 END;
 $$;
 
@@ -228,9 +219,9 @@ DECLARE
   v_total INTEGER;
   v_elem JSONB;
   v_q_id INT;
-  v_user_ans TEXT;
+  v_user_ans_text TEXT;
+  v_user_ans_key TEXT;
   v_correct_label CHAR(1);
-  v_correct_text TEXT;
   v_is_correct BOOLEAN;
   v_processed_answers JSONB := '[]'::jsonb;
 BEGIN
@@ -239,18 +230,12 @@ BEGIN
   FOR v_elem IN SELECT * FROM jsonb_array_elements(p_answers)
   LOOP
     v_q_id := (v_elem->>'question_id')::INT;
-    v_user_ans := v_elem->>'user_answer';
+    v_user_ans_text := v_elem->>'user_answer';
+    v_user_ans_key := v_elem->>'user_answer_key';
     
     SELECT correct_answer INTO v_correct_label FROM questions WHERE id = v_q_id;
     
-    IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
-    ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_q_id;
-    ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_q_id;
-    ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_q_id;
-    ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
-    END IF;
-    
-    v_is_correct := (v_user_ans = v_correct_text AND v_user_ans IS NOT NULL AND v_user_ans != 'skipped');
+    v_is_correct := (v_user_ans_key = v_correct_label AND v_user_ans_key IS NOT NULL);
     
     IF v_is_correct THEN
       v_score := v_score + 1;
@@ -258,7 +243,7 @@ BEGIN
     
     v_processed_answers := v_processed_answers || jsonb_build_object(
       'question_id', v_q_id,
-      'user_answer', v_user_ans,
+      'user_answer', v_user_ans_text,
       'is_correct', v_is_correct
     );
   END LOOP;

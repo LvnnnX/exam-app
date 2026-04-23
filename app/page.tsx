@@ -63,6 +63,14 @@ export default function ExamPage() {
   const currentQuestion = sessionQuestions[current] ?? null;
   const hasAnswerSelected = total > 0 && answers[current] !== null;
 
+  const getOriginalLabel = useCallback((qIdx: number, answerText: string | null) => {
+    if (!answerText) return null;
+    const q = sessionQuestions[qIdx];
+    if (!q) return null;
+    const opt = q.options.find(o => o.text === answerText);
+    return opt ? opt.originalLabel : null;
+  }, [sessionQuestions]);
+
   // ==================== SCORE CALCULATION ====================
   // Score is now calculated securely on the server via RPC.
   // Local score state is updated by the server response.
@@ -284,9 +292,10 @@ export default function ExamPage() {
     // In survival mode, evaluate the answer when they click Next via Server
     if (isSurvival && currentQuestion) {
       const selectedAnswer = answers[current];
+      const answerKey = getOriginalLabel(current, selectedAnswer);
       
       // Wait for server to validate answer securely
-      const isCorrect = await checkAnswerViaRpc(currentQuestion.id, selectedAnswer || '');
+      const isCorrect = await checkAnswerViaRpc(currentQuestion.id, answerKey || '');
 
       setFeedbackResult(isCorrect ? 'correct' : 'wrong');
 
@@ -368,6 +377,7 @@ export default function ExamPage() {
         return {
           question_id: sessionQuestions[idx]?.id ?? idx + 1,
           user_answer: answer,
+          user_answer_key: getOriginalLabel(idx, answer),
         };
       });
 
