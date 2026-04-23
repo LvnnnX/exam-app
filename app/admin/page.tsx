@@ -38,6 +38,7 @@ type QuestionDraft = {
 };
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '';
+const AUTH_VERSION = '2'; // Increment this to force all admins to logout
 
 const EMPTY_DRAFT: QuestionDraft = {
   question_text: '<p></p>',
@@ -101,11 +102,19 @@ export default function AdminPage() {
   useEffect(() => {
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      
+      // Check auth version to force logout of old sessions
+      const localAuthVersion = localStorage.getItem('admin_auth_version');
+      
+      if (session && localAuthVersion === AUTH_VERSION) {
         setIsAuthenticated(true);
         setSessionInfo(session.user.id);
         void fetchAdminQuestions();
         void loadAllCategories();
+      } else if (session) {
+        // If they have a session but wrong/missing version, log them out
+        await supabase.auth.signOut();
+        localStorage.removeItem('admin_auth_version');
       }
     }
     void checkSession();
@@ -168,6 +177,7 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(data.session?.user.id || 'anonymous');
         setPasswordError('');
+        localStorage.setItem('admin_auth_version', AUTH_VERSION);
 
         if (activeTab === 'results') {
           void fetchResults();
@@ -194,6 +204,7 @@ export default function AdminPage() {
     }
     setIsAuthenticated(false);
     setSessionInfo(null);
+    localStorage.removeItem('admin_auth_version');
   };
 
   const loadAllCategories = async () => {
