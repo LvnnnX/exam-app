@@ -186,6 +186,16 @@ export default function AdminPage() {
     setPasswordInput('');
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+    setIsAuthenticated(false);
+    setSessionInfo(null);
+  };
+
   const loadAllCategories = async () => {
     try {
       const cats = await fetchCategories();
@@ -469,7 +479,7 @@ export default function AdminPage() {
           <p className="text-sm text-gray-600">Manage questions and view exam results</p>
         </div>
         <button
-          onClick={() => setIsAuthenticated(false)}
+          onClick={handleLogout}
           className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
         >
           Logout
