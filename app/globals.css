@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "highlight.js/styles/github.css";
 
+html {
+  scrollbar-gutter: stable;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #111111;
@@ -95,6 +99,10 @@ body {
   }
 }
 
+
+.scrollbar-stable {
+  scrollbar-gutter: stable;
+}
 
 .exam-question-content {
   min-height: 0;

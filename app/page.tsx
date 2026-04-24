@@ -34,7 +34,17 @@ const STORAGE_KEYS = {
   START_TIME: 'exam_start_time',
   MODE: 'exam_mode',
   LIVES: 'exam_lives',
+  EXPIRES_AT: 'exam_expires_at',
+  TIME_LIMIT: 'exam_time_limit',
 };
+
+const TIME_LIMIT_OPTIONS = [
+  { label: 'No Time', value: 0 },
+  { label: '30 Minutes', value: 30 },
+  { label: '60 Minutes', value: 60 },
+  { label: '90 Minutes', value: 90 },
+  { label: '120 Minutes', value: 120 },
+];
 
 export default function ExamPage() {
   // App state
@@ -63,6 +73,9 @@ export default function ExamPage() {
   const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<'correct' | 'wrong' | null>(null);
   const [recapData, setRecapData] = useState<any[]>([]);
+  const [timeLimit, setTimeLimit] = useState<number>(0); // in minutes, 0 = No Time
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [timeLeftDisplay, setTimeLeftDisplay] = useState<string>('');
   const isSurvival = gameMode === 'survival';
 
   const total = totalQuestions;
@@ -126,7 +139,17 @@ export default function ExamPage() {
       startTime: secureLoad<number>(STORAGE_KEYS.START_TIME),
       mode: secureLoad<GameMode>(STORAGE_KEYS.MODE) || 'exam',
       lives: secureLoad<number>(STORAGE_KEYS.LIVES) || 3,
+      expiresAt: secureLoad<string>(STORAGE_KEYS.EXPIRES_AT),
+      timeLimit: secureLoad<number>(STORAGE_KEYS.TIME_LIMIT) || 0,
     };
+  };
+
+  const saveExpiresAtToStorage = (val: string) => {
+    secureSave(STORAGE_KEYS.EXPIRES_AT, val);
+  };
+
+  const saveTimeLimitToStorage = (val: number) => {
+    secureSave(STORAGE_KEYS.TIME_LIMIT, val);
   };
 
   const clearStorage = () => {
@@ -160,6 +183,8 @@ export default function ExamPage() {
         setCategory(state.category);
         setGameMode(state.mode);
         setLives(state.lives);
+        setExpiresAt(state.expires_at);
+        saveExpiresAtToStorage(state.expires_at);
         if (stored.startTime) setStartTime(stored.startTime);
 
         // Map user_answers to local state
@@ -216,7 +241,7 @@ export default function ExamPage() {
     setIsLoading(true);
     try {
       const count = isSurvival ? 9999 : questionCount;
-      const { sessionId: newSessionId, total: newTotal } = await startExamSessionViaRpc(name, category, gameMode, count);
+      const { sessionId: newSessionId, total: newTotal, expiresAt: serverExpiresAt } = await startExamSessionViaRpc(name, category, gameMode, count, timeLimit);
 
       if (newTotal === 0) {
         throw new Error('Tidak ada soal di kategori ini.');
@@ -226,12 +251,15 @@ export default function ExamPage() {
       setTotalQuestions(newTotal);
       setAnswers(Array(newTotal).fill(null));
       setCurrent(0);
+      setExpiresAt(serverExpiresAt);
 
       saveSessionIdToStorage(newSessionId);
       saveTotalQuestionsToStorage(newTotal);
       saveAnswersToStorage(Array(newTotal).fill(null));
       saveCurrentQuestionToStorage(0);
       saveCategoryToStorage(category);
+      saveExpiresAtToStorage(serverExpiresAt);
+      saveTimeLimitToStorage(timeLimit);
 
       const firstQuestion = await getSessionQuestionViaRpc(newSessionId, 0);
       setCurrentQuestion(firstQuestion);
@@ -292,15 +320,26 @@ export default function ExamPage() {
     setIsLoading(true);
     try {
       if (!skipSave) {
-        await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
+        const result = await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
+        if (result && result.error === 'time_expired') {
+          // Time expired, auto-submit
+          void autoSaveToSupabase();
+          return;
+        }
       }
     } catch (e) {
       console.error(e);
+      if (e instanceof Error && e.message === 'time_expired') {
+        void autoSaveToSupabase();
+        return;
+      }
     } finally {
       setIsLoading(false);
-      setEndTime(Date.now());
-      goToStep(6);
     }
+
+    // Set step to 6 (Score)
+    setEndTime(Date.now());
+    setStep(6);
   };
 
   const proceedToNext = async (nextIdx: number, skipSave = false) => {
@@ -429,6 +468,30 @@ export default function ExamPage() {
       void autoSaveToSupabase();
     }
   }, [autoSaveToSupabase, isRestored, name, saved, saveFailed, step, total]);
+
+  // Global Timer Effect
+  useEffect(() => {
+    if (step !== 3 || !expiresAt) return;
+
+    const interval = setInterval(() => {
+      const expiry = new Date(expiresAt).getTime();
+      const now = new Date().getTime();
+      const diff = expiry - now;
+
+      if (diff <= 0) {
+        clearInterval(interval);
+        setTimeLeftDisplay('TIME EXPIRED');
+        void endSession(true); // Auto-submit without saving current answer to prevent race condition
+        return;
+      }
+
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setTimeLeftDisplay(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [step, expiresAt]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // ==================== HELPERS ====================
@@ -455,21 +518,21 @@ export default function ExamPage() {
           </h1>
           <div className="max-w-md w-full space-y-6">
             {/* Game Mode Selector */}
-            <label className="block">
-              <span className="block text-[16px] font-medium text-nike-black mb-2">MODE</span>
-              <div className="flex gap-3">
+            <div className="space-y-3">
+              <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Select Mode</span>
+              <div className="flex gap-2">
                 <button
                   onClick={() => setGameMode('exam')}
-                  className={`flex-1 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${gameMode === 'exam'
+                  className={`flex-1 h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider ${gameMode === 'exam'
                     ? 'bg-nike-black text-nike-white'
-                    : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
+                    : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
                     }`}
                 >
                   📝 Exam
                 </button>
                 <button
                   onClick={() => setGameMode('survival')}
-                  className={`flex-1 h-[44px] rounded-[30px] text-[14px] font-medium transition-all uppercase tracking-wider ${gameMode === 'survival'
+                  className={`flex-1 h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider ${gameMode === 'survival'
                     ? 'bg-nike-red text-nike-white'
                     : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-red hover:bg-red-50'
                     }`}
@@ -477,66 +540,84 @@ export default function ExamPage() {
                   ⚔️ Survival
                 </button>
               </div>
-            </label>
+            </div>
 
             {/* Name Input */}
-            <label className="block">
-              <span className="block text-[16px] font-medium text-nike-black mb-2">MASUKKAN NAMA ANDA</span>
+            <div className="space-y-3">
+              <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Your Name</span>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="NAMA KAMU"
-                className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-4 h-[48px] text-[16px] placeholder-nike-grey-500 focus:outline-none focus:border-nike-black focus:ring-1 focus:ring-nike-black transition-colors uppercase"
+                placeholder="ENTER NAME"
+                className="w-full bg-nike-grey-100 rounded-[12px] border border-nike-grey-300 px-4 h-[48px] text-[16px] placeholder-nike-grey-400 focus:outline-none focus:border-nike-black transition-all uppercase font-medium"
               />
-            </label>
+            </div>
 
-            {/* Category Selector */}
-            <label className="block">
-              <span className="block text-[16px] font-medium text-nike-black mb-2">KATEGORI PERTANYAAN</span>
-              <div className="flex flex-wrap gap-3">
-                {fetchError ? (
-                  <div className="w-full flex items-center justify-between bg-nike-red/10 p-4 rounded-[12px] border border-nike-red/20">
-                    <p className="text-nike-red text-[14px] font-medium uppercase">Connection Error</p>
-                    <button
-                      onClick={() => (window as any).__retryCategoryFetch?.()}
-                      className="px-4 h-[32px] rounded-[16px] bg-nike-red text-nike-white text-[10px] font-bold uppercase hover:bg-nike-red/80 transition-colors"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : availableCategories.length === 0 ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-nike-grey-300 border-t-nike-black rounded-full animate-spin"></div>
-                    <p className="text-nike-grey-500 text-[14px] font-medium uppercase tracking-wider">Syncing categories...</p>
-                  </div>
-                ) : (
-                  availableCategories.map((cat) => (
-                    <button
-                      key={cat.value}
-                      onClick={() => setCategory(cat.value)}
-                      className={`flex-1 sm:flex-none px-5 h-[44px] rounded-[30px] text-[13px] sm:text-[14px] font-medium transition-all uppercase tracking-wider ${category === cat.value
-                        ? 'bg-nike-black text-nike-white'
-                        : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
-                        }`}
-                    >
+            {/* Category Selector Dropdown */}
+            <div className="space-y-3">
+              <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Question Category</span>
+              {fetchError ? (
+                <div className="w-full flex items-center justify-between bg-nike-red/10 p-4 rounded-[12px] border border-nike-red/20">
+                  <p className="text-nike-red text-[14px] font-medium uppercase">Connection Error</p>
+                  <button
+                    onClick={() => (window as any).__retryCategoryFetch?.()}
+                    className="px-4 h-[32px] rounded-[16px] bg-nike-red text-nike-white text-[10px] font-bold uppercase hover:bg-nike-red/80 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : availableCategories.length === 0 ? (
+                <div className="flex items-center gap-2 h-[48px]">
+                  <div className="w-4 h-4 border-2 border-nike-grey-300 border-t-nike-black rounded-full animate-spin"></div>
+                  <p className="text-nike-grey-500 text-[14px] font-medium uppercase tracking-wider">Syncing categories...</p>
+                </div>
+              ) : (
+                <select
+                  value={category || 'none'}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-4 h-[48px] text-[16px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em' }}
+                >
+                  <option value="none">PILIH KATEGORI (NONE)</option>
+                  {availableCategories.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
                       {cat.label}
-                    </button>
-                  ))
-                )}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Time Limit Selector Buttons */}
+            <div className="space-y-3">
+              <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Time Limit (Global)</span>
+              <div className="flex flex-wrap gap-2">
+                {TIME_LIMIT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setTimeLimit(opt.value)}
+                    className={`px-6 h-[44px] rounded-[22px] text-[14px] font-bold uppercase transition-all whitespace-nowrap ${timeLimit === opt.value
+                      ? 'bg-nike-black text-nike-white'
+                      : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
+                      }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-            </label>
+            </div>
 
             {/* Question Count Selector — hidden in Survival mode */}
             {!isSurvival && (
-              <label className="block">
-                <span className="block text-[16px] font-medium text-nike-black mb-2">BANYAK PERTANYAAN</span>
-                <div className="flex gap-3">
+              <div className="space-y-3">
+                <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Question Count</span>
+                <div className="flex flex-wrap gap-2">
                   {QUESTION_COUNTS.map((count) => (
                     <button
                       key={count}
                       onClick={() => setQuestionCount(count)}
-                      className={`w-[72px] h-[44px] rounded-[30px] text-[16px] font-bold transition-all ${questionCount === count
+                      className={`px-6 h-[44px] rounded-[22px] text-[16px] font-bold transition-all ${questionCount === count
                         ? 'bg-nike-black text-nike-white'
                         : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
                         }`}
@@ -545,15 +626,15 @@ export default function ExamPage() {
                     </button>
                   ))}
                 </div>
-              </label>
+              </div>
             )}
 
             <button
               onClick={() => setStep(2)}
-              disabled={!name.trim() || !category}
-              className="w-full h-[54px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase"
+              disabled={!name.trim() || !category || category === 'none'}
+              className="w-full h-[54px] rounded-[27px] bg-nike-black text-nike-white text-[16px] font-bold hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider shadow-lg shadow-nike-black/10"
             >
-              Continue
+              Begin Session
             </button>
           </div>
         </div>
@@ -587,6 +668,10 @@ export default function ExamPage() {
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Questions</p>
                   <p className="text-[16px] font-bold text-nike-black">{isSurvival ? 'All' : questionCount}</p>
+                </div>
+                <div>
+                  <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Time Limit</p>
+                  <p className="text-[16px] font-bold text-nike-black uppercase">{TIME_LIMIT_OPTIONS.find(o => o.value === timeLimit)?.label}</p>
                 </div>
                 {isSurvival && (
                   <div>
@@ -660,16 +745,26 @@ export default function ExamPage() {
                 Kategori: {categoryLabel} {isSurvival && '· Survival'} · Soal Nomor {current + 1}
               </span>
             </div>
-            <div className="sm:text-right">
-              {hasAnswerSelected ? (
-                <span className="text-[14px] font-bold text-nike-green uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
-                  Answer Saved
-                </span>
-              ) : (
-                <span className="text-[14px] font-bold text-nike-grey-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">
-                  Pending Response
-                </span>
+
+            <div className="flex items-center gap-6">
+              {expiresAt && (
+                <div className="flex items-center gap-2 bg-nike-grey-100 px-4 py-2 rounded-full border border-nike-grey-200 shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-nike-red animate-pulse"></div>
+                  <span className="text-[14px] font-black font-mono text-nike-black">{timeLeftDisplay}</span>
+                </div>
               )}
+
+              <div className="sm:text-right">
+                {hasAnswerSelected ? (
+                  <span className="text-[14px] font-bold text-nike-green uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
+                    Answer Saved
+                  </span>
+                ) : (
+                  <span className="text-[14px] font-bold text-nike-grey-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">
+                    Pending Response
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -784,8 +879,8 @@ export default function ExamPage() {
               <div>
                 <h2 className="font-display text-[96px] sm:text-[120px] text-nike-black leading-[0.85] tracking-[0.03em] uppercase mb-4">
                   {percentage}%
-                  <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase pt-4">{score}/{total} Correct Answers</p>
                 </h2>
+                <p className="text-[24px] font-bold text-nike-grey-500 mb-2 uppercase pt-4">{score}/{total} Correct Answers</p>
               </div>
             )
           }
@@ -911,7 +1006,7 @@ export default function ExamPage() {
             </button>
           </div>
         </div>
-      </div >
+      </div>
     );
   }
 

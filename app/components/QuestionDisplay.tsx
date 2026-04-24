@@ -19,7 +19,7 @@ export default function QuestionDisplay({
     <div className="mb-0 h-auto md:h-[min(65vh,620px)] md:min-h-[420px] overflow-y-auto md:overflow-hidden border border-nike-grey-200 rounded-[24px] bg-white shadow-sm flex flex-col">
       <div className="flex flex-col md:grid md:h-full md:grid-cols-[70%_1px_1fr] flex-1">
         {/* Question section - 70% width on desktop */}
-        <div className="h-auto md:h-full overflow-visible md:overflow-y-auto p-6 md:p-10 flex flex-col pt-6 md:pt-12 border-b md:border-b-0 border-nike-grey-100 flex-1">
+        <div className="h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable p-6 md:p-10 flex flex-col pt-6 md:pt-12 border-b md:border-b-0 border-nike-grey-100 flex-1">
           <RichContent
             html={currentQuestion.question_text}
             className="exam-question-content text-[18px] md:text-[28px] font-bold text-nike-black leading-[1.25] tracking-tight"
@@ -32,7 +32,7 @@ export default function QuestionDisplay({
         </div>
 
         {/* Answer section - 30% width on desktop */}
-        <div className="flex-1 h-auto md:h-full overflow-visible md:overflow-y-auto p-6 md:p-10 flex flex-col justify-center bg-nike-grey-50 md:bg-white min-w-0">
+        <div className="flex-1 h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable p-6 md:p-10 flex flex-col justify-center bg-nike-grey-50 md:bg-white min-w-0">
           <div className="grid grid-rows-5 gap-3 w-full">
 
 

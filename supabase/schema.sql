@@ -236,7 +236,7 @@ TO authenticated
 USING (true);
 
 -- 1. Start Exam Session
-CREATE OR REPLACE FUNCTION start_exam_session(p_name TEXT, p_category TEXT, p_mode TEXT, p_count INT)
+CREATE OR REPLACE FUNCTION start_exam_session(p_name TEXT, p_category TEXT, p_mode TEXT, p_count INT, p_time_limit_minutes INT DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -245,6 +245,7 @@ DECLARE
   v_session_id UUID;
   v_question_ids INT[];
   v_actual_count INT;
+  v_expires_at TIMESTAMPTZ;
 BEGIN
   IF p_category = 'All Categories' THEN
     SELECT array_agg(id) INTO v_question_ids FROM (
@@ -262,13 +263,20 @@ BEGIN
 
   v_actual_count := COALESCE(array_length(v_question_ids, 1), 0);
 
-  INSERT INTO exam_logs (name, category, mode, question_count, question_ids)
-  VALUES (p_name, p_category, p_mode, v_actual_count, v_question_ids)
+  IF p_time_limit_minutes IS NOT NULL AND p_time_limit_minutes > 0 THEN
+    v_expires_at := NOW() + (p_time_limit_minutes || ' minutes')::INTERVAL;
+  ELSE
+    v_expires_at := NOW() + INTERVAL '2 days'; -- Default long expiry for "No Time"
+  END IF;
+
+  INSERT INTO exam_logs (name, category, mode, question_count, question_ids, expires_at)
+  VALUES (p_name, p_category, p_mode, v_actual_count, v_question_ids, v_expires_at)
   RETURNING session_id INTO v_session_id;
 
   RETURN jsonb_build_object(
     'session_id', v_session_id,
-    'question_count', v_actual_count
+    'question_count', v_actual_count,
+    'expires_at', v_expires_at
   );
 END;
 $$;
@@ -293,7 +301,8 @@ BEGIN
     'question_count', v_log.question_count,
     'mode', v_log.mode,
     'category', v_log.category,
-    'name', v_log.name
+    'name', v_log.name,
+    'expires_at', v_log.expires_at
   );
 END;
 $$;
@@ -334,7 +343,7 @@ $$;
 
 -- 4. Save Session Answer
 CREATE OR REPLACE FUNCTION save_session_answer(p_session_id UUID, p_index INT, p_answer_text TEXT)
-RETURNS BOOLEAN
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
@@ -346,7 +355,19 @@ DECLARE
   v_is_correct BOOLEAN := false;
 BEGIN
   SELECT * INTO v_log FROM exam_logs WHERE session_id = p_session_id;
-  IF v_log.session_id IS NULL OR v_log.is_finished THEN RETURN FALSE; END IF;
+  
+  IF v_log.session_id IS NULL THEN 
+    RETURN jsonb_build_object('success', false, 'error', 'session_not_found'); 
+  END IF;
+
+  IF v_log.is_finished THEN 
+    RETURN jsonb_build_object('success', false, 'error', 'session_finished'); 
+  END IF;
+
+  IF v_log.expires_at < NOW() THEN
+    UPDATE exam_logs SET is_finished = true WHERE session_id = p_session_id;
+    RETURN jsonb_build_object('success', false, 'error', 'time_expired');
+  END IF;
   
   UPDATE exam_logs
   SET user_answers = jsonb_set(user_answers, ARRAY[p_index::text], to_jsonb(p_answer_text)),
@@ -370,11 +391,11 @@ BEGIN
         UPDATE exam_logs SET lives = GREATEST(0, lives - 1) WHERE session_id = p_session_id;
       END IF;
       
-      RETURN v_is_correct;
+      RETURN jsonb_build_object('success', true, 'is_correct', v_is_correct);
     END IF;
   END IF;
   
-  RETURN true;
+  RETURN jsonb_build_object('success', true);
 END;
 $$;
 

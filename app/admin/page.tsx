@@ -112,7 +112,7 @@ export default function AdminPage() {
   const [activeResCategory, setActiveResCategory] = useState<string>('all');
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
   const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
-  
+
   // Live Tracking state
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
@@ -125,10 +125,10 @@ export default function AdminPage() {
   useEffect(() => {
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       // Check auth version to force logout of old sessions
       const localAuthVersion = localStorage.getItem('admin_auth_version');
-      
+
       if (session && localAuthVersion === AUTH_VERSION) {
         setIsAuthenticated(true);
         setSessionInfo(session.user.id);
@@ -146,7 +146,7 @@ export default function AdminPage() {
   // Live User Polling: Refresh data every 2 minutes when in Live Mode
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    
+
     if (isAuthenticated && isLiveMode) {
       interval = setInterval(() => {
         void fetchLiveSessions();
@@ -624,29 +624,21 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="mb-5 flex flex-wrap gap-2">
-            {categoryTabs.map((category) => {
-              const isActive = activeCategoryFilter === category;
-              const count = category === 'all'
-                ? adminQuestions.length
-                : (questionsByCategory[category]?.length ?? 0);
-
-              return (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategoryFilter(category)}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition-colors ${isActive
-                    ? 'bg-indigo-600 border-indigo-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-700 hover:border-indigo-400 hover:text-indigo-700'
-                    }`}
-                >
-                  <span>{getCategoryLabel(category)}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="mb-5 max-w-xs">
+            <label className="block text-xs font-black uppercase text-gray-400 tracking-widest mb-2">Filter Category</label>
+            <select
+              value={activeCategoryFilter}
+              onChange={(e) => setActiveCategoryFilter(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+            >
+              <option value="all">ALL CATEGORIES</option>
+              {Object.keys(questionsByCategory).filter(c => c !== 'all').map((category) => (
+                <option key={category} value={category}>
+                  {getCategoryLabel(category).toUpperCase()} ({questionsByCategory[category]?.length ?? 0})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="mb-6 flex">
@@ -856,58 +848,58 @@ export default function AdminPage() {
                           const answeredCount = Object.keys(session.user_answers).length;
                           const progress = Math.round((answeredCount / session.question_count) * 100);
 
-                        return (
-                          <tr key={session.session_id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{session.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${session.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                {session.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <span className="capitalize">{session.category?.replaceAll('_', ' ')}</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
-                              {session.mode === 'survival' ? answeredCount : `${answeredCount} / ${session.question_count}`}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {session.mode === 'survival' ? (
-                                <div className="flex gap-0.5">
-                                  {Array.from({ length: Number(session.lives || 0) }).map((_, i) => (
-                                    <span key={i} className="text-red-500">❤️</span>
-                                  ))}
-                                  {Array.from({ length: Math.max(0, 3 - Number(session.lives || 0)) }).map((_, i) => (
-                                    <span key={i} className="text-gray-300">🖤</span>
-                                  ))}
-                                </div>
-                              ) : '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {session.mode === 'survival' ? (
-                                <span className="text-green-600 font-bold uppercase text-[10px] tracking-wider animate-pulse">On Going</span>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-24 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                                    <div className="bg-indigo-600 h-full transition-all" style={{ width: `${progress}%` }}></div>
+                          return (
+                            <tr key={session.session_id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{session.name}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${session.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                  {session.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span className="capitalize">{session.category?.replaceAll('_', ' ')}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
+                                {session.mode === 'survival' ? answeredCount : `${answeredCount} / ${session.question_count}`}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {session.mode === 'survival' ? (
+                                  <div className="flex gap-0.5">
+                                    {Array.from({ length: Number(session.lives || 0) }).map((_, i) => (
+                                      <span key={i} className="text-red-500">❤️</span>
+                                    ))}
+                                    {Array.from({ length: Math.max(0, 3 - Number(session.lives || 0)) }).map((_, i) => (
+                                      <span key={i} className="text-gray-300">🖤</span>
+                                    ))}
                                   </div>
-                                  <span className="text-[10px] font-bold text-gray-500">{progress}%</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(session.start_time).toLocaleTimeString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button
-                                onClick={() => handleFetchLiveDetail(session)}
-                                className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
-                              >
-                                Track Live Progress
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                                ) : '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {session.mode === 'survival' ? (
+                                  <span className="text-green-600 font-bold uppercase text-[10px] tracking-wider animate-pulse">On Going</span>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-24 bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                      <div className="bg-indigo-600 h-full transition-all" style={{ width: `${progress}%` }}></div>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-500">{progress}%</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {new Date(session.start_time).toLocaleTimeString()}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button
+                                  onClick={() => handleFetchLiveDetail(session)}
+                                  className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
+                                >
+                                  Track Live Progress
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
@@ -1079,67 +1071,20 @@ export default function AdminPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Question Categories</label>
-                      <div className="border border-gray-200 rounded-lg p-3 max-h-[150px] overflow-y-auto bg-white space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Question Category</label>
+                      <select
+                        value={formData.categories?.[0] || 'none'}
+                        onChange={(e) => handleInputChange('categories', e.target.value === 'none' ? [] : [e.target.value])}
+                        className="w-full bg-white border border-gray-300 rounded-lg px-4 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+                      >
+                        <option value="none">NONE / SELECT CATEGORY</option>
                         {allCategories.map((cat) => (
-                          <label key={cat.value} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={formData.categories?.includes(cat.value)}
-                              onChange={(e) => {
-                                const newCats = e.target.checked
-                                  ? [...(formData.categories || []), cat.value]
-                                  : (formData.categories || []).filter(c => c !== cat.value);
-                                handleInputChange('categories', newCats);
-                              }}
-                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            {cat.label}
-                          </label>
+                          <option key={cat.value} value={cat.value}>
+                            {cat.label.toUpperCase()}
+                          </option>
                         ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          id="new-category-input"
-                          placeholder="Type new category..."
-                          className="flex-1 px-3 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:border-nike-black"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              const val = e.currentTarget.value.trim().toLowerCase().replace(/\s+/g, '_');
-                              if (val && !(formData.categories || []).includes(val)) {
-                                handleInputChange('categories', [...(formData.categories || []), val]);
-                                if (!allCategories.some(c => c.value === val)) {
-                                  const label = val.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                  setAllCategories(prev => [...prev, { value: val, label }]);
-                                }
-                                e.currentTarget.value = '';
-                              }
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            const input = document.getElementById('new-category-input') as HTMLInputElement;
-                            if (input) {
-                              const val = input.value.trim().toLowerCase().replace(/\s+/g, '_');
-                              if (val && !(formData.categories || []).includes(val)) {
-                                handleInputChange('categories', [...(formData.categories || []), val]);
-                                if (!allCategories.some(c => c.value === val)) {
-                                  const label = val.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                                  setAllCategories(prev => [...prev, { value: val, label }]);
-                                }
-                                input.value = '';
-                              }
-                            }
-                          }}
-                          className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200"
-                        >
-                          Add
-                        </button>
-                      </div>
+                      </select>
                     </div>
 
                     <div className="space-y-1">
@@ -1172,14 +1117,14 @@ export default function AdminPage() {
                       {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
                         <div
                           key={label}
-                          className={`p-4 rounded-xl border-2 transition-all ${selectedQuestion.correct_answer.toLowerCase() === label
+                          className={`p-4 rounded-xl border-2 transition-all ${selectedQuestion.correct_answer?.toLowerCase() === label
                             ? 'border-green-500 bg-green-50'
                             : 'border-gray-100 bg-white'
                             }`}
                         >
                           <div className="flex items-center justify-between mb-3 pb-2 border-b border-inherit">
                             <span className="font-bold uppercase text-gray-400 text-sm">Option {label}</span>
-                            {selectedQuestion.correct_answer.toLowerCase() === label && (
+                            {selectedQuestion.correct_answer?.toLowerCase() === label && (
                               <span className="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Correct</span>
                             )}
                           </div>
@@ -1194,7 +1139,7 @@ export default function AdminPage() {
                     <div className="grid grid-cols-1 gap-4">
                       <div className="p-4 bg-white rounded-xl border border-gray-100">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Categories</p>
-                        <p className="font-bold text-gray-900 capitalize">{selectedQuestion.categories?.join(', ').replaceAll('_', ' ')}</p>
+                        <p className="font-bold text-gray-900 capitalize">{selectedQuestion.categories?.join(', ').replace(/_/g, ' ')}</p>
                       </div>
                     </div>
                   </div>
@@ -1239,7 +1184,12 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Live Progress Tracking</h2>
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{trackingSession.name} • {trackingSession.mode}</p>
+                  <>
+                    <span className="text-sm font-black uppercase tracking-widest">
+                      {trackingSession.name}
+                    </span>
+                  </>
+                  <span className="text-sm font-bold text-gray-400 uppercase tracking-widest"> • {trackingSession.mode}</span>
                 </div>
               </div>
               <button onClick={() => setIsTrackingModalOpen(false)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
@@ -1268,11 +1218,11 @@ export default function AdminPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
                         <div key={label} className={`p-4 rounded-xl border-2 transition-all ${currentTrackedQuestion.correct_answer.toLowerCase() === label ? 'border-nike-green bg-green-50' : 'border-gray-100 bg-white'}`}>
-                           <div className="flex justify-between items-center mb-2">
-                             <span className="text-[10px] font-black uppercase text-gray-400">Option {label}</span>
-                             {currentTrackedQuestion.correct_answer.toLowerCase() === label && <span className="text-[10px] font-black uppercase text-nike-green">Correct Answer</span>}
-                           </div>
-                           <RichContent html={(currentTrackedQuestion as any)[`option_${label}`]} className="text-sm font-medium text-gray-800" />
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-black uppercase text-gray-400">Option {label}</span>
+                            {currentTrackedQuestion.correct_answer.toLowerCase() === label && <span className="text-[10px] font-black uppercase text-nike-green">Correct Answer</span>}
+                          </div>
+                          <RichContent html={(currentTrackedQuestion as any)[`option_${label}`]} className="text-sm font-medium text-gray-800" />
                         </div>
                       ))}
                     </div>
@@ -1306,7 +1256,7 @@ export default function AdminPage() {
                   <span className="w-2 h-2 rounded-full bg-gray-300"></span>
                   Session History
                 </h3>
-                
+
                 {detailLoading ? (
                   <div className="text-center py-10 text-gray-400 font-bold uppercase text-xs tracking-widest">Loading history...</div>
                 ) : detailQuestions.length === 0 ? (
@@ -1316,7 +1266,7 @@ export default function AdminPage() {
                     {trackingSession.question_ids.slice(0, trackingSession.current_index).map((qId, idx) => {
                       const question = detailQuestions.find(q => q.id === qId);
                       const userAnswerText = trackingSession.user_answers[idx.toString()];
-                      
+
                       if (!question) return null;
 
                       const correctOptionText = (question as any)[`option_${question.correct_answer.toLowerCase()}`];
@@ -1336,13 +1286,13 @@ export default function AdminPage() {
                           </div>
                           <div className="p-5 space-y-4">
                             <RichContent html={question.question_text} className="text-sm font-bold text-gray-900" />
-                            
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className={`p-3 rounded-xl border-2 ${isCorrect ? 'border-green-100 bg-green-50/30' : isSkipped ? 'border-gray-100 bg-white' : 'border-red-100 bg-red-50/30'}`}>
                                 <p className="text-[9px] font-black text-gray-400 uppercase mb-1">User Answer</p>
                                 <RichContent html={userAnswerText || 'No answer recorded'} className={`text-sm font-medium ${isCorrect ? 'text-green-800' : isSkipped ? 'text-gray-400 italic' : 'text-red-800'}`} />
                               </div>
-                              
+
                               {!isCorrect && !isSkipped && (
                                 <div className="p-3 rounded-xl border-2 border-nike-green/20 bg-green-50/50">
                                   <p className="text-[9px] font-black text-nike-green uppercase mb-1">Correct Answer ({question.correct_answer})</p>
@@ -1375,7 +1325,10 @@ export default function AdminPage() {
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Exam Breakdown</h2>
                 <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                  {viewingResult.name} • {viewingResult.category} • {new Date(viewingResult.taken_at).toLocaleDateString()}
+                  <>
+                    <span className="font-black text-nike-black">{viewingResult.name} </span>
+                  </>
+                  • {viewingResult.category} • {new Date(viewingResult.taken_at).toLocaleDateString()}
                 </p>
               </div>
               <button onClick={() => setViewingResult(null)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
@@ -1396,20 +1349,20 @@ export default function AdminPage() {
                     return (
                       <div key={idx} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
                         <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
-                          <span className="text-[10px] font-black text-gray-400 uppercase">Question {idx + 1}</span>
+                          <span className="text-[10px] font-black uppercase">Question {idx + 1}</span>
                           <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${answer.is_correct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                             {answer.is_correct ? 'Correct' : 'Incorrect'}
                           </span>
                         </div>
                         <div className="p-5 space-y-4">
                           <RichContent html={question.question_text} className="text-sm font-bold text-gray-900" />
-                          
+
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className={`p-3 rounded-xl border-2 ${answer.is_correct ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/30'}`}>
                               <p className="text-[9px] font-black text-gray-400 uppercase mb-1">User Answer</p>
                               <RichContent html={answer.user_answer} className={`text-sm font-medium ${answer.is_correct ? 'text-green-800' : 'text-red-800'}`} />
                             </div>
-                            
+
                             {!answer.is_correct && (
                               <div className="p-3 rounded-xl border-2 border-nike-green/20 bg-green-50/50">
                                 <p className="text-[9px] font-black text-nike-green uppercase mb-1">Correct Answer ({question.correct_answer})</p>
@@ -1427,9 +1380,9 @@ export default function AdminPage() {
 
             {/* Footer */}
             <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
-               <div className="text-sm font-black uppercase tracking-tight text-gray-900">
-                  Final Score: <span className={viewingResult.score / viewingResult.total_questions >= 0.7 ? 'text-nike-green' : 'text-nike-red'}>{viewingResult.score} / {viewingResult.total_questions}</span>
-               </div>
+              <div className="text-sm font-black uppercase tracking-tight text-gray-900">
+                Final Score: <span className={viewingResult.score / viewingResult.total_questions >= 0.7 ? 'text-nike-green' : 'text-nike-red'}>{viewingResult.score} / {viewingResult.total_questions}</span>
+              </div>
               <button onClick={() => setViewingResult(null)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Close Details</button>
             </div>
           </div>

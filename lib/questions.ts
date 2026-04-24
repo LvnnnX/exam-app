@@ -126,12 +126,13 @@ export async function fetchQuestions(category?: string): Promise<RawQuestion[]> 
   return (data as RawQuestion[]).map(normalizeRawQuestion);
 }
 
-export async function startExamSessionViaRpc(name: string, category: string, mode: string, count: number): Promise<{ sessionId: string; total: number }> {
+export async function startExamSessionViaRpc(name: string, category: string, mode: string, count: number, timeLimitMinutes: number): Promise<{ sessionId: string; total: number; expiresAt: string }> {
   const { data, error } = await supabase.rpc('start_exam_session', {
     p_name: name,
     p_category: category,
     p_mode: mode,
-    p_count: count
+    p_count: count,
+    p_time_limit_minutes: timeLimitMinutes > 0 ? timeLimitMinutes : null
   });
 
   if (error || !data) {
@@ -141,7 +142,8 @@ export async function startExamSessionViaRpc(name: string, category: string, mod
 
   return {
     sessionId: data.session_id,
-    total: data.question_count
+    total: data.question_count,
+    expiresAt: data.expires_at
   };
 }
 
@@ -174,18 +176,19 @@ export async function getSessionQuestionViaRpc(sessionId: string, index: number)
   return shuffleOptions(data as PublicQuestion);
 }
 
-export async function saveSessionAnswerViaRpc(sessionId: string, index: number, answerText: string): Promise<boolean> {
+export async function saveSessionAnswerViaRpc(sessionId: string, index: number, answerText: string): Promise<any> {
   const { data, error } = await supabase.rpc('save_session_answer', {
     p_session_id: sessionId,
     p_index: index,
     p_answer_text: answerText
   });
-  
+
   if (error) {
     console.error('save_session_answer rpc failed:', error.message);
-    return false;
+    throw new Error(error.message);
   }
-  return !!data;
+
+  return data;
 }
 
 export async function submitSessionExamViaRpc(
