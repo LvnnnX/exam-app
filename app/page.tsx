@@ -36,6 +36,7 @@ const STORAGE_KEYS = {
   LIVES: 'exam_lives',
   EXPIRES_AT: 'exam_expires_at',
   TIME_LIMIT: 'exam_time_limit',
+  SCORE: 'exam_score',
 };
 
 const TIME_LIMIT_OPTIONS = [
@@ -127,6 +128,10 @@ export default function ExamPage() {
     secureSave(STORAGE_KEYS.LIVES, l);
   };
 
+  const saveScoreToStorage = (s: number) => {
+    secureSave(STORAGE_KEYS.SCORE, s);
+  };
+
   const loadFromStorage = () => {
     return {
       name: secureLoad<string>(STORAGE_KEYS.NAME),
@@ -141,6 +146,7 @@ export default function ExamPage() {
       lives: secureLoad<number>(STORAGE_KEYS.LIVES) || 3,
       expiresAt: secureLoad<string>(STORAGE_KEYS.EXPIRES_AT),
       timeLimit: secureLoad<number>(STORAGE_KEYS.TIME_LIMIT) || 0,
+      score: secureLoad<number>(STORAGE_KEYS.SCORE) || 0,
     };
   };
 
@@ -174,17 +180,17 @@ export default function ExamPage() {
           return;
         }
 
-        // Restore everything from Server State
-        setName(state.name);
+        // Restore everything from Server State or Local Backups
+        setName(state.name || stored.name || '');
         setSessionId(stored.sessionId!);
         setTotalQuestions(state.question_count);
-        setCurrent(state.current_index);
-        setStep(state.current_index >= state.question_count ? 6 : 3);
-        setCategory(state.category);
-        setGameMode(state.mode);
-        setLives(state.lives);
-        setExpiresAt(state.expires_at);
-        saveExpiresAtToStorage(state.expires_at);
+        setCategory(state.category || stored.category || 'none');
+        setGameMode(state.mode || stored.mode || 'exam');
+        setLives(state.lives ?? stored.lives ?? 3);
+        setExpiresAt(state.expires_at || null);
+        if (state.expires_at) saveExpiresAtToStorage(state.expires_at);
+        setTimeLimit(stored.timeLimit ?? 0);
+        setScore(stored.score ?? 0);
         if (stored.startTime) setStartTime(stored.startTime);
 
         // Map user_answers to local state
@@ -196,8 +202,19 @@ export default function ExamPage() {
         }
         setAnswers(newAnswers);
 
+        // Fix rollback: if current question was already answered, advance to next
+        let restoreIndex = state.current_index;
+        if (state.user_answers && state.user_answers[String(restoreIndex)] != null) {
+          const nextIdx = restoreIndex + 1;
+          if (nextIdx < state.question_count) {
+            restoreIndex = nextIdx;
+          }
+        }
+        setCurrent(restoreIndex);
+        setStep(restoreIndex >= state.question_count ? 6 : 3);
+
         // Fetch current question data
-        getSessionQuestionViaRpc(stored.sessionId!, state.current_index).then(q => {
+        getSessionQuestionViaRpc(stored.sessionId!, restoreIndex).then(q => {
           setCurrentQuestion(q);
         }).finally(() => {
           setIsRestored(true);
@@ -278,6 +295,7 @@ export default function ExamPage() {
       setLives(3);
       saveLivesToStorage(3);
       setScore(0);
+      saveScoreToStorage(0);
     }
     goToStep(PREPARING_STEP);
     await startNewSession();
@@ -367,15 +385,25 @@ export default function ExamPage() {
       const selectedAnswer = answers[current];
 
       setIsLoading(true);
-      const isCorrect = await saveSessionAnswerViaRpc(sessionId!, current, selectedAnswer || 'skipped');
+      const result = await saveSessionAnswerViaRpc(sessionId!, current, selectedAnswer || 'skipped');
       setIsLoading(false);
 
+      if (result?.error === 'time_expired') {
+        void autoSaveToSupabase();
+        return;
+      }
+
+      const isCorrect = result?.is_correct === true;
       setFeedbackResult(isCorrect ? 'correct' : 'wrong');
 
       setTimeout(() => {
         setFeedbackResult(null);
         if (isCorrect) {
-          setScore(prev => prev + 1);
+          setScore(prev => {
+            const newScore = prev + 1;
+            saveScoreToStorage(newScore);
+            return newScore;
+          });
         } else {
           const newLives = lives - 1;
           setLives(newLives);
@@ -415,7 +443,7 @@ export default function ExamPage() {
 
   const restart = () => {
     setName('');
-    setCategory('general_informatics');
+    setCategory('none');
     setQuestionCount(20);
     setStep(1);
     setCurrent(0);
@@ -631,7 +659,12 @@ export default function ExamPage() {
 
             <button
               onClick={() => setStep(2)}
-              disabled={!name.trim() || !category || category === 'none'}
+              disabled={
+                !name.trim() || 
+                !category || 
+                category === 'none' || 
+                (availableCategories.length > 0 && !availableCategories.some(c => c.value === category))
+              }
               className="w-full h-[54px] rounded-[27px] bg-nike-black text-nike-white text-[16px] font-bold hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider shadow-lg shadow-nike-black/10"
             >
               Begin Session
@@ -747,7 +780,7 @@ export default function ExamPage() {
             </div>
 
             <div className="flex items-center gap-6">
-              {expiresAt && (
+              {timeLimit > 0 && expiresAt && (
                 <div className="flex items-center gap-2 bg-nike-grey-100 px-4 py-2 rounded-full border border-nike-grey-200 shadow-sm">
                   <div className="w-2 h-2 rounded-full bg-nike-red animate-pulse"></div>
                   <span className="text-[14px] font-black font-mono text-nike-black">{timeLeftDisplay}</span>
