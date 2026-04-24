@@ -117,6 +117,9 @@ export default function AdminPage() {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
+  const [trackingSession, setTrackingSession] = useState<LiveSession | null>(null);
+  const [currentTrackedQuestion, setCurrentTrackedQuestion] = useState<RawQuestion | null>(null);
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -170,7 +173,10 @@ export default function AdminPage() {
 
   const categoryTabs = useMemo(() => {
     // Collect all unique categories from the fetched data and sort them alphabetically
-    const categoriesFromData = Object.keys(questionsByCategory).sort();
+    // Exclude 'bonus' from the admin view as it's used for internal metrics
+    const categoriesFromData = Object.keys(questionsByCategory)
+      .filter(cat => cat !== 'bonus')
+      .sort();
     return ['all', ...categoriesFromData];
   }, [questionsByCategory]);
 
@@ -354,33 +360,30 @@ export default function AdminPage() {
   };
 
   const handleFetchLiveDetail = async (session: LiveSession) => {
-    // Reuse ExamResult modal structure by mapping LiveSession to a pseudo-ExamResult
-    const pseudoResult: ExamResult = {
-      id: 0, // Not in exam_results
-      name: session.name,
-      score: 0,
-      total_questions: session.question_count,
-      category: session.category,
-      taken_at: session.start_time,
-      mode: session.mode,
-      user_answers: Object.entries(session.user_answers).map(([idx, ans]) => ({
-        question_id: session.question_ids[parseInt(idx)],
-        user_answer: ans,
-        is_correct: false // We don't know yet for all, but for survival we might
-      }))
-    };
-    
-    setViewingResult(pseudoResult);
+    setTrackingSession(session);
+    setIsTrackingModalOpen(true);
     setDetailLoading(true);
-    setDetailQuestions([]);
 
     try {
-      if (session.question_ids.length > 0) {
-        const questions = await fetchQuestionsByIds(session.question_ids);
+      // Fetch only the specific question the user is currently answering
+      const currentQuestionId = session.question_ids[session.current_index];
+      if (currentQuestionId) {
+        const [question] = await fetchQuestionsByIds([currentQuestionId]);
+        setCurrentTrackedQuestion(question || null);
+      } else {
+        setCurrentTrackedQuestion(null);
+      }
+
+      // Also fetch all answered questions for the history list
+      const answeredIds = session.question_ids.slice(0, session.current_index);
+      if (answeredIds.length > 0) {
+        const questions = await fetchQuestionsByIds(answeredIds);
         setDetailQuestions(questions);
+      } else {
+        setDetailQuestions([]);
       }
     } catch (err) {
-      console.error('Error fetching live details:', err);
+      console.error('Failed to fetch live tracking details:', err);
     } finally {
       setDetailLoading(false);
     }
@@ -1221,85 +1224,199 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Result Details Modal */}
-      {viewingResult && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold">
-                  {viewingResult.id === 0 ? 'Live Progress' : 'Exam Breakdown'}: {viewingResult.name}
-                </h2>
-                <p className="text-sm text-gray-500">
-                  {viewingResult.id === 0 ? 'Started at ' : ''}{new Date(viewingResult.taken_at).toLocaleString()} • {viewingResult.category}
-                </p>
+      {/* Track Live Progress Modal */}
+      {isTrackingModalOpen && trackingSession && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setIsTrackingModalOpen(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-nike-green/10 flex items-center justify-center">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Live Progress Tracking</h2>
+                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{trackingSession.name} • {trackingSession.mode}</p>
+                </div>
               </div>
-              <button
-                onClick={() => setViewingResult(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-              </button>
+              <button onClick={() => setIsTrackingModalOpen(false)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 bg-gray-50">
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-8 bg-white">
+              <div className="mb-10">
+                <h3 className="text-xs font-black text-nike-green uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-nike-green animate-pulse"></span>
+                  Currently Answering
+                </h3>
+                {detailLoading ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-20 bg-gray-100 rounded-2xl w-full"></div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="h-12 bg-gray-100 rounded-xl"></div>
+                      <div className="h-12 bg-gray-100 rounded-xl"></div>
+                    </div>
+                  </div>
+                ) : currentTrackedQuestion ? (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-nike-grey-100 rounded-2xl border border-gray-200">
+                      <RichContent html={currentTrackedQuestion.question_text} className="text-xl font-bold text-gray-900 leading-tight" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
+                        <div key={label} className={`p-4 rounded-xl border-2 transition-all ${currentTrackedQuestion.correct_answer.toLowerCase() === label ? 'border-nike-green bg-green-50' : 'border-gray-100 bg-white'}`}>
+                           <div className="flex justify-between items-center mb-2">
+                             <span className="text-[10px] font-black uppercase text-gray-400">Option {label}</span>
+                             {currentTrackedQuestion.correct_answer.toLowerCase() === label && <span className="text-[10px] font-black uppercase text-nike-green">Correct Answer</span>}
+                           </div>
+                           <RichContent html={(currentTrackedQuestion as any)[`option_${label}`]} className="text-sm font-medium text-gray-800" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-10 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+                    <p className="text-gray-400 font-bold uppercase text-sm tracking-widest">Awaiting Question Synchronisation...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress Stats */}
+              <div className="grid grid-cols-3 gap-6 py-8 border-y border-gray-100">
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Index</p>
+                  <p className="text-2xl font-black text-gray-900">{trackingSession.current_index + 1} <span className="text-sm text-gray-300">/ {trackingSession.question_count}</span></p>
+                </div>
+                <div className="text-center border-x border-gray-100">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Answered</p>
+                  <p className="text-2xl font-black text-gray-900">{Object.keys(trackingSession.user_answers).length}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Status</p>
+                  <p className="text-2xl font-black text-nike-green animate-pulse">ACTIVE</p>
+                </div>
+              </div>
+
+              {/* Session History */}
+              <div className="mt-10 space-y-8">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-gray-300"></span>
+                  Session History
+                </h3>
+                
+                {detailLoading ? (
+                  <div className="text-center py-10 text-gray-400 font-bold uppercase text-xs tracking-widest">Loading history...</div>
+                ) : detailQuestions.length === 0 ? (
+                  <div className="text-center py-10 text-gray-300 font-bold uppercase text-[10px] tracking-widest border border-dashed rounded-2xl">No history yet</div>
+                ) : (
+                  <div className="space-y-6">
+                    {trackingSession.question_ids.slice(0, trackingSession.current_index).map((qId, idx) => {
+                      const question = detailQuestions.find(q => q.id === qId);
+                      const userAnswerText = trackingSession.user_answers[idx.toString()];
+                      
+                      if (!question) return null;
+
+                      const correctOptionText = (question as any)[`option_${question.correct_answer.toLowerCase()}`];
+                      const isCorrect = stripHtml(userAnswerText || '').trim() === stripHtml(correctOptionText || '').trim();
+                      const isSkipped = userAnswerText === 'skipped' || !userAnswerText;
+
+                      return (
+                        <div key={qId} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
+                          <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
+                            <span className="text-[10px] font-black text-gray-400 uppercase">Question {idx + 1}</span>
+                            {!isSkipped && (
+                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {isCorrect ? 'Correct' : 'Incorrect'}
+                              </span>
+                            )}
+                            {isSkipped && <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Skipped</span>}
+                          </div>
+                          <div className="p-5 space-y-4">
+                            <RichContent html={question.question_text} className="text-sm font-bold text-gray-900" />
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className={`p-3 rounded-xl border-2 ${isCorrect ? 'border-green-100 bg-green-50/30' : isSkipped ? 'border-gray-100 bg-white' : 'border-red-100 bg-red-50/30'}`}>
+                                <p className="text-[9px] font-black text-gray-400 uppercase mb-1">User Answer</p>
+                                <RichContent html={userAnswerText || 'No answer recorded'} className={`text-sm font-medium ${isCorrect ? 'text-green-800' : isSkipped ? 'text-gray-400 italic' : 'text-red-800'}`} />
+                              </div>
+                              
+                              {!isCorrect && !isSkipped && (
+                                <div className="p-3 rounded-xl border-2 border-nike-green/20 bg-green-50/50">
+                                  <p className="text-[9px] font-black text-nike-green uppercase mb-1">Correct Answer ({question.correct_answer})</p>
+                                  <RichContent html={correctOptionText} className="text-sm font-medium text-nike-green" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-gray-50 border-t flex justify-end">
+              <button onClick={() => setIsTrackingModalOpen(false)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Close Monitoring</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Result Details Modal */}
+      {viewingResult && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingResult(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+              <div>
+                <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Exam Breakdown</h2>
+                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">
+                  {viewingResult.name} • {viewingResult.category} • {new Date(viewingResult.taken_at).toLocaleDateString()}
+                </p>
+              </div>
+              <button onClick={() => setViewingResult(null)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-8 bg-white">
               {detailLoading ? (
-                <div className="py-12 text-center text-gray-500">Loading full session data...</div>
+                <div className="text-center py-20 text-gray-400 font-bold uppercase text-xs tracking-widest animate-pulse">Loading result history...</div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {viewingResult.user_answers.map((answer, idx) => {
                     const question = detailQuestions.find(q => q.id === answer.question_id);
+                    if (!question) return null;
+
+                    const correctOptionText = (question as any)[`option_${question.correct_answer.toLowerCase()}`];
 
                     return (
-                      <div key={idx} className="bg-white rounded-lg border shadow-sm overflow-hidden">
-                        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                          <span className="font-bold text-gray-700">Question {idx + 1}</span>
-                          {viewingResult.id !== 0 ? (
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${answer.is_correct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                              {answer.is_correct ? 'Correct' : 'Incorrect'}
-                            </span>
-                          ) : (
-                            question && answer.user_answer !== 'skipped' ? (
-                              <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${stripHtml(answer.user_answer) === stripHtml(question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {stripHtml(answer.user_answer) === stripHtml(question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string) ? 'Correct' : 'Incorrect'}
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-gray-100 text-gray-500">
-                                {answer.user_answer === 'skipped' ? 'Skipped' : 'Pending'}
-                              </span>
-                            )
-                          )}
+                      <div key={idx} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
+                          <span className="text-[10px] font-black text-gray-400 uppercase">Question {idx + 1}</span>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${answer.is_correct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {answer.is_correct ? 'Correct' : 'Incorrect'}
+                          </span>
                         </div>
-                        <div className="p-4 space-y-4">
-                          {question ? (
-                            <>
-                              <RichContent html={question.question_text} className="font-medium text-gray-900" />
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                <div className={`p-3 rounded-lg border ${answer.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-                                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">User Selected {['A', 'B', 'C', 'D', 'E'].includes(answer.user_answer) ? `(${answer.user_answer})` : ''}</p>
-                                  {answer.user_answer === 'skipped' ? (
-                                    <p className="text-sm font-medium text-gray-500 italic">Skipped</p>
-                                  ) : (
-                                    <RichContent
-                                      html={['A', 'B', 'C', 'D', 'E'].includes(answer.user_answer) ? (question[`option_${answer.user_answer.toLowerCase()}` as keyof RawQuestion] as string || answer.user_answer) : answer.user_answer}
-                                      className="text-gray-900 font-medium"
-                                    />
-                                  )}
-                                </div>
-                                {!answer.is_correct && (
-                                  <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
-                                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Correct Answer ({question.correct_answer})</p>
-                                    <RichContent
-                                      html={question[`option_${question.correct_answer.toLowerCase()}` as keyof RawQuestion] as string}
-                                      className="text-gray-900 font-medium"
-                                    />
-                                  </div>
-                                )}
+                        <div className="p-5 space-y-4">
+                          <RichContent html={question.question_text} className="text-sm font-bold text-gray-900" />
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className={`p-3 rounded-xl border-2 ${answer.is_correct ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/30'}`}>
+                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">User Answer</p>
+                              <RichContent html={answer.user_answer} className={`text-sm font-medium ${answer.is_correct ? 'text-green-800' : 'text-red-800'}`} />
+                            </div>
+                            
+                            {!answer.is_correct && (
+                              <div className="p-3 rounded-xl border-2 border-nike-green/20 bg-green-50/50">
+                                <p className="text-[9px] font-black text-nike-green uppercase mb-1">Correct Answer ({question.correct_answer})</p>
+                                <RichContent html={correctOptionText} className="text-sm font-medium text-nike-green" />
                               </div>
-                            </>
-                          ) : (
-                            <p className="text-gray-400 italic">Question data no longer available in database.</p>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -1308,19 +1425,12 @@ export default function AdminPage() {
               )}
             </div>
 
-            <div className="p-6 border-t flex justify-between items-center bg-white rounded-b-xl">
-              <div className="text-sm font-bold text-gray-700 uppercase">
-                {viewingResult.id === 0 ? 'Current Progress: ' : 'Final Score: '}
-                <span className={viewingResult.id !== 0 && viewingResult.score / viewingResult.total_questions >= 0.7 ? 'text-green-600' : 'text-indigo-600'}>
-                  {viewingResult.id === 0 ? viewingResult.user_answers.length : viewingResult.score} / {viewingResult.total_questions}
-                </span>
-              </div>
-              <button
-                onClick={() => setViewingResult(null)}
-                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                Done
-              </button>
+            {/* Footer */}
+            <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
+               <div className="text-sm font-black uppercase tracking-tight text-gray-900">
+                  Final Score: <span className={viewingResult.score / viewingResult.total_questions >= 0.7 ? 'text-nike-green' : 'text-nike-red'}>{viewingResult.score} / {viewingResult.total_questions}</span>
+               </div>
+              <button onClick={() => setViewingResult(null)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Close Details</button>
             </div>
           </div>
         </div>

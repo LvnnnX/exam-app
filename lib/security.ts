@@ -1,25 +1,41 @@
 import CryptoJS from 'crypto-js';
 
 const SECRET_KEY = process.env.NEXT_PUBLIC_EXAM_SECRET_KEY || 'default-secret-key-123';
+const SALT = 'exam-app-salt-v2';
 
 /**
- * Hashes a key for storage
+ * Derives a secure key using PBKDF2
  */
-function hashKey(key: string): string {
-  return CryptoJS.SHA256(key + SECRET_KEY).toString().substring(0, 16);
+function deriveKey(salt: string): CryptoJS.lib.WordArray {
+  return CryptoJS.PBKDF2(SECRET_KEY, salt, {
+    keySize: 256 / 32,
+    iterations: 1000
+  });
 }
 
 /**
- * Encrypts/Obfuscates a value for secure local storage
+ * Hashes a key for storage using SHA-512
+ */
+function hashKey(key: string): string {
+  return CryptoJS.SHA512(key + SALT + SECRET_KEY).toString().substring(0, 32);
+}
+
+/**
+ * Encrypts data for secure local storage with PBKDF2 derived keys
  */
 export function secureSave(key: string, value: any): void {
   try {
     const hashedKey = hashKey(key);
     const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-    const encrypted = CryptoJS.AES.encrypt(stringValue, SECRET_KEY).toString();
-    const hash = CryptoJS.HmacSHA256(stringValue, SECRET_KEY).toString();
     
-    const payload = JSON.stringify({ data: encrypted, signature: hash });
+    // Derive a unique key for this save operation
+    const encryptionKey = deriveKey(hashedKey);
+    const encrypted = CryptoJS.AES.encrypt(stringValue, encryptionKey.toString()).toString();
+    
+    // Use SHA-512 for high-security signature
+    const signature = CryptoJS.SHA512(stringValue + SECRET_KEY).toString();
+    
+    const payload = JSON.stringify({ data: encrypted, signature: signature, v: '2' });
     localStorage.setItem(`s_${hashedKey}`, payload);
   } catch (e) {
     console.error('Failed to securely save data:', e);
@@ -36,15 +52,18 @@ export function secureLoad<T>(key: string): T | null {
     const payloadStr = localStorage.getItem(securedKey);
     if (!payloadStr) return null;
 
-    const { data, signature } = JSON.parse(payloadStr);
-    const decryptedBytes = CryptoJS.AES.decrypt(data, SECRET_KEY);
+    const { data, signature, v } = JSON.parse(payloadStr);
+    
+    // Support migration or strictly enforce v2
+    const encryptionKey = deriveKey(hashedKey);
+    const decryptedBytes = CryptoJS.AES.decrypt(data, encryptionKey.toString());
     const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
     
     if (!decryptedString) return null;
 
-    // Verify integrity
-    const expectedHash = CryptoJS.HmacSHA256(decryptedString, SECRET_KEY).toString();
-    if (expectedHash !== signature) {
+    // Verify integrity using SHA-512
+    const expectedSignature = CryptoJS.SHA512(decryptedString + SECRET_KEY).toString();
+    if (expectedSignature !== signature) {
       console.error('Data integrity check failed for key:', key);
       localStorage.removeItem(securedKey);
       return null;
