@@ -720,7 +720,7 @@ export default function AdminPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Exam Results</h2>
               <button
-                onClick={() => fetchResults(0)}
+                onClick={() => isLiveMode ? fetchLiveSessions() : fetchResults(0)}
                 className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
               >
                 Refresh
