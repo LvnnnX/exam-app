@@ -136,6 +136,12 @@ export default function AdminPage() {
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Auth state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
   // Pagination and detailed view state
   const [resultPage, setResultPage] = useState(0);
   const [totalResults, setTotalResults] = useState(0);
@@ -290,6 +296,34 @@ export default function AdminPage() {
     setIsAuthenticated(false);
     setSessionInfo(null);
     localStorage.removeItem('admin_auth_version');
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.session) {
+        localStorage.setItem('admin_auth_version', AUTH_VERSION);
+        setIsAuthenticated(true);
+        setSessionInfo(data.session.user.id);
+        void fetchAdminQuestions();
+        void loadAllCategories();
+        void loadHiddenCategories();
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Login failed');
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const loadAllCategories = async () => {
@@ -714,17 +748,69 @@ export default function AdminPage() {
 
   if (isAuthenticated === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="max-w-md w-full p-8 bg-white rounded-2xl shadow-lg border border-slate-100 text-center">
-          <div className="w-16 h-16 bg-red-50 text-[#FF3B30] rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl">🔒</div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h1>
-          <p className="text-slate-500 mb-8">You must be logged in as an administrator to access this panel.</p>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition-colors"
-          >
-            Return to Home
-          </button>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-xl shadow-slate-200/50 border-2 border-slate-100 text-center">
+            <div className="w-20 h-20 bg-[#FF9500]/10 text-[#FF9500] rounded-[24px] flex items-center justify-center mx-auto mb-8 text-3xl shadow-inner">
+              🔒
+            </div>
+            
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">Admin Login</h1>
+            <p className="text-slate-400 text-sm mb-10 font-medium tracking-tight">Enter your credentials to access the panel.</p>
+
+            <form onSubmit={handleLogin} className="space-y-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Email Address</label>
+                <input 
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#4A90D9]/10 focus:border-[#4A90D9] transition-all placeholder:text-slate-300"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Password</label>
+                <input 
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#4A90D9]/10 focus:border-[#4A90D9] transition-all placeholder:text-slate-300"
+                  required
+                />
+              </div>
+
+              {authError && (
+                <div className="p-4 bg-red-50 border-2 border-red-100 rounded-2xl text-red-600 text-xs font-bold animate-shake">
+                  ⚠️ {authError}
+                </div>
+              )}
+
+              <button 
+                type="submit"
+                disabled={authLoading}
+                style={{ background: '#4A90D9' }}
+                className="w-full py-4 mt-4 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-200 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {authLoading ? 'Verifying...' : 'Sign In to Dashboard'}
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => window.location.href = '/'}
+                className="w-full py-4 bg-white border-2 border-slate-100 text-slate-400 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-colors mt-2"
+              >
+                Return to Home
+              </button>
+            </form>
+          </div>
+          
+          <p className="text-center mt-8 text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">
+            OSN SMANDAPURA • SECURE ADMIN ACCESS
+          </p>
         </div>
       </div>
     );
