@@ -579,6 +579,14 @@ export default function ExamPage() {
                   ⚔️ Survival
                 </button>
               </div>
+              <div className="mt-4">
+                 <button
+                  onClick={() => window.location.href = '/quiz'}
+                  className="w-full h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                >
+                  🎮 Join Live Quiz
+                </button>
+              </div>
             </div>
 
             {/* Name Input */}

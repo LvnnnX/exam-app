@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
+import AdminQuizTab from '@/app/components/AdminQuizTab';
 import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchCategories, fetchAllCategoriesAdmin, fetchHiddenCategories, saveHiddenCategories, type CategoryInfo } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
@@ -77,7 +78,48 @@ function sanitizeRichHtml(value: string): string {
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'questions' | 'results' | 'settings'>('questions');
+  const [activeTab, setActiveTab] = useState<'questions' | 'results' | 'settings' | 'quiz'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('admin_active_tab');
+      if (saved && ['questions', 'results', 'settings', 'quiz'].includes(saved)) return saved as any;
+    }
+    return 'questions';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('admin_active_tab', activeTab);
+    
+    // Trigger initial fetch for specific tabs
+    if (activeTab === 'results') {
+      void fetchResults();
+      void loadHiddenCategories();
+    } else if (activeTab === 'settings') {
+      void loadAllCategoriesAdmin();
+      void loadHiddenCategories();
+    } else {
+      void fetchAdminQuestions();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    // Auth Check
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const savedVersion = localStorage.getItem('admin_auth_version');
+      
+      if (session && savedVersion === AUTH_VERSION) {
+        setIsAuthenticated(true);
+      } else {
+        // If they have a session but wrong/missing version, log them out
+        await supabase.auth.signOut();
+        localStorage.removeItem('admin_auth_version');
+        setIsAuthenticated(false);
+      }
+    };
+    void checkSession();
+  }, []);
+
   const [selectedQuestion, setSelectedQuestion] = useState<RawQuestion | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -154,6 +196,22 @@ export default function AdminPage() {
       }
     }
     void checkSession();
+
+    // Restore active tab
+    const savedTab = localStorage.getItem('admin_active_tab') as any;
+    if (savedTab && ['questions', 'results', 'settings', 'quiz'].includes(savedTab)) {
+      setActiveTab(savedTab);
+      // Trigger initial fetch for that tab
+      if (savedTab === 'results') {
+        void fetchResults();
+        void loadHiddenCategories();
+      } else if (savedTab === 'settings') {
+        void loadAllCategoriesAdmin();
+        void loadHiddenCategories();
+      } else {
+        void fetchAdminQuestions();
+      }
+    }
   }, []);
 
   // Live User Polling: Refresh data every 2 minutes when in Live Mode
@@ -486,8 +544,9 @@ export default function AdminPage() {
     }
   };
 
-  const handleTabChange = (tab: 'questions' | 'results' | 'settings') => {
+   const handleTabChange = (tab: 'questions' | 'results' | 'settings' | 'quiz') => {
     setActiveTab(tab);
+    localStorage.setItem('admin_active_tab', tab);
 
     if (!isAuthenticated) {
       return;
@@ -697,8 +756,14 @@ export default function AdminPage() {
           Results Dashboard
         </button>
         <button
+          onClick={() => handleTabChange('quiz')}
+          className={`px-4 py-2 rounded-lg ${activeTab === 'quiz' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+        >
+          Quiz
+        </button>
+        <button
           onClick={() => handleTabChange('settings')}
-          className={`px-4 py-2 rounded-lg ${activeTab === 'settings' ? 'bg-slate-700 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          className={`ml-auto px-4 py-2 rounded-lg ${activeTab === 'settings' ? 'bg-slate-700 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
         >
           ⚙️ Settings
         </button>
@@ -1078,29 +1143,74 @@ export default function AdminPage() {
                 </div>
 
                 {/* Pagination Controls */}
-                {totalResults > ITEMS_PER_PAGE && (
-                  <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-between">
-                    <div className="text-sm text-gray-700">
-                      Showing <span className="font-medium">{resultPage * ITEMS_PER_PAGE + 1}</span> to <span className="font-medium">{Math.min((resultPage + 1) * ITEMS_PER_PAGE, totalResults)}</span> of <span className="font-medium">{totalResults}</span> results
+                {totalResults > ITEMS_PER_PAGE && (() => {
+                  const totalPages = Math.ceil(totalResults / ITEMS_PER_PAGE);
+                  return (
+                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                      <div className="flex-1 flex justify-between sm:hidden">
+                        <button
+                          onClick={() => fetchResults(resultPage - 1)}
+                          disabled={resultPage === 0}
+                          className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          onClick={() => fetchResults(resultPage + 1)}
+                          disabled={resultPage + 1 >= totalPages}
+                          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            Showing <span className="font-medium">{resultPage * ITEMS_PER_PAGE + 1}</span> to <span className="font-medium">{Math.min((resultPage + 1) * ITEMS_PER_PAGE, totalResults)}</span> of{' '}
+                            <span className="font-medium">{totalResults}</span> results
+                          </p>
+                        </div>
+                        <div>
+                          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button
+                              onClick={() => fetchResults(resultPage - 1)}
+                              disabled={resultPage === 0}
+                              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                              <span className="sr-only">Previous</span>
+                              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                            {[...Array(totalPages)].map((_, i) => (
+                              <button
+                                key={i}
+                                onClick={() => fetchResults(i)}
+                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                  resultPage === i
+                                    ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                }`}
+                              >
+                                {i + 1}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => fetchResults(resultPage + 1)}
+                              disabled={resultPage + 1 >= totalPages}
+                              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                              <span className="sr-only">Next</span>
+                              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </nav>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => fetchResults(resultPage - 1)}
-                        disabled={resultPage === 0}
-                        className="px-3 py-1 border rounded bg-white text-sm disabled:opacity-50 hover:bg-gray-50"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={() => fetchResults(resultPage + 1)}
-                        disabled={(resultPage + 1) * ITEMS_PER_PAGE >= totalResults}
-                        className="px-3 py-1 border rounded bg-white text-sm disabled:opacity-50 hover:bg-gray-50"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )
           )}
@@ -1633,6 +1743,10 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'quiz' && (
+        <AdminQuizTab categories={allCategoriesAdmin.filter(c => !hiddenCategories.includes(c.value))} />
       )}
     </div>
   );

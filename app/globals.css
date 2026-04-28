@@ -42,6 +42,9 @@ body {
 
 .rich-content {
   line-height: 1.5;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: normal;
 }
 
 .rich-content p {
@@ -91,10 +94,10 @@ body {
   .exam-question-content pre {
     max-height: none !important;
     max-width: 100% !important;
-    padding: 1rem !important;
+    padding: 1.25rem !important;
     overflow-x: auto !important;
-    white-space: pre !important;
-    word-break: normal !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
     margin: 0.8rem 0 !important;
   }
 }
@@ -140,8 +143,12 @@ body {
 .exam-option-content pre code {
   background: transparent !important;
   color: inherit !important;
-  letter-spacing: -0.025em !important;
-  line-height: 1.25 !important;
+  letter-spacing: normal !important;
+  line-height: 1.5 !important;
+  font-weight: normal !important;
+  white-space: pre !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
 }
 
 @media (max-width: 767px) {
@@ -151,9 +158,10 @@ body {
     max-width: 100% !important;
     width: 100% !important;
     overflow-x: auto !important;
-    white-space: pre !important;
-    word-break: normal !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
     box-sizing: border-box !important;
+    padding: 0.75rem !important;
   }
 }
 
