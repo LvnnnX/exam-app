@@ -55,6 +55,11 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       if (savedPlayerId) {
         supabase.from('player').select('*').eq('id', savedPlayerId).single().then(({ data }) => {
           if (data) {
+            // Rule 4 & 5: Strict check for completion state on mount
+            if (data.finished_at) {
+              setIsFinished(true);
+              return;
+            }
             setPlayer(data);
             // Restore index (Questions are loaded JIT)
             const savedIndex = localStorage.getItem(`quiz_index_${code}`);
@@ -108,6 +113,12 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     if (!name.trim()) return;
     setLoading(true);
     
+    if (session?.status === 'active' || session?.status === 'paused') {
+      alert('Kuis sedang berjalan atau ditunda. Anda tidak dapat bergabung.');
+      setLoading(false);
+      return;
+    }
+
     const result = await joinQuiz(session?.id || '', name.trim(), code);
     if ('error' in result) {
       alert(result.error);
@@ -227,8 +238,12 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       setStartTime(Date.now());
     } else {
       await finishPlayerQuiz(player.id);
+      // Rule 6: Clear active session data
       localStorage.removeItem(`quiz_index_${code}`);
+      localStorage.removeItem(`quiz_player_${code}`); 
       setIsFinished(true);
+      // Rule 7: Replace history state
+      router.replace(`/quiz/${code}`);
     }
   };
 

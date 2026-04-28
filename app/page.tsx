@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import QuestionDisplay from '@/app/components/QuestionDisplay';
 import RichContent from '@/app/components/RichContent';
@@ -50,6 +51,7 @@ const TIME_LIMIT_OPTIONS = [
 
 
 export default function ExamPage() {
+  const router = useRouter();
   // App state
   const [name, setName] = useState('');
   const [category, setCategory] = useState<string>('');
@@ -453,6 +455,8 @@ export default function ExamPage() {
       setSaved(true);
       setSaveFailed(false);
       clearStorage();
+      // Rule 7: Replace history to prevent back-button navigation to active exam
+      router.replace('/');
     } catch (err) {
       console.error('Auto-save error:', err);
       setSaveFailed(true);
@@ -553,7 +557,7 @@ export default function ExamPage() {
         setCodeError('Kode tidak valid');
       } else if (quiz.status === 'finished') {
         setCodeError('Kuis telah berakhir');
-      } else if (quiz.status === 'active') {
+      } else if (quiz.status === 'active' || quiz.status === 'paused') {
         setCodeError('Kuis sedang berjalan');
       } else {
         // Valid waiting session

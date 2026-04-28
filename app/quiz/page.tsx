@@ -19,8 +19,8 @@ export default function JoinQuizPage() {
     if (quiz) {
       if (quiz.status === 'finished') {
         setRejection({ title: 'Kuis Selesai', message: 'Kuis dengan kode ini telah berakhir dan tidak dapat diikuti lagi.' });
-      } else if (quiz.status === 'active') {
-        setRejection({ title: 'Kuis Sedang Berjalan', message: 'Kuis telah dimulai. Anda tidak dapat bergabung ke kuis yang sedang berlangsung.' });
+      } else if (quiz.status === 'active' || quiz.status === 'paused') {
+        setRejection({ title: 'Kuis Sedang Berjalan', message: 'Kuis telah dimulai atau sedang ditunda. Anda tidak dapat bergabung ke kuis yang sedang berlangsung.' });
       } else {
         router.push(`/quiz/${quiz.quiz_code}`);
       }
