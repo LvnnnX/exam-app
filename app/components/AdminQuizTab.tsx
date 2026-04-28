@@ -238,113 +238,118 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
       </div>
 
       {activeView === 'create' && !activeSession && (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto py-8">
           {/* Header Card */}
-          <div style={{background: 'linear-gradient(135deg, #2d2235 0%, #1e293b 50%, #1a2332 100%)'}} className="rounded-[20px] sm:rounded-[24px] p-5 sm:p-8 mb-4 sm:mb-6 border border-white/5 shadow-lg">
-            <div className="flex items-center gap-3 mb-2">
-              <div style={{background: 'linear-gradient(135deg, #7c5295, #5c6bc0)'}} className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-md">
-                <span className="text-2xl">🎯</span>
+          <div className="bg-white rounded-[32px] p-8 mb-6 border border-nike-grey-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 rounded-[24px] bg-[#F0F7FF] flex items-center justify-center shadow-inner mb-2">
+                <span className="text-4xl animate-bounce">🎯</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-100">Buat Kuis Baru</h3>
-                <p className="text-sm text-gray-400">Konfigurasikan sesi kuis untuk peserta</p>
+                <h3 className="text-2xl font-black text-nike-black uppercase tracking-tight">Buat Kuis Baru</h3>
+                <p className="text-[14px] font-medium text-nike-grey-400 uppercase tracking-widest mt-1">Konfigurasikan sesi kuis Live</p>
               </div>
             </div>
           </div>
 
           {/* Form Card */}
-          <div style={{background: '#1e1e2e'}} className="rounded-[20px] sm:rounded-[24px] shadow-lg border border-white/5 overflow-hidden">
+          <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
             {/* Category */}
-            <div className="p-4 sm:p-6 pb-4 sm:pb-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div style={{background: '#2a2a4a'}} className="w-7 h-7 rounded-lg flex items-center justify-center">
-                  <span className="text-sm">📚</span>
+            <div className="p-8 pb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
+                  <span className="text-xl">📚</span>
                 </div>
-                <label className="text-sm font-semibold text-gray-300">Kategori Soal</label>
+                <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Kategori Soal</label>
               </div>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                style={{background: '#252538', borderColor: '#3d3d5c', color: '#c4b5fd'}}
-                className="w-full border-2 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-400/50 transition-all appearance-none cursor-pointer"
-              >
-                <option value="All Categories">Semua Kategori</option>
-                {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+              <div className="relative">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
+                >
+                  <option value="All Categories">✨ Semua Kategori</option>
+                  {categories.length > 0 ? (
+                    categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)
+                  ) : (
+                    <option disabled>Loading Categories...</option>
+                  )}
+                </select>
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg className="w-5 h-5 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div style={{background: 'linear-gradient(to right, transparent, #3d3d5c, transparent)'}} className="h-px mx-6" />
-
             {/* Question Count */}
-            <div className="p-4 sm:p-6 pb-4 sm:pb-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div style={{background: '#2d2235'}} className="w-7 h-7 rounded-lg flex items-center justify-center">
-                  <span className="text-sm">✏️</span>
+            <div className="p-8 py-6 bg-[#FAFBFF]">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#F0FFF4] flex items-center justify-center border border-[#C6F6D5]">
+                  <span className="text-xl">✏️</span>
                 </div>
-                <label className="text-sm font-semibold text-gray-300">Jumlah Soal</label>
+                <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Jumlah Soal</label>
               </div>
               <div className="flex gap-3">
                 {[5, 10, 20].map(n => (
                   <button
                     key={n}
                     onClick={() => setQuestionCount(n)}
-                    style={questionCount === n
-                      ? {background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', borderColor: 'transparent'}
-                      : {background: '#252538', borderColor: '#4c3d6e', color: '#c4b5fd'}
-                    }
-                    className="flex-1 py-3 rounded-2xl text-sm font-bold border-2 transition-all duration-200 hover:shadow-md hover:shadow-purple-500/10"
+                    className={`flex-1 h-[60px] rounded-[20px] text-[16px] font-black transition-all border-2 ${
+                      questionCount === n
+                        ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
+                        : 'bg-white border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
+                    }`}
                   >
-                    {n} Soal
+                    {n} SOAL
                   </button>
                 ))}
               </div>
             </div>
 
-            <div style={{background: 'linear-gradient(to right, transparent, #4c3d6e, transparent)'}} className="h-px mx-6" />
-
             {/* Duration */}
-            <div className="p-4 sm:p-6 pb-4 sm:pb-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div style={{background: '#1a2332'}} className="w-7 h-7 rounded-lg flex items-center justify-center">
-                  <span className="text-sm">⏱️</span>
+            <div className="p-8 py-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#EBF8FF] flex items-center justify-center border border-[#BEE3F8]">
+                  <span className="text-xl">⏱️</span>
                 </div>
-                <label className="text-sm font-semibold text-gray-300">Durasi Waktu</label>
+                <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Durasi Waktu</label>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[30, 60, 90, 120].map(m => (
                   <button
                     key={m}
                     onClick={() => setDurationMinutes(m)}
-                    style={durationMinutes === m
-                      ? {background: 'linear-gradient(135deg, #0d9488, #0f766e)', color: 'white', borderColor: 'transparent'}
-                      : {background: '#1a2332', borderColor: '#2a4a4a', color: '#5eead4'}
-                    }
-                    className="py-3 rounded-2xl text-sm font-bold border-2 transition-all duration-200 hover:shadow-md hover:shadow-teal-500/10"
+                    className={`h-[60px] rounded-[20px] text-[16px] font-black transition-all border-2 ${
+                      durationMinutes === m
+                        ? 'bg-[#34C759] border-transparent text-white shadow-lg shadow-[#34C759]/20'
+                        : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#34C759] hover:text-[#34C759]'
+                    }`}
                   >
-                    {m} Min
+                    {m} MIN
                   </button>
                 ))}
               </div>
             </div>
 
-            <div style={{background: 'linear-gradient(to right, transparent, #2a4a4a, transparent)'}} className="h-px mx-6" />
-
             {/* Submit */}
-            <div className="p-4 sm:p-6">
+            <div className="p-8 bg-[#F8FAFC]">
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                style={{background: creating ? '#374151' : 'linear-gradient(135deg, #e879a0, #c0507a)'}}
-                className="w-full py-4 rounded-2xl text-white font-bold text-base tracking-wide transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/20 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100"
+                className={`w-full h-[72px] rounded-[24px] text-white font-black text-[18px] tracking-widest transition-all shadow-xl active:scale-[0.98] disabled:opacity-50 ${
+                  creating ? 'bg-nike-grey-400' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
+                }`}
               >
                 {creating ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Membuat Kuis...
+                  <span className="flex items-center justify-center gap-3">
+                    <span className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    CREATING...
                   </span>
                 ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <span>🚀</span> Buat Sesi Kuis
+                  <span className="flex items-center justify-center gap-3">
+                    <span>🚀</span> BUAT SESI KUIS
                   </span>
                 )}
               </button>

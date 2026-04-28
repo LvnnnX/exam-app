@@ -79,6 +79,10 @@ export default function ExamPage() {
   const [timeLimit, setTimeLimit] = useState<number>(0); // in minutes, 0 = No Time
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [timeLeftDisplay, setTimeLeftDisplay] = useState<string>('');
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [quizCode, setQuizCode] = useState('');
+  const [isCheckingCode, setIsCheckingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
   const isSurvival = gameMode === 'survival';
 
   const total = totalQuestions;
@@ -532,6 +536,36 @@ export default function ExamPage() {
     }
   };
 
+  const handleJoinQuiz = async () => {
+    if (quizCode.length < 6) {
+      setCodeError('Masukkkan 6 digit kode');
+      return;
+    }
+
+    setIsCheckingCode(true);
+    setCodeError('');
+
+    try {
+      const { fetchQuizByCode } = await import('@/lib/quiz');
+      const quiz = await fetchQuizByCode(quizCode);
+
+      if (!quiz) {
+        setCodeError('Kode tidak valid');
+      } else if (quiz.status === 'finished') {
+        setCodeError('Kuis telah berakhir');
+      } else if (quiz.status === 'active') {
+        setCodeError('Kuis sedang berjalan');
+      } else {
+        // Valid waiting session
+        window.location.href = `/quiz/${quiz.quiz_code}`;
+      }
+    } catch (err) {
+      setCodeError('Gagal menyambungkan');
+    } finally {
+      setIsCheckingCode(false);
+    }
+  };
+
 
   // ==================== HELPERS ====================
 
@@ -581,8 +615,8 @@ export default function ExamPage() {
               </div>
               <div className="mt-4">
                  <button
-                  onClick={() => window.location.href = '/quiz'}
-                  className="w-full h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                  onClick={() => setIsJoinModalOpen(true)}
+                  className="w-full h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider bg-transparent border-[1.5px] border-nike-black text-nike-black hover:bg-nike-black hover:text-white shadow-sm"
                 >
                   🎮 Join Live Quiz
                 </button>
@@ -689,6 +723,62 @@ export default function ExamPage() {
               Begin Session
             </button>
           </div>
+
+          {/* Join Live Quiz Modal */}
+          {isJoinModalOpen && (
+            <div className="fixed inset-0 bg-nike-white/40 backdrop-blur-md flex items-center justify-center p-6 z-[100] animate-in fade-in duration-200">
+              <div className="bg-nike-white rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] max-w-sm w-full border border-nike-grey-200 overflow-hidden animate-in zoom-in-95 duration-300">
+                <div className="p-10 text-center">
+                  <h2 className="font-display text-[40px] text-nike-black leading-[0.9] tracking-[0.03em] uppercase mb-2">
+                    Join.<br />Live. Quiz.
+                  </h2>
+                  <p className="text-[12px] font-bold text-nike-grey-400 uppercase tracking-widest mb-10">Enter 6-digit access code</p>
+
+                  <div className="relative group mb-6">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={quizCode}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setQuizCode(val);
+                        if (codeError) setCodeError('');
+                      }}
+                      placeholder="000000"
+                      className={`w-full bg-nike-grey-100 rounded-[20px] px-6 h-[72px] text-center text-[32px] font-display tracking-[0.2em] focus:outline-none focus:ring-4 transition-all ${
+                        codeError ? 'ring-nike-red/10 border-nike-red text-nike-red' : 'focus:ring-nike-black/5 border-nike-grey-200'
+                      }`}
+                    />
+                    {codeError && (
+                      <p className="absolute -bottom-6 left-0 right-0 text-[10px] font-black text-nike-red uppercase tracking-widest animate-in slide-in-from-top-1">
+                        ⚠️ {codeError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-8 pt-0 space-y-3">
+                  <button
+                    onClick={handleJoinQuiz}
+                    disabled={isCheckingCode || quizCode.length < 6}
+                    className="w-full h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-bold uppercase tracking-widest hover:bg-nike-grey-500 transition-all disabled:opacity-30 active:scale-[0.98]"
+                  >
+                    {isCheckingCode ? 'Verifying...' : 'Join Now'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsJoinModalOpen(false);
+                      setQuizCode('');
+                      setCodeError('');
+                    }}
+                    className="w-full h-[60px] rounded-[30px] bg-transparent text-nike-grey-400 text-[14px] font-bold uppercase tracking-widest hover:text-nike-black transition-colors"
+                  >
+                    Go Back
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -908,6 +998,7 @@ export default function ExamPage() {
               </div>
             </div>
           )}
+
         </div>
       </div>
     );
