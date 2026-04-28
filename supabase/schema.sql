@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS questions (
   option_d TEXT NOT NULL,
   option_e TEXT NOT NULL,
   correct_answer CHAR(1) NOT NULL,
-  category TEXT NOT NULL DEFAULT 'general_informatics',
+  categories TEXT[] NOT NULL DEFAULT '{general_informatics}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -116,7 +116,14 @@ CREATE POLICY "Authenticated Delete Access" ON storage.objects FOR DELETE TO aut
 
 CREATE OR REPLACE FUNCTION strip_html(html_text TEXT) RETURNS TEXT AS $$
 BEGIN
-    RETURN trim(regexp_replace(coalesce(html_text, ''), '<[^>]*>', '', 'g'));
+    -- Remove HTML tags, replace common entities, and collapse whitespace
+    RETURN trim(regexp_replace(
+      regexp_replace(
+        regexp_replace(coalesce(html_text, ''), '<[^>]*>', '', 'g'),
+        '&nbsp;|&#160;', ' ', 'g'
+      ),
+      '\s+', ' ', 'g'
+    ));
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
@@ -131,37 +138,6 @@ GRANT SELECT ON public_questions TO anon, authenticated;
 DROP POLICY IF EXISTS "questions_select" ON questions;
 CREATE POLICY "questions_select" ON questions FOR SELECT TO authenticated USING (auth.jwt() ->> 'email' = 'admin@exam.local');
 
--- 3. Create RPC to check a single answer (for Survival mode)
-CREATE OR REPLACE FUNCTION check_answer(p_question_id INT, p_answer_text TEXT)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_correct_label CHAR(1);
-  v_correct_text TEXT;
-BEGIN
-  SELECT correct_answer INTO v_correct_label FROM questions WHERE id = p_question_id;
-  
-  IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = p_question_id;
-  END IF;
-
-  RETURN strip_html(p_answer_text) = strip_html(v_correct_text);
-END;
-$$;
-
--- 4. Create RPC to submit an entire exam and calculate score
-CREATE OR REPLACE FUNCTION submit_exam(p_name TEXT, p_category TEXT, p_mode TEXT, p_question_count INT, p_answers JSONB, p_start_time TIMESTAMPTZ, p_end_time TIMESTAMPTZ)
-RETURNS INTEGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_score INTEGER := 0;
   v_total INTEGER;
   v_elem JSONB;
   v_q_id INT;
@@ -247,21 +223,34 @@ DECLARE
   v_actual_count INT;
   v_expires_at TIMESTAMPTZ;
 BEGIN
-  IF p_category = 'All Categories' THEN
-    SELECT array_agg(id) INTO v_question_ids FROM (
-      SELECT id FROM questions ORDER BY random() LIMIT p_count
-    ) sq;
-  ELSE
-    SELECT array_agg(id) INTO v_question_ids FROM (
-      SELECT id FROM questions WHERE p_category = ANY(categories) ORDER BY random() LIMIT p_count
-    ) sq;
-  END IF;
-  
-  IF v_question_ids IS NULL THEN
+  IF p_mode = 'survival' THEN
+    -- Survival: do NOT pre-load all question IDs.
+    -- Store empty array; questions are lazily fetched one-by-one via get_session_question.
+    -- question_count stores the total available in the pool (upper bound).
+    IF p_category = 'All Categories' THEN
+      SELECT COUNT(*) INTO v_actual_count FROM questions;
+    ELSE
+      SELECT COUNT(*) INTO v_actual_count FROM questions WHERE p_category = ANY(categories);
+    END IF;
     v_question_ids := ARRAY[]::INT[];
-  END IF;
+  ELSE
+    -- Normal exam: pre-load and shuffle all requested question IDs upfront.
+    IF p_category = 'All Categories' THEN
+      SELECT array_agg(id) INTO v_question_ids FROM (
+        SELECT id FROM questions ORDER BY random() LIMIT p_count
+      ) sq;
+    ELSE
+      SELECT array_agg(id) INTO v_question_ids FROM (
+        SELECT id FROM questions WHERE p_category = ANY(categories) ORDER BY random() LIMIT p_count
+      ) sq;
+    END IF;
 
-  v_actual_count := COALESCE(array_length(v_question_ids, 1), 0);
+    IF v_question_ids IS NULL THEN
+      v_question_ids := ARRAY[]::INT[];
+    END IF;
+
+    v_actual_count := COALESCE(array_length(v_question_ids, 1), 0);
+  END IF;
 
   IF p_time_limit_minutes IS NOT NULL AND p_time_limit_minutes > 0 THEN
     v_expires_at := NOW() + (p_time_limit_minutes || ' minutes')::INTERVAL;
@@ -314,12 +303,46 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
+  v_log        exam_logs%ROWTYPE;
   v_question_id INT;
   v_question_data JSONB;
 BEGIN
-  SELECT question_ids[p_index + 1] INTO v_question_id
-  FROM exam_logs
-  WHERE session_id = p_session_id;
+  SELECT * INTO v_log FROM exam_logs WHERE session_id = p_session_id;
+
+  IF v_log.session_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  -- Check if this slot is already assigned
+  v_question_id := v_log.question_ids[p_index + 1];
+
+  IF v_question_id IS NULL AND v_log.mode = 'survival' THEN
+    -- Survival lazy fetch: pick one random question not yet in the session
+    IF v_log.category = 'All Categories' THEN
+      SELECT id INTO v_question_id
+      FROM questions
+      WHERE id <> ALL(COALESCE(v_log.question_ids, ARRAY[]::INT[]))
+      ORDER BY random()
+      LIMIT 1;
+    ELSE
+      SELECT id INTO v_question_id
+      FROM questions
+      WHERE v_log.category = ANY(categories)
+        AND id <> ALL(COALESCE(v_log.question_ids, ARRAY[]::INT[]))
+      ORDER BY random()
+      LIMIT 1;
+    END IF;
+
+    IF v_question_id IS NULL THEN
+      -- Pool exhausted
+      RETURN NULL;
+    END IF;
+
+    -- Append the new question ID to the session
+    UPDATE exam_logs
+    SET question_ids = array_append(question_ids, v_question_id)
+    WHERE session_id = p_session_id;
+  END IF;
 
   IF v_question_id IS NULL THEN
     RETURN NULL;
@@ -342,7 +365,12 @@ END;
 $$;
 
 -- 4. Save Session Answer
-CREATE OR REPLACE FUNCTION save_session_answer(p_session_id UUID, p_index INT, p_answer_text TEXT)
+CREATE OR REPLACE FUNCTION save_session_answer(
+  p_session_id UUID, 
+  p_index INT, 
+  p_answer_text TEXT,
+  p_user_agent TEXT DEFAULT NULL
+)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -362,6 +390,16 @@ BEGIN
 
   IF v_log.is_finished THEN 
     RETURN jsonb_build_object('success', false, 'error', 'session_finished'); 
+  END IF;
+
+  -- SECURITY FIX: Device binding
+  IF v_log.user_agent IS NOT NULL AND v_log.user_agent <> p_user_agent THEN
+    RETURN jsonb_build_object('success', false, 'error', 'unauthorized_device');
+  END IF;
+
+  -- SECURITY FIX: Prevent backward jumping
+  IF p_index < v_log.current_index THEN
+    RETURN jsonb_build_object('success', false, 'error', 'invalid_index_sequence');
   END IF;
 
   IF v_log.expires_at < NOW() THEN
@@ -385,7 +423,8 @@ BEGIN
       ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_question_id;
       END IF;
       
-      v_is_correct := (strip_html(p_answer_text) = strip_html(v_correct_text));
+      -- Comparison: case-insensitive + trim + stripped HTML
+      v_is_correct := (lower(trim(strip_html(p_answer_text))) = lower(trim(strip_html(v_correct_text))));
       
       IF NOT v_is_correct THEN
         UPDATE exam_logs SET lives = GREATEST(0, lives - 1) WHERE session_id = p_session_id;
@@ -430,48 +469,64 @@ BEGIN
   
   UPDATE exam_logs SET is_finished = true WHERE session_id = p_session_id;
 
-  FOR v_q_index IN 0..(v_log.question_count - 1)
+  FOR v_q_index IN 0..(
+    CASE WHEN v_log.mode = 'survival'
+      -- Survival: only iterate over questions actually served (lazy array)
+      THEN COALESCE(array_length(v_log.question_ids, 1), 0) - 1
+      -- Normal exam: full question_count
+      ELSE v_log.question_count - 1
+    END
+  )
   LOOP
     v_user_ans_text := v_log.user_answers->>(v_q_index::text);
     v_q_id := v_log.question_ids[v_q_index + 1];
-    
-    -- In Survival Mode, we strictly only care about questions encountered/attempted.
-    -- In Normal Mode, we follow traditional scoring (total count is the denominator).
-    IF v_q_id IS NOT NULL AND v_user_ans_text IS NOT NULL THEN
-        -- It's an attempt if it's not skipped
-        IF v_user_ans_text != 'skipped' THEN
-          v_attempted := v_attempted + 1;
-        END IF;
 
-        SELECT question_text, correct_answer INTO v_question_text, v_correct_label FROM questions WHERE id = v_q_id;
-        
-        IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
-        ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_q_id;
-        ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_q_id;
-        ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_q_id;
-        ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
-        END IF;
-        
-        v_is_correct := (strip_html(v_user_ans_text) = strip_html(v_correct_text) AND v_user_ans_text != 'skipped');
-        
-        IF v_is_correct THEN
-          v_score := v_score + 1;
-        END IF;
-        
-        v_processed_answers := v_processed_answers || jsonb_build_object(
-          'question_id', v_q_id,
-          'user_answer', v_user_ans_text,
-          'is_correct', v_is_correct
-        );
-
-        v_recap := v_recap || jsonb_build_object(
-          'question_text', v_question_text,
-          'user_answer', v_user_ans_text,
-          'correct_text', v_correct_text,
-          'is_correct', v_is_correct
-        );
+    IF v_q_id IS NULL THEN
+      CONTINUE;
     END IF;
+
+    SELECT question_text, correct_answer INTO v_question_text, v_correct_label FROM questions WHERE id = v_q_id;
+
+    IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_q_id;
+    ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
+    END IF;
+
+    -- User answered this question
+    IF v_user_ans_text IS NOT NULL AND v_user_ans_text != 'skipped' THEN
+      v_attempted := v_attempted + 1;
+      v_is_correct := (lower(trim(strip_html(v_user_ans_text))) = lower(trim(strip_html(v_correct_text))));
+    ELSE
+      -- Not answered or skipped — count as incorrect, record null
+      v_is_correct := false;
+      v_user_ans_text := NULL;
+    END IF;
+
+    IF v_is_correct THEN
+      v_score := v_score + 1;
+    END IF;
+
+    -- In Survival Mode, only log questions that were actually attempted
+    IF v_log.mode = 'survival' AND v_user_ans_text IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    v_processed_answers := v_processed_answers || jsonb_build_object(
+      'question_id', v_q_id,
+      'user_answer', v_user_ans_text,
+      'is_correct', v_is_correct
+    );
+
+    v_recap := v_recap || jsonb_build_object(
+      'question_text', v_question_text,
+      'user_answer', v_user_ans_text,
+      'correct_text', v_correct_text,
+      'is_correct', v_is_correct
+    );
   END LOOP;
+
   
   -- Use v_attempted for Survival Mode, v_log.question_count for Normal Mode
   IF v_log.mode = 'survival' THEN
@@ -501,3 +556,44 @@ BEGIN
     AND is_finished = false;
 END;
 $$;
+
+-- ============================================================
+-- App Settings Table (admin-controlled)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  hidden_categories TEXT[] NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Constraint: only one settings row allowed
+ALTER TABLE app_settings DROP CONSTRAINT IF EXISTS app_settings_single_row;
+ALTER TABLE app_settings ADD CONSTRAINT app_settings_single_row CHECK (id = 1);
+
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+
+-- Public can READ settings (needed by fetchCategories on the user frontend)
+CREATE POLICY "app_settings_public_read"
+ON app_settings FOR SELECT
+USING (true);
+
+-- Only admin can WRITE settings
+CREATE POLICY "app_settings_admin_write"
+ON app_settings FOR ALL
+TO authenticated
+USING (auth.jwt() ->> 'email' = 'admin@exam.local')
+WITH CHECK (auth.jwt() ->> 'email' = 'admin@exam.local');
+
+-- Seed a default row so upsert always finds id=1
+INSERT INTO app_settings (id, hidden_categories)
+VALUES (1, '{}')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- Migration helpers (run manually in Supabase SQL editor if upgrading)
+-- ============================================================
+-- If questions table has old TEXT category column:
+--   ALTER TABLE questions ADD COLUMN IF NOT EXISTS categories TEXT[] NOT NULL DEFAULT '{general_informatics}';
+--   UPDATE questions SET categories = ARRAY[category] WHERE categories = '{general_informatics}';
+--   ALTER TABLE questions DROP COLUMN IF EXISTS category;

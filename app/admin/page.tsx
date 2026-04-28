@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
-import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchCategories, type CategoryInfo } from '@/lib/questions';
+import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchCategories, fetchAllCategoriesAdmin, fetchHiddenCategories, saveHiddenCategories, type CategoryInfo } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
 
@@ -50,9 +50,6 @@ type QuestionDraft = {
   categories: string[];
 };
 
-// Authentication is now strictly server-side via Supabase.
-// Using a static email for the single admin account.
-const ADMIN_EMAIL = 'admin@exam.local';
 const AUTH_VERSION = '3'; // Increment this to force all admins to logout
 
 const EMPTY_DRAFT: QuestionDraft = {
@@ -78,11 +75,9 @@ function sanitizeRichHtml(value: string): string {
 }
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'questions' | 'results'>('questions');
+  const [activeTab, setActiveTab] = useState<'questions' | 'results' | 'settings'>('questions');
   const [selectedQuestion, setSelectedQuestion] = useState<RawQuestion | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -108,10 +103,21 @@ export default function AdminPage() {
   const [detailQuestions, setDetailQuestions] = useState<RawQuestion[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [allCategories, setAllCategories] = useState<CategoryInfo[]>([]);
+  const [allCategoriesAdmin, setAllCategoriesAdmin] = useState<CategoryInfo[]>([]);
   const [sessionInfo, setSessionInfo] = useState<string | null>(null);
   const [activeResCategory, setActiveResCategory] = useState<string>('all');
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
   const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
+
+  // Settings state
+  const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsDirty, setSettingsDirty] = useState(false);
+
+  // Add-new-category inline state (used in question form)
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [addingCategory, setAddingCategory] = useState(false);
 
   // Live Tracking state
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -124,20 +130,27 @@ export default function AdminPage() {
   // Check for existing session on mount
   useEffect(() => {
     async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error || !session) {
+        setIsAuthenticated(false);
+        return;
+      }
 
       // Check auth version to force logout of old sessions
       const localAuthVersion = localStorage.getItem('admin_auth_version');
 
-      if (session && localAuthVersion === AUTH_VERSION) {
+      if (localAuthVersion === AUTH_VERSION) {
         setIsAuthenticated(true);
         setSessionInfo(session.user.id);
         void fetchAdminQuestions();
         void loadAllCategories();
-      } else if (session) {
+        void loadHiddenCategories();
+      } else {
         // If they have a session but wrong/missing version, log them out
         await supabase.auth.signOut();
         localStorage.removeItem('admin_auth_version');
+        setIsAuthenticated(false);
       }
     }
     void checkSession();
@@ -172,13 +185,12 @@ export default function AdminPage() {
   }, [adminQuestions]);
 
   const categoryTabs = useMemo(() => {
-    // Collect all unique categories from the fetched data and sort them alphabetically
-    // Exclude 'bonus' from the admin view as it's used for internal metrics
+    // Filter categories hidden via admin settings; respects app_settings.hidden_categories
     const categoriesFromData = Object.keys(questionsByCategory)
-      .filter(cat => cat !== 'bonus')
+      .filter(cat => !hiddenCategories.includes(cat))
       .sort();
     return ['all', ...categoriesFromData];
-  }, [questionsByCategory]);
+  }, [questionsByCategory, hiddenCategories]);
 
   const filteredQuestions = useMemo(() => {
     let list = adminQuestions;
@@ -207,34 +219,6 @@ export default function AdminPage() {
       .replace(/\b\w/g, (match) => match.toUpperCase());
   };
 
-  const handlePasswordSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    try {
-      // Authenticate securely via Supabase Auth (No more anonymous loopholes)
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: ADMIN_EMAIL,
-        password: passwordInput,
-      });
-
-      if (error) throw error;
-
-      setIsAuthenticated(true);
-      setSessionInfo(data.session?.user.id || 'admin');
-      setPasswordError('');
-      localStorage.setItem('admin_auth_version', AUTH_VERSION);
-
-      if (activeTab === 'results') {
-        void fetchResults();
-      } else {
-        void fetchAdminQuestions();
-        void loadAllCategories();
-      }
-    } catch (err: any) {
-      console.error('Auth failed:', err.message);
-      setPasswordError('Invalid password or auth error.');
-      setPasswordInput('');
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -253,6 +237,15 @@ export default function AdminPage() {
       setAllCategories(cats);
     } catch (err) {
       console.error('Failed to load category list:', err);
+    }
+  };
+
+  const loadAllCategoriesAdmin = async () => {
+    try {
+      const cats = await fetchAllCategoriesAdmin();
+      setAllCategoriesAdmin(cats);
+    } catch (err) {
+      console.error('Failed to load admin category list:', err);
     }
   };
 
@@ -365,8 +358,25 @@ export default function AdminPage() {
     setDetailLoading(true);
 
     try {
-      // Fetch only the specific question the user is currently answering
-      const currentQuestionId = session.question_ids[session.current_index];
+      // Logic for "Currently Answering":
+      // In Survival, question_ids is populated lazily.
+      // The "active" question is the latest one in question_ids that isn't answered,
+      // OR if all in question_ids are answered, it's the one at current_index + 1 (which might not exist yet).
+      
+      const lastQuestionIdx = session.question_ids.length - 1;
+      const isLastAnswered = session.user_answers[lastQuestionIdx.toString()] !== undefined;
+      
+      let currentIdxToFetch = -1;
+      if (lastQuestionIdx >= 0 && !isLastAnswered) {
+        // User has fetched a question but not answered it yet
+        currentIdxToFetch = lastQuestionIdx;
+      } else if (session.current_index + 1 < session.question_count) {
+        // User has answered everything they fetched, or hasn't started
+        currentIdxToFetch = session.current_index + 1;
+      }
+
+      const currentQuestionId = currentIdxToFetch >= 0 ? session.question_ids[currentIdxToFetch] : null;
+      
       if (currentQuestionId) {
         const [question] = await fetchQuestionsByIds([currentQuestionId]);
         setCurrentTrackedQuestion(question || null);
@@ -374,11 +384,15 @@ export default function AdminPage() {
         setCurrentTrackedQuestion(null);
       }
 
-      // Also fetch all answered questions for the history list
-      const answeredIds = session.question_ids.slice(0, session.current_index);
+      // History = questions that have an entry in user_answers
+      const answeredIndices = Object.keys(session.user_answers).map(Number).sort((a, b) => a - b);
+      const answeredIds = answeredIndices.map(idx => session.question_ids[idx]).filter(Boolean);
+      
       if (answeredIds.length > 0) {
         const questions = await fetchQuestionsByIds(answeredIds);
-        setDetailQuestions(questions);
+        // Map back to maintain order if fetch returns different order
+        const orderedQuestions = answeredIds.map(id => questions.find(q => q.id === id)).filter(Boolean) as RawQuestion[];
+        setDetailQuestions(orderedQuestions);
       } else {
         setDetailQuestions([]);
       }
@@ -386,6 +400,76 @@ export default function AdminPage() {
       console.error('Failed to fetch live tracking details:', err);
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+
+  const loadHiddenCategories = async () => {
+    setSettingsLoading(true);
+    try {
+      const hidden = await fetchHiddenCategories();
+      setHiddenCategories(hidden);
+      setSettingsDirty(false);
+    } catch (err) {
+      console.error('Failed to load hidden categories:', err);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSettingsSaving(true);
+    try {
+      await saveHiddenCategories(hiddenCategories);
+      setSettingsDirty(false);
+      window.alert('Settings saved. Changes will appear to users on next page load.');
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      window.alert('Failed to save settings.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const toggleCategoryVisibility = (cat: string) => {
+    setHiddenCategories(prev => {
+      const next = prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
+      setSettingsDirty(true);
+      return next;
+    });
+  };
+
+  /**
+   * Creates a new category slug on-the-fly and adds it to the current question draft.
+   * The category is also pushed into allCategories so it appears immediately in the list.
+   */
+  const handleAddNewCategory = async () => {
+    const raw = newCategoryInput.trim();
+    if (!raw) return;
+
+    // Normalise: lowercase, replace spaces with underscores
+    const slug = raw.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (!slug) return;
+
+    setAddingCategory(true);
+    try {
+      // Add to the form selection immediately
+      if (!formData.categories.includes(slug)) {
+        handleInputChange('categories', [...formData.categories, slug]);
+      }
+
+      // Add to the local allCategories list so it renders in the dropdown
+      if (!allCategories.some(c => c.value === slug)) {
+        const label = slug
+          .split('_')
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        setAllCategories(prev => [...prev, { value: slug, label }]);
+      }
+
+      setNewCategoryInput('');
+    } finally {
+      setAddingCategory(false);
     }
   };
 
@@ -402,7 +486,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleTabChange = (tab: 'questions' | 'results') => {
+  const handleTabChange = (tab: 'questions' | 'results' | 'settings') => {
     setActiveTab(tab);
 
     if (!isAuthenticated) {
@@ -411,6 +495,13 @@ export default function AdminPage() {
 
     if (tab === 'results') {
       void fetchResults();
+      void loadHiddenCategories();
+      return;
+    }
+
+    if (tab === 'settings') {
+      void loadAllCategoriesAdmin();
+      void loadHiddenCategories();
       return;
     }
 
@@ -548,30 +639,30 @@ export default function AdminPage() {
     setSelectedQuestion(question);
   };
 
-  if (!isAuthenticated) {
+  if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">Admin Login</h1>
-          <form onSubmit={handlePasswordSubmit}>
-            <div className="mb-4">
-              <label className="block text-gray-700 mb-2">Enter Password</label>
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(event) => setPasswordInput(event.target.value)}
-                placeholder="Enter admin password"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              {passwordError && <p className="text-red-500 text-sm mt-1">{passwordError}</p>}
-            </div>
-            <button
-              type="submit"
-              className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              Login
-            </button>
-          </form>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Verifying Admin Session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full p-8 bg-white rounded-2xl shadow-xl border border-gray-100 text-center">
+          <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">🔒</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-8">You must be logged in as an administrator to access this panel.</p>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition-colors"
+          >
+            Return to Home
+          </button>
         </div>
       </div>
     );
@@ -592,7 +683,7 @@ export default function AdminPage() {
         </button>
       </header>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         <button
           onClick={() => handleTabChange('questions')}
           className={`px-4 py-2 rounded-lg ${activeTab === 'questions' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
@@ -604,6 +695,12 @@ export default function AdminPage() {
           className={`px-4 py-2 rounded-lg ${activeTab === 'results' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
         >
           Results Dashboard
+        </button>
+        <button
+          onClick={() => handleTabChange('settings')}
+          className={`px-4 py-2 rounded-lg ${activeTab === 'settings' ? 'bg-slate-700 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+        >
+          ⚙️ Settings
         </button>
       </div>
 
@@ -757,20 +854,21 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              {/* Row 2: Category selection */}
-              <div className="flex flex-wrap gap-2">
-                {categoryTabs.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => handleResCategoryChange(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeResCategory === cat
-                      ? 'bg-gray-800 border-gray-800 text-white shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
-                      }`}
-                  >
-                    {getCategoryLabel(cat)}
-                  </button>
-                ))}
+              {/* Row 2: Category selection — dropdown */}
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Category</label>
+                <select
+                  value={activeResCategory}
+                  onChange={(e) => handleResCategoryChange(e.target.value)}
+                  className="bg-white border border-gray-300 rounded-lg px-3 h-9 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer pr-8"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                >
+                  {categoryTabs.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {getCategoryLabel(cat)}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Row 3: Mode selection */}
@@ -1011,6 +1109,76 @@ export default function AdminPage() {
         </div>
       )}
 
+      {activeTab === 'settings' && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b">
+              <h2 className="text-lg font-bold text-gray-900">Category Visibility</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Hidden categories are removed from the user-facing exam frontend. Admin panel is unaffected.
+              </p>
+            </div>
+
+            {settingsLoading ? (
+              <div className="p-6 text-gray-400 text-sm animate-pulse">Loading settings...</div>
+            ) : (
+              <div className="p-6 space-y-3">
+                {allCategoriesAdmin.length === 0 && (
+                  <p className="text-sm text-gray-400 italic">No categories found. Add questions first.</p>
+                )}
+                {allCategoriesAdmin.map((cat) => {
+                  const isHidden = hiddenCategories.includes(cat.value);
+                  return (
+                    <div key={cat.value} className="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                      <div>
+                        <p className="font-semibold text-gray-800 capitalize">{cat.label}</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">{cat.value}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-bold uppercase ${
+                          isHidden ? 'text-gray-400' : 'text-indigo-600'
+                        }`}>
+                          {isHidden ? 'Hidden' : 'Visible'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleCategoryVisibility(cat.value)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                            isHidden ? 'bg-gray-300' : 'bg-indigo-600'
+                          }`}
+                          title={isHidden ? 'Hidden from users — click to show' : 'Visible to users — click to hide'}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              isHidden ? 'translate-x-1' : 'translate-x-6'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="p-6 border-t bg-gray-50 flex justify-between items-center">
+              {settingsDirty && (
+                <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">● Unsaved changes</span>
+              )}
+              {!settingsDirty && <span />}
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                disabled={settingsSaving || !settingsDirty}
+                className="px-6 h-10 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {settingsSaving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(selectedQuestion || isAdding || isEditing) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[9999]" onClick={closeModal}>
           <div
@@ -1070,21 +1238,63 @@ export default function AdminPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Question Category</label>
-                      <select
-                        value={formData.categories?.[0] || 'none'}
-                        onChange={(e) => handleInputChange('categories', e.target.value === 'none' ? [] : [e.target.value])}
-                        className="w-full bg-white border border-gray-300 rounded-lg px-4 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
-                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-                      >
-                        <option value="none">NONE / SELECT CATEGORY</option>
-                        {allCategories.map((cat) => (
-                          <option key={cat.value} value={cat.value}>
-                            {cat.label.toUpperCase()}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Question Categories
+                        <span className="ml-2 text-xs font-normal text-gray-400">(klik untuk pilih / batal pilih)</span>
+                      </label>
+                      {allCategories.length === 0 ? (
+                        <p className="text-sm text-gray-400 italic">Loading categories...</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[48px]">
+                          {allCategories.map((cat) => {
+                            const isSelected = formData.categories.includes(cat.value);
+                            return (
+                              <button
+                                key={cat.value}
+                                type="button"
+                                onClick={() => {
+                                  const next = isSelected
+                                    ? formData.categories.filter((c) => c !== cat.value)
+                                    : [...formData.categories, cat.value];
+                                  handleInputChange('categories', next);
+                                }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all border select-none ${
+                                  isSelected
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
+                                }`}
+                              >
+                                {isSelected && <span className="mr-1">✓</span>}
+                                {cat.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {formData.categories.length === 0 && (
+                        <p className="text-xs text-red-500 mt-1">At least one category is required.</p>
+                      )}
+
+                      {/* Add New Category inline */}
+                      <div className="flex gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={newCategoryInput}
+                          onChange={(e) => setNewCategoryInput(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewCategory(); } }}
+                          placeholder="New category name..."
+                          className="flex-1 px-3 h-9 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleAddNewCategory()}
+                          disabled={addingCategory || !newCategoryInput.trim()}
+                          className="px-4 h-9 rounded-lg bg-green-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          + Add Category
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-1">
@@ -1238,7 +1448,15 @@ export default function AdminPage() {
               <div className="grid grid-cols-3 gap-6 py-8 border-y border-gray-100">
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Index</p>
-                  <p className="text-2xl font-black text-gray-900">{trackingSession.current_index + 1} <span className="text-sm text-gray-300">/ {trackingSession.question_count}</span></p>
+                  <p className="text-2xl font-black text-gray-900">
+                    {(() => {
+                      const lastIdx = trackingSession.question_ids.length - 1;
+                      const isLastAns = trackingSession.user_answers[lastIdx.toString()] !== undefined;
+                      const activeIdx = (lastIdx >= 0 && !isLastAns) ? lastIdx : trackingSession.current_index + 1;
+                      return Math.min(activeIdx + 1, trackingSession.question_count);
+                    })()}
+                    <span className="text-sm text-gray-300"> / {trackingSession.question_count}</span>
+                  </p>
                 </div>
                 <div className="text-center border-x border-gray-100">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Answered</p>
@@ -1263,7 +1481,7 @@ export default function AdminPage() {
                   <div className="text-center py-10 text-gray-300 font-bold uppercase text-[10px] tracking-widest border border-dashed rounded-2xl">No history yet</div>
                 ) : (
                   <div className="space-y-6">
-                    {trackingSession.question_ids.slice(0, trackingSession.current_index).map((qId, idx) => {
+                    {trackingSession.question_ids.slice(0, trackingSession.current_index + 1).map((qId, idx) => {
                       const question = detailQuestions.find(q => q.id === qId);
                       const userAnswerText = trackingSession.user_answers[idx.toString()];
 

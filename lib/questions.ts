@@ -1,6 +1,8 @@
 import { supabase } from './supabase';
 import { ensureHtmlDocument } from './rich-text';
 
+const getUA = () => typeof window !== 'undefined' ? window.navigator.userAgent : 'server';
+
 // Type for fetching distinct categories
 export type CategoryInfo = {
   value: string;
@@ -72,33 +74,89 @@ export function normalizePublicQuestion(raw: PublicQuestion): PublicQuestion {
   };
 }
 
-// Categories hidden from user selection (still available in admin)
-const HIDDEN_CATEGORIES = ['bonus'];
+/**
+ * Fetches the list of admin-hidden category values from the app_settings table.
+ * Returns an empty array if the table doesn't exist yet or has no entry.
+ */
+export async function fetchHiddenCategories(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('hidden_categories')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Failed to fetch hidden categories:', error.message);
+    return [];
+  }
+
+  return (data?.hidden_categories as string[]) || [];
+}
+
+/**
+ * Persists the hidden category list to the app_settings table.
+ * Uses upsert so the row is created on first save.
+ */
+export async function saveHiddenCategories(hidden: string[]): Promise<void> {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({ id: 1, hidden_categories: hidden }, { onConflict: 'id' });
+
+  if (error) {
+    console.error('Failed to save hidden categories:', error.message);
+    throw new Error(`Failed to save settings: ${error.message}`);
+  }
+}
 
 export async function fetchCategories(): Promise<CategoryInfo[]> {
-  const { data, error } = await supabase
-    .from('questions')
-    .select('categories');
+  const [categoriesResult, dbHidden] = await Promise.all([
+    supabase.from('questions').select('categories'),
+    fetchHiddenCategories(),
+  ]);
+
+  const { data, error } = categoriesResult;
 
   if (error) {
     console.error('Failed to fetch categories:', error.message);
     return [];
   }
 
-  // Deduplicate manually 
+  // Deduplicate manually
   const uniqueCategories = Array.from(new Set(data.flatMap((q) => q.categories || [])));
-  
+
+  // Only filter categories explicitly hidden by the admin in app_settings
   return uniqueCategories
-    .filter((cat) => !HIDDEN_CATEGORIES.includes(cat))
+    .filter((cat) => !dbHidden.includes(cat))
     .map((cat) => {
-      // Basic Title Casing for the display label: 'general_informatics' -> 'General Informatics'
       const label = cat
         .split('_')
         .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
-      
       return { value: cat, label };
     });
+}
+
+
+/** Returns ALL categories from the questions table with zero filtering.
+ *  Used by the admin Settings page to allow toggling every category,
+ *  including hard-hidden ones like 'bonus'. */
+export async function fetchAllCategoriesAdmin(): Promise<CategoryInfo[]> {
+  const { data, error } = await supabase.from('questions').select('categories');
+
+  if (error) {
+    console.error('Failed to fetch all categories (admin):', error.message);
+    return [];
+  }
+
+  const uniqueCategories = Array.from(new Set(data.flatMap((q) => q.categories || []))).sort();
+
+  return uniqueCategories.map((cat) => {
+    const label = cat
+      .split('_')
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    return { value: cat, label };
+  });
 }
 
 export async function fetchQuestions(category?: string): Promise<RawQuestion[]> {
@@ -132,7 +190,8 @@ export async function startExamSessionViaRpc(name: string, category: string, mod
     p_category: category,
     p_mode: mode,
     p_count: count,
-    p_time_limit_minutes: timeLimitMinutes > 0 ? timeLimitMinutes : null
+    p_time_limit_minutes: timeLimitMinutes > 0 ? timeLimitMinutes : null,
+    p_user_agent: getUA()
   });
 
   if (error || !data) {
@@ -180,7 +239,8 @@ export async function saveSessionAnswerViaRpc(sessionId: string, index: number, 
   const { data, error } = await supabase.rpc('save_session_answer', {
     p_session_id: sessionId,
     p_index: index,
-    p_answer_text: answerText
+    p_answer_text: answerText,
+    p_user_agent: getUA()
   });
 
   if (error) {

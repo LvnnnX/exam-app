@@ -47,6 +47,8 @@ const TIME_LIMIT_OPTIONS = [
   { label: '120 Minutes', value: 120 },
 ];
 
+
+
 export default function ExamPage() {
   // App state
   const [name, setName] = useState('');
@@ -87,50 +89,8 @@ export default function ExamPage() {
   // Local score state is updated by the server response.
 
   // ==================== LOCAL STORAGE FUNCTIONS ====================
+  // We use secureSave directly from @/lib/security to reduce boilerplate.
 
-  const saveNameToStorage = (userName: string) => {
-    secureSave(STORAGE_KEYS.NAME, userName);
-  };
-
-  const saveStepToStorage = (stepValue: number) => {
-    secureSave(STORAGE_KEYS.STEP, stepValue);
-  };
-
-  const saveCurrentQuestionToStorage = (questionIndex: number) => {
-    secureSave(STORAGE_KEYS.CURRENT, questionIndex);
-  };
-
-  const saveAnswersToStorage = (answersArray: Answer[]) => {
-    secureSave(STORAGE_KEYS.ANSWERS, answersArray);
-  };
-
-  const saveSessionIdToStorage = (id: string) => {
-    secureSave(STORAGE_KEYS.SESSION_ID, id);
-  };
-
-  const saveTotalQuestionsToStorage = (count: number) => {
-    secureSave(STORAGE_KEYS.TOTAL, count);
-  };
-
-  const saveCategoryToStorage = (cat: string) => {
-    secureSave(STORAGE_KEYS.CATEGORY, cat);
-  };
-
-  const saveStartTimeToStorage = (time: number) => {
-    secureSave(STORAGE_KEYS.START_TIME, time);
-  };
-
-  const saveModeToStorage = (m: GameMode) => {
-    secureSave(STORAGE_KEYS.MODE, m);
-  };
-
-  const saveLivesToStorage = (l: number) => {
-    secureSave(STORAGE_KEYS.LIVES, l);
-  };
-
-  const saveScoreToStorage = (s: number) => {
-    secureSave(STORAGE_KEYS.SCORE, s);
-  };
 
   const loadFromStorage = () => {
     return {
@@ -149,6 +109,24 @@ export default function ExamPage() {
       score: secureLoad<number>(STORAGE_KEYS.SCORE) || 0,
     };
   };
+
+  // ==================== AUTOMATIC PERSISTENCE ====================
+  useEffect(() => {
+    // Only save if we are in a valid state (e.g. have started or at least have a name)
+    if (name) secureSave(STORAGE_KEYS.NAME, name);
+    secureSave(STORAGE_KEYS.STEP, step);
+    secureSave(STORAGE_KEYS.CURRENT, current);
+    secureSave(STORAGE_KEYS.ANSWERS, answers);
+    secureSave(STORAGE_KEYS.SESSION_ID, sessionId);
+    secureSave(STORAGE_KEYS.TOTAL, totalQuestions);
+    secureSave(STORAGE_KEYS.CATEGORY, category);
+    secureSave(STORAGE_KEYS.START_TIME, startTime);
+    secureSave(STORAGE_KEYS.MODE, gameMode);
+    secureSave(STORAGE_KEYS.LIVES, lives);
+    secureSave(STORAGE_KEYS.SCORE, score);
+    secureSave(STORAGE_KEYS.EXPIRES_AT, expiresAt);
+    secureSave(STORAGE_KEYS.TIME_LIMIT, timeLimit);
+  }, [name, step, current, answers, sessionId, totalQuestions, category, startTime, gameMode, lives, score, expiresAt, timeLimit]);
 
   const saveExpiresAtToStorage = (val: string) => {
     secureSave(STORAGE_KEYS.EXPIRES_AT, val);
@@ -187,9 +165,6 @@ export default function ExamPage() {
         setCategory(state.category || stored.category || 'none');
         setGameMode(state.mode || stored.mode || 'exam');
         setLives(state.lives ?? stored.lives ?? 3);
-        setExpiresAt(state.expires_at || null);
-        if (state.expires_at) saveExpiresAtToStorage(state.expires_at);
-        setTimeLimit(stored.timeLimit ?? 0);
         setScore(stored.score ?? 0);
         if (stored.startTime) setStartTime(stored.startTime);
 
@@ -270,14 +245,6 @@ export default function ExamPage() {
       setCurrent(0);
       setExpiresAt(serverExpiresAt);
 
-      saveSessionIdToStorage(newSessionId);
-      saveTotalQuestionsToStorage(newTotal);
-      saveAnswersToStorage(Array(newTotal).fill(null));
-      saveCurrentQuestionToStorage(0);
-      saveCategoryToStorage(category);
-      saveExpiresAtToStorage(serverExpiresAt);
-      saveTimeLimitToStorage(timeLimit);
-
       const firstQuestion = await getSessionQuestionViaRpc(newSessionId, 0);
       setCurrentQuestion(firstQuestion);
     } catch (err: any) {
@@ -289,19 +256,14 @@ export default function ExamPage() {
   };
 
   const startExam = async () => {
-    saveNameToStorage(name);
-    saveModeToStorage(gameMode);
     if (isSurvival) {
       setLives(3);
-      saveLivesToStorage(3);
       setScore(0);
-      saveScoreToStorage(0);
     }
     goToStep(PREPARING_STEP);
     await startNewSession();
     const now = Date.now();
     setStartTime(now);
-    saveStartTimeToStorage(now);
     goToStep(3);
   };
 
@@ -311,12 +273,10 @@ export default function ExamPage() {
     const updated = [...answers];
     updated[current] = val;
     setAnswers(updated);
-    saveAnswersToStorage(updated);
   };
 
   const goToStep = (newStep: number) => {
     setStep(newStep);
-    saveStepToStorage(newStep);
   };
 
   const scrollToQuestionTop = () => {
@@ -367,6 +327,13 @@ export default function ExamPage() {
         await saveSessionAnswerViaRpc(sessionId!, current, answers[current] || 'skipped');
       }
       const nextQ = await getSessionQuestionViaRpc(sessionId!, nextIdx);
+
+      // Survival pool exhausted — no more questions available
+      if (!nextQ && gameMode === 'survival') {
+        void endSession(true);
+        return;
+      }
+
       setCurrentQuestion(nextQ);
       setCurrent(nextIdx);
       scrollToQuestionTop();
@@ -401,7 +368,7 @@ export default function ExamPage() {
         if (isCorrect) {
           setScore(prev => {
             const newScore = prev + 1;
-            saveScoreToStorage(newScore);
+            
             return newScore;
           });
         } else {
@@ -509,7 +476,7 @@ export default function ExamPage() {
       if (diff <= 0) {
         clearInterval(interval);
         setTimeLeftDisplay('TIME EXPIRED');
-        void endSession(true); // Auto-submit without saving current answer to prevent race condition
+        void handleTimerExpiry();
         return;
       }
 
@@ -521,6 +488,50 @@ export default function ExamPage() {
     return () => clearInterval(interval);
   }, [step, expiresAt]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  /**
+   * Triggered when the exam timer reaches zero.
+   * 1. Saves the currently selected answer (if any) to the server.
+   * 2. Calls submitSessionExamViaRpc to finalise the session.
+   *    The server RPC records null for every unanswered question.
+   */
+  const handleTimerExpiry = async () => {
+    if (!sessionId) return;
+
+    // Flush the answer the user has currently selected but not yet submitted
+    const currentAnswer = answers[current];
+    if (currentAnswer) {
+      try {
+        await saveSessionAnswerViaRpc(sessionId, current, currentAnswer);
+      } catch {
+        // Best-effort — proceed to submit even if this flush fails
+      }
+    }
+
+    // Move to score screen then auto-submit
+    const now = Date.now();
+    setEndTime(now);
+    setStep(6);
+    // autoSaveToSupabase is triggered by the step===6 useEffect,
+    // but we call it directly here to avoid depending on stale state.
+    setSaving(true);
+    try {
+      const finalEndTime = new Date(now).toISOString();
+      const result = await submitSessionExamViaRpc(sessionId, finalEndTime);
+      setScore(result.score);
+      if (gameMode === 'survival') setTotalQuestions(result.total_attempted);
+      setRecapData(result.recap);
+      setSaved(true);
+      setSaveFailed(false);
+      clearStorage();
+    } catch (err) {
+      console.error('Timer auto-submit error:', err);
+      setSaveFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
   // ==================== HELPERS ====================
 
