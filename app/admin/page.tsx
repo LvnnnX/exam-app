@@ -96,6 +96,9 @@ export default function AdminPage() {
     } else if (activeTab === 'settings') {
       void loadAllCategoriesAdmin();
       void loadHiddenCategories();
+    } else if (activeTab === 'quiz') {
+      void loadAllCategoriesAdmin();
+      void loadHiddenCategories();
     } else {
       void fetchAdminQuestions();
     }
@@ -205,7 +208,7 @@ export default function AdminPage() {
       if (savedTab === 'results') {
         void fetchResults();
         void loadHiddenCategories();
-      } else if (savedTab === 'settings') {
+      } else if (savedTab === 'settings' || savedTab === 'quiz') {
         void loadAllCategoriesAdmin();
         void loadHiddenCategories();
       } else {
@@ -700,10 +703,10 @@ export default function AdminPage() {
 
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-          <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Verifying Admin Session...</p>
+          <div className="w-12 h-12 border-4 border-blue-100 border-t-[#4A90D9] rounded-full animate-spin"></div>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Verifying Admin Session...</p>
         </div>
       </div>
     );
@@ -711,14 +714,14 @@ export default function AdminPage() {
 
   if (isAuthenticated === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full p-8 bg-white rounded-2xl shadow-xl border border-gray-100 text-center">
-          <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">🔒</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-8">You must be logged in as an administrator to access this panel.</p>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="max-w-md w-full p-8 bg-white rounded-2xl shadow-lg border border-slate-100 text-center">
+          <div className="w-16 h-16 bg-red-50 text-[#FF3B30] rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl">🔒</div>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h1>
+          <p className="text-slate-500 mb-8">You must be logged in as an administrator to access this panel.</p>
           <button 
             onClick={() => window.location.href = '/'}
-            className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition-colors"
+            className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition-colors"
           >
             Return to Home
           </button>
@@ -728,42 +731,46 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <header className="mb-6 flex justify-between items-center">
+    <div className="min-h-screen bg-white p-6 md:p-8">
+      <header className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-sm text-gray-600">Manage questions and view exam results</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800">Admin Panel</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">Manage questions, results, and live quizzes</p>
         </div>
         <button
           onClick={handleLogout}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+          className="px-4 py-2 sm:px-5 sm:py-2.5 bg-white border-2 border-slate-200 text-slate-500 rounded-xl font-semibold text-xs sm:text-sm hover:border-[#FF3B30] hover:text-[#FF3B30] transition-all"
         >
           Logout
         </button>
       </header>
 
-      <div className="flex gap-2 mb-6 flex-wrap">
+      <div className="grid grid-cols-2 sm:flex gap-2 mb-6 md:mb-8 border-b border-slate-100 pb-4">
         <button
           onClick={() => handleTabChange('questions')}
-          className={`px-4 py-2 rounded-lg ${activeTab === 'questions' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          style={activeTab === 'questions' ? {background: '#4A90D9'} : {}}
+          className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'questions' ? 'text-white shadow-md shadow-blue-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#4A90D9] hover:text-[#4A90D9]'}`}
         >
-          Questions
+          📝 Questions
         </button>
         <button
           onClick={() => handleTabChange('results')}
-          className={`px-4 py-2 rounded-lg ${activeTab === 'results' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          style={activeTab === 'results' ? {background: '#FF9500'} : {}}
+          className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'results' ? 'text-white shadow-md shadow-orange-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#FF9500] hover:text-[#FF9500]'}`}
         >
-          Results Dashboard
+          📊 Results
         </button>
         <button
           onClick={() => handleTabChange('quiz')}
-          className={`px-4 py-2 rounded-lg ${activeTab === 'quiz' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          style={activeTab === 'quiz' ? {background: '#34C759'} : {}}
+          className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'quiz' ? 'text-white shadow-md shadow-green-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#34C759] hover:text-[#34C759]'}`}
         >
-          Quiz
+          🎮 Quiz
         </button>
         <button
           onClick={() => handleTabChange('settings')}
-          className={`ml-auto px-4 py-2 rounded-lg ${activeTab === 'settings' ? 'bg-slate-700 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          style={activeTab === 'settings' ? {background: '#64748B'} : {}}
+          className={`sm:ml-auto px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'settings' ? 'text-white shadow-md shadow-slate-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-400 hover:text-slate-600'}`}
         >
           ⚙️ Settings
         </button>
@@ -771,28 +778,29 @@ export default function AdminPage() {
 
       {activeTab === 'questions' && (
         <div>
-          <div className="mb-4 flex justify-between items-center">
+          <div className="mb-5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
             <button
               onClick={startAddNew}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              style={{background: '#34C759'}}
+              className="px-4 sm:px-5 py-2.5 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity shadow-md shadow-green-200 flex items-center justify-center gap-2"
             >
-              + Add New Question
+              <span className="text-lg leading-none">+</span> Add New Question
             </button>
             <button
               onClick={fetchAdminQuestions}
-              className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+              className="px-4 sm:px-5 py-2.5 bg-white border-2 border-[#4A90D9]/20 text-[#4A90D9] rounded-xl font-semibold text-sm hover:bg-[#4A90D9]/5 transition-colors"
             >
-              Refresh Questions
+              ↻ Refresh
             </button>
           </div>
 
-          <div className="mb-5 max-w-xs">
-            <label className="block text-xs font-black uppercase text-gray-400 tracking-widest mb-2">Filter Category</label>
+          <div className="mb-5 w-full sm:max-w-xs">
+            <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter Category</label>
             <select
               value={activeCategoryFilter}
               onChange={(e) => setActiveCategoryFilter(e.target.value)}
-              className="w-full bg-white border border-gray-300 rounded-lg px-4 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+              className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
             >
               <option value="all">ALL CATEGORIES</option>
               {Object.keys(questionsByCategory).filter(c => c !== 'all').map((category) => (
@@ -810,10 +818,10 @@ export default function AdminPage() {
                 placeholder="Search questions by text or category..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                className="w-full px-4 py-2.5 pl-10 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] transition-colors text-sm"
               />
               <svg
-                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                className="absolute left-3 top-3 h-5 w-5 text-slate-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -824,11 +832,11 @@ export default function AdminPage() {
           </div>
 
           {questionLoading ? (
-            <div className="bg-white rounded-lg p-6 text-gray-500">Loading questions...</div>
+            <div className="bg-white rounded-xl p-8 text-slate-400 text-center border-2 border-slate-100">Loading questions...</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredQuestions.length === 0 && (
-                <div className="col-span-full bg-white rounded-lg p-6 border text-gray-500">
+                <div className="col-span-full bg-white rounded-xl p-8 border-2 border-dashed border-slate-200 text-slate-400 text-center">
                   No questions found for {getCategoryLabel(activeCategoryFilter)}.
                 </div>
               )}
@@ -837,12 +845,12 @@ export default function AdminPage() {
                 const previewText = stripHtml(question.question_text);
 
                 return (
-                  <div key={question.id ?? index} className="border rounded-lg p-4 bg-white shadow-sm">
-                    <div className="font-semibold text-gray-800 mb-2">
+                  <div key={question.id ?? index} className="border-2 border-slate-100 rounded-xl p-5 bg-white hover:border-[#4A90D9]/30 hover:shadow-md hover:shadow-blue-50 transition-all">
+                    <div className="font-semibold text-slate-700 mb-2 text-sm leading-relaxed">
                       Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
                     </div>
-                    <div className="text-sm text-gray-500 mb-1">Categories: {question.categories?.join(', ').replaceAll('_', ' ')}</div>
-                    <div className="text-sm text-gray-500 mb-3">Correct: {question.correct_answer}</div>
+                    <div className="text-xs text-slate-400 mb-1">Categories: {question.categories?.join(', ').replaceAll('_', ' ')}</div>
+                    <div className="text-xs text-slate-400 mb-4">Correct: <span className="font-bold text-[#34C759]">{question.correct_answer}</span></div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
@@ -850,20 +858,20 @@ export default function AdminPage() {
                           setIsEditing(false);
                           setIsAdding(false);
                         }}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        className="px-3 py-1.5 bg-[#4A90D9]/10 text-[#4A90D9] rounded-lg text-xs font-semibold hover:bg-[#4A90D9]/20 transition-colors"
                       >
                         View
                       </button>
                       <button
                         onClick={() => startEdit(question)}
-                        className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+                        className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-xs font-semibold hover:bg-[#FF9500]/20 transition-colors"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeletingQuestion(question)}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 cursor-pointer"
+                        className="px-3 py-1.5 bg-[#FF3B30]/10 text-[#FF3B30] rounded-lg text-xs font-semibold hover:bg-[#FF3B30]/20 transition-colors cursor-pointer"
                       >
                         Delete
                       </button>
@@ -880,12 +888,12 @@ export default function AdminPage() {
         <div>
           <div className="mb-6 flex flex-col gap-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Exam Results</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-700">Exam Results</h2>
               <button
                 onClick={() => isLiveMode ? fetchLiveSessions() : fetchResults(0)}
-                className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-[#FF9500]/20 text-[#FF9500] rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#FF9500]/5 transition-colors"
               >
-                Refresh
+                ↻ Refresh
               </button>
             </div>
 
@@ -897,9 +905,10 @@ export default function AdminPage() {
                     setIsLiveMode(true);
                     void fetchLiveSessions();
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${isLiveMode
-                    ? 'bg-nike-green border-nike-green text-white shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-nike-green'
+                  style={isLiveMode ? {background: '#34C759'} : {}}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all flex items-center gap-2 ${isLiveMode
+                    ? 'text-white border-transparent shadow-md shadow-green-200'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-[#34C759] hover:text-[#34C759]'
                     }`}
                 >
                   <span className="relative flex h-2 w-2">
@@ -910,9 +919,10 @@ export default function AdminPage() {
                 </button>
                 <button
                   onClick={() => setIsLiveMode(false)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${!isLiveMode
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
+                  style={!isLiveMode ? {background: '#FF9500'} : {}}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all flex items-center gap-2 ${!isLiveMode
+                    ? 'text-white border-transparent shadow-md shadow-orange-200'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-[#FF9500] hover:text-[#FF9500]'
                     }`}
                 >
                   📜 History
@@ -921,12 +931,12 @@ export default function AdminPage() {
 
               {/* Row 2: Category selection — dropdown */}
               <div className="flex items-center gap-3">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Category</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Category</label>
                 <select
                   value={activeResCategory}
                   onChange={(e) => handleResCategoryChange(e.target.value)}
-                  className="bg-white border border-gray-300 rounded-lg px-3 h-9 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer pr-8"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                  className="bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
                 >
                   {categoryTabs.map((cat) => (
                     <option key={cat} value={cat}>
@@ -942,9 +952,10 @@ export default function AdminPage() {
                   <button
                     key={mode}
                     onClick={() => handleModeFilterChange(mode)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${activeModeFilter === mode
-                      ? mode === 'survival' ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-600 hover:border-blue-400'
+                    style={activeModeFilter === mode ? {background: mode === 'survival' ? '#FF3B30' : '#4A90D9'} : {}}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${activeModeFilter === mode
+                      ? 'text-white border-transparent shadow-md ' + (mode === 'survival' ? 'shadow-red-200' : 'shadow-blue-200')
+                      : 'bg-white border-slate-200 text-slate-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
                       }`}
                   >
                     {mode === 'all' ? 'All Modes' : mode === 'exam' ? '📝 Exam' : '⚔️ Survival'}
@@ -956,50 +967,50 @@ export default function AdminPage() {
 
           {!isLiveMode && statsData.length > 0 && (
             <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-indigo-600">{statsData.length}</div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Attempts</div>
+              <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#FF9500]/30 transition-colors">
+                <div className="text-2xl font-bold" style={{color: '#FF9500'}}>{statsData.length}</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Attempts</div>
               </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-green-600">
+              <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#34C759]/30 transition-colors">
+                <div className="text-2xl font-bold" style={{color: '#34C759'}}>
                   {Math.round(statsData.reduce((sum, row) => sum + row.score, 0) / statsData.length * 10) / 10}
                 </div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Average Score</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Average Score</div>
               </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-blue-600">
+              <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#4A90D9]/30 transition-colors">
+                <div className="text-2xl font-bold" style={{color: '#4A90D9'}}>
                   {statsData.reduce((sum, row) => sum + row.total_questions, 0)}
                 </div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Questions Answered</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Questions Answered</div>
               </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-purple-600">
+              <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#AF52DE]/30 transition-colors">
+                <div className="text-2xl font-bold" style={{color: '#AF52DE'}}>
                   {statsData.length > 0 ? Math.round(statsData.filter((row) => (row.score / row.total_questions) >= 0.7).length / statsData.length * 100) : 0}%
                 </div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pass Rate (70%+)</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pass Rate (70%+)</div>
               </div>
             </div>
           )}
 
           {isLiveMode ? (
             liveLoading ? (
-              <p>Fetching active sessions...</p>
+              <p className="text-slate-400 text-center py-8">Fetching active sessions...</p>
             ) : liveSessions.length === 0 ? (
-              <div className="bg-white rounded-lg p-6 text-center border">
-                <p className="text-gray-500">No active users found. Real-time tracking is empty.</p>
+              <div className="bg-white rounded-xl p-8 text-center border-2 border-dashed border-slate-200">
+                <p className="text-slate-400">No active users found. Real-time tracking is empty.</p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden border-2 border-slate-100">
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-slate-100">
+                    <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Answered</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lives</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">User Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Mode</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Answered</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Lives</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Progress</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started At</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
                       </tr>
@@ -1049,13 +1060,13 @@ export default function AdminPage() {
                                   </div>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                                 {new Date(session.start_time).toLocaleTimeString()}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button
                                   onClick={() => handleFetchLiveDetail(session)}
-                                  className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
+                                  className="text-[#4A90D9] hover:text-blue-800 bg-[#4A90D9]/10 px-3 py-1.5 rounded-lg text-xs font-semibold"
                                 >
                                   Track Live Progress
                                 </button>
@@ -1070,35 +1081,35 @@ export default function AdminPage() {
             )
           ) : (
             loading ? (
-              <p>Loading results...</p>
+              <p className="text-slate-400 text-center py-8">Loading results...</p>
             ) : results.length === 0 ? (
-              <div className="bg-white rounded-lg p-6 text-center">
-                <p className="text-gray-500">No exam results yet. Users need to complete the exam first.</p>
+              <div className="bg-white rounded-xl p-8 text-center border-2 border-dashed border-slate-200">
+                <p className="text-slate-400">No exam results yet. Users need to complete the exam first.</p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden border-2 border-slate-100">
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-slate-100">
+                    <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Mode</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Score</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Percentage</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Start Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">End Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Duration</th>
+                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-slate-50">
                       {results.map((result) => (
-                        <tr key={result.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.name}</td>
+                        <tr key={result.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">{result.name}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${result.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${result.mode === 'survival' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' : 'bg-[#4A90D9]/10 text-[#4A90D9]'}`}>
                               {result.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
                             </span>
                           </td>

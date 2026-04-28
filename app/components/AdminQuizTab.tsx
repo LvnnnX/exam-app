@@ -173,8 +173,8 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
   return (
     <div>
       <div className="mb-6 flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Quiz Management</h2>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-700">Quiz Management</h2>
           <button
             onClick={() => {
               if (activeSession) {
@@ -185,9 +185,9 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
                 fetchActiveSessions().then(setActiveSessions);
               }
             }}
-            className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+            className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-[#34C759]/20 text-[#34C759] rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#34C759]/5 transition-colors"
           >
-            Refresh
+            ↻ Refresh
           </button>
         </div>
 
@@ -198,18 +198,20 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
                 setActiveSession(null);
                 setActiveView('create');
               }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${activeView === 'create'
-                ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-400'
+              style={activeView === 'create' ? {background: '#4A90D9'} : {}}
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'create'
+                ? 'text-white border-transparent shadow-md shadow-blue-200'
+                : 'bg-white border-slate-200 text-slate-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
                 }`}
             >
               ✨ Create
             </button>
             <button
               onClick={() => { setActiveSession(null); setActiveView('manage'); }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${activeView === 'manage'
-                ? 'bg-nike-green border-nike-green text-white shadow-sm'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-nike-green'
+              style={activeView === 'manage' ? {background: '#34C759'} : {}}
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'manage'
+                ? 'text-white border-transparent shadow-md shadow-green-200'
+                : 'bg-white border-slate-200 text-slate-500 hover:border-[#34C759] hover:text-[#34C759]'
                 }`}
             >
               <span className="relative flex h-2 w-2">
@@ -223,9 +225,10 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
                 setActiveSession(null);
                 setActiveView('history');
               }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${activeView === 'history'
-                ? 'bg-gray-800 border-gray-800 text-white shadow-sm'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+              style={activeView === 'history' ? {background: '#64748B'} : {}}
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'history'
+                ? 'text-white border-transparent shadow-md shadow-slate-200'
+                : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-600'
                 }`}
             >
               📜 History
@@ -235,38 +238,115 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
       </div>
 
       {activeView === 'create' && !activeSession && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-          <h3 className="text-lg font-bold mb-6 pb-4 border-b border-gray-100">Configure New Quiz</h3>
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full border-2 border-gray-200 rounded-lg p-2 focus:border-indigo-500 outline-none transition-colors">
-                <option value="All Categories">All Categories</option>
+        <div className="max-w-2xl mx-auto">
+          {/* Header Card */}
+          <div style={{background: 'linear-gradient(135deg, #2d2235 0%, #1e293b 50%, #1a2332 100%)'}} className="rounded-[20px] sm:rounded-[24px] p-5 sm:p-8 mb-4 sm:mb-6 border border-white/5 shadow-lg">
+            <div className="flex items-center gap-3 mb-2">
+              <div style={{background: 'linear-gradient(135deg, #7c5295, #5c6bc0)'}} className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-md">
+                <span className="text-2xl">🎯</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-100">Buat Kuis Baru</h3>
+                <p className="text-sm text-gray-400">Konfigurasikan sesi kuis untuk peserta</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Form Card */}
+          <div style={{background: '#1e1e2e'}} className="rounded-[20px] sm:rounded-[24px] shadow-lg border border-white/5 overflow-hidden">
+            {/* Category */}
+            <div className="p-4 sm:p-6 pb-4 sm:pb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div style={{background: '#2a2a4a'}} className="w-7 h-7 rounded-lg flex items-center justify-center">
+                  <span className="text-sm">📚</span>
+                </div>
+                <label className="text-sm font-semibold text-gray-300">Kategori Soal</label>
+              </div>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                style={{background: '#252538', borderColor: '#3d3d5c', color: '#c4b5fd'}}
+                className="w-full border-2 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-400/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value="All Categories">Semua Kategori</option>
                 {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Number of Questions</label>
-                <select value={questionCount} onChange={(e) => setQuestionCount(parseInt(e.target.value))} className="w-full border-2 border-gray-200 rounded-lg p-2 focus:border-indigo-500 outline-none transition-colors">
-                  <option value={5}>5 Questions</option>
-                  <option value={10}>10 Questions</option>
-                  <option value={20}>20 Questions</option>
-                </select>
+
+            <div style={{background: 'linear-gradient(to right, transparent, #3d3d5c, transparent)'}} className="h-px mx-6" />
+
+            {/* Question Count */}
+            <div className="p-4 sm:p-6 pb-4 sm:pb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div style={{background: '#2d2235'}} className="w-7 h-7 rounded-lg flex items-center justify-center">
+                  <span className="text-sm">✏️</span>
+                </div>
+                <label className="text-sm font-semibold text-gray-300">Jumlah Soal</label>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-                <select value={durationMinutes} onChange={(e) => setDurationMinutes(parseInt(e.target.value))} className="w-full border-2 border-gray-200 rounded-lg p-2 focus:border-indigo-500 outline-none transition-colors">
-                  <option value={30}>30 Minutes</option>
-                  <option value={60}>60 Minutes</option>
-                  <option value={90}>90 Minutes</option>
-                  <option value={120}>120 Minutes</option>
-                </select>
+              <div className="flex gap-3">
+                {[5, 10, 20].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setQuestionCount(n)}
+                    style={questionCount === n
+                      ? {background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', borderColor: 'transparent'}
+                      : {background: '#252538', borderColor: '#4c3d6e', color: '#c4b5fd'}
+                    }
+                    className="flex-1 py-3 rounded-2xl text-sm font-bold border-2 transition-all duration-200 hover:shadow-md hover:shadow-purple-500/10"
+                  >
+                    {n} Soal
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="pt-4 border-t border-gray-100 mt-6">
-              <button onClick={handleCreate} disabled={creating} className="w-full sm:w-auto bg-indigo-600 text-white font-bold py-3 px-8 rounded-[30px] hover:bg-indigo-700 disabled:opacity-50 transition-colors">
-                {creating ? 'Creating...' : 'Create Quiz Session'}
+
+            <div style={{background: 'linear-gradient(to right, transparent, #4c3d6e, transparent)'}} className="h-px mx-6" />
+
+            {/* Duration */}
+            <div className="p-4 sm:p-6 pb-4 sm:pb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div style={{background: '#1a2332'}} className="w-7 h-7 rounded-lg flex items-center justify-center">
+                  <span className="text-sm">⏱️</span>
+                </div>
+                <label className="text-sm font-semibold text-gray-300">Durasi Waktu</label>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                {[30, 60, 90, 120].map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setDurationMinutes(m)}
+                    style={durationMinutes === m
+                      ? {background: 'linear-gradient(135deg, #0d9488, #0f766e)', color: 'white', borderColor: 'transparent'}
+                      : {background: '#1a2332', borderColor: '#2a4a4a', color: '#5eead4'}
+                    }
+                    className="py-3 rounded-2xl text-sm font-bold border-2 transition-all duration-200 hover:shadow-md hover:shadow-teal-500/10"
+                  >
+                    {m} Min
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{background: 'linear-gradient(to right, transparent, #2a4a4a, transparent)'}} className="h-px mx-6" />
+
+            {/* Submit */}
+            <div className="p-4 sm:p-6">
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                style={{background: creating ? '#374151' : 'linear-gradient(135deg, #e879a0, #c0507a)'}}
+                className="w-full py-4 rounded-2xl text-white font-bold text-base tracking-wide transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/20 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100"
+              >
+                {creating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Membuat Kuis...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <span>🚀</span> Buat Sesi Kuis
+                  </span>
+                )}
               </button>
             </div>
           </div>
