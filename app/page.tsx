@@ -374,7 +374,7 @@ export default function ExamPage() {
         if (isCorrect) {
           setScore(prev => {
             const newScore = prev + 1;
-            
+
             return newScore;
           });
         } else {
@@ -618,11 +618,11 @@ export default function ExamPage() {
                 </button>
               </div>
               <div className="mt-4">
-                 <button
+                <button
                   onClick={() => setIsJoinModalOpen(true)}
                   className="w-full h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider bg-transparent border-[1.5px] border-nike-black text-nike-black hover:bg-nike-black hover:text-white shadow-sm"
                 >
-                  🎮 Join Live Quiz
+                  🎮 Join with Code
                 </button>
               </div>
             </div>
@@ -717,9 +717,9 @@ export default function ExamPage() {
             <button
               onClick={() => setStep(2)}
               disabled={
-                !name.trim() || 
-                !category || 
-                category === 'none' || 
+                !name.trim() ||
+                !category ||
+                category === 'none' ||
                 (availableCategories.length > 0 && !availableCategories.some(c => c.value === category))
               }
               className="w-full h-[54px] rounded-[27px] bg-nike-black text-nike-white text-[16px] font-bold hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider shadow-lg shadow-nike-black/10"
@@ -749,9 +749,8 @@ export default function ExamPage() {
                         if (codeError) setCodeError('');
                       }}
                       placeholder="000000"
-                      className={`w-full bg-nike-grey-100 rounded-[20px] px-6 h-[72px] text-center text-[32px] font-display tracking-[0.2em] focus:outline-none focus:ring-4 transition-all ${
-                        codeError ? 'ring-nike-red/10 border-nike-red text-nike-red' : 'focus:ring-nike-black/5 border-nike-grey-200'
-                      }`}
+                      className={`w-full bg-nike-grey-100 rounded-[20px] px-6 h-[72px] text-center text-[32px] font-display tracking-[0.2em] focus:outline-none focus:ring-4 transition-all ${codeError ? 'ring-nike-red/10 border-nike-red text-nike-red' : 'focus:ring-nike-black/5 border-nike-grey-200'
+                        }`}
                     />
                     {codeError && (
                       <p className="absolute -bottom-6 left-0 right-0 text-[10px] font-black text-nike-red uppercase tracking-widest animate-in slide-in-from-top-1">
