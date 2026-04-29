@@ -5,7 +5,7 @@ import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
 import AdminQuizTab from '@/app/components/AdminQuizTab';
-import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchHeadBabs, fetchAllSubBabsAdmin, fetchHiddenSubBabs, saveHiddenSubBabs, type HeadBabInfo, type SubBabInfo } from '@/lib/questions';
+import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchHeadBabs, fetchAllSubBabsAdmin, fetchSubBabsForMultiple, fetchHiddenSubBabs, saveHiddenSubBabs, type HeadBabInfo, type SubBabInfo } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
 
@@ -244,6 +244,26 @@ export default function AdminPage() {
       if (interval) clearInterval(interval);
     };
   }, [isAuthenticated, isLiveMode]);
+
+  // Filter sub_babs based on selected head_babs in Form
+  useEffect(() => {
+    if (!isAuthenticated || (!isAdding && !isEditing)) return;
+
+    const syncSubBabs = async () => {
+      if (formData.head_babs.length === 0) {
+        // If no head_babs selected, show nothing or everything? 
+        // User says "langsung load subbab dari head bab tersebut", implies filtered.
+        // If empty, maybe show empty list.
+        setAllSubBabsAdmin([]);
+        return;
+      }
+
+      const filtered = await fetchSubBabsForMultiple(formData.head_babs);
+      setAllSubBabsAdmin(filtered);
+    };
+
+    void syncSubBabs();
+  }, [formData.head_babs, isAdding, isEditing, isAuthenticated]);
 
   const headBabTabs = useMemo(() => {
     const headBabs = Array.from(new Set(adminQuestions.flatMap(q => q.head_babs || []))).sort();
@@ -653,6 +673,7 @@ export default function AdminPage() {
     setIsEditing(false);
     setIsAdding(false);
     setFormData(EMPTY_DRAFT);
+    void loadAllSubBabsAdmin();
   };
 
   const handleInputChange = (field: keyof QuestionDraft, value: string | string[]) => {

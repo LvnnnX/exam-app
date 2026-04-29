@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createQuizSession, updateQuizStatus, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
-import { fetchQuestionsByIds, type RawQuestion } from '@/lib/questions';
+import { fetchQuestionsByIds, fetchSubBabs, type RawQuestion, type SubBabInfo } from '@/lib/questions';
 import RichContent from '@/app/components/RichContent';
 
 export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[], subBabs: {label: string, value: string}[] }) {
@@ -22,6 +22,35 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
   // Create state
   const [selectedHeadBab, setSelectedHeadBab] = useState<string>('Semua Head Bab');
   const [selectedSubBab, setSelectedSubBab] = useState<string>('Semua Sub-bab');
+  const [displaySubBabs, setDisplaySubBabs] = useState<SubBabInfo[]>(subBabs);
+  const [loadingSubBabs, setLoadingSubBabs] = useState(false);
+
+  // Sync subBabs prop to displaySubBabs initially or when subBabs prop changes
+  useEffect(() => {
+    if (selectedHeadBab === 'Semua Head Bab') {
+      setDisplaySubBabs(subBabs);
+    }
+  }, [subBabs, selectedHeadBab]);
+
+  // Dynamic sub-bab loading based on selectedHeadBab
+  useEffect(() => {
+    const loadFiltered = async () => {
+      if (selectedHeadBab === 'Semua Head Bab') {
+        setDisplaySubBabs(subBabs);
+        return;
+      }
+      
+      setLoadingSubBabs(true);
+      try {
+        const filtered = await fetchSubBabs(selectedHeadBab);
+        setDisplaySubBabs(filtered);
+      } finally {
+        setLoadingSubBabs(false);
+      }
+    };
+    
+    void loadFiltered();
+  }, [selectedHeadBab, subBabs]);
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);
@@ -302,10 +331,12 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
                     className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
                   >
                     <option value="Semua Sub-bab">✨ Semua Sub-bab</option>
-                    {subBabs.length > 0 ? (
-                      subBabs.map(c => <option key={c.value} value={c.value}>{c.label}</option>)
-                    ) : (
+                    {loadingSubBabs ? (
                       <option disabled>Loading Sub-babs...</option>
+                    ) : displaySubBabs.length > 0 ? (
+                      displaySubBabs.map(c => <option key={c.value} value={c.value}>{c.label}</option>)
+                    ) : (
+                      <option disabled>No Sub-babs found</option>
                     )}
                   </select>
                   <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">

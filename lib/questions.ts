@@ -162,6 +162,33 @@ export async function fetchSubBabs(headBab?: string): Promise<SubBabInfo[]> {
     });
 }
 
+/** 
+ * Returns sub_babs belonging to ANY of the provided head_babs.
+ */
+export async function fetchSubBabsForMultiple(headBabs: string[]): Promise<SubBabInfo[]> {
+  if (!headBabs || headBabs.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('questions')
+    .select('sub_babs')
+    .or(headBabs.map(hb => `head_babs.cs.{${hb}}`).join(','));
+
+  if (error) {
+    console.error('Failed to fetch sub babs for multiple head babs:', error.message);
+    return [];
+  }
+
+  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || []))).sort();
+
+  return uniqueSubBabs.map((sb) => {
+    const label = sb
+      .split('_')
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    return { value: sb, label };
+  });
+}
+
 /** Returns ALL sub_babs from the questions table with zero filtering.
  *  Used by the admin Settings page to allow toggling every sub_bab. */
 export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
