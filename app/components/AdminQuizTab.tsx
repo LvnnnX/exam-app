@@ -268,8 +268,12 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       }
       scheduledAt = target.toISOString();
     }
-    if (percentagesEnabled && selectedSubBabs.length > 0 && !selectedSubBabs.includes('Semua Sub-bab')) {
-      const totalPct = Object.values(subBabPercentages).reduce((acc, val) => acc + val, 0);
+    const effectiveSubBabs = selectedSubBabs.length > 0 ? selectedSubBabs : displaySubBabs.map(sb => sb.value);
+    let subBabsToPass = selectedSubBabs;
+
+    if (percentagesEnabled && effectiveSubBabs.length > 0) {
+      subBabsToPass = effectiveSubBabs;
+      const totalPct = effectiveSubBabs.reduce((acc, val) => acc + (subBabPercentages[val] || 0), 0);
       if (totalPct !== 100) {
         alert('Total persentase soal harus 100%. Saat ini: ' + totalPct + '%');
         setCreating(false);
@@ -277,7 +281,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       }
     }
     
-    const session = await createQuizSession(selectedBab, selectedSubBabs, questionCount, durationMinutes, scheduledAt, percentagesEnabled ? subBabPercentages : undefined);
+    const session = await createQuizSession(selectedBab, subBabsToPass, questionCount, durationMinutes, scheduledAt, percentagesEnabled ? subBabPercentages : undefined);
     if (session) {
       setActiveSession(session);
       setActiveView('manage');
@@ -662,78 +666,83 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             </div>
 
             {/* Persentase Soal */}
-            {selectedSubBabs.length > 0 && !selectedSubBabs.includes('Semua Sub-bab') && (
-              <div className="p-5 py-4 bg-white border-b border-gray-100">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#FFF0F6] flex items-center justify-center border border-[#FED7E2]">
-                      <span className="text-base">📊</span>
+            {(() => {
+              const effectiveSubBabs = selectedSubBabs.length > 0 ? selectedSubBabs : displaySubBabs.map(sb => sb.value);
+              if (effectiveSubBabs.length === 0) return null;
+              
+              return (
+                <div className="p-5 py-4 bg-white border-b border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-[#FFF0F6] flex items-center justify-center border border-[#FED7E2]">
+                        <span className="text-base">📊</span>
+                      </div>
+                      <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Persentase Soal</label>
                     </div>
-                    <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Persentase Soal</label>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const newState = !percentagesEnabled;
-                      setPercentagesEnabled(newState);
-                      if (newState) {
-                        const newPct = { ...subBabPercentages };
-                        const total = selectedSubBabs.length;
-                        if (total > 0) {
-                          const equal = Math.floor(100 / total);
-                          let rem = 100 - (equal * total);
-                          selectedSubBabs.forEach(v => {
-                            newPct[v] = equal + (rem > 0 ? 1 : 0);
-                            rem--;
-                          });
+                    <button
+                      onClick={() => {
+                        const newState = !percentagesEnabled;
+                        setPercentagesEnabled(newState);
+                        if (newState) {
+                          const newPct = { ...subBabPercentages };
+                          const total = effectiveSubBabs.length;
+                          if (total > 0) {
+                            const equal = Math.floor(100 / total);
+                            let rem = 100 - (equal * total);
+                            effectiveSubBabs.forEach(v => {
+                              newPct[v] = equal + (rem > 0 ? 1 : 0);
+                              rem--;
+                            });
+                          }
+                          setSubBabPercentages(newPct);
                         }
-                        setSubBabPercentages(newPct);
-                      }
-                    }}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
-                      percentagesEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                      percentagesEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-                {percentagesEnabled && (
-                  <div className="space-y-3 mt-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    {selectedSubBabs.map(sub => {
-                      const label = displaySubBabs.find(d => d.value === sub)?.label || sub;
-                      return (
-                        <div key={sub} className="flex items-center justify-between gap-4">
-                          <span className="text-xs font-bold text-gray-700 uppercase flex-1 truncate">{label}</span>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={subBabPercentages[sub] || 0}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value) || 0;
-                                setSubBabPercentages(prev => ({ ...prev, [sub]: val }));
-                              }}
-                              className="w-16 h-8 text-center text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded focus:outline-none focus:border-[#4A90D9]"
-                            />
-                            <span className="text-xs font-bold text-gray-500">%</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center">
-                      <span className="text-xs font-black text-gray-500 uppercase">Total:</span>
-                      <span className={`text-xs font-black uppercase ${
-                        Object.values(subBabPercentages).reduce((a, b) => a + b, 0) === 100 ? 'text-green-500' : 'text-red-500'
-                      }`}>
-                        {Object.values(subBabPercentages).reduce((a, b) => a + b, 0)}%
-                      </span>
-                    </div>
+                      }}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        percentagesEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                        percentagesEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
                   </div>
-                )}
-              </div>
-            )}
+                  {percentagesEnabled && (
+                    <div className="space-y-3 mt-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                      {effectiveSubBabs.map(sub => {
+                        const label = displaySubBabs.find(d => d.value === sub)?.label || sub;
+                        return (
+                          <div key={sub} className="flex items-center justify-between gap-4">
+                            <span className="text-xs font-bold text-gray-700 uppercase flex-1 truncate">{label}</span>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={subBabPercentages[sub] || 0}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 0;
+                                  setSubBabPercentages(prev => ({ ...prev, [sub]: val }));
+                                }}
+                                className="w-16 h-8 text-center text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded focus:outline-none focus:border-[#4A90D9]"
+                              />
+                              <span className="text-xs font-bold text-gray-500">%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center">
+                        <span className="text-xs font-black text-gray-500 uppercase">Total:</span>
+                        <span className={`text-xs font-black uppercase ${
+                          effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? 'text-green-500' : 'text-red-500'
+                        }`}>
+                          {effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Duration */}
             <div className="p-5 py-4">
