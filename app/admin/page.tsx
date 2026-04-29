@@ -6,6 +6,7 @@ import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
 import AdminQuizTab from '@/app/components/AdminQuizTab';
 import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchbabs, fetchAllSubBabsAdmin, fetchSubBabsForMultiple, fetchHiddenSubBabs, saveHiddenSubBabs, type BabInfo, type SubBabInfo } from '@/lib/questions';
+import { categorySlugToLabel, normalizeCategorySlug } from '@/lib/categories';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
 
@@ -299,9 +300,7 @@ export default function AdminPage() {
       return 'Semua';
     }
 
-    return category
-      .replaceAll('_', ' ')
-      .replace(/\b\w/g, (match) => match.toUpperCase());
+    return categorySlugToLabel(category) || category;
   };
 
 
@@ -570,11 +569,7 @@ export default function AdminPage() {
    * Creates a new bab slug on-the-fly and adds it to the current question draft.
    */
   const handleAddNewbab = async () => {
-    const raw = newbabInput.trim();
-    if (!raw) return;
-
-    // Normalise: lowercase, replace spaces with underscores
-    const slug = raw.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const slug = normalizeCategorySlug(newbabInput);
     if (!slug) return;
 
     setAddingCategory(true);
@@ -584,10 +579,7 @@ export default function AdminPage() {
       }
 
       if (!allbabs.some(c => c.value === slug)) {
-        const label = slug
-          .split('_')
-          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(' ');
+        const label = categorySlugToLabel(slug);
         setAllbabs(prev => [...prev, { value: slug, label }]);
       }
 
@@ -601,11 +593,7 @@ export default function AdminPage() {
    * Creates a new sub_bab slug on-the-fly and adds it to the current question draft.
    */
   const handleAddNewSubBab = async () => {
-    const raw = newSubBabInput.trim();
-    if (!raw) return;
-
-    // Normalise: lowercase, replace spaces with underscores
-    const slug = raw.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const slug = normalizeCategorySlug(newSubBabInput);
     if (!slug) return;
 
     setAddingCategory(true);
@@ -615,10 +603,7 @@ export default function AdminPage() {
       }
 
       if (!allSubBabsAdmin.some(c => c.value === slug)) {
-        const label = slug
-          .split('_')
-          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(' ');
+        const label = categorySlugToLabel(slug);
         setAllSubBabsAdmin(prev => [...prev, { value: slug, label }]);
       }
 

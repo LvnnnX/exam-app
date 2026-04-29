@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { ensureHtmlDocument } from './rich-text';
+import { categorySlugToLabel, isSafeCategorySlug, normalizeCategorySlug } from './categories';
 
 const getUA = () => typeof window !== 'undefined' ? window.navigator.userAgent : 'server';
 
@@ -45,6 +46,38 @@ export type ShuffledQuestion = {
   question_text: string;
   options: ShuffledOption[];   // 5 options in shuffled order
   correct_label: string;       // the new label (A-E) pointing to the correct answer
+};
+
+type StartExamSessionRpcRow = {
+  session_id: string;
+  question_count: number;
+  expires_at: string;
+};
+
+type SessionStateRpcRow = {
+  is_finished?: boolean;
+  name?: string;
+  question_count: number;
+  bab?: string;
+  sub_bab?: string;
+  mode?: string;
+  lives?: number;
+  current_index: number;
+  user_answers?: Record<string, string | null>;
+};
+
+type SaveSessionAnswerRpcResult = {
+  error?: string;
+  success?: boolean;
+  is_correct?: boolean;
+};
+
+type SessionRecapEntry = Record<string, unknown>;
+
+type SubmitSessionExamRpcRow = {
+  score: number;
+  recap: SessionRecapEntry[];
+  total_attempted: number;
 };
 
 const ANSWER_LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -121,15 +154,11 @@ export async function fetchbabs(): Promise<BabInfo[]> {
     return [];
   }
 
-  const uniqueBabs = Array.from(new Set(data.flatMap((q) => q.babs || []))).sort();
+  const uniqueBabs = Array.from(
+    new Set(data.flatMap((q) => (q.babs || []).map(normalizeCategorySlug)).filter(isSafeCategorySlug))
+  ).sort();
 
-  return uniqueBabs.map((hb) => {
-    const label = hb
-      .split('_')
-      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    return { value: hb, label };
-  });
+  return uniqueBabs.map((hb) => ({ value: hb, label: categorySlugToLabel(hb) }));
 }
 
 export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
@@ -149,17 +178,14 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
     return [];
   }
 
-  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || []))).sort();
+  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || [])))
+    .map(normalizeCategorySlug)
+    .filter(isSafeCategorySlug)
+    .sort();
 
   return uniqueSubBabs
     .filter((sb) => !dbHidden.includes(sb))
-    .map((sb) => {
-      const label = sb
-        .split('_')
-        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      return { value: sb, label };
-    });
+    .map((sb) => ({ value: sb, label: categorySlugToLabel(sb) }));
 }
 
 /** 
@@ -168,25 +194,25 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
 export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInfo[]> {
   if (!babs || babs.length === 0) return [];
 
+  const safeBabs = babs.map(normalizeCategorySlug).filter(isSafeCategorySlug);
+  if (safeBabs.length === 0) return [];
+
   const { data, error } = await supabase
     .from('questions')
     .select('sub_babs')
-    .or(babs.map(hb => `babs.cs.{${hb}}`).join(','));
+    .or(safeBabs.map((hb) => `babs.cs.{${hb}}`).join(','));
 
   if (error) {
     console.error('Failed to fetch sub babs for multiple BABs:', error.message);
     return [];
   }
 
-  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || []))).sort();
+  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || [])))
+    .map(normalizeCategorySlug)
+    .filter(isSafeCategorySlug)
+    .sort();
 
-  return uniqueSubBabs.map((sb) => {
-    const label = sb
-      .split('_')
-      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    return { value: sb, label };
-  });
+  return uniqueSubBabs.map((sb) => ({ value: sb, label: categorySlugToLabel(sb) }));
 }
 
 /** Returns ALL sub_babs from the questions table with zero filtering.
@@ -199,15 +225,12 @@ export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
     return [];
   }
 
-  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || []))).sort();
+  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || [])))
+    .map(normalizeCategorySlug)
+    .filter(isSafeCategorySlug)
+    .sort();
 
-  return uniqueSubBabs.map((sb) => {
-    const label = sb
-      .split('_')
-      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    return { value: sb, label };
-  });
+  return uniqueSubBabs.map((sb) => ({ value: sb, label: categorySlugToLabel(sb) }));
 }
 
 export async function fetchQuestions(bab?: string, subBab?: string): Promise<RawQuestion[]> {
@@ -254,14 +277,16 @@ export async function startExamSessionViaRpc(name: string, bab: string, subBab: 
     throw new Error(`Failed to start exam session: ${error?.message}`);
   }
 
+  const session = data as StartExamSessionRpcRow;
+
   return {
-    sessionId: (data as any).session_id,
-    total: (data as any).question_count,
-    expiresAt: (data as any).expires_at
+    sessionId: session.session_id,
+    total: session.question_count,
+    expiresAt: session.expires_at
   };
 }
 
-export async function getSessionStateViaRpc(sessionId: string): Promise<any> {
+export async function getSessionStateViaRpc(sessionId: string): Promise<SessionStateRpcRow | null> {
   const { data, error } = await supabase.rpc('get_session_state', {
     p_session_id: sessionId
   }).single();
@@ -271,7 +296,7 @@ export async function getSessionStateViaRpc(sessionId: string): Promise<any> {
     return null;
   }
 
-  return data;
+  return data as SessionStateRpcRow;
 }
 
 export async function getSessionQuestionViaRpc(sessionId: string, index: number): Promise<ShuffledQuestion | null> {
@@ -290,7 +315,7 @@ export async function getSessionQuestionViaRpc(sessionId: string, index: number)
   return shuffleOptions(data as PublicQuestion);
 }
 
-export async function saveSessionAnswerViaRpc(sessionId: string, index: number, answerText: string): Promise<any> {
+export async function saveSessionAnswerViaRpc(sessionId: string, index: number, answerText: string): Promise<SaveSessionAnswerRpcResult> {
   const { data, error } = await supabase.rpc('save_session_answer', {
     p_session_id: sessionId,
     p_index: index,
@@ -303,13 +328,13 @@ export async function saveSessionAnswerViaRpc(sessionId: string, index: number, 
     throw new Error(error.message);
   }
 
-  return data;
+  return data as SaveSessionAnswerRpcResult;
 }
 
 export async function submitSessionExamViaRpc(
   sessionId: string,
   endTime: string
-): Promise<{ score: number, recap: any[], total_attempted: number }> {
+): Promise<{ score: number, recap: SessionRecapEntry[], total_attempted: number }> {
   const { data, error } = await supabase.rpc('submit_session_exam', {
     p_session_id: sessionId,
     p_end_time: endTime
@@ -320,7 +345,7 @@ export async function submitSessionExamViaRpc(
     throw new Error(`Failed to submit exam: ${error.message}`);
   }
   
-  return data as { score: number, recap: any[], total_attempted: number };
+  return data as SubmitSessionExamRpcRow;
 }
 
 // ==================== Fetch specific questions by IDs ====================

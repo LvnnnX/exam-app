@@ -17,6 +17,7 @@ import {
   saveSessionAnswerViaRpc,
   submitSessionExamViaRpc,
 } from '@/lib/questions';
+import { QUIZ_CODE_LENGTH, normalizeQuizCode } from '@/lib/quiz';
 import { secureSave, secureLoad, secureClear } from '@/lib/security';
 
 type Answer = string | null;
@@ -168,7 +169,7 @@ export default function ExamPage() {
         setTotalQuestions(state.question_count);
         setBab(state.bab || stored.bab || 'None');
         setSubBab(state.sub_bab || stored.subBab || 'Semua Sub-bab');
-        setGameMode(state.mode || stored.mode || 'exam');
+        setGameMode((state.mode || stored.mode || 'exam') as GameMode);
         setLives(state.lives ?? stored.lives ?? 3);
         setScore(stored.score ?? 0);
         if (stored.startTime) setStartTime(stored.startTime);
@@ -177,7 +178,9 @@ export default function ExamPage() {
         const newAnswers = Array(state.question_count).fill(null);
         if (state.user_answers) {
           Object.keys(state.user_answers).forEach(k => {
-            newAnswers[parseInt(k)] = state.user_answers[k];
+            if (state.user_answers) {
+              newAnswers[parseInt(k)] = state.user_answers[k];
+            }
           });
         }
         setAnswers(newAnswers);
@@ -556,8 +559,10 @@ export default function ExamPage() {
   };
 
   const handleJoinQuiz = async () => {
-    if (quizCode.length < 6) {
-      setCodeError('Masukkkan 6 digit kode');
+    const normalizedCode = normalizeQuizCode(quizCode);
+
+    if (normalizedCode.length < QUIZ_CODE_LENGTH) {
+      setCodeError(`Masukkan ${QUIZ_CODE_LENGTH}-karakter kode`);
       return;
     }
 
@@ -566,7 +571,7 @@ export default function ExamPage() {
 
     try {
       const { fetchQuizByCode } = await import('@/lib/quiz');
-      const quiz = await fetchQuizByCode(quizCode);
+      const quiz = await fetchQuizByCode(normalizedCode);
 
       if (!quiz) {
         setCodeError('Kode tidak valid');
@@ -764,19 +769,19 @@ export default function ExamPage() {
                   <h2 className="font-display text-[40px] text-nike-black leading-[0.9] tracking-[0.03em] uppercase mb-2">
                     Join.<br />Live. Quiz.
                   </h2>
-                  <p className="text-[12px] font-bold text-nike-grey-400 uppercase tracking-widest mb-10">Enter 6-digit access code</p>
+                  <p className="text-[12px] font-bold text-nike-grey-400 uppercase tracking-widest mb-10">Enter {QUIZ_CODE_LENGTH}-character access code</p>
 
                   <div className="relative group mb-6">
                     <input
                       type="text"
-                      maxLength={6}
+                      maxLength={QUIZ_CODE_LENGTH}
                       value={quizCode}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, QUIZ_CODE_LENGTH);
                         setQuizCode(val);
                         if (codeError) setCodeError('');
                       }}
-                      placeholder="000000"
+                      placeholder="AB12CD34"
                       className={`w-full bg-nike-grey-100 rounded-[20px] px-6 h-[72px] text-center text-[32px] font-display tracking-[0.2em] focus:outline-none focus:ring-4 transition-all ${codeError ? 'ring-nike-red/10 border-nike-red text-nike-red' : 'focus:ring-nike-black/5 border-nike-grey-200'
                         }`}
                     />
@@ -791,7 +796,7 @@ export default function ExamPage() {
                 <div className="p-8 pt-0 space-y-3">
                   <button
                     onClick={handleJoinQuiz}
-                    disabled={isCheckingCode || quizCode.length < 6}
+                    disabled={isCheckingCode || normalizeQuizCode(quizCode).length < QUIZ_CODE_LENGTH}
                     className="w-full h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-bold uppercase tracking-widest hover:bg-nike-grey-500 transition-all disabled:opacity-30 active:scale-[0.98]"
                   >
                     {isCheckingCode ? 'Verifying...' : 'Join Now'}

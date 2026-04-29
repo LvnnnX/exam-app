@@ -1,102 +1,160 @@
 import CryptoJS from 'crypto-js';
 
-const SECRET_KEY = process.env.NEXT_PUBLIC_EXAM_SECRET_KEY || 'default-secret-key-123';
-const SALT = 'exam-app-salt-v2';
+const STORAGE_VERSION = '3';
+const STORAGE_SALT = 'exam-app-storage-v3';
+const STORAGE_PREFIX = 's2_';
+const LEGACY_PREFIX = 's_';
+const LEGACY_SECRET = process.env.NEXT_PUBLIC_EXAM_SECRET_KEY?.trim() || '';
 
-/**
- * Derives a secure key using PBKDF2
- */
-function deriveKey(salt: string): CryptoJS.lib.WordArray {
-  return CryptoJS.PBKDF2(SECRET_KEY, salt, {
-    keySize: 256 / 32,
-    iterations: 1000
-  });
+function stableHash(key: string): string {
+  return CryptoJS.SHA512(`${key}|${STORAGE_SALT}`).toString().substring(0, 32);
 }
 
-/**
- * Hashes a key for storage using SHA-512
- */
-function hashKey(key: string): string {
-  return CryptoJS.SHA512(key + SALT + SECRET_KEY).toString().substring(0, 32);
+function currentStorageKey(key: string): string {
+  return `${STORAGE_PREFIX}${stableHash(key)}`;
 }
 
-/**
- * Encrypts data for secure local storage with PBKDF2 derived keys
- */
-export function secureSave(key: string, value: any): void {
+function legacyStorageKey(key: string): string | null {
+  if (!LEGACY_SECRET) {
+    return null;
+  }
+
+  const hashedKey = CryptoJS.SHA512(`${key}|${STORAGE_SALT}|${LEGACY_SECRET}`).toString().substring(0, 32);
+  return `${LEGACY_PREFIX}${hashedKey}`;
+}
+
+function parseJsonPayload(value: string): unknown | null {
   try {
-    const hashedKey = hashKey(key);
-    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-    
-    // Derive a unique key for this save operation
-    const encryptionKey = deriveKey(hashedKey);
-    const encrypted = CryptoJS.AES.encrypt(stringValue, encryptionKey.toString()).toString();
-    
-    // Use SHA-512 for high-security signature
-    const signature = CryptoJS.SHA512(stringValue + SECRET_KEY).toString();
-    
-    const payload = JSON.stringify({ data: encrypted, signature: signature, v: '2' });
-    localStorage.setItem(`s_${hashedKey}`, payload);
-  } catch (e) {
-    console.error('Failed to securely save data:', e);
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function readLegacyValue<T>(key: string, payloadStr: string): T | null {
+  if (!LEGACY_SECRET) {
+    return null;
+  }
+
+  const payload = parseJsonPayload(payloadStr) as { data?: string; signature?: string } | null;
+  if (!payload?.data || !payload.signature) {
+    return null;
+  }
+
+  const hashedKey = CryptoJS.SHA512(`${key}|${STORAGE_SALT}|${LEGACY_SECRET}`).toString().substring(0, 32);
+  const encryptionKey = CryptoJS.PBKDF2(LEGACY_SECRET, hashedKey, {
+    keySize: 256 / 32,
+    iterations: 1000,
+  });
+  const decryptedBytes = CryptoJS.AES.decrypt(payload.data, encryptionKey.toString());
+  const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+
+  if (!decryptedString) {
+    return null;
+  }
+
+  const expectedSignature = CryptoJS.SHA512(decryptedString + LEGACY_SECRET).toString();
+  if (expectedSignature !== payload.signature) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(decryptedString) as T;
+  } catch {
+    return decryptedString as unknown as T;
   }
 }
 
 /**
- * Decrypts and verifies a value from local storage
+ * Persist a cached value for the exam UI.
+ */
+export function secureSave(key: string, value: unknown): void {
+  try {
+    const payload = JSON.stringify({ v: STORAGE_VERSION, value: value === undefined ? null : value });
+    localStorage.setItem(currentStorageKey(key), payload);
+
+    const legacyKey = legacyStorageKey(key);
+    if (legacyKey) {
+      localStorage.removeItem(legacyKey);
+    }
+  } catch (error) {
+    console.error('Failed to save storage value:', error);
+  }
+}
+
+/**
+ * Loads a cached value for the exam UI.
  */
 export function secureLoad<T>(key: string): T | null {
   try {
-    const hashedKey = hashKey(key);
-    const securedKey = `s_${hashedKey}`;
-    const payloadStr = localStorage.getItem(securedKey);
-    if (!payloadStr) return null;
+    const payloadStr = localStorage.getItem(currentStorageKey(key));
+    if (payloadStr) {
+      const payload = parseJsonPayload(payloadStr) as { v?: string; value?: unknown; data?: string; signature?: string } | null;
 
-    const { data, signature, v } = JSON.parse(payloadStr);
-    
-    // Support migration or strictly enforce v2
-    const encryptionKey = deriveKey(hashedKey);
-    const decryptedBytes = CryptoJS.AES.decrypt(data, encryptionKey.toString());
-    const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
-    
-    if (!decryptedString) return null;
+      if (payload && payload.v === STORAGE_VERSION && Object.prototype.hasOwnProperty.call(payload, 'value')) {
+        return payload.value as T;
+      }
 
-    // Verify integrity using SHA-512
-    const expectedSignature = CryptoJS.SHA512(decryptedString + SECRET_KEY).toString();
-    if (expectedSignature !== signature) {
-      console.error('Data integrity check failed for key:', key);
-      localStorage.removeItem(securedKey);
+      if (payload?.data && payload?.signature) {
+        const legacyValue = readLegacyValue<T>(key, payloadStr);
+        if (legacyValue !== null) {
+          secureSave(key, legacyValue);
+          return legacyValue;
+        }
+      }
+    }
+
+    const legacyKey = legacyStorageKey(key);
+    if (!legacyKey) {
       return null;
     }
 
-    try {
-      return JSON.parse(decryptedString) as T;
-    } catch {
-      return decryptedString as unknown as T;
+    const legacyPayload = localStorage.getItem(legacyKey);
+    if (!legacyPayload) {
+      return null;
     }
-  } catch (e) {
-    console.error('Failed to securely load data:', e);
+
+    const legacyValue = readLegacyValue<T>(key, legacyPayload);
+    if (legacyValue === null) {
+      return null;
+    }
+
+    secureSave(key, legacyValue);
+    localStorage.removeItem(legacyKey);
+    return legacyValue;
+  } catch (error) {
+    console.error('Failed to load storage value:', error);
     return null;
   }
 }
 
 /**
- * Removes a secured key from storage
+ * Removes a cached key from storage.
  */
 export function secureRemove(key: string): void {
-  localStorage.removeItem(`s_${hashKey(key)}`);
+  try {
+    localStorage.removeItem(currentStorageKey(key));
+    const legacyKey = legacyStorageKey(key);
+    if (legacyKey) {
+      localStorage.removeItem(legacyKey);
+    }
+  } catch (error) {
+    console.error('Failed to remove storage value:', error);
+  }
 }
 
 /**
- * Clears all secured storage keys
+ * Clears all cached exam storage keys.
  */
 export function secureClear(): void {
   const keysToRemove: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith('s_')) {
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (key && (key.startsWith(STORAGE_PREFIX) || key.startsWith(LEGACY_PREFIX))) {
       keysToRemove.push(key);
     }
   }
-  keysToRemove.forEach(key => localStorage.removeItem(key));
+
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
 }

@@ -3,6 +3,9 @@ import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './qu
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
 const KUIS_SAFE_COLUMNS = 'id, quiz_code, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at';
+export const QUIZ_CODE_LENGTH = 8;
+
+const QUIZ_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 export type KuisStatus = 'waiting' | 'active' | 'finished' | 'paused';
 
@@ -45,10 +48,48 @@ export type KuisResult = {
   answered_at: string;
 };
 
+type JoinLiveQuizRpcResult = {
+  success: boolean;
+  message?: string;
+  player_id: string;
+};
+
+type LiveQuizQuestionRpcResult = {
+  success: boolean;
+  error?: string;
+  data: PublicQuestion;
+};
+
+type SubmitLiveQuizAnswerRpcResult = {
+  success?: boolean;
+  is_correct?: boolean;
+};
+
+type QuizHistoryRow = KuisLog & {
+  player?: Player[];
+};
+
+type QuizStatusUpdates = Partial<Pick<KuisLog, 'status' | 'started_at' | 'finished_at' | 'paused_at' | 'expires_at'>>;
+
+export function normalizeQuizCode(value: string): string {
+  return String(value ?? '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, QUIZ_CODE_LENGTH);
+}
+
+function generateQuizCode(length = QUIZ_CODE_LENGTH): string {
+  const cryptoObject = globalThis.crypto;
+  const randomBytes = cryptoObject?.getRandomValues
+    ? cryptoObject.getRandomValues(new Uint8Array(length))
+    : Uint8Array.from({ length }, () => Math.floor(Math.random() * 256));
+
+  return Array.from(randomBytes, (byte) => QUIZ_CODE_ALPHABET[byte % QUIZ_CODE_ALPHABET.length]).join('');
+}
+
 // Admin: Create a new Quiz Live Session
 export async function createQuizSession(bab: string, subBab: string, questionCount: number, durationMinutes: number): Promise<KuisLog | null> {
-  // Generate 6-digit code
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const code = generateQuizCode();
   
   // Fetch random questions
   let query = supabase.from('questions').select('id');
@@ -92,10 +133,12 @@ export async function createQuizSession(bab: string, subBab: string, questionCou
 }
 
 export async function fetchQuizByCode(code: string): Promise<KuisLog | null> {
+  const normalizedCode = normalizeQuizCode(code);
+
   const { data, error } = await supabase
     .from('kuis_logs')
     .select(KUIS_SAFE_COLUMNS)
-    .eq('quiz_code', code)
+    .eq('quiz_code', normalizedCode)
     .single();
     
   if (error) return null;
@@ -103,6 +146,8 @@ export async function fetchQuizByCode(code: string): Promise<KuisLog | null> {
 }
 
 export async function joinLiveQuiz(code: string, name: string): Promise<Player | { error: string }> {
+  const normalizedCode = normalizeQuizCode(code);
+
   // Ensure we have a valid auth session for RLS
   const { data: { session: currentSession } } = await supabase.auth.getSession();
   
@@ -115,7 +160,7 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
   }
 
   const { data, error } = await supabase.rpc('join_live_quiz', {
-    p_quiz_code: code,
+    p_quiz_code: normalizedCode,
     p_name: name
   });
     
@@ -124,7 +169,7 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
     return { error: error.message };
   }
 
-  const result = data as any;
+  const result = data as JoinLiveQuizRpcResult | null;
   if (!result || !result.success) {
     return { error: result?.message || 'Gagal bergabung kuis.' };
   }
@@ -153,13 +198,13 @@ export async function getJitQuestion(playerId: string, index: number): Promise<S
     return null;
   }
 
-  const result = data as any;
+  const result = data as LiveQuizQuestionRpcResult | null;
   if (!result || !result.success) {
     console.error('JIT fetch logic failed:', result?.error || 'Unknown error');
     return null;
   }
 
-  return shuffleOptions(result.data as PublicQuestion);
+  return shuffleOptions(result.data);
 }
 
 export async function submitSecureAnswer(
@@ -180,7 +225,7 @@ export async function submitSecureAnswer(
     return { success: false };
   }
 
-  const result = data as any;
+  const result = data as SubmitLiveQuizAnswerRpcResult | null;
   return { 
     success: result?.success || false, 
     is_correct: result?.is_correct 
@@ -199,7 +244,7 @@ export async function updateQuizStatus(id: string, status: KuisStatus): Promise<
   const { data: current } = await supabase.from('kuis_logs').select('*').eq('id', id).single();
   if (!current) return false;
 
-  const updates: any = { status };
+  const updates: QuizStatusUpdates = { status };
   const now = new Date().toISOString();
 
   if (status === 'active') {
@@ -256,14 +301,16 @@ export async function fetchQuizHistory(): Promise<KuisLog[]> {
     .order('created_at', { ascending: false });
     
   if (error) return [];
-  return data.map((d: any) => {
-    const players = d.player || [];
+  const rows = (data || []) as QuizHistoryRow[];
+
+  return rows.map((row) => {
+    const players = row.player || [];
     const sorted = [...players].sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       return a.total_time - b.total_time;
     });
     return {
-      ...d,
+      ...row,
       player_count: players.length,
       winner: sorted[0]?.name || '-',
       top_score: sorted[0]?.score || 0

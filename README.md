@@ -31,7 +31,7 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 *   **Layout Stability**: `scrollbar-gutter: stable` mencegah layout shift saat scrollbar muncul/hilang.
 
 ### 🎮 Fitur Live Quiz (Kuis Real-Time)
-*   **Lobby System**: Admin membuat sesi kuis dengan kode 6-digit. Peserta bergabung via kode.
+*   **Lobby System**: Admin membuat sesi kuis dengan kode 8-character. Peserta bergabung via kode.
 *   **Waiting Room**: Peserta menunggu di ruang tunggu sampai admin memulai kuis.
 *   **Per-User Randomization**: Urutan soal dan opsi jawaban diacak unik per peserta (server-side via `array_agg(ORDER BY random())`).
 *   **JIT Question Delivery**: Soal dikirim satu per satu melalui RPC. Tidak ada bulk fetching.
@@ -43,7 +43,7 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 *   **Anti-Cheat**: Semua operasi melalui `SECURITY DEFINER` RPC. Kolom `question_ids` dan `correct_answer` tidak bisa diakses oleh anonymous users.
 
 ### 🔐 Fitur Admin (Dashboard)
-*   **Autentikasi PIN**: Sistem login aman menggunakan 6-digit PIN khusus.
+*   **Autentikasi Admin**: Login menggunakan Supabase Auth untuk akses dashboard.
 *   **Dashboard Hasil Berhalaman**: Manajemen hasil ujian dengan paginasi (20 item per halaman).
 *   **Manajemen Hasil & Mode**: Filter interaktif untuk memisahkan hasil mode *Exam* dan *Survival*.
 *   **Analitik Waktu Pengerjaan**: Kolom Start Time, End Time, dan Durasi setiap peserta.
@@ -164,8 +164,9 @@ exam-app/
     ```env
     NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
     NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-    NEXT_PUBLIC_EXAM_SECRET_KEY=your-secret-key-for-encryption
     ```
+
+    Jika masih ada data browser lama dari versi sebelumnya, `NEXT_PUBLIC_EXAM_SECRET_KEY` bisa diset sementara untuk migrasi localStorage lama.
 
 4.  **Siapkan Database**
     Jalankan skrip SQL berikut di Supabase SQL Editor (urutan penting):
@@ -197,7 +198,6 @@ exam-app/
 3.  Di bagian **Environment Variables**, masukkan:
     *   `NEXT_PUBLIC_SUPABASE_URL`
     *   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-    *   `NEXT_PUBLIC_EXAM_SECRET_KEY`
 4.  Klik **Deploy**.
 
 ---
@@ -208,7 +208,7 @@ exam-app/
 | :--- | :--- |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL API Project Supabase. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Anon Key dari Project Supabase. |
-| `NEXT_PUBLIC_EXAM_SECRET_KEY` | Kunci rahasia untuk enkripsi LocalStorage (AES/HMAC). |
+| `NEXT_PUBLIC_EXAM_SECRET_KEY` | Opsional. Dipakai hanya untuk migrasi data localStorage lama. |
 
 ---
 

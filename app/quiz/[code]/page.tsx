@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, type KuisLog, type Player } from '@/lib/quiz';
+import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, normalizeQuizCode, type KuisLog, type Player } from '@/lib/quiz';
 import { type ShuffledOption } from '@/lib/questions';
 import { useRouter } from 'next/navigation';
 import RichContent from '@/app/components/RichContent';
@@ -12,6 +12,7 @@ type AnswerData = ShuffledOption;
 export default function QuizSessionPage({ params }: { params: Promise<{ code: string }> }) {
   const unwrappedParams = use(params);
   const code = unwrappedParams.code;
+  const quizCode = normalizeQuizCode(code);
   const router = useRouter();
 
   const [session, setSession] = useState<KuisLog | null>(null);
@@ -36,7 +37,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
   // 1. Initial Load & Subscription
   useEffect(() => {
-    fetchQuizByCode(code).then(quiz => {
+    fetchQuizByCode(quizCode).then(quiz => {
       if (!quiz) {
         alert("Kuis tidak ditemukan");
         router.push('/');
@@ -51,7 +52,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       }
 
       // Check localStorage for existing player
-      const savedPlayerId = localStorage.getItem(`quiz_player_${code}`);
+      const savedPlayerId = localStorage.getItem(`quiz_player_${quizCode}`);
       if (savedPlayerId) {
         supabase.from('player').select('*').eq('id', savedPlayerId).single().then(({ data }) => {
           if (data) {
@@ -62,7 +63,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             }
             setPlayer(data);
             // Restore index (Questions are loaded JIT)
-            const savedIndex = localStorage.getItem(`quiz_index_${code}`);
+            const savedIndex = localStorage.getItem(`quiz_index_${quizCode}`);
             if (savedIndex) {
               setCurrentIndex(parseInt(savedIndex));
             }
@@ -71,10 +72,10 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       }
     });
 
-    const channel = supabase.channel(`quiz_${code}`)
+    const channel = supabase.channel(`quiz_${quizCode}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'kuis_logs', filter: `quiz_code=eq.${code}` },
+        { event: 'UPDATE', schema: 'public', table: 'kuis_logs', filter: `quiz_code=eq.${quizCode}` },
         (payload) => {
           const updated = payload.new as KuisLog;
           setSession(updated);
@@ -85,7 +86,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [code, router]);
+  }, [quizCode, router]);
 
   // Subscription for leaderboard when finished
   useEffect(() => {
@@ -119,7 +120,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       return;
     }
 
-    const result = await joinLiveQuiz(code, name.trim());
+    const result = await joinLiveQuiz(quizCode, name.trim());
     if ('error' in result) {
       alert(result.error);
       setLoading(false);
@@ -127,8 +128,8 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     }
 
     setPlayer(result);
-    localStorage.setItem(`quiz_player_${code}`, result.id);
-    localStorage.setItem(`quiz_index_${code}`, '0');
+    localStorage.setItem(`quiz_player_${quizCode}`, result.id);
+    localStorage.setItem(`quiz_index_${quizCode}`, '0');
     setLoading(false);
   };
 
@@ -167,9 +168,9 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     }
     
     await finishPlayerQuiz(player.id);
-    localStorage.removeItem(`quiz_index_${code}`);
+    localStorage.removeItem(`quiz_index_${quizCode}`);
     setIsFinished(true);
-  }, [player, session, isFinished, startTime, currentQuestion, code]);
+  }, [player, session, isFinished, startTime, currentQuestion, quizCode]);
 
   // Handle auto-finish when admin ends the quiz
   useEffect(() => {
@@ -234,16 +235,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
       setCurrentQuestion(null); // Trigger JIT load
-      localStorage.setItem(`quiz_index_${code}`, nextIndex.toString());
+      localStorage.setItem(`quiz_index_${quizCode}`, nextIndex.toString());
       setStartTime(Date.now());
     } else {
       await finishPlayerQuiz(player.id);
       // Rule 6: Clear active session data
-      localStorage.removeItem(`quiz_index_${code}`);
-      localStorage.removeItem(`quiz_player_${code}`); 
+      localStorage.removeItem(`quiz_index_${quizCode}`);
+      localStorage.removeItem(`quiz_player_${quizCode}`); 
       setIsFinished(true);
       // Rule 7: Replace history state
-      router.replace(`/quiz/${code}`);
+      router.replace(`/quiz/${quizCode}`);
     }
   };
 
