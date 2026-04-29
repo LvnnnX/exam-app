@@ -28,7 +28,8 @@ ALTER TABLE app_settings RENAME COLUMN hidden_categories TO hidden_sub_babs;
 -- RECREATE RPCS WITH NEW COLUMNS
 
 -- start_exam_session
-DROP FUNCTION IF EXISTS start_exam_session;
+-- Drop old function signature to prevent ambiguity
+DROP FUNCTION IF EXISTS start_exam_session(TEXT, TEXT, TEXT, INT, INT, TEXT);
 CREATE OR REPLACE FUNCTION start_exam_session(
   p_name TEXT, 
   p_head_bab TEXT, 
