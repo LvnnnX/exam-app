@@ -1202,14 +1202,21 @@ export default function AdminPage() {
 
                           return (
                             <tr key={session.session_id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{session.name}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <span className="block max-w-[180px] truncate" title={session.name}>{session.name}</span>
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${session.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
                                   {session.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span className="capitalize">{session.bab?.replaceAll('_', ' ')}, {session.sub_bab?.replaceAll('_', ' ')}</span>
+                                <span
+                                  className="block max-w-[220px] truncate capitalize"
+                                  title={`${session.bab?.replaceAll('_', ' ')}, ${session.sub_bab?.replaceAll('_', ' ')}`}
+                                >
+                                  {session.bab?.replaceAll('_', ' ')}, {session.sub_bab?.replaceAll('_', ' ')}
+                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
                                 {session.mode === 'survival' ? answeredCount : `${answeredCount} / ${session.question_count}`}
@@ -1285,14 +1292,21 @@ export default function AdminPage() {
                     <tbody className="divide-y divide-slate-50">
                       {results.map((result) => (
                         <tr key={result.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">{result.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">
+                            <span className="block max-w-[180px] truncate" title={result.name}>{result.name}</span>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${result.mode === 'survival' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' : 'bg-[#4A90D9]/10 text-[#4A90D9]'}`}>
                               {result.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className="capitalize">{result.bab?.replaceAll('_', ' ')}, {result.sub_bab?.replaceAll('_', ' ')}</span>
+                            <span
+                              className="block max-w-[220px] truncate capitalize"
+                              title={`${result.bab?.replaceAll('_', ' ')}, ${result.sub_bab?.replaceAll('_', ' ')}`}
+                            >
+                              {result.bab?.replaceAll('_', ' ')}, {result.sub_bab?.replaceAll('_', ' ')}
+                            </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {result.score} / {result.total_questions}

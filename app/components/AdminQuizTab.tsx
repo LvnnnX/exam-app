@@ -494,7 +494,9 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   ) : players.slice((playersPage - 1) * itemsPerPage, playersPage * itemsPerPage).map((p, i) => (
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">{((playersPage - 1) * itemsPerPage) + i + 1}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <span className="block max-w-[200px] truncate" title={p.name}>{p.name}</span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">{p.score} / {activeSession.question_count}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.total_time}s</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -544,7 +546,9 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     </tr>
                   ) : activeSessions.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage).map(s => (
                     <tr key={s.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-700 font-mono">{s.quiz_code}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-700 font-mono">
+                        <span className="block max-w-[140px] truncate" title={s.quiz_code}>{s.quiz_code}</span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${s.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
                       </td>
@@ -609,10 +613,21 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     </tr>
                   ) : history.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map(h => (
                     <tr key={h.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{h.quiz_code}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{h.bab?.replace(/_/g, ' ')}, {h.sub_bab?.replace(/_/g, ' ')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                        <span className="block max-w-[140px] truncate" title={h.quiz_code}>{h.quiz_code}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                        <span
+                          className="block max-w-[220px] truncate"
+                          title={`${h.bab?.replace(/_/g, ' ')}, ${h.sub_bab?.replace(/_/g, ' ')}`}
+                        >
+                          {h.bab?.replace(/_/g, ' ')}, {h.sub_bab?.replace(/_/g, ' ')}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">{h.winner}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">
+                        <span className="block max-w-[180px] truncate" title={h.winner}>{h.winner}</span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-green">{h.top_score} / {h.question_count}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(h.created_at).toLocaleString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
