@@ -1,14 +1,15 @@
 import { supabase } from './supabase';
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
-const KUIS_SAFE_COLUMNS = 'id, quiz_code, category, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at';
+const KUIS_SAFE_COLUMNS = 'id, quiz_code, head_bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at';
 
 export type KuisStatus = 'waiting' | 'active' | 'finished' | 'paused';
 
 export type KuisLog = {
   id: string;
   quiz_code: string;
-  category: string;
+  head_bab: string;
+  sub_bab: string;
   question_count: number;
   duration_minutes: number;
   status: KuisStatus;
@@ -44,14 +45,18 @@ export type KuisResult = {
 };
 
 // Admin: Create a new Quiz Live Session
-export async function createQuizSession(category: string, questionCount: number, durationMinutes: number): Promise<KuisLog | null> {
+export async function createQuizSession(headBab: string, subBab: string, questionCount: number, durationMinutes: number): Promise<KuisLog | null> {
   // Generate 6-digit code
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   
   // Fetch random questions
   let query = supabase.from('questions').select('id');
-  if (category !== 'All Categories') {
-    query = query.contains('categories', [category]);
+  
+  if (headBab !== 'None') {
+    query = query.contains('head_babs', [headBab]);
+  }
+  if (subBab !== 'Semua Sub-bab') {
+    query = query.contains('sub_babs', [subBab]);
   }
   
   const { data: qData, error: qErr } = await query;
@@ -68,7 +73,8 @@ export async function createQuizSession(category: string, questionCount: number,
     .from('kuis_logs')
     .insert([{
       quiz_code: code,
-      category,
+      head_bab: headBab,
+      sub_bab: subBab,
       question_count: questionCount,
       duration_minutes: durationMinutes,
       status: 'waiting',

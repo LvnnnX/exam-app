@@ -5,7 +5,7 @@ import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
 import AdminQuizTab from '@/app/components/AdminQuizTab';
-import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchCategories, fetchAllCategoriesAdmin, fetchHiddenCategories, saveHiddenCategories, type CategoryInfo } from '@/lib/questions';
+import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchHeadBabs, fetchAllSubBabsAdmin, fetchHiddenSubBabs, saveHiddenSubBabs, type HeadBabInfo, type SubBabInfo } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
 
@@ -14,7 +14,8 @@ type ExamResult = {
   name: string;
   score: number;
   total_questions: number;
-  category: string;
+  head_bab: string;
+  sub_bab: string;
   taken_at: string;
   user_answers: {
     question_id: number;
@@ -30,7 +31,8 @@ type ExamResult = {
 type LiveSession = {
   session_id: string;
   name: string;
-  category: string;
+  head_bab: string;
+  sub_bab: string;
   mode: string;
   question_count: number;
   question_ids: number[];
@@ -48,7 +50,8 @@ type QuestionDraft = {
   option_d: string;
   option_e: string;
   correct_answer: string;
-  categories: string[];
+  head_babs: string[];
+  sub_babs: string[];
 };
 
 const AUTH_VERSION = '3'; // Increment this to force all admins to logout
@@ -61,7 +64,8 @@ const EMPTY_DRAFT: QuestionDraft = {
   option_d: '<p></p>',
   option_e: '<p></p>',
   correct_answer: 'A',
-  categories: [],
+  head_babs: [],
+  sub_babs: [],
 };
 
 const SANITIZE_OPTIONS: DomPurifyConfig = {
@@ -92,13 +96,13 @@ export default function AdminPage() {
     // Trigger initial fetch for specific tabs
     if (activeTab === 'results') {
       void fetchResults();
-      void loadHiddenCategories();
+      void loadHiddenSubBabs();
     } else if (activeTab === 'settings') {
-      void loadAllCategoriesAdmin();
-      void loadHiddenCategories();
+      void loadAllSubBabsAdmin();
+      void loadHiddenSubBabs();
     } else if (activeTab === 'quiz') {
-      void loadAllCategoriesAdmin();
-      void loadHiddenCategories();
+      void loadAllSubBabsAdmin();
+      void loadHiddenSubBabs();
     } else {
       void fetchAdminQuestions();
     }
@@ -133,7 +137,8 @@ export default function AdminPage() {
   const [questionLoading, setQuestionLoading] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>([]);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
+  const [activeHeadBabFilter, setActiveHeadBabFilter] = useState<string>('all');
+  const [activeSubBabFilter, setActiveSubBabFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Auth state
@@ -153,21 +158,22 @@ export default function AdminPage() {
   const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
   const [detailQuestions, setDetailQuestions] = useState<RawQuestion[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [allCategories, setAllCategories] = useState<CategoryInfo[]>([]);
-  const [allCategoriesAdmin, setAllCategoriesAdmin] = useState<CategoryInfo[]>([]);
+  const [allHeadBabs, setAllHeadBabs] = useState<HeadBabInfo[]>([]);
+  const [allSubBabsAdmin, setAllSubBabsAdmin] = useState<SubBabInfo[]>([]);
   const [sessionInfo, setSessionInfo] = useState<string | null>(null);
-  const [activeResCategory, setActiveResCategory] = useState<string>('all');
+  const [activeResHeadBab, setActiveResHeadBab] = useState<string>('all');
+  const [activeResSubBab, setActiveResSubBab] = useState<string>('all');
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
   const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
 
   // Settings state
-  const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
+  const [hiddenSubBabs, setHiddenSubBabs] = useState<string[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
 
   // Add-new-category inline state (used in question form)
-  const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [newSubBabInput, setNewSubBabInput] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
 
   // Live Tracking state
@@ -195,8 +201,8 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(session.user.id);
         void fetchAdminQuestions();
-        void loadAllCategories();
-        void loadHiddenCategories();
+        void loadAllHeadBabs();
+        void loadHiddenSubBabs();
       } else {
         // If they have a session but wrong/missing version, log them out
         await supabase.auth.signOut();
@@ -213,10 +219,10 @@ export default function AdminPage() {
       // Trigger initial fetch for that tab
       if (savedTab === 'results') {
         void fetchResults();
-        void loadHiddenCategories();
+        void loadHiddenSubBabs();
       } else if (savedTab === 'settings' || savedTab === 'quiz') {
-        void loadAllCategoriesAdmin();
-        void loadHiddenCategories();
+        void loadAllSubBabsAdmin();
+        void loadHiddenSubBabs();
       } else {
         void fetchAdminQuestions();
       }
@@ -238,48 +244,42 @@ export default function AdminPage() {
     };
   }, [isAuthenticated, isLiveMode]);
 
-  const questionsByCategory = useMemo(() => {
-    return adminQuestions.reduce<Record<string, RawQuestion[]>>((accumulator, question) => {
-      const keys = question.categories && question.categories.length > 0 ? question.categories : ['uncategorized'];
-      keys.forEach(key => {
-        if (!accumulator[key]) {
-          accumulator[key] = [];
-        }
-        accumulator[key].push(question);
-      });
-      return accumulator;
-    }, {});
+  const headBabTabs = useMemo(() => {
+    const headBabs = Array.from(new Set(adminQuestions.flatMap(q => q.head_babs || []))).sort();
+    return ['all', ...headBabs];
   }, [adminQuestions]);
 
-  const categoryTabs = useMemo(() => {
-    // Filter categories hidden via admin settings; respects app_settings.hidden_categories
-    const categoriesFromData = Object.keys(questionsByCategory)
-      .filter(cat => !hiddenCategories.includes(cat))
-      .sort();
-    return ['all', ...categoriesFromData];
-  }, [questionsByCategory, hiddenCategories]);
+  const subBabTabs = useMemo(() => {
+    let list = adminQuestions;
+    if (activeHeadBabFilter !== 'all') {
+       list = adminQuestions.filter(q => q.head_babs?.includes(activeHeadBabFilter));
+    }
+    const subBabs = Array.from(new Set(list.flatMap(q => q.sub_babs || []))).sort();
+    return ['all', ...subBabs];
+  }, [adminQuestions, activeHeadBabFilter]);
 
   const filteredQuestions = useMemo(() => {
     let list = adminQuestions;
-    if (activeCategoryFilter !== 'all') {
-      list = questionsByCategory[activeCategoryFilter] || [];
+    if (activeHeadBabFilter !== 'all') {
+      list = list.filter(q => q.head_babs?.includes(activeHeadBabFilter));
     }
-
+    if (activeSubBabFilter !== 'all') {
+      list = list.filter(q => q.sub_babs?.includes(activeSubBabFilter));
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(question => {
         const plainText = stripHtml(question.question_text).toLowerCase();
-        return plainText.includes(q) || question.categories?.some(c => c.toLowerCase().includes(q));
+        return plainText.includes(q) || question.head_babs?.some(c => c.toLowerCase().includes(q)) || question.sub_babs?.some(c => c.toLowerCase().includes(q));
       });
     }
     return list;
-  }, [activeCategoryFilter, adminQuestions, questionsByCategory, searchQuery]);
+  }, [activeHeadBabFilter, activeSubBabFilter, adminQuestions, searchQuery]);
 
   const getCategoryLabel = (category: string) => {
     if (category === 'all') {
-      return 'All Categories';
+      return 'Semua';
     }
-
 
     return category
       .replaceAll('_', ' ')
@@ -316,8 +316,9 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(data.session.user.id);
         void fetchAdminQuestions();
-        void loadAllCategories();
-        void loadHiddenCategories();
+        void loadAllHeadBabs();
+        void loadAllSubBabsAdmin();
+        void loadHiddenSubBabs();
       }
     } catch (err: any) {
       setAuthError(err.message || 'Login failed');
@@ -326,25 +327,25 @@ export default function AdminPage() {
     }
   };
 
-  const loadAllCategories = async () => {
+  const loadAllHeadBabs = async () => {
     try {
-      const cats = await fetchCategories();
-      setAllCategories(cats);
+      const hbs = await fetchHeadBabs();
+      setAllHeadBabs(hbs);
     } catch (err) {
-      console.error('Failed to load category list:', err);
+      console.error('Failed to load head babs list:', err);
     }
   };
 
-  const loadAllCategoriesAdmin = async () => {
+  const loadAllSubBabsAdmin = async () => {
     try {
-      const cats = await fetchAllCategoriesAdmin();
-      setAllCategoriesAdmin(cats);
+      const sbs = await fetchAllSubBabsAdmin();
+      setAllSubBabsAdmin(sbs);
     } catch (err) {
-      console.error('Failed to load admin category list:', err);
+      console.error('Failed to load admin sub_bab list:', err);
     }
   };
 
-  const fetchResults = async (page = 0, category = activeResCategory, mode = activeModeFilter) => {
+  const fetchResults = async (page = 0, headBab = activeResHeadBab, subBab = activeResSubBab, mode = activeModeFilter) => {
     setLoading(true);
     try {
       // 1. Fetch paginated data for the table
@@ -355,8 +356,11 @@ export default function AdminPage() {
         .from('exam_results')
         .select('*', { count: 'exact' });
 
-      if (category !== 'all') {
-        paginatedQuery = paginatedQuery.eq('category', category);
+      if (headBab !== 'all') {
+        paginatedQuery = paginatedQuery.eq('head_bab', headBab);
+      }
+      if (subBab !== 'all') {
+        paginatedQuery = paginatedQuery.eq('sub_bab', subBab);
       }
       if (mode !== 'all') {
         paginatedQuery = paginatedQuery.eq('mode', mode);
@@ -379,8 +383,11 @@ export default function AdminPage() {
         .from('exam_results')
         .select('score, total_questions');
 
-      if (category !== 'all') {
-        statsQuery = statsQuery.eq('category', category);
+      if (headBab !== 'all') {
+        statsQuery = statsQuery.eq('head_bab', headBab);
+      }
+      if (subBab !== 'all') {
+        statsQuery = statsQuery.eq('sub_bab', subBab);
       }
       if (mode !== 'all') {
         statsQuery = statsQuery.eq('mode', mode);
@@ -399,14 +406,21 @@ export default function AdminPage() {
     }
   };
 
-  const handleResCategoryChange = (category: string) => {
-    setActiveResCategory(category);
-    void fetchResults(0, category, activeModeFilter);
+  const handleResHeadBabChange = (headBab: string) => {
+    setActiveResHeadBab(headBab);
+    // When changing head bab, reset sub bab to all to avoid invalid combinations
+    setActiveResSubBab('all');
+    void fetchResults(0, headBab, 'all', activeModeFilter);
+  };
+
+  const handleResSubBabChange = (subBab: string) => {
+    setActiveResSubBab(subBab);
+    void fetchResults(0, activeResHeadBab, subBab, activeModeFilter);
   };
 
   const handleModeFilterChange = (mode: string) => {
     setActiveModeFilter(mode);
-    void fetchResults(0, activeResCategory, mode);
+    void fetchResults(0, activeResHeadBab, activeResSubBab, mode);
   };
 
   const handleFetchResultDetail = async (result: ExamResult) => {
@@ -499,14 +513,14 @@ export default function AdminPage() {
   };
 
 
-  const loadHiddenCategories = async () => {
+  const loadHiddenSubBabs = async () => {
     setSettingsLoading(true);
     try {
-      const hidden = await fetchHiddenCategories();
-      setHiddenCategories(hidden);
+      const hidden = await fetchHiddenSubBabs();
+      setHiddenSubBabs(hidden);
       setSettingsDirty(false);
     } catch (err) {
-      console.error('Failed to load hidden categories:', err);
+      console.error('Failed to load hidden sub_babs:', err);
     } finally {
       setSettingsLoading(false);
     }
@@ -515,7 +529,7 @@ export default function AdminPage() {
   const handleSaveSettings = async () => {
     setSettingsSaving(true);
     try {
-      await saveHiddenCategories(hiddenCategories);
+      await saveHiddenSubBabs(hiddenSubBabs);
       setSettingsDirty(false);
       window.alert('Settings saved. Changes will appear to users on next page load.');
     } catch (err) {
@@ -526,20 +540,19 @@ export default function AdminPage() {
     }
   };
 
-  const toggleCategoryVisibility = (cat: string) => {
-    setHiddenCategories(prev => {
-      const next = prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
+  const toggleSubBabVisibility = (sb: string) => {
+    setHiddenSubBabs(prev => {
+      const next = prev.includes(sb) ? prev.filter(s => s !== sb) : [...prev, sb];
       setSettingsDirty(true);
       return next;
     });
   };
 
   /**
-   * Creates a new category slug on-the-fly and adds it to the current question draft.
-   * The category is also pushed into allCategories so it appears immediately in the list.
+   * Creates a new sub_bab slug on-the-fly and adds it to the current question draft.
    */
-  const handleAddNewCategory = async () => {
-    const raw = newCategoryInput.trim();
+  const handleAddNewSubBab = async () => {
+    const raw = newSubBabInput.trim();
     if (!raw) return;
 
     // Normalise: lowercase, replace spaces with underscores
@@ -548,21 +561,19 @@ export default function AdminPage() {
 
     setAddingCategory(true);
     try {
-      // Add to the form selection immediately
-      if (!formData.categories.includes(slug)) {
-        handleInputChange('categories', [...formData.categories, slug]);
+      if (!formData.sub_babs.includes(slug)) {
+        handleInputChange('sub_babs', [...formData.sub_babs, slug]);
       }
 
-      // Add to the local allCategories list so it renders in the dropdown
-      if (!allCategories.some(c => c.value === slug)) {
+      if (!allSubBabsAdmin.some(c => c.value === slug)) {
         const label = slug
           .split('_')
           .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
           .join(' ');
-        setAllCategories(prev => [...prev, { value: slug, label }]);
+        setAllSubBabsAdmin(prev => [...prev, { value: slug, label }]);
       }
 
-      setNewCategoryInput('');
+      setNewSubBabInput('');
     } finally {
       setAddingCategory(false);
     }
@@ -591,13 +602,14 @@ export default function AdminPage() {
 
     if (tab === 'results') {
       void fetchResults();
-      void loadHiddenCategories();
+      void loadHiddenSubBabs();
       return;
     }
 
     if (tab === 'settings') {
-      void loadAllCategoriesAdmin();
-      void loadHiddenCategories();
+      void loadAllHeadBabs();
+      void loadAllSubBabsAdmin();
+      void loadHiddenSubBabs();
       return;
     }
 
@@ -624,7 +636,8 @@ export default function AdminPage() {
       option_d: sanitizeRichHtml(formData.option_d),
       option_e: sanitizeRichHtml(formData.option_e),
       correct_answer: formData.correct_answer.toUpperCase(),
-      categories: formData.categories,
+      head_babs: formData.head_babs,
+      sub_babs: formData.sub_babs,
     };
 
     const hasMedia = (html: string) => /<(img|iframe)[^>]*>/i.test(html);
@@ -642,8 +655,8 @@ export default function AdminPage() {
       throw new Error('Please fill in the question and all answer options before saving.');
     }
 
-    if (payload.categories.length === 0) {
-      throw new Error('Please select at least one category for the question.');
+    if (payload.head_babs.length === 0 || payload.sub_babs.length === 0) {
+      throw new Error('Please select at least one Head Bab and Sub-bab for the question.');
     }
 
     return payload;
@@ -674,7 +687,8 @@ export default function AdminPage() {
       }
 
       await fetchAdminQuestions();
-      await loadAllCategories();
+      await loadAllHeadBabs();
+      await loadAllSubBabsAdmin();
       closeModal();
     } catch (err) {
       console.error('Error saving question:', err);
@@ -728,7 +742,8 @@ export default function AdminPage() {
       option_d: ensureHtmlDocument(question.option_d),
       option_e: ensureHtmlDocument(question.option_e),
       correct_answer: question.correct_answer,
-      categories: question.categories || [],
+      head_babs: question.head_babs || [],
+      sub_babs: question.sub_babs || [],
     });
     setIsEditing(true);
     setIsAdding(false);
@@ -880,21 +895,37 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="mb-5 w-full sm:max-w-xs">
-            <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter Category</label>
-            <select
-              value={activeCategoryFilter}
-              onChange={(e) => setActiveCategoryFilter(e.target.value)}
-              className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-            >
-              <option value="all">ALL CATEGORIES</option>
-              {Object.keys(questionsByCategory).filter(c => c !== 'all').map((category) => (
-                <option key={category} value={category}>
-                  {getCategoryLabel(category).toUpperCase()} ({questionsByCategory[category]?.length ?? 0})
-                </option>
-              ))}
-            </select>
+          <div className="mb-5 flex flex-col sm:flex-row gap-4 w-full sm:max-w-xl">
+            <div className="flex-1">
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter Head Bab</label>
+              <select
+                value={activeHeadBabFilter}
+                onChange={(e) => setActiveHeadBabFilter(e.target.value)}
+                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+              >
+                {headBabTabs.map((category) => (
+                  <option key={category} value={category}>
+                    {getCategoryLabel(category).toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter Sub-bab</label>
+              <select
+                value={activeSubBabFilter}
+                onChange={(e) => setActiveSubBabFilter(e.target.value)}
+                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+              >
+                {subBabTabs.map((category) => (
+                  <option key={category} value={category}>
+                    {getCategoryLabel(category).toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="mb-6 flex">
@@ -923,7 +954,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredQuestions.length === 0 && (
                 <div className="col-span-full bg-white rounded-xl p-8 border-2 border-dashed border-slate-200 text-slate-400 text-center">
-                  No questions found for {getCategoryLabel(activeCategoryFilter)}.
+                  No questions found for the selected topics.
                 </div>
               )}
 
@@ -935,7 +966,8 @@ export default function AdminPage() {
                     <div className="font-semibold text-slate-700 mb-2 text-sm leading-relaxed">
                       Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
                     </div>
-                    <div className="text-xs text-slate-400 mb-1">Categories: {question.categories?.join(', ').replaceAll('_', ' ')}</div>
+                    <div className="text-xs text-slate-400 mb-1">Head Bab: {question.head_babs?.join(', ').replaceAll('_', ' ')}</div>
+                    <div className="text-xs text-slate-400 mb-1">Sub-bab: {question.sub_babs?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-4">Correct: <span className="font-bold text-[#34C759]">{question.correct_answer}</span></div>
                     <div className="flex gap-2">
                       <button
@@ -1016,20 +1048,38 @@ export default function AdminPage() {
               </div>
 
               {/* Row 2: Category selection — dropdown */}
-              <div className="flex items-center gap-3">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Category</label>
-                <select
-                  value={activeResCategory}
-                  onChange={(e) => handleResCategoryChange(e.target.value)}
-                  className="bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
-                >
-                  {categoryTabs.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {getCategoryLabel(cat)}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Head Bab</label>
+                  <select
+                    value={activeResHeadBab}
+                    onChange={(e) => handleResHeadBabChange(e.target.value)}
+                    className="bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                  >
+                    {headBabTabs.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {getCategoryLabel(cat)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap sm:ml-2">Sub-bab</label>
+                  <select
+                    value={activeResSubBab}
+                    onChange={(e) => handleResSubBabChange(e.target.value)}
+                    className="bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                  >
+                    {subBabTabs.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {getCategoryLabel(cat)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Row 3: Mode selection */}
@@ -1093,7 +1143,7 @@ export default function AdminPage() {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">User Name</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Mode</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Topik</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Answered</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Lives</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Progress</th>
@@ -1103,7 +1153,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {liveSessions
-                        .filter(s => (activeResCategory === 'all' || s.category === activeResCategory) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
+                        .filter(s => (activeResHeadBab === 'all' || s.head_bab === activeResHeadBab) && (activeResSubBab === 'all' || s.sub_bab === activeResSubBab) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
                         .map((session) => {
                           const answeredCount = Object.keys(session.user_answers).length;
                           const progress = Math.round((answeredCount / session.question_count) * 100);
@@ -1117,7 +1167,7 @@ export default function AdminPage() {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span className="capitalize">{session.category?.replaceAll('_', ' ')}</span>
+                                <span className="capitalize">{session.head_bab?.replaceAll('_', ' ')}, {session.sub_bab?.replaceAll('_', ' ')}</span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
                                 {session.mode === 'survival' ? answeredCount : `${answeredCount} / ${session.question_count}`}
@@ -1180,7 +1230,7 @@ export default function AdminPage() {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Name</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Mode</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Topik</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Score</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Percentage</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Date</th>
@@ -1200,7 +1250,7 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className="capitalize">{result.category?.replaceAll('_', ' ')}</span>
+                            <span className="capitalize">{result.head_bab?.replaceAll('_', ' ')}, {result.sub_bab?.replaceAll('_', ' ')}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {result.score} / {result.total_questions}
@@ -1320,9 +1370,9 @@ export default function AdminPage() {
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b">
-              <h2 className="text-lg font-bold text-gray-900">Category Visibility</h2>
+              <h2 className="text-lg font-bold text-gray-900">Sub-bab Visibility</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Hidden categories are removed from the user-facing exam frontend. Admin panel is unaffected.
+                Hidden sub-babs are removed from the user-facing exam frontend. Admin panel is unaffected.
               </p>
             </div>
 
@@ -1330,11 +1380,11 @@ export default function AdminPage() {
               <div className="p-6 text-gray-400 text-sm animate-pulse">Loading settings...</div>
             ) : (
               <div className="p-6 space-y-3">
-                {allCategoriesAdmin.length === 0 && (
-                  <p className="text-sm text-gray-400 italic">No categories found. Add questions first.</p>
+                {allSubBabsAdmin.length === 0 && (
+                  <p className="text-sm text-gray-400 italic">No sub-babs found. Add questions first.</p>
                 )}
-                {allCategoriesAdmin.map((cat) => {
-                  const isHidden = hiddenCategories.includes(cat.value);
+                {allSubBabsAdmin.map((cat) => {
+                  const isHidden = hiddenSubBabs.includes(cat.value);
                   return (
                     <div key={cat.value} className="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
                       <div>
@@ -1349,7 +1399,7 @@ export default function AdminPage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => toggleCategoryVisibility(cat.value)}
+                          onClick={() => toggleSubBabVisibility(cat.value)}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                             isHidden ? 'bg-gray-300' : 'bg-indigo-600'
                           }`}
@@ -1445,62 +1495,103 @@ export default function AdminPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Question Categories
-                        <span className="ml-2 text-xs font-normal text-gray-400">(klik untuk pilih / batal pilih)</span>
-                      </label>
-                      {allCategories.length === 0 ? (
-                        <p className="text-sm text-gray-400 italic">Loading categories...</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[48px]">
-                          {allCategories.map((cat) => {
-                            const isSelected = formData.categories.includes(cat.value);
-                            return (
-                              <button
-                                key={cat.value}
-                                type="button"
-                                onClick={() => {
-                                  const next = isSelected
-                                    ? formData.categories.filter((c) => c !== cat.value)
-                                    : [...formData.categories, cat.value];
-                                  handleInputChange('categories', next);
-                                }}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all border select-none ${
-                                  isSelected
-                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                    : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
-                                }`}
-                              >
-                                {isSelected && <span className="mr-1">✓</span>}
-                                {cat.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {formData.categories.length === 0 && (
-                        <p className="text-xs text-red-500 mt-1">At least one category is required.</p>
-                      )}
+                    <div className="space-y-4 md:col-span-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Head Babs
+                          <span className="ml-2 text-xs font-normal text-gray-400">(klik untuk pilih / batal pilih)</span>
+                        </label>
+                        {allHeadBabs.length === 0 ? (
+                          <p className="text-sm text-gray-400 italic">Loading head babs...</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[48px]">
+                            {allHeadBabs.map((cat) => {
+                              const isSelected = formData.head_babs.includes(cat.value);
+                              return (
+                                <button
+                                  key={cat.value}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = isSelected
+                                      ? formData.head_babs.filter((c) => c !== cat.value)
+                                      : [...formData.head_babs, cat.value];
+                                    handleInputChange('head_babs', next);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all border select-none ${
+                                    isSelected
+                                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                      : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
+                                  }`}
+                                >
+                                  {isSelected && <span className="mr-1">✓</span>}
+                                  {cat.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {formData.head_babs.length === 0 && (
+                          <p className="text-xs text-red-500 mt-1">At least one Head Bab is required.</p>
+                        )}
+                      </div>
 
-                      {/* Add New Category inline */}
-                      <div className="flex gap-2 pt-1">
-                        <input
-                          type="text"
-                          value={newCategoryInput}
-                          onChange={(e) => setNewCategoryInput(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewCategory(); } }}
-                          placeholder="New category name..."
-                          className="flex-1 px-3 h-9 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => void handleAddNewCategory()}
-                          disabled={addingCategory || !newCategoryInput.trim()}
-                          className="px-4 h-9 rounded-lg bg-green-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                        >
-                          + Add Category
-                        </button>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Sub-babs
+                          <span className="ml-2 text-xs font-normal text-gray-400">(klik untuk pilih / batal pilih)</span>
+                        </label>
+                        {allSubBabsAdmin.length === 0 ? (
+                          <p className="text-sm text-gray-400 italic">Loading sub-babs...</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[48px]">
+                            {allSubBabsAdmin.map((cat) => {
+                              const isSelected = formData.sub_babs.includes(cat.value);
+                              return (
+                                <button
+                                  key={cat.value}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = isSelected
+                                      ? formData.sub_babs.filter((c) => c !== cat.value)
+                                      : [...formData.sub_babs, cat.value];
+                                    handleInputChange('sub_babs', next);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all border select-none ${
+                                    isSelected
+                                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                      : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
+                                  }`}
+                                >
+                                  {isSelected && <span className="mr-1">✓</span>}
+                                  {cat.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {formData.sub_babs.length === 0 && (
+                          <p className="text-xs text-red-500 mt-1">At least one Sub-bab is required.</p>
+                        )}
+                        
+                        {/* Add New Sub-bab inline */}
+                        <div className="flex gap-2 pt-2 mt-2">
+                          <input
+                            type="text"
+                            value={newSubBabInput}
+                            onChange={(e) => setNewSubBabInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewSubBab(); } }}
+                            placeholder="New sub-bab name..."
+                            className="flex-1 px-3 h-9 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void handleAddNewSubBab()}
+                            disabled={addingCategory || !newSubBabInput.trim()}
+                            className="px-4 h-9 rounded-lg bg-green-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            + Add Sub-bab
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -1555,8 +1646,10 @@ export default function AdminPage() {
 
                     <div className="grid grid-cols-1 gap-4">
                       <div className="p-4 bg-white rounded-xl border border-gray-100">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Categories</p>
-                        <p className="font-bold text-gray-900 capitalize">{selectedQuestion.categories?.join(', ').replace(/_/g, ' ')}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Topik</p>
+                        <p className="font-bold text-gray-900 capitalize">
+                          {selectedQuestion.head_babs?.join(', ').replace(/_/g, ' ')} — {selectedQuestion.sub_babs?.join(', ').replace(/_/g, ' ')}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1753,7 +1846,7 @@ export default function AdminPage() {
                   <>
                     <span className="font-black text-nike-black">{viewingResult.name} </span>
                   </>
-                  • {viewingResult.category} • {new Date(viewingResult.taken_at).toLocaleDateString()}
+                  • {viewingResult.head_bab}, {viewingResult.sub_bab} • {new Date(viewingResult.taken_at).toLocaleDateString()}
                 </p>
               </div>
               <button onClick={() => setViewingResult(null)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
@@ -1843,7 +1936,7 @@ export default function AdminPage() {
       )}
 
       {activeTab === 'quiz' && (
-        <AdminQuizTab categories={allCategoriesAdmin.filter(c => !hiddenCategories.includes(c.value))} />
+        <AdminQuizTab headBabs={allHeadBabs.map((hb) => hb.value)} subBabs={allSubBabsAdmin.filter(c => !hiddenSubBabs.includes(c.value))} />
       )}
     </div>
   );

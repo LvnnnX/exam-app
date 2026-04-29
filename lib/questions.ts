@@ -3,8 +3,12 @@ import { ensureHtmlDocument } from './rich-text';
 
 const getUA = () => typeof window !== 'undefined' ? window.navigator.userAgent : 'server';
 
-// Type for fetching distinct categories
-export type CategoryInfo = {
+export type HeadBabInfo = {
+  value: string;
+  label: string;
+};
+
+export type SubBabInfo = {
   value: string;
   label: string;
 };
@@ -23,7 +27,8 @@ export type RawQuestion = {
   option_d: string;
   option_e: string;
   correct_answer: string; // 'A' | 'B' | 'C' | 'D' | 'E'
-  categories: string[];
+  head_babs: string[];
+  sub_babs: string[];
 };
 
 export type PublicQuestion = Omit<RawQuestion, 'correct_answer'>;
@@ -75,98 +80,120 @@ export function normalizePublicQuestion(raw: PublicQuestion): PublicQuestion {
 }
 
 /**
- * Fetches the list of admin-hidden category values from the app_settings table.
+ * Fetches the list of admin-hidden sub_bab values from the app_settings table.
  * Returns an empty array if the table doesn't exist yet or has no entry.
  */
-export async function fetchHiddenCategories(): Promise<string[]> {
+export async function fetchHiddenSubBabs(): Promise<string[]> {
   const { data, error } = await supabase
     .from('app_settings')
-    .select('hidden_categories')
+    .select('hidden_sub_babs')
     .eq('id', 1)
     .maybeSingle();
 
   if (error) {
-    console.error('Failed to fetch hidden categories:', error.message);
+    console.error('Failed to fetch hidden sub_babs:', error.message);
     return [];
   }
 
-  return (data?.hidden_categories as string[]) || [];
+  return (data?.hidden_sub_babs as string[]) || [];
 }
 
 /**
- * Persists the hidden category list to the app_settings table.
+ * Persists the hidden sub_bab list to the app_settings table.
  * Uses upsert so the row is created on first save.
  */
-export async function saveHiddenCategories(hidden: string[]): Promise<void> {
+export async function saveHiddenSubBabs(hidden: string[]): Promise<void> {
   const { error } = await supabase
     .from('app_settings')
-    .upsert({ id: 1, hidden_categories: hidden }, { onConflict: 'id' });
+    .upsert({ id: 1, hidden_sub_babs: hidden }, { onConflict: 'id' });
 
   if (error) {
-    console.error('Failed to save hidden categories:', error.message);
+    console.error('Failed to save hidden sub_babs:', error.message);
     throw new Error(`Failed to save settings: ${error.message}`);
   }
 }
 
-export async function fetchCategories(): Promise<CategoryInfo[]> {
-  const [categoriesResult, dbHidden] = await Promise.all([
-    supabase.from('questions').select('categories'),
-    fetchHiddenCategories(),
-  ]);
-
-  const { data, error } = categoriesResult;
+export async function fetchHeadBabs(): Promise<HeadBabInfo[]> {
+  const { data, error } = await supabase.from('questions').select('head_babs');
 
   if (error) {
-    console.error('Failed to fetch categories:', error.message);
+    console.error('Failed to fetch head babs:', error.message);
     return [];
   }
 
-  // Deduplicate manually
-  const uniqueCategories = Array.from(new Set(data.flatMap((q) => q.categories || [])));
+  const uniqueHeadBabs = Array.from(new Set(data.flatMap((q) => q.head_babs || []))).sort();
 
-  // Only filter categories explicitly hidden by the admin in app_settings
-  return uniqueCategories
-    .filter((cat) => !dbHidden.includes(cat))
-    .map((cat) => {
-      const label = cat
-        .split('_')
-        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      return { value: cat, label };
-    });
-}
-
-
-/** Returns ALL categories from the questions table with zero filtering.
- *  Used by the admin Settings page to allow toggling every category,
- *  including hard-hidden ones like 'bonus'. */
-export async function fetchAllCategoriesAdmin(): Promise<CategoryInfo[]> {
-  const { data, error } = await supabase.from('questions').select('categories');
-
-  if (error) {
-    console.error('Failed to fetch all categories (admin):', error.message);
-    return [];
-  }
-
-  const uniqueCategories = Array.from(new Set(data.flatMap((q) => q.categories || []))).sort();
-
-  return uniqueCategories.map((cat) => {
-    const label = cat
+  return uniqueHeadBabs.map((hb) => {
+    const label = hb
       .split('_')
       .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
-    return { value: cat, label };
+    return { value: hb, label };
   });
 }
 
-export async function fetchQuestions(category?: string): Promise<RawQuestion[]> {
+export async function fetchSubBabs(headBab?: string): Promise<SubBabInfo[]> {
+  const query = headBab && headBab !== 'Semua Head Bab' && headBab !== 'None'
+    ? supabase.from('questions').select('sub_babs').contains('head_babs', [headBab])
+    : supabase.from('questions').select('sub_babs');
+
+  const [subBabsResult, dbHidden] = await Promise.all([
+    query,
+    fetchHiddenSubBabs(),
+  ]);
+
+  const { data, error } = subBabsResult;
+
+  if (error) {
+    console.error('Failed to fetch sub babs:', error.message);
+    return [];
+  }
+
+  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || []))).sort();
+
+  return uniqueSubBabs
+    .filter((sb) => !dbHidden.includes(sb))
+    .map((sb) => {
+      const label = sb
+        .split('_')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      return { value: sb, label };
+    });
+}
+
+/** Returns ALL sub_babs from the questions table with zero filtering.
+ *  Used by the admin Settings page to allow toggling every sub_bab. */
+export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
+  const { data, error } = await supabase.from('questions').select('sub_babs');
+
+  if (error) {
+    console.error('Failed to fetch all sub_babs (admin):', error.message);
+    return [];
+  }
+
+  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || []))).sort();
+
+  return uniqueSubBabs.map((sb) => {
+    const label = sb
+      .split('_')
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    return { value: sb, label };
+  });
+}
+
+export async function fetchQuestions(headBab?: string, subBab?: string): Promise<RawQuestion[]> {
   let query = supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, categories');
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, head_babs, sub_babs');
 
-  // We skip filtering if the chosen category is somehow the placeholder 'All Categories', or just filter normally.
-  if (category && category !== 'All Categories') {
-    query = query.contains('categories', [category]);
+  if (headBab && headBab !== 'Semua Head Bab' && headBab !== 'None') {
+    query = query.contains('head_babs', [headBab]);
+  }
+  
+  if (subBab && subBab !== 'Semua Sub-bab') {
+    query = query.contains('sub_babs', [subBab]);
   }
 
   const { data, error } = await query;
@@ -184,10 +211,11 @@ export async function fetchQuestions(category?: string): Promise<RawQuestion[]> 
   return (data as RawQuestion[]).map(normalizeRawQuestion);
 }
 
-export async function startExamSessionViaRpc(name: string, category: string, mode: string, count: number, timeLimitMinutes: number): Promise<{ sessionId: string; total: number; expiresAt: string }> {
+export async function startExamSessionViaRpc(name: string, headBab: string, subBab: string, mode: string, count: number, timeLimitMinutes: number): Promise<{ sessionId: string; total: number; expiresAt: string }> {
   const { data, error } = await supabase.rpc('start_exam_session', {
     p_name: name,
-    p_category: category,
+    p_head_bab: headBab,
+    p_sub_bab: subBab,
     p_mode: mode,
     p_count: count,
     p_time_limit_minutes: timeLimitMinutes > 0 ? timeLimitMinutes : null,
@@ -275,7 +303,7 @@ export async function fetchQuestionsByIds(ids: number[]): Promise<RawQuestion[]>
 
   const { data, error } = await supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, categories')
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, head_babs, sub_babs')
     .in('id', ids);
 
   if (error) {

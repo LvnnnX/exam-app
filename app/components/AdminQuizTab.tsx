@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createQuizSession, updateQuizStatus, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
-import { type CategoryInfo, fetchQuestionsByIds, type RawQuestion } from '@/lib/questions';
+import { fetchQuestionsByIds, type RawQuestion } from '@/lib/questions';
 import RichContent from '@/app/components/RichContent';
 
-export default function AdminQuizTab({ categories }: { categories: CategoryInfo[] }) {
+export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[], subBabs: {label: string, value: string}[] }) {
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
@@ -20,7 +20,8 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
   }, [activeView]);
   
   // Create state
-  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
+  const [selectedHeadBab, setSelectedHeadBab] = useState<string>('Semua Head Bab');
+  const [selectedSubBab, setSelectedSubBab] = useState<string>('Semua Sub-bab');
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);
@@ -149,7 +150,7 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
 
   const handleCreate = async () => {
     setCreating(true);
-    const session = await createQuizSession(selectedCategory, questionCount, durationMinutes);
+    const session = await createQuizSession(selectedHeadBab, selectedSubBab, questionCount, durationMinutes);
     if (session) {
       setActiveSession(session);
       setActiveView('manage');
@@ -254,31 +255,64 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
 
           {/* Form Card */}
           <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
-            {/* Category */}
-            <div className="p-8 pb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
-                  <span className="text-xl">📚</span>
+            {/* Head Bab & Sub-bab */}
+            <div className="p-8 pb-6 flex flex-col md:flex-row gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
+                    <span className="text-xl">📚</span>
+                  </div>
+                  <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Head Bab</label>
                 </div>
-                <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Kategori Soal</label>
+                <div className="relative">
+                  <select
+                    value={selectedHeadBab}
+                    onChange={(e) => {
+                      setSelectedHeadBab(e.target.value);
+                      setSelectedSubBab('Semua Sub-bab');
+                    }}
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
+                  >
+                    <option value="Semua Head Bab">✨ Semua Head Bab</option>
+                    {headBabs.length > 0 ? (
+                      headBabs.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)
+                    ) : (
+                      <option disabled>Loading Head Babs...</option>
+                    )}
+                  </select>
+                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-5 h-5 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
-              <div className="relative">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
-                >
-                  <option value="All Categories">✨ Semua Kategori</option>
-                  {categories.length > 0 ? (
-                    categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)
-                  ) : (
-                    <option disabled>Loading Categories...</option>
-                  )}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-5 h-5 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                  </svg>
+
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
+                    <span className="text-xl">📖</span>
+                  </div>
+                  <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Sub-bab</label>
+                </div>
+                <div className="relative">
+                  <select
+                    value={selectedSubBab}
+                    onChange={(e) => setSelectedSubBab(e.target.value)}
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
+                  >
+                    <option value="Semua Sub-bab">✨ Semua Sub-bab</option>
+                    {subBabs.length > 0 ? (
+                      subBabs.map(c => <option key={c.value} value={c.value}>{c.label}</option>)
+                    ) : (
+                      <option disabled>Loading Sub-babs...</option>
+                    )}
+                  </select>
+                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-5 h-5 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
@@ -371,7 +405,7 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Join Code</p>
               <h1 className="text-4xl md:text-5xl font-black text-indigo-700 tracking-widest font-mono">{activeSession.quiz_code}</h1>
-              <p className="mt-2 text-sm text-gray-600 font-medium capitalize">Category: {activeSession.category?.replace(/_/g, ' ')} <span className="mx-2">•</span> {activeSession.question_count} Questions</p>
+              <p className="mt-2 text-sm text-gray-600 font-medium capitalize">Topik: {activeSession.head_bab?.replace(/_/g, ' ')}, {activeSession.sub_bab?.replace(/_/g, ' ')} <span className="mx-2">•</span> {activeSession.question_count} Questions</p>
             </div>
             <div className="flex flex-col items-end gap-3">
               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
@@ -521,7 +555,7 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topik</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Winner</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top Score</th>
@@ -538,7 +572,7 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
                   ) : history.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map(h => (
                     <tr key={h.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{h.quiz_code}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{h.category?.replace(/_/g, ' ')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{h.head_bab?.replace(/_/g, ' ')}, {h.sub_bab?.replace(/_/g, ' ')}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">{h.winner}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-green">{h.top_score} / {h.question_count}</td>
@@ -579,7 +613,7 @@ export default function AdminQuizTab({ categories }: { categories: CategoryInfo[
                 <div>
                   <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Player Performance</h2>
                   <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                    {viewingPlayer.name} • {activeSession?.category}
+                    {viewingPlayer.name} • {activeSession?.head_bab?.replace(/_/g, ' ')}, {activeSession?.sub_bab?.replace(/_/g, ' ')}
                   </p>
                 </div>
               </div>
