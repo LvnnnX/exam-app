@@ -154,14 +154,23 @@ export async function fetchbabs(): Promise<BabInfo[]> {
     return [];
   }
 
-  const uniqueBabs = Array.from(
-    new Set(data.flatMap((q) => (q.babs || []).map(normalizeCategorySlug)).filter(isSafeCategorySlug))
-  ).sort();
+  // Collect all raw bab values from DB, deduplicate by normalized slug but keep raw value
+  const rawBabs = data.flatMap((q) => q.babs || []).filter(Boolean);
+  const seen = new Map<string, string>(); // normalized -> first raw value
+  for (const raw of rawBabs) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
 
-  return uniqueBabs.map((hb) => ({ value: hb, label: categorySlugToLabel(hb) }));
+  return Array.from(seen.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
 
 export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
+  // Use the raw bab value directly for the .contains() query (case-sensitive match)
   const query = bab && bab !== 'Semua BAB' && bab !== 'None'
     ? supabase.from('questions').select('sub_babs').contains('babs', [bab])
     : supabase.from('questions').select('sub_babs');
@@ -178,14 +187,20 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
     return [];
   }
 
-  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || [])))
-    .map(normalizeCategorySlug)
-    .filter(isSafeCategorySlug)
-    .sort();
+  // Collect raw sub_bab values, deduplicate by normalized slug but keep raw value
+  const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
+  const seen = new Map<string, string>(); // normalized -> first raw value
+  for (const raw of rawSubBabs) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
 
-  return uniqueSubBabs
-    .filter((sb) => !dbHidden.includes(sb))
-    .map((sb) => ({ value: sb, label: categorySlugToLabel(sb) }));
+  return Array.from(seen.entries())
+    .filter(([slug]) => !dbHidden.includes(slug))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
 
 /** 
@@ -194,25 +209,29 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
 export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInfo[]> {
   if (!babs || babs.length === 0) return [];
 
-  const safeBabs = babs.map(normalizeCategorySlug).filter(isSafeCategorySlug);
-  if (safeBabs.length === 0) return [];
-
+  // Use raw bab values directly for the query (case-sensitive match in DB)
   const { data, error } = await supabase
     .from('questions')
     .select('sub_babs')
-    .or(safeBabs.map((hb) => `babs.cs.{${hb}}`).join(','));
+    .or(babs.map((hb) => `babs.cs.{${hb}}`).join(','));
 
   if (error) {
     console.error('Failed to fetch sub babs for multiple BABs:', error.message);
     return [];
   }
 
-  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || [])))
-    .map(normalizeCategorySlug)
-    .filter(isSafeCategorySlug)
-    .sort();
+  const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
+  const seen = new Map<string, string>();
+  for (const raw of rawSubBabs) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
 
-  return uniqueSubBabs.map((sb) => ({ value: sb, label: categorySlugToLabel(sb) }));
+  return Array.from(seen.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
 
 /** Returns ALL sub_babs from the questions table with zero filtering.
@@ -225,12 +244,18 @@ export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
     return [];
   }
 
-  const uniqueSubBabs = Array.from(new Set(data.flatMap((q) => q.sub_babs || [])))
-    .map(normalizeCategorySlug)
-    .filter(isSafeCategorySlug)
-    .sort();
+  const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
+  const seen = new Map<string, string>();
+  for (const raw of rawSubBabs) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
 
-  return uniqueSubBabs.map((sb) => ({ value: sb, label: categorySlugToLabel(sb) }));
+  return Array.from(seen.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
 
 export async function fetchQuestions(bab?: string, subBab?: string): Promise<RawQuestion[]> {

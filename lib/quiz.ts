@@ -3,9 +3,9 @@ import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './qu
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
 const KUIS_SAFE_COLUMNS = 'id, quiz_code, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at';
-export const QUIZ_CODE_LENGTH = 8;
+export const QUIZ_CODE_LENGTH = 6;
 
-const QUIZ_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const QUIZ_CODE_ALPHABET = '0123456789';
 
 export type KuisStatus = 'waiting' | 'active' | 'finished' | 'paused';
 
@@ -73,8 +73,7 @@ type QuizStatusUpdates = Partial<Pick<KuisLog, 'status' | 'started_at' | 'finish
 
 export function normalizeQuizCode(value: string): string {
   return String(value ?? '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '')
+    .replace(/[^0-9]/g, '')
     .slice(0, QUIZ_CODE_LENGTH);
 }
 
@@ -260,7 +259,7 @@ export async function updateQuizStatus(id: string, status: KuisStatus): Promise<
       if (current.expires_at) {
         updates.expires_at = new Date(new Date(current.expires_at).getTime() + pauseDuration).toISOString();
       }
-      updates.paused_at = null;
+      updates.paused_at = undefined;
     }
   } else if (status === 'paused') {
     updates.paused_at = now;

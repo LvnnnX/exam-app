@@ -558,8 +558,9 @@ export default function AdminPage() {
   };
 
   const toggleSubBabVisibility = (sb: string) => {
+    const normalized = normalizeCategorySlug(sb);
     setHiddenSubBabs(prev => {
-      const next = prev.includes(sb) ? prev.filter(s => s !== sb) : [...prev, sb];
+      const next = prev.includes(normalized) ? prev.filter(s => s !== normalized) : [...prev, normalized];
       setSettingsDirty(true);
       return next;
     });
@@ -1425,7 +1426,7 @@ export default function AdminPage() {
                   <p className="text-sm text-gray-400 italic">No sub-babs found. Add questions first.</p>
                 )}
                 {allSubBabsAdmin.map((cat) => {
-                  const isHidden = hiddenSubBabs.includes(cat.value);
+                  const isHidden = hiddenSubBabs.includes(normalizeCategorySlug(cat.value));
                   return (
                     <div key={cat.value} className="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
                       <div>
@@ -2047,7 +2048,7 @@ export default function AdminPage() {
       {activeTab === 'quiz' && (
         <AdminQuizTab 
           babs={allbabs.map((hb) => hb.value)} 
-          subBabs={allSubBabsAdmin.filter(c => !hiddenSubBabs.includes(c.value))} 
+          subBabs={allSubBabsAdmin.filter(c => !hiddenSubBabs.includes(normalizeCategorySlug(c.value)))} 
           hiddenSubBabs={hiddenSubBabs}
         />
       )}

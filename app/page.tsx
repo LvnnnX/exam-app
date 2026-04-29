@@ -769,20 +769,23 @@ export default function ExamPage() {
                   <h2 className="font-display text-[40px] text-nike-black leading-[0.9] tracking-[0.03em] uppercase mb-2">
                     Join.<br />Live. Quiz.
                   </h2>
-                  <p className="text-[12px] font-bold text-nike-grey-400 uppercase tracking-widest mb-10">Enter {QUIZ_CODE_LENGTH}-character access code</p>
+                  <p className="text-[12px] font-bold text-nike-grey-400 uppercase tracking-widest mb-10">Masukkan {QUIZ_CODE_LENGTH}-digit kode akses</p>
 
                   <div className="relative group mb-6">
                     <input
                       type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="one-time-code"
                       maxLength={QUIZ_CODE_LENGTH}
                       value={quizCode}
                       onChange={(e) => {
-                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, QUIZ_CODE_LENGTH);
+                        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, QUIZ_CODE_LENGTH);
                         setQuizCode(val);
                         if (codeError) setCodeError('');
                       }}
-                      placeholder="AB12CD34"
-                      className={`w-full bg-nike-grey-100 rounded-[20px] px-6 h-[72px] text-center text-[32px] font-display tracking-[0.2em] focus:outline-none focus:ring-4 transition-all ${codeError ? 'ring-nike-red/10 border-nike-red text-nike-red' : 'focus:ring-nike-black/5 border-nike-grey-200'
+                      placeholder="000000"
+                      className={`w-full bg-nike-grey-100 rounded-[20px] px-6 h-[72px] text-center text-[32px] font-display tracking-[0.3em] focus:outline-none focus:ring-4 transition-all ${codeError ? 'ring-nike-red/10 border-nike-red text-nike-red' : 'focus:ring-nike-black/5 border-nike-grey-200'
                         }`}
                     />
                     {codeError && (

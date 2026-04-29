@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createQuizSession, updateQuizStatus, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
 import { fetchQuestionsByIds, fetchSubBabs, type RawQuestion, type SubBabInfo } from '@/lib/questions';
+import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
 
 export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: string[], subBabs: {label: string, value: string}[], hiddenSubBabs: string[] }) {
@@ -44,7 +45,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       try {
         const filtered = await fetchSubBabs(selectedBab);
         // Filter out hidden sub-babs
-        const visible = filtered.filter(sb => !hiddenSubBabs.includes(sb.value));
+        const visible = filtered.filter(sb => !hiddenSubBabs.includes(normalizeCategorySlug(sb.value)));
         setDisplaySubBabs(visible);
       } finally {
         setLoadingSubBabs(false);
