@@ -1,7 +1,33 @@
 -- Migration: Add Head Bab Hierarchy
 
--- 1. QUESTIONS TABLE
-ALTER TABLE questions RENAME COLUMN categories TO sub_babs;
+DO $$ 
+BEGIN
+  -- 1. QUESTIONS TABLE
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='categories') THEN
+    ALTER TABLE questions RENAME COLUMN categories TO sub_babs;
+  END IF;
+
+  -- 2. EXAM_RESULTS TABLE
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='exam_results' AND column_name='category') THEN
+    ALTER TABLE exam_results RENAME COLUMN category TO sub_bab;
+  END IF;
+
+  -- 3. EXAM_LOGS TABLE
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='exam_logs' AND column_name='category') THEN
+    ALTER TABLE exam_logs RENAME COLUMN category TO sub_bab;
+  END IF;
+
+  -- 4. KUIS_LOGS TABLE
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='kuis_logs' AND column_name='category') THEN
+    ALTER TABLE kuis_logs RENAME COLUMN category TO sub_bab;
+  END IF;
+
+  -- 5. APP_SETTINGS TABLE
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='app_settings' AND column_name='hidden_categories') THEN
+    ALTER TABLE app_settings RENAME COLUMN hidden_categories TO hidden_sub_babs;
+  END IF;
+END $$;
+
 ALTER TABLE questions ADD COLUMN IF NOT EXISTS head_babs TEXT[] NOT NULL DEFAULT '{INFORMATIKA}';
 
 -- Update public_questions view to reflect new columns
@@ -10,20 +36,9 @@ CREATE OR REPLACE VIEW public_questions AS
 SELECT id, question_text, option_a, option_b, option_c, option_d, option_e, head_babs, sub_babs
 FROM questions;
 
--- 2. EXAM_RESULTS TABLE
-ALTER TABLE exam_results RENAME COLUMN category TO sub_bab;
 ALTER TABLE exam_results ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'INFORMATIKA';
-
--- 3. EXAM_LOGS TABLE
-ALTER TABLE exam_logs RENAME COLUMN category TO sub_bab;
 ALTER TABLE exam_logs ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'INFORMATIKA';
-
--- 4. KUIS_LOGS TABLE
-ALTER TABLE kuis_logs RENAME COLUMN category TO sub_bab;
 ALTER TABLE kuis_logs ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'INFORMATIKA';
-
--- 5. APP_SETTINGS TABLE
-ALTER TABLE app_settings RENAME COLUMN hidden_categories TO hidden_sub_babs;
 
 -- RECREATE RPCS WITH NEW COLUMNS
 
