@@ -711,130 +711,107 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
               }`}>
                 {activeSession.status}
               </span>
-              <div className="flex gap-2">
+              <div className="flex flex-row items-center gap-4 flex-wrap justify-end">
                 {activeSession.status === 'waiting' && (
-                  <button onClick={() => handleStatusChange('active')} className="bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-green-600 transition-colors shadow-sm">Start Quiz</button>
+                  <div className="relative flex items-center">
+                    {activeSession.scheduled_at && !editingSchedule ? (
+                      <div className="flex items-center gap-3 bg-[#F0F7FF] border border-[#BFDBFE] px-4 py-2 rounded-full">
+                        <div className="flex flex-col items-end">
+                          <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Mulai otomatis dalam</span>
+                          <span className="text-sm font-black text-[#4A90D9] font-mono tabular-nums">{scheduleCountdown || '...'}</span>
+                        </div>
+                        <div className="w-px h-6 bg-[#BFDBFE]"></div>
+                        <button
+                          onClick={() => {
+                            setEditingSchedule(true);
+                            const d = new Date(activeSession.scheduled_at!);
+                            setEditScheduleDate(d.toISOString().split('T')[0]);
+                            setEditScheduleTime(d.toTimeString().slice(0, 5));
+                          }}
+                          className="text-xs font-bold text-[#4A90D9] hover:text-blue-700 uppercase tracking-wider"
+                        >
+                          ✏️ Edit
+                        </button>
+                      </div>
+                    ) : !editingSchedule && (
+                      <button
+                        onClick={() => {
+                          setEditingSchedule(true);
+                          setEditScheduleDate('');
+                          setEditScheduleTime('');
+                        }}
+                        className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-700 uppercase tracking-wider transition-colors"
+                      >
+                        <span className="text-sm">📅</span> Set Schedule
+                      </button>
+                    )}
+
+                    {editingSchedule && (
+                      <div className="absolute right-0 top-full mt-2 w-[320px] bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-xs font-bold uppercase text-gray-700">Set Schedule</h4>
+                          <button onClick={() => setEditingSchedule(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Tanggal</label>
+                              <input
+                                type="date"
+                                value={editScheduleDate}
+                                onChange={(e) => {
+                                  setEditScheduleDate(e.target.value);
+                                  if (e.target.value === new Date().toISOString().split('T')[0] && editScheduleTime < new Date().toTimeString().slice(0, 5)) {
+                                    setEditScheduleTime('');
+                                  }
+                                }}
+                                min={new Date().toISOString().split('T')[0]}
+                                max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
+                                className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Waktu</label>
+                              <input
+                                type="time"
+                                value={editScheduleTime}
+                                onChange={(e) => setEditScheduleTime(e.target.value)}
+                                min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
+                                className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pt-2 border-t border-gray-100">
+                            <button onClick={handleSaveSchedule} className="flex-1 bg-[#4A90D9] text-white py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-600">Simpan</button>
+                            {activeSession.scheduled_at && (
+                              <button onClick={handleRemoveSchedule} className="flex-1 bg-red-500 text-white py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-red-600">Hapus</button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-                {(activeSession.status === 'active' || activeSession.status === 'paused') && (
-                  <>
-                    <button 
-                      onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')} 
-                      className={`${activeSession.status === 'active' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-nike-green hover:bg-green-600'} text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm`}
-                    >
-                      {activeSession.status === 'active' ? 'Pause' : 'Resume'}
-                    </button>
-                    <button onClick={() => handleStatusChange('finished')} className="bg-nike-red text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm">End Quiz</button>
-                  </>
-                )}
+                
+                <div className="flex gap-2">
+                  {activeSession.status === 'waiting' && (
+                    <button onClick={() => handleStatusChange('active')} className="bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-green-600 transition-colors shadow-sm">Start Quiz</button>
+                  )}
+                  {(activeSession.status === 'active' || activeSession.status === 'paused') && (
+                    <>
+                      <button 
+                        onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')} 
+                        className={`${activeSession.status === 'active' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-nike-green hover:bg-green-600'} text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm`}
+                      >
+                        {activeSession.status === 'active' ? 'Pause' : 'Resume'}
+                      </button>
+                      <button onClick={() => handleStatusChange('finished')} className="bg-nike-red text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm">End Quiz</button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Schedule section — only for waiting sessions */}
-          {activeSession.status === 'waiting' && (
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">📅</span>
-                  <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Schedule</h3>
-                </div>
-                {!editingSchedule && (
-                  <button
-                    onClick={() => {
-                      setEditingSchedule(true);
-                      if (activeSession.scheduled_at) {
-                        const d = new Date(activeSession.scheduled_at);
-                        setEditScheduleDate(d.toISOString().split('T')[0]);
-                        setEditScheduleTime(d.toTimeString().slice(0, 5));
-                      } else {
-                        setEditScheduleDate('');
-                        setEditScheduleTime('');
-                      }
-                    }}
-                    className="text-xs font-bold text-[#4A90D9] hover:text-blue-700 uppercase tracking-wider"
-                  >
-                    {activeSession.scheduled_at ? '✏️ Edit' : '+ Set Schedule'}
-                  </button>
-                )}
-              </div>
-
-              {activeSession.scheduled_at && !editingSchedule && (
-                <div className="flex items-center gap-3 bg-[#F0F7FF] rounded-xl p-4 border border-[#BFDBFE]">
-                  <div className="flex-1">
-                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Dijadwalkan pada</p>
-                    <p className="text-lg font-black text-[#4A90D9]">
-                      {new Date(activeSession.scheduled_at).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}
-                    </p>
-                  </div>
-                  {scheduleCountdown && (
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Dimulai dalam</p>
-                      <p className="text-xl font-black text-[#4A90D9] font-mono tabular-nums">{scheduleCountdown}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {!activeSession.scheduled_at && !editingSchedule && (
-                <p className="text-sm text-gray-400 italic">Belum dijadwalkan. Kuis hanya dimulai secara manual.</p>
-              )}
-
-              {editingSchedule && (
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex-1">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Tanggal</label>
-                      <input
-                        type="date"
-                        value={editScheduleDate}
-                        onChange={(e) => {
-                          setEditScheduleDate(e.target.value);
-                          if (e.target.value === new Date().toISOString().split('T')[0] && editScheduleTime < new Date().toTimeString().slice(0, 5)) {
-                            setEditScheduleTime('');
-                          }
-                        }}
-                        min={new Date().toISOString().split('T')[0]}
-                        max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
-                        className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Waktu</label>
-                      <input
-                        type="time"
-                        value={editScheduleTime}
-                        onChange={(e) => setEditScheduleTime(e.target.value)}
-                        min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                        className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSaveSchedule}
-                      className="px-5 py-2 bg-[#4A90D9] text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-blue-600 transition-colors shadow-sm"
-                    >
-                      💾 Simpan Schedule
-                    </button>
-                    {activeSession.scheduled_at && (
-                      <button
-                        onClick={handleRemoveSchedule}
-                        className="px-5 py-2 bg-red-500 text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm"
-                      >
-                        🗑️ Hapus
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setEditingSchedule(false)}
-                      className="px-5 py-2 bg-gray-200 text-gray-700 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-gray-300 transition-colors"
-                    >
-                      Batal
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
