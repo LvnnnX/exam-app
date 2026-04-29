@@ -2,7 +2,7 @@
 
 -- 1. QUESTIONS TABLE
 ALTER TABLE questions RENAME COLUMN categories TO sub_babs;
-ALTER TABLE questions ADD COLUMN IF NOT EXISTS head_babs TEXT[] NOT NULL DEFAULT '{Umum}';
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS head_babs TEXT[] NOT NULL DEFAULT '{INFORMATIKA}';
 
 -- Update public_questions view to reflect new columns
 DROP VIEW IF EXISTS public_questions;
@@ -12,15 +12,15 @@ FROM questions;
 
 -- 2. EXAM_RESULTS TABLE
 ALTER TABLE exam_results RENAME COLUMN category TO sub_bab;
-ALTER TABLE exam_results ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'Umum';
+ALTER TABLE exam_results ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'INFORMATIKA';
 
 -- 3. EXAM_LOGS TABLE
 ALTER TABLE exam_logs RENAME COLUMN category TO sub_bab;
-ALTER TABLE exam_logs ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'Umum';
+ALTER TABLE exam_logs ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'INFORMATIKA';
 
 -- 4. KUIS_LOGS TABLE
 ALTER TABLE kuis_logs RENAME COLUMN category TO sub_bab;
-ALTER TABLE kuis_logs ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'Umum';
+ALTER TABLE kuis_logs ADD COLUMN IF NOT EXISTS head_bab TEXT NOT NULL DEFAULT 'INFORMATIKA';
 
 -- 5. APP_SETTINGS TABLE
 ALTER TABLE app_settings RENAME COLUMN hidden_categories TO hidden_sub_babs;
