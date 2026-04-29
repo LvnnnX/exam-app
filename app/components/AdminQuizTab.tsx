@@ -192,6 +192,23 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
     setCreating(false);
   };
 
+  const handleRefresh = () => {
+    if (activeSession) {
+      fetchQuizPlayers(activeSession.id).then(setPlayers);
+      fetchQuestionsByIds(activeSession.question_ids || []).then(setSessionQuestions);
+      return;
+    }
+
+    if (activeView === 'history') {
+      fetchQuizHistory().then(setHistory);
+      return;
+    }
+
+    if (activeView === 'manage') {
+      fetchActiveSessions().then(setActiveSessions);
+    }
+  };
+
   const handleStatusChange = async (status: KuisStatus) => {
     if (!activeSession) return;
     const ok = await updateQuizStatus(activeSession.id, status);
@@ -208,20 +225,14 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h2 className="text-lg sm:text-xl font-bold text-slate-700">Quiz Management</h2>
-          <button
-            onClick={() => {
-              if (activeSession) {
-                fetchQuizPlayers(activeSession.id).then(setPlayers);
-              } else if (activeView === 'history') {
-                fetchQuizHistory().then(setHistory);
-              } else if (activeView === 'manage') {
-                fetchActiveSessions().then(setActiveSessions);
-              }
-            }}
-            className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-[#34C759]/20 text-[#34C759] rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#34C759]/5 transition-colors"
-          >
-            ↻ Refresh
-          </button>
+          {(activeView !== 'create' || activeSession) && (
+            <button
+              onClick={handleRefresh}
+              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-[#34C759]/20 text-[#34C759] rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#34C759]/5 transition-colors"
+            >
+              ↻ Refresh
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">
@@ -271,30 +282,30 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       </div>
 
       {activeView === 'create' && !activeSession && (
-        <div className="max-w-2xl mx-auto py-8">
+        <div className="max-w-2xl mx-auto py-4 md:py-6">
           {/* Header Card */}
-          <div className="bg-white rounded-[32px] p-8 mb-6 border border-nike-grey-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-20 h-20 rounded-[24px] bg-[#F0F7FF] flex items-center justify-center shadow-inner mb-2">
-                <span className="text-4xl animate-bounce">🎯</span>
+          <div className="bg-white rounded-[24px] p-5 mb-4 border border-nike-grey-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-14 h-14 rounded-[18px] bg-[#F0F7FF] flex items-center justify-center shadow-inner">
+                <span className="text-2xl animate-bounce">🎯</span>
               </div>
               <div>
-                <h3 className="text-2xl font-black text-nike-black uppercase tracking-tight">Buat Kuis Baru</h3>
-                <p className="text-[14px] font-medium text-nike-grey-400 uppercase tracking-widest mt-1">Konfigurasikan sesi kuis Live</p>
+                <h3 className="text-lg md:text-xl font-black text-nike-black uppercase tracking-tight">Buat Kuis Baru</h3>
+                <p className="text-[11px] font-medium text-nike-grey-400 uppercase tracking-[0.2em] mt-1">Konfigurasikan sesi kuis Live</p>
               </div>
             </div>
           </div>
 
           {/* Form Card */}
-          <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
+          <div className="bg-white rounded-[24px] shadow-[0_16px_40px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
             {/* BAB & Sub-bab */}
-            <div className="p-8 pb-6 flex flex-col md:flex-row gap-6">
+            <div className="p-5 pb-4 flex flex-col md:flex-row gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
-                    <span className="text-xl">📚</span>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
+                    <span className="text-base">📚</span>
                   </div>
-                  <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">BAB</label>
+                  <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">BAB</label>
                 </div>
                 <div className="relative">
                   <select
@@ -303,7 +314,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       setSelectedBab(e.target.value);
                       setSelectedSubBab('Semua Sub-bab');
                     }}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[16px] px-4 h-[48px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
                   >
                     <option value="Semua BAB">✨ Semua BAB</option>
                     {babs.length > 0 ? (
@@ -312,8 +323,8 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       <option disabled>Loading BAB...</option>
                     )}
                   </select>
-                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-5 h-5 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
@@ -321,17 +332,17 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
               </div>
 
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
-                    <span className="text-xl">📖</span>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
+                    <span className="text-base">📖</span>
                   </div>
-                  <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Sub-bab</label>
+                  <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Sub-bab</label>
                 </div>
                 <div className="relative">
                   <select
                     value={selectedSubBab}
                     onChange={(e) => setSelectedSubBab(e.target.value)}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[16px] px-4 h-[48px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
                   >
                     <option value="Semua Sub-bab">✨ Semua Sub-bab</option>
                     {loadingSubBabs ? (
@@ -342,8 +353,8 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       <option disabled>No Sub-babs found</option>
                     )}
                   </select>
-                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-5 h-5 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
@@ -352,19 +363,19 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             </div>
 
             {/* Question Count */}
-            <div className="p-8 py-6 bg-[#FAFBFF]">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#F0FFF4] flex items-center justify-center border border-[#C6F6D5]">
-                  <span className="text-xl">✏️</span>
+            <div className="p-5 py-4 bg-[#FAFBFF]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-[#F0FFF4] flex items-center justify-center border border-[#C6F6D5]">
+                  <span className="text-base">✏️</span>
                 </div>
-                <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Jumlah Soal</label>
+                <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Jumlah Soal</label>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 {[5, 10, 20].map(n => (
                   <button
                     key={n}
                     onClick={() => setQuestionCount(n)}
-                    className={`flex-1 h-[60px] rounded-[20px] text-[16px] font-black transition-all border-2 ${
+                    className={`flex-1 h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${
                       questionCount === n
                         ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
                         : 'bg-white border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
@@ -377,19 +388,19 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             </div>
 
             {/* Duration */}
-            <div className="p-8 py-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#EBF8FF] flex items-center justify-center border border-[#BEE3F8]">
-                  <span className="text-xl">⏱️</span>
+            <div className="p-5 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-[#EBF8FF] flex items-center justify-center border border-[#BEE3F8]">
+                  <span className="text-base">⏱️</span>
                 </div>
-                <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Durasi Waktu</label>
+                <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Durasi Waktu</label>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[30, 60, 90, 120].map(m => (
                   <button
                     key={m}
                     onClick={() => setDurationMinutes(m)}
-                    className={`h-[60px] rounded-[20px] text-[16px] font-black transition-all border-2 ${
+                    className={`h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${
                       durationMinutes === m
                         ? 'bg-[#34C759] border-transparent text-white shadow-lg shadow-[#34C759]/20'
                         : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#34C759] hover:text-[#34C759]'
@@ -402,17 +413,17 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             </div>
 
             {/* Submit */}
-            <div className="p-8 bg-[#F8FAFC]">
+            <div className="p-5 bg-[#F8FAFC]">
               <button
                 onClick={handleCreate}
                 disabled={creating || displaySubBabs.length === 0}
-                className={`w-full h-[72px] rounded-[24px] text-white font-black text-[18px] tracking-widest transition-all shadow-xl active:scale-[0.98] disabled:opacity-80 ${
+                className={`w-full h-[54px] rounded-[18px] text-white font-black text-[14px] tracking-[0.2em] transition-all shadow-xl active:scale-[0.98] disabled:opacity-80 ${
                   creating || displaySubBabs.length === 0 ? 'bg-slate-300' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
                 }`}
               >
                 {creating ? (
                   <span className="flex items-center justify-center gap-3">
-                    <span className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     CREATING...
                   </span>
                 ) : displaySubBabs.length === 0 ? (
