@@ -174,6 +174,7 @@ export default function AdminPage() {
 
   // Add-new-category inline state (used in question form)
   const [newSubBabInput, setNewSubBabInput] = useState('');
+  const [newHeadBabInput, setNewHeadBabInput] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
 
   // Live Tracking state
@@ -546,6 +547,37 @@ export default function AdminPage() {
       setSettingsDirty(true);
       return next;
     });
+  };
+
+  /**
+   * Creates a new head_bab slug on-the-fly and adds it to the current question draft.
+   */
+  const handleAddNewHeadBab = async () => {
+    const raw = newHeadBabInput.trim();
+    if (!raw) return;
+
+    // Normalise: lowercase, replace spaces with underscores
+    const slug = raw.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (!slug) return;
+
+    setAddingCategory(true);
+    try {
+      if (!formData.head_babs.includes(slug)) {
+        handleInputChange('head_babs', [...formData.head_babs, slug]);
+      }
+
+      if (!allHeadBabs.some(c => c.value === slug)) {
+        const label = slug
+          .split('_')
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        setAllHeadBabs(prev => [...prev, { value: slug, label }]);
+      }
+
+      setNewHeadBabInput('');
+    } finally {
+      setAddingCategory(false);
+    }
   };
 
   /**
@@ -1533,6 +1565,26 @@ export default function AdminPage() {
                         {formData.head_babs.length === 0 && (
                           <p className="text-xs text-red-500 mt-1">At least one Head Bab is required.</p>
                         )}
+                        
+                        {/* Add New Head Bab inline */}
+                        <div className="flex gap-2 pt-2 mt-2">
+                          <input
+                            type="text"
+                            value={newHeadBabInput}
+                            onChange={(e) => setNewHeadBabInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewHeadBab(); } }}
+                            placeholder="New head-bab name..."
+                            className="flex-1 px-3 h-9 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void handleAddNewHeadBab()}
+                            disabled={addingCategory || !newHeadBabInput.trim()}
+                            className="px-4 h-9 rounded-lg bg-green-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            + Add Head Bab
+                          </button>
+                        </div>
                       </div>
 
                       <div>
