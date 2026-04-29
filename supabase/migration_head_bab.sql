@@ -516,3 +516,6 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION submit_live_quiz_answer_v2(TEXT, INT, TEXT, INT) TO anon, authenticated;
+
+-- Add scheduled_at column for quiz scheduling
+ALTER TABLE kuis_logs ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ DEFAULT NULL;

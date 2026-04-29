@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './questions';
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
-const KUIS_SAFE_COLUMNS = 'id, quiz_code, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at';
+const KUIS_SAFE_COLUMNS = 'id, quiz_code, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at, scheduled_at';
 export const QUIZ_CODE_LENGTH = 6;
 
 const QUIZ_CODE_ALPHABET = '0123456789';
@@ -26,6 +26,7 @@ export type KuisLog = {
   top_score?: number;
   expires_at?: string;
   paused_at?: string;
+  scheduled_at?: string;
 };
 
 export type Player = {
@@ -69,7 +70,7 @@ type QuizHistoryRow = KuisLog & {
   player?: Player[];
 };
 
-type QuizStatusUpdates = Partial<Pick<KuisLog, 'status' | 'started_at' | 'finished_at' | 'paused_at' | 'expires_at'>>;
+type QuizStatusUpdates = Partial<Pick<KuisLog, 'status' | 'started_at' | 'finished_at' | 'paused_at' | 'expires_at' | 'scheduled_at'>>;
 
 export function normalizeQuizCode(value: string): string {
   return String(value ?? '')
@@ -87,7 +88,7 @@ function generateQuizCode(length = QUIZ_CODE_LENGTH): string {
 }
 
 // Admin: Create a new Quiz Live Session
-export async function createQuizSession(bab: string, subBab: string, questionCount: number, durationMinutes: number): Promise<KuisLog | null> {
+export async function createQuizSession(bab: string, subBab: string, questionCount: number, durationMinutes: number, scheduledAt?: string): Promise<KuisLog | null> {
   const code = generateQuizCode();
   
   // Fetch random questions
@@ -110,17 +111,22 @@ export async function createQuizSession(bab: string, subBab: string, questionCou
   const shuffled = qData.sort(() => 0.5 - Math.random()).slice(0, questionCount);
   const questionIds = shuffled.map(q => q.id);
   
+  const insertData: Record<string, unknown> = {
+    quiz_code: code,
+    bab: bab,
+    sub_bab: subBab,
+    question_count: questionCount,
+    duration_minutes: durationMinutes,
+    status: 'waiting',
+    question_ids: questionIds,
+  };
+  if (scheduledAt) {
+    insertData.scheduled_at = scheduledAt;
+  }
+
   const { data, error } = await supabase
     .from('kuis_logs')
-    .insert([{
-      quiz_code: code,
-      bab: bab,
-      sub_bab: subBab,
-      question_count: questionCount,
-      duration_minutes: durationMinutes,
-      status: 'waiting',
-      question_ids: questionIds
-    }])
+    .insert([insertData])
     .select()
     .single();
     
@@ -129,6 +135,21 @@ export async function createQuizSession(bab: string, subBab: string, questionCou
     return null;
   }
   return data;
+}
+
+// Schedule or update schedule for a waiting quiz
+export async function updateQuizSchedule(id: string, scheduledAt: string | null): Promise<boolean> {
+  const { error } = await supabase
+    .from('kuis_logs')
+    .update({ scheduled_at: scheduledAt })
+    .eq('id', id)
+    .eq('status', 'waiting');
+
+  if (error) {
+    console.error('Error updating quiz schedule:', error);
+    return false;
+  }
+  return true;
 }
 
 export async function fetchQuizByCode(code: string): Promise<KuisLog | null> {

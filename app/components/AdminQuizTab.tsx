@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { createQuizSession, updateQuizStatus, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
+import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
 import { fetchQuestionsByIds, fetchSubBabs, type RawQuestion, type SubBabInfo } from '@/lib/questions';
 import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
@@ -57,6 +57,15 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);
+  
+  // Schedule state
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
+  const [scheduleCountdown, setScheduleCountdown] = useState<string | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [editScheduleDate, setEditScheduleDate] = useState('');
+  const [editScheduleTime, setEditScheduleTime] = useState('');
   
   // Manage state
   const [activeSession, setActiveSession] = useState<KuisLog | null>(null);
@@ -246,10 +255,18 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
 
   const handleCreate = async () => {
     setCreating(true);
-    const session = await createQuizSession(selectedBab, selectedSubBab, questionCount, durationMinutes);
+    let scheduledAt: string | undefined;
+    if (scheduleEnabled && scheduleDate && scheduleTime) {
+      scheduledAt = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+    }
+    const session = await createQuizSession(selectedBab, selectedSubBab, questionCount, durationMinutes, scheduledAt);
     if (session) {
       setActiveSession(session);
       setActiveView('manage');
+      // Reset schedule form
+      setScheduleEnabled(false);
+      setScheduleDate('');
+      setScheduleTime('');
     } else {
       alert("Failed to create session.");
     }
@@ -296,6 +313,88 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       alert("Gagal memperbarui status kuis. Pastikan tabel kuis_logs sudah memiliki kolom 'expires_at' dan 'paused_at' di Supabase.");
     }
   };
+
+  const handleSaveSchedule = async () => {
+    if (!activeSession) return;
+    if (!editScheduleDate || !editScheduleTime) {
+      alert('Pilih tanggal dan waktu schedule.');
+      return;
+    }
+    const scheduledAt = new Date(`${editScheduleDate}T${editScheduleTime}:00`).toISOString();
+    const ok = await updateQuizSchedule(activeSession.id, scheduledAt);
+    if (ok) {
+      setActiveSession({ ...activeSession, scheduled_at: scheduledAt });
+      setEditingSchedule(false);
+    } else {
+      alert('Gagal menyimpan schedule.');
+    }
+  };
+
+  const handleRemoveSchedule = async () => {
+    if (!activeSession) return;
+    const ok = await updateQuizSchedule(activeSession.id, null);
+    if (ok) {
+      setActiveSession({ ...activeSession, scheduled_at: undefined });
+      setEditingSchedule(false);
+    } else {
+      alert('Gagal menghapus schedule.');
+    }
+  };
+
+  // Auto-start polling for scheduled quizzes
+  useEffect(() => {
+    if (!activeSession || activeSession.status !== 'waiting' || !activeSession.scheduled_at) {
+      setScheduleCountdown(null);
+      return;
+    }
+
+    const targetTime = new Date(activeSession.scheduled_at).getTime();
+
+    const tick = async () => {
+      const now = Date.now();
+      const diff = targetTime - now;
+
+      if (diff <= 0) {
+        setScheduleCountdown('Memulai...');
+        const ok = await updateQuizStatus(activeSession.id, 'active');
+        if (ok) {
+          setActiveSession({ ...activeSession, status: 'active', started_at: new Date().toISOString() });
+        }
+        return;
+      }
+
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setScheduleCountdown(
+        hours > 0 ? `${hours}j ${minutes}m ${seconds}d` : `${minutes}m ${seconds}d`
+      );
+    };
+
+    void tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [activeSession?.id, activeSession?.status, activeSession?.scheduled_at]);
+
+  // Also poll active sessions list for any scheduled quiz that should auto-start
+  useEffect(() => {
+    if (activeView !== 'manage' || activeSession) return;
+
+    const checkScheduled = async () => {
+      const sessions = await fetchActiveSessions();
+      setActiveSessions(sessions);
+      const now = Date.now();
+      for (const s of sessions) {
+        if (s.status === 'waiting' && s.scheduled_at && new Date(s.scheduled_at).getTime() <= now) {
+          await updateQuizStatus(s.id, 'active');
+        }
+      }
+    };
+
+    void checkScheduled();
+    const interval = setInterval(checkScheduled, 10000); // every 10s
+    return () => clearInterval(interval);
+  }, [activeView, activeSession]);
 
   return (
     <div>
@@ -489,6 +588,58 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
               </div>
             </div>
 
+            {/* Schedule */}
+            <div className="p-5 py-4 bg-[#FAFBFF]">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[#FFF8E1] flex items-center justify-center border border-[#FFE082]">
+                    <span className="text-base">📅</span>
+                  </div>
+                  <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Schedule Quiz</label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScheduleEnabled(!scheduleEnabled)}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                    scheduleEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    scheduleEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+              {scheduleEnabled && (
+                <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Tanggal</label>
+                    <input
+                      type="date"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
+                      className="w-full bg-white border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Waktu</label>
+                    <input
+                      type="time"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      className="w-full bg-white border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+              {scheduleEnabled && scheduleDate && scheduleTime && (
+                <p className="text-[11px] font-semibold text-[#4A90D9] mt-2 flex items-center gap-1">
+                  ⏰ Kuis akan dimulai otomatis pada {new Date(`${scheduleDate}T${scheduleTime}:00`).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                </p>
+              )}
+            </div>
+
             {/* Submit */}
             <div className="p-5 bg-[#F8FAFC]">
               <button
@@ -560,6 +711,106 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
               </div>
             </div>
           </div>
+
+          {/* Schedule section — only for waiting sessions */}
+          {activeSession.status === 'waiting' && (
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📅</span>
+                  <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Schedule</h3>
+                </div>
+                {!editingSchedule && (
+                  <button
+                    onClick={() => {
+                      setEditingSchedule(true);
+                      if (activeSession.scheduled_at) {
+                        const d = new Date(activeSession.scheduled_at);
+                        setEditScheduleDate(d.toISOString().split('T')[0]);
+                        setEditScheduleTime(d.toTimeString().slice(0, 5));
+                      } else {
+                        setEditScheduleDate('');
+                        setEditScheduleTime('');
+                      }
+                    }}
+                    className="text-xs font-bold text-[#4A90D9] hover:text-blue-700 uppercase tracking-wider"
+                  >
+                    {activeSession.scheduled_at ? '✏️ Edit' : '+ Set Schedule'}
+                  </button>
+                )}
+              </div>
+
+              {activeSession.scheduled_at && !editingSchedule && (
+                <div className="flex items-center gap-3 bg-[#F0F7FF] rounded-xl p-4 border border-[#BFDBFE]">
+                  <div className="flex-1">
+                    <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Dijadwalkan pada</p>
+                    <p className="text-lg font-black text-[#4A90D9]">
+                      {new Date(activeSession.scheduled_at).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                  {scheduleCountdown && (
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Dimulai dalam</p>
+                      <p className="text-xl font-black text-[#4A90D9] font-mono tabular-nums">{scheduleCountdown}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!activeSession.scheduled_at && !editingSchedule && (
+                <p className="text-sm text-gray-400 italic">Belum dijadwalkan. Kuis hanya dimulai secara manual.</p>
+              )}
+
+              {editingSchedule && (
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Tanggal</label>
+                      <input
+                        type="date"
+                        value={editScheduleDate}
+                        onChange={(e) => setEditScheduleDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
+                        className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Waktu</label>
+                      <input
+                        type="time"
+                        value={editScheduleTime}
+                        onChange={(e) => setEditScheduleTime(e.target.value)}
+                        className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveSchedule}
+                      className="px-5 py-2 bg-[#4A90D9] text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-blue-600 transition-colors shadow-sm"
+                    >
+                      💾 Simpan Schedule
+                    </button>
+                    {activeSession.scheduled_at && (
+                      <button
+                        onClick={handleRemoveSchedule}
+                        className="px-5 py-2 bg-red-500 text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm"
+                      >
+                        🗑️ Hapus
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setEditingSchedule(false)}
+                      className="px-5 py-2 bg-gray-200 text-gray-700 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-gray-300 transition-colors"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
@@ -642,7 +893,12 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                         <span className="block max-w-[140px] truncate" title={s.quiz_code}>{s.quiz_code}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${s.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${s.status === 'active' ? 'bg-green-100 text-green-700' : s.status === 'paused' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                        {s.status === 'waiting' && s.scheduled_at && (
+                          <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600" title={new Date(s.scheduled_at).toLocaleString('id-ID')}>
+                            📅 {new Date(s.scheduled_at).toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">{s.player_count || 0}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.question_count}</td>
