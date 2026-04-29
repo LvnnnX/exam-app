@@ -133,7 +133,7 @@ export async function fetchHeadBabs(): Promise<HeadBabInfo[]> {
 }
 
 export async function fetchSubBabs(headBab?: string): Promise<SubBabInfo[]> {
-  const query = headBab && headBab !== 'Semua Head Bab' && headBab !== 'None'
+  const query = headBab && headBab !== 'Semua BAB' && headBab !== 'None'
     ? supabase.from('questions').select('sub_babs').contains('head_babs', [headBab])
     : supabase.from('questions').select('sub_babs');
 

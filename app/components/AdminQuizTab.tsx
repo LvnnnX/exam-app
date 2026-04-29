@@ -20,7 +20,7 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
   }, [activeView]);
   
   // Create state
-  const [selectedHeadBab, setSelectedHeadBab] = useState<string>('Semua Head Bab');
+  const [selectedHeadBab, setSelectedHeadBab] = useState<string>('Semua BAB');
   const [selectedSubBab, setSelectedSubBab] = useState<string>('Semua Sub-bab');
   const [displaySubBabs, setDisplaySubBabs] = useState<SubBabInfo[]>(subBabs);
   const [loadingSubBabs, setLoadingSubBabs] = useState(false);
@@ -291,7 +291,7 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
                   <div className="w-10 h-10 rounded-xl bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
                     <span className="text-xl">📚</span>
                   </div>
-                  <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">Head Bab</label>
+                  <label className="text-[14px] font-black text-nike-black uppercase tracking-widest">BAB</label>
                 </div>
                 <div className="relative">
                   <select
@@ -302,11 +302,11 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
                     }}
                     className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
                   >
-                    <option value="Semua Head Bab">✨ Semua Head Bab</option>
+                    <option value="Semua BAB">✨ Semua BAB</option>
                     {headBabs.length > 0 ? (
                       headBabs.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)
                     ) : (
-                      <option disabled>Loading Head Babs...</option>
+                      <option disabled>Loading BAB...</option>
                     )}
                   </select>
                   <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">

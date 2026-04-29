@@ -659,7 +659,7 @@ export default function ExamPage() {
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1 space-y-3">
-                  <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Head Bab</span>
+                  <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">BAB</span>
                   {fetchError ? (
                     <div className="w-full flex items-center justify-between bg-nike-red/10 p-4 rounded-[12px] border border-nike-red/20">
                       <p className="text-nike-red text-[14px] font-medium uppercase">Error</p>
@@ -677,7 +677,7 @@ export default function ExamPage() {
                       className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-4 h-[48px] text-[16px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em' }}
                     >
-                      <option value="None">PILIH HEAD BAB (NONE)</option>
+                      <option value="None">PILIH BAB (NONE)</option>
                       {availableHeadBabs.map((hb) => (
                         <option key={hb.value} value={hb.value}>{hb.label}</option>
                       ))}

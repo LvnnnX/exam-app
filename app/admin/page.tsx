@@ -709,7 +709,7 @@ export default function AdminPage() {
     }
 
     if (payload.head_babs.length === 0 || payload.sub_babs.length === 0) {
-      throw new Error('Please select at least one Head Bab and Sub-bab for the question.');
+      throw new Error('Please select at least one BAB and Sub-bab for the question.');
     }
 
     return payload;
@@ -950,7 +950,7 @@ export default function AdminPage() {
 
           <div className="mb-5 flex flex-col sm:flex-row gap-4 w-full sm:max-w-xl">
             <div className="flex-1">
-              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter Head Bab</label>
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter BAB</label>
               <select
                 value={activeHeadBabFilter}
                 onChange={(e) => setActiveHeadBabFilter(e.target.value)}
@@ -1019,7 +1019,7 @@ export default function AdminPage() {
                     <div className="font-semibold text-slate-700 mb-2 text-sm leading-relaxed">
                       Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
                     </div>
-                    <div className="text-xs text-slate-400 mb-1">Head Bab: {question.head_babs?.join(', ').replaceAll('_', ' ')}</div>
+                    <div className="text-xs text-slate-400 mb-1">BAB: {question.head_babs?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-1">Sub-bab: {question.sub_babs?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-4">Correct: <span className="font-bold text-[#34C759]">{question.correct_answer}</span></div>
                     <div className="flex gap-2">
@@ -1103,7 +1103,7 @@ export default function AdminPage() {
               {/* Row 2: Category selection — dropdown */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Head Bab</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">BAB</label>
                   <select
                     value={activeResHeadBab}
                     onChange={(e) => handleResHeadBabChange(e.target.value)}
@@ -1549,26 +1549,66 @@ export default function AdminPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2">
-                      {/* Bab (Single Select) */}
+                      {/* Bab (Multi Select) */}
                       <div className="space-y-2">
                         <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">
                           Bab
+                          <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
                         </label>
-                        <select
-                          value={formData.head_babs[0] || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            handleInputChange('head_babs', val ? [val] : []);
-                          }}
-                          className="w-full bg-white border border-gray-300 rounded-xl px-4 h-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer"
-                        >
-                          <option value="">Pilih Bab...</option>
-                          {allHeadBabs.map((cat) => (
-                            <option key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative group">
+                          <div className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 min-h-[48px] text-sm flex flex-wrap gap-1.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all max-h-[120px] overflow-y-auto">
+                            {formData.head_babs.length === 0 ? (
+                              <span className="text-gray-400 py-1.5">Pilih Bab...</span>
+                            ) : (
+                              formData.head_babs.map(val => {
+                                const info = allHeadBabs.find(h => h.value === val);
+                                return (
+                                  <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
+                                    {info?.label || val}
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleInputChange('head_babs', formData.head_babs.filter(v => v !== val))}
+                                      className="hover:text-indigo-900 ml-1"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                );
+                              })
+                            )}
+                          </div>
+                          
+                          {/* Dropdown list for Bab multi-select */}
+                          <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
+                            {allHeadBabs.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic p-2 text-center">Loading Bab...</p>
+                            ) : (
+                              allHeadBabs.map((cat) => {
+                                const isSelected = formData.head_babs.includes(cat.value);
+                                return (
+                                  <button
+                                    key={cat.value}
+                                    type="button"
+                                    onClick={() => {
+                                      const next = isSelected
+                                        ? formData.head_babs.filter((c) => c !== cat.value)
+                                        : [...formData.head_babs, cat.value];
+                                      handleInputChange('head_babs', next);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${
+                                      isSelected
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
+                                    }`}
+                                  >
+                                    <span>{cat.label}</span>
+                                    {isSelected && <span>✓</span>}
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
                         
                         {/* Add New Bab inline */}
                         <div className="flex gap-2 pt-1">
@@ -1652,25 +1692,27 @@ export default function AdminPage() {
                           </div>
                         </div>
 
-                        {/* Add New Sub-bab inline */}
-                        <div className="flex gap-2 pt-1">
-                          <input
-                            type="text"
-                            value={newSubBabInput}
-                            onChange={(e) => setNewSubBabInput(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewSubBab(); } }}
-                            placeholder="Add new sub-bab..."
-                            className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => void handleAddNewSubBab()}
-                            disabled={addingCategory || !newSubBabInput.trim()}
-                            className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
-                          >
-                            + New
-                          </button>
-                        </div>
+                        {/* Add New Sub-bab inline - only if Bab is selected */}
+                        {formData.head_babs.length > 0 && (
+                          <div className="flex gap-2 pt-1">
+                            <input
+                              type="text"
+                              value={newSubBabInput}
+                              onChange={(e) => setNewSubBabInput(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewSubBab(); } }}
+                              placeholder="Add new sub-bab..."
+                              className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void handleAddNewSubBab()}
+                              disabled={addingCategory || !newSubBabInput.trim()}
+                              className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
+                            >
+                              + New
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
