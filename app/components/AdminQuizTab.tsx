@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createQuizSession, updateQuizStatus, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
 import { fetchQuestionsByIds, fetchSubBabs, type RawQuestion, type SubBabInfo } from '@/lib/questions';
@@ -61,6 +61,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
   // Manage state
   const [activeSession, setActiveSession] = useState<KuisLog | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [playerProgress, setPlayerProgress] = useState<Record<string, number>>({});
   
   // Player Details Modal state
   const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null);
@@ -77,12 +78,17 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
   const [playersPage, setPlayersPage] = useState(1);
   const itemsPerPage = 20;
   const historyPerPage = 10;
+  const autoFinishRef = useRef(false);
 
   useEffect(() => {
     setActivePage(1);
     setHistoryPage(1);
     setPlayersPage(1);
   }, [activeView, activeSession]);
+
+  useEffect(() => {
+    autoFinishRef.current = false;
+  }, [activeSession?.id]);
   
   useEffect(() => {
     let channel: any = null;
@@ -124,6 +130,64 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       if (channel) supabase.removeChannel(channel);
     };
   }, [activeView, activeSession]);
+
+  useEffect(() => {
+    if (!activeSession) {
+      setPlayerProgress({});
+      return;
+    }
+
+    const playerIds = players.map((p) => p.id);
+    if (playerIds.length === 0) {
+      setPlayerProgress({});
+      return;
+    }
+
+    const loadProgress = async () => {
+      const { data, error } = await supabase
+        .from('kuis_results')
+        .select('player_id')
+        .in('player_id', playerIds);
+
+      if (error) {
+        console.error('Failed to fetch player progress:', error.message);
+        return;
+      }
+
+      const counts = (data || []).reduce<Record<string, number>>((acc, row) => {
+        const key = row.player_id as string;
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      setPlayerProgress(counts);
+    };
+
+    void loadProgress();
+  }, [activeSession, players]);
+
+  useEffect(() => {
+    if (!activeSession || activeSession.status !== 'active') {
+      autoFinishRef.current = false;
+      return;
+    }
+
+    if (players.length === 0) {
+      return;
+    }
+
+    const allFinished = players.every((player) => Boolean(player.finished_at));
+    if (!allFinished || autoFinishRef.current) {
+      return;
+    }
+
+    autoFinishRef.current = true;
+    updateQuizStatus(activeSession.id, 'finished').then((ok) => {
+      if (!ok) {
+        autoFinishRef.current = false;
+      }
+    });
+  }, [activeSession, players]);
   
   // Auto-finish timer
   useEffect(() => {
@@ -190,6 +254,19 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       alert("Failed to create session.");
     }
     setCreating(false);
+  };
+
+  const resolveCurrentLabel = (player: Player) => {
+    if (!activeSession || activeSession.status === 'waiting') return '-';
+
+    const total = activeSession.question_count || 0;
+    const answered = playerProgress[player.id] || 0;
+
+    if (total === 0) return '-';
+    if (activeSession.status === 'finished' || player.finished_at || answered >= total) return 'Selesai';
+
+    const current = Math.min(answered + 1, total);
+    return `#${current}`;
   };
 
   const handleRefresh = () => {
@@ -370,8 +447,8 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                 </div>
                 <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Jumlah Soal</label>
               </div>
-              <div className="flex gap-2">
-                {[5, 10, 20].map(n => (
+              <div className="grid grid-cols-3 gap-2">
+                {[5, 10, 20, 25, 30, 40].map(n => (
                   <button
                     key={n}
                     onClick={() => setQuestionCount(n)}
@@ -494,6 +571,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (s)</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
@@ -501,12 +579,15 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {players.length === 0 ? (
-                    <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Waiting for players to join...</td></tr>
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Waiting for players to join...</td></tr>
                   ) : players.slice((playersPage - 1) * itemsPerPage, playersPage * itemsPerPage).map((p, i) => (
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">{((playersPage - 1) * itemsPerPage) + i + 1}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <span className="block max-w-[200px] truncate" title={p.name}>{p.name}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <span className="font-semibold" title={`Soal saat ini: ${resolveCurrentLabel(p)}`}>{resolveCurrentLabel(p)}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">{p.score} / {activeSession.question_count}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.total_time}s</td>

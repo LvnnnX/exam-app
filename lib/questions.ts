@@ -15,7 +15,7 @@ export type SubBabInfo = {
 };
 
 // Available question counts
-export const QUESTION_COUNTS = [5, 10, 20] as const;
+export const QUESTION_COUNTS = [5, 10, 20, 25, 30, 40] as const;
 export type QuestionCount = typeof QUESTION_COUNTS[number];
 
 // Raw question shape from Supabase (also used as fallback)

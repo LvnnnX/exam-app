@@ -375,7 +375,10 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               {player.name}
             </span>
             <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-              Topik: {session.bab}, {session.sub_bab} · Soal Nomor {currentIndex + 1}
+              Topik: {session.bab}, {session.sub_bab}
+            </span>
+            <span className="text-[16px] font-bold text-nike-grey-400 uppercase tracking-widest mb-1">
+              Soal Nomor {currentIndex + 1}
             </span>
           </div>
 
