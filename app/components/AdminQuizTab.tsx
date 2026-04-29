@@ -257,7 +257,13 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
     setCreating(true);
     let scheduledAt: string | undefined;
     if (scheduleEnabled && scheduleDate && scheduleTime) {
-      scheduledAt = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+      const target = new Date(`${scheduleDate}T${scheduleTime}:00`);
+      if (target.getTime() <= Date.now()) {
+        alert('Waktu schedule tidak boleh di masa lalu.');
+        setCreating(false);
+        return;
+      }
+      scheduledAt = target.toISOString();
     }
     const session = await createQuizSession(selectedBab, selectedSubBab, questionCount, durationMinutes, scheduledAt);
     if (session) {
@@ -320,7 +326,12 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       alert('Pilih tanggal dan waktu schedule.');
       return;
     }
-    const scheduledAt = new Date(`${editScheduleDate}T${editScheduleTime}:00`).toISOString();
+    const target = new Date(`${editScheduleDate}T${editScheduleTime}:00`);
+    if (target.getTime() <= Date.now()) {
+      alert('Waktu schedule tidak boleh di masa lalu.');
+      return;
+    }
+    const scheduledAt = target.toISOString();
     const ok = await updateQuizSchedule(activeSession.id, scheduledAt);
     if (ok) {
       setActiveSession({ ...activeSession, scheduled_at: scheduledAt });
@@ -616,7 +627,13 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     <input
                       type="date"
                       value={scheduleDate}
-                      onChange={(e) => setScheduleDate(e.target.value)}
+                      onChange={(e) => {
+                        setScheduleDate(e.target.value);
+                        // Clear time if it's now in the past
+                        if (e.target.value === new Date().toISOString().split('T')[0] && scheduleTime < new Date().toTimeString().slice(0, 5)) {
+                          setScheduleTime('');
+                        }
+                      }}
                       min={new Date().toISOString().split('T')[0]}
                       max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
                       className="w-full bg-white border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
@@ -628,6 +645,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       type="time"
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
+                      min={scheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
                       className="w-full bg-white border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                     />
                   </div>
@@ -769,7 +787,12 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       <input
                         type="date"
                         value={editScheduleDate}
-                        onChange={(e) => setEditScheduleDate(e.target.value)}
+                        onChange={(e) => {
+                          setEditScheduleDate(e.target.value);
+                          if (e.target.value === new Date().toISOString().split('T')[0] && editScheduleTime < new Date().toTimeString().slice(0, 5)) {
+                            setEditScheduleTime('');
+                          }
+                        }}
                         min={new Date().toISOString().split('T')[0]}
                         max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
                         className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
@@ -781,6 +804,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                         type="time"
                         value={editScheduleTime}
                         onChange={(e) => setEditScheduleTime(e.target.value)}
+                        min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
                         className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                       />
                     </div>
