@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import QuestionDisplay from '@/app/components/QuestionDisplay';
 import RichContent from '@/app/components/RichContent';
 import {
@@ -16,7 +15,7 @@ import {
   saveSessionAnswerViaRpc,
   submitSessionExamViaRpc,
 } from '@/lib/questions';
-import { secureSave, secureLoad, secureClear, secureRemove } from '@/lib/security';
+import { secureSave, secureLoad, secureClear } from '@/lib/security';
 
 type Answer = string | null;
 type GameMode = 'exam' | 'survival';
@@ -133,14 +132,6 @@ export default function ExamPage() {
     secureSave(STORAGE_KEYS.EXPIRES_AT, expiresAt);
     secureSave(STORAGE_KEYS.TIME_LIMIT, timeLimit);
   }, [name, step, current, answers, sessionId, totalQuestions, category, startTime, gameMode, lives, score, expiresAt, timeLimit]);
-
-  const saveExpiresAtToStorage = (val: string) => {
-    secureSave(STORAGE_KEYS.EXPIRES_AT, val);
-  };
-
-  const saveTimeLimitToStorage = (val: number) => {
-    secureSave(STORAGE_KEYS.TIME_LIMIT, val);
-  };
 
   const clearStorage = () => {
     secureClear();

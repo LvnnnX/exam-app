@@ -39,7 +39,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     fetchQuizByCode(code).then(quiz => {
       if (!quiz) {
         alert("Kuis tidak ditemukan");
-        router.push('/quiz');
+        router.push('/');
         return;
       }
       setSession(quiz);
