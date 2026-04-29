@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { fetchQuizByCode, joinQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, type KuisLog, type Player } from '@/lib/quiz';
+import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, type KuisLog, type Player } from '@/lib/quiz';
 import { type ShuffledOption } from '@/lib/questions';
 import { useRouter } from 'next/navigation';
 import RichContent from '@/app/components/RichContent';
@@ -119,7 +119,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       return;
     }
 
-    const result = await joinQuiz(session?.id || '', name.trim(), code);
+    const result = await joinLiveQuiz(code, name.trim());
     if ('error' in result) {
       alert(result.error);
       setLoading(false);

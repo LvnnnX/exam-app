@@ -684,7 +684,7 @@ export default function ExamPage() {
                     </select>
                   )}
                 </div>
-                
+
                 <div className="flex-1 space-y-3">
                   <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Sub-bab</span>
                   <select
@@ -1127,7 +1127,6 @@ export default function ExamPage() {
 
           <div className="space-y-6 mb-12">
             {recapData
-              .filter((_, idx) => !isSurvival || idx <= current)
               .map((item, idx) => {
                 const userAnswer = item.user_answer;
                 const correctText = item.correct_text;

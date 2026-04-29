@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './questions';
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
 const KUIS_SAFE_COLUMNS = 'id, quiz_code, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at';
@@ -52,7 +53,7 @@ export async function createQuizSession(bab: string, subBab: string, questionCou
   // Fetch random questions
   let query = supabase.from('questions').select('id');
   
-  if (bab !== 'None') {
+  if (bab !== 'None' && bab !== 'Semua BAB') {
     query = query.contains('babs', [bab]);
   }
   if (subBab !== 'Semua Sub-bab') {
@@ -101,9 +102,11 @@ export async function fetchQuizByCode(code: string): Promise<KuisLog | null> {
   return data;
 }
 
-export async function joinQuiz(kuisId: string, name: string, code: string): Promise<Player | { error: string }> {
-  const { data: authData } = await supabase.auth.getSession();
-  if (!authData.session) {
+export async function joinLiveQuiz(code: string, name: string): Promise<Player | { error: string }> {
+  // Ensure we have a valid auth session for RLS
+  const { data: { session: currentSession } } = await supabase.auth.getSession();
+  
+  if (!currentSession) {
     const { error: signInError } = await supabase.auth.signInAnonymously();
     if (signInError) {
       console.error('Auth failed:', signInError);
@@ -116,15 +119,20 @@ export async function joinQuiz(kuisId: string, name: string, code: string): Prom
     p_name: name
   });
     
-  if (error || !data) {
-    console.error('Join RPC failed:', error);
-    return { error: error?.message || 'Gagal bergabung kuis.' };
+  if (error) {
+    console.error('Join RPC failed:', error.message);
+    return { error: error.message };
+  }
+
+  const result = data as any;
+  if (!result || !result.success) {
+    return { error: result?.message || 'Gagal bergabung kuis.' };
   }
 
   const { data: player, error: fetchError } = await supabase
     .from('player')
     .select('*')
-    .eq('id', data.player_id)
+    .eq('id', result.player_id)
     .single();
 
   if (fetchError || !player) {
@@ -134,18 +142,24 @@ export async function joinQuiz(kuisId: string, name: string, code: string): Prom
   return player;
 }
 
-export async function getJitQuestion(playerId: string, index: number): Promise<any> {
+export async function getJitQuestion(playerId: string, index: number): Promise<ShuffledQuestion | null> {
   const { data, error } = await supabase.rpc('get_live_quiz_question', {
     p_player_id: playerId,
     p_index: index
   });
 
   if (error) {
-    console.error('JIT fetch failed:', error);
+    console.error('JIT fetch failed:', error.message);
     return null;
   }
 
-  return data;
+  const result = data as any;
+  if (!result || !result.success) {
+    console.error('JIT fetch logic failed:', result?.error || 'Unknown error');
+    return null;
+  }
+
+  return shuffleOptions(result.data as PublicQuestion);
 }
 
 export async function submitSecureAnswer(
@@ -162,11 +176,15 @@ export async function submitSecureAnswer(
   });
 
   if (error) {
-    console.error('Security verification failed:', error);
+    console.error('Security verification failed:', error.message);
     return { success: false };
   }
 
-  return data;
+  const result = data as any;
+  return { 
+    success: result?.success || false, 
+    is_correct: result?.is_correct 
+  };
 }
 
 export async function finishPlayerQuiz(playerId: string): Promise<void> {
@@ -294,6 +312,7 @@ export async function fetchActiveSessions(): Promise<KuisLog[]> {
 
   return results;
 }
+
 export async function fetchPlayerAnswers(playerId: string): Promise<KuisResult[]> {
   const { data, error } = await supabase
     .from('kuis_results')

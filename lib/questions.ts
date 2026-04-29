@@ -247,7 +247,7 @@ export async function startExamSessionViaRpc(name: string, bab: string, subBab: 
     p_count: count,
     p_time_limit_minutes: timeLimitMinutes > 0 ? timeLimitMinutes : null,
     p_user_agent: getUA()
-  });
+  }).single();
 
   if (error || !data) {
     console.error('start_exam_session rpc failed:', error?.message);
@@ -255,16 +255,16 @@ export async function startExamSessionViaRpc(name: string, bab: string, subBab: 
   }
 
   return {
-    sessionId: data.session_id,
-    total: data.question_count,
-    expiresAt: data.expires_at
+    sessionId: (data as any).session_id,
+    total: (data as any).question_count,
+    expiresAt: (data as any).expires_at
   };
 }
 
 export async function getSessionStateViaRpc(sessionId: string): Promise<any> {
   const { data, error } = await supabase.rpc('get_session_state', {
     p_session_id: sessionId
-  });
+  }).single();
 
   if (error) {
     console.error('get_session_state rpc failed:', error.message);
@@ -278,7 +278,7 @@ export async function getSessionQuestionViaRpc(sessionId: string, index: number)
   const { data, error } = await supabase.rpc('get_session_question', {
     p_session_id: sessionId,
     p_index: index
-  });
+  }).single();
 
   if (error) {
     console.error('get_session_question rpc failed:', error.message);
@@ -313,7 +313,7 @@ export async function submitSessionExamViaRpc(
   const { data, error } = await supabase.rpc('submit_session_exam', {
     p_session_id: sessionId,
     p_end_time: endTime
-  });
+  }).single();
 
   if (error) {
     console.error('submit_session_exam rpc failed:', error.message);
@@ -356,7 +356,7 @@ function fisherYatesShuffle<T>(array: T[]): T[] {
 
 const LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
 
-function shuffleOptions(raw: PublicQuestion): ShuffledQuestion {
+export function shuffleOptions(raw: PublicQuestion): ShuffledQuestion {
   const normalized = normalizePublicQuestion(raw);
 
   const originalOptions = [
