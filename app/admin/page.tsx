@@ -1548,121 +1548,127 @@ export default function AdminPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4 md:col-span-2">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          Head Babs
-                          <span className="ml-2 text-xs font-normal text-gray-400">(klik untuk pilih / batal pilih)</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2">
+                      {/* Bab (Single Select) */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">
+                          Bab
                         </label>
-                        {allHeadBabs.length === 0 ? (
-                          <p className="text-sm text-gray-400 italic">Loading head babs...</p>
-                        ) : (
-                          <div className="flex flex-wrap gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[48px]">
-                            {allHeadBabs.map((cat) => {
-                              const isSelected = formData.head_babs.includes(cat.value);
-                              return (
-                                <button
-                                  key={cat.value}
-                                  type="button"
-                                  onClick={() => {
-                                    const next = isSelected
-                                      ? formData.head_babs.filter((c) => c !== cat.value)
-                                      : [...formData.head_babs, cat.value];
-                                    handleInputChange('head_babs', next);
-                                  }}
-                                  className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all border select-none ${
-                                    isSelected
-                                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                      : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
-                                  }`}
-                                >
-                                  {isSelected && <span className="mr-1">✓</span>}
-                                  {cat.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                        {formData.head_babs.length === 0 && (
-                          <p className="text-xs text-red-500 mt-1">At least one Head Bab is required.</p>
-                        )}
+                        <select
+                          value={formData.head_babs[0] || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            handleInputChange('head_babs', val ? [val] : []);
+                          }}
+                          className="w-full bg-white border border-gray-300 rounded-xl px-4 h-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer"
+                        >
+                          <option value="">Pilih Bab...</option>
+                          {allHeadBabs.map((cat) => (
+                            <option key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </option>
+                          ))}
+                        </select>
                         
-                        {/* Add New Head Bab inline */}
-                        <div className="flex gap-2 pt-2 mt-2">
+                        {/* Add New Bab inline */}
+                        <div className="flex gap-2 pt-1">
                           <input
                             type="text"
                             value={newHeadBabInput}
                             onChange={(e) => setNewHeadBabInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewHeadBab(); } }}
-                            placeholder="New head-bab name..."
-                            className="flex-1 px-3 h-9 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            placeholder="Add new bab..."
+                            className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                           <button
                             type="button"
                             onClick={() => void handleAddNewHeadBab()}
                             disabled={addingCategory || !newHeadBabInput.trim()}
-                            className="px-4 h-9 rounded-lg bg-green-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
                           >
-                            + Add Head Bab
+                            + New
                           </button>
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          Sub-babs
-                          <span className="ml-2 text-xs font-normal text-gray-400">(klik untuk pilih / batal pilih)</span>
+                      {/* Sub-bab (Multi Select) */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">
+                          Sub-bab
+                          <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
                         </label>
-                        {allSubBabsAdmin.length === 0 ? (
-                          <p className="text-sm text-gray-400 italic">Loading sub-babs...</p>
-                        ) : (
-                          <div className="flex flex-wrap gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[48px]">
-                            {allSubBabsAdmin.map((cat) => {
-                              const isSelected = formData.sub_babs.includes(cat.value);
-                              return (
-                                <button
-                                  key={cat.value}
-                                  type="button"
-                                  onClick={() => {
-                                    const next = isSelected
-                                      ? formData.sub_babs.filter((c) => c !== cat.value)
-                                      : [...formData.sub_babs, cat.value];
-                                    handleInputChange('sub_babs', next);
-                                  }}
-                                  className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all border select-none ${
-                                    isSelected
-                                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                      : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
-                                  }`}
-                                >
-                                  {isSelected && <span className="mr-1">✓</span>}
-                                  {cat.label}
-                                </button>
-                              );
-                            })}
+                        <div className="relative group">
+                          <div className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 min-h-[48px] text-sm flex flex-wrap gap-1.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all max-h-[120px] overflow-y-auto">
+                            {formData.sub_babs.length === 0 ? (
+                              <span className="text-gray-400 py-1.5">Pilih Sub-bab...</span>
+                            ) : (
+                              formData.sub_babs.map(val => {
+                                const info = allSubBabsAdmin.find(s => s.value === val);
+                                return (
+                                  <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
+                                    {info?.label || val}
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleInputChange('sub_babs', formData.sub_babs.filter(v => v !== val))}
+                                      className="hover:text-indigo-900 ml-1"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                );
+                              })
+                            )}
                           </div>
-                        )}
-                        {formData.sub_babs.length === 0 && (
-                          <p className="text-xs text-red-500 mt-1">At least one Sub-bab is required.</p>
-                        )}
-                        
+                          
+                          {/* Dropdown list for multi-select */}
+                          <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
+                            {allSubBabsAdmin.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic p-2 text-center">Pilih Bab dulu untuk melihat Sub-bab</p>
+                            ) : (
+                              allSubBabsAdmin.map((cat) => {
+                                const isSelected = formData.sub_babs.includes(cat.value);
+                                return (
+                                  <button
+                                    key={cat.value}
+                                    type="button"
+                                    onClick={() => {
+                                      const next = isSelected
+                                        ? formData.sub_babs.filter((c) => c !== cat.value)
+                                        : [...formData.sub_babs, cat.value];
+                                      handleInputChange('sub_babs', next);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${
+                                      isSelected
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
+                                    }`}
+                                  >
+                                    <span>{cat.label}</span>
+                                    {isSelected && <span>✓</span>}
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+
                         {/* Add New Sub-bab inline */}
-                        <div className="flex gap-2 pt-2 mt-2">
+                        <div className="flex gap-2 pt-1">
                           <input
                             type="text"
                             value={newSubBabInput}
                             onChange={(e) => setNewSubBabInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewSubBab(); } }}
-                            placeholder="New sub-bab name..."
-                            className="flex-1 px-3 h-9 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            placeholder="Add new sub-bab..."
+                            className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                           <button
                             type="button"
                             onClick={() => void handleAddNewSubBab()}
                             disabled={addingCategory || !newSubBabInput.trim()}
-                            className="px-4 h-9 rounded-lg bg-green-600 text-white text-xs font-bold uppercase tracking-wide hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
                           >
-                            + Add Sub-bab
+                            + New
                           </button>
                         </div>
                       </div>
