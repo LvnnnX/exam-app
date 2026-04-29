@@ -259,7 +259,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2 flex flex-wrap items-baseline gap-4">
                 <span>Leaderboard.</span>
               </h2>
-              <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{session.head_bab}, {session.sub_bab}</p>
+              <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{session.bab}, {session.sub_bab}</p>
               <p className="text-[16px] font-medium text-nike-grey-500 uppercase">
                 {player && (
                   <>
@@ -306,7 +306,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       <div className="min-h-screen flex items-center justify-center p-6 bg-white">
         <div className="text-center max-w-sm w-full">
           <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest mb-1">Live Quiz</p>
-          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.head_bab?.replace(/_/g, ' ')}, {session.sub_bab?.replace(/_/g, ' ')}</p>
+          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.bab?.replace(/_/g, ' ')}, {session.sub_bab?.replace(/_/g, ' ')}</p>
           <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8">Join</h2>
           
           <input 
@@ -334,7 +334,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
         <div className="text-center">
           <div className="w-12 h-12 border-[3px] border-nike-grey-200 border-t-nike-black rounded-full animate-spin mx-auto mb-6"></div>
           <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest mb-1">Ruang Tunggu</p>
-          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.head_bab?.replace(/_/g, ' ')}, {session.sub_bab?.replace(/_/g, ' ')}</p>
+          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.bab?.replace(/_/g, ' ')}, {session.sub_bab?.replace(/_/g, ' ')}</p>
           <h2 className="font-display text-[32px] sm:text-[48px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2">Menunggu Admin</h2>
           <p className="text-[12px] text-nike-grey-300 uppercase tracking-[0.2em]">Kuis akan segera dimulai</p>
         </div>
@@ -374,7 +374,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               {player.name}
             </span>
             <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-              Topik: {session.head_bab}, {session.sub_bab} · Soal Nomor {currentIndex + 1}
+              Topik: {session.bab}, {session.sub_bab} · Soal Nomor {currentIndex + 1}
             </span>
           </div>
 

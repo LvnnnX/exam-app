@@ -6,10 +6,10 @@ import RichContent from '@/app/components/RichContent';
 import {
   type ShuffledQuestion,
   type QuestionCount,
-  type HeadBabInfo,
+  type BabInfo,
   type SubBabInfo,
   QUESTION_COUNTS,
-  fetchHeadBabs,
+  fetchbabs,
   fetchSubBabs,
   startExamSessionViaRpc,
   getSessionQuestionViaRpc,
@@ -32,7 +32,7 @@ const STORAGE_KEYS = {
   ANSWERS: 'exam_answers',
   SESSION_ID: 'exam_session_id',
   TOTAL: 'exam_total_questions',
-  HEAD_BAB: 'exam_head_bab',
+  bab: 'exam_bab',
   SUB_BAB: 'exam_sub_bab',
   START_TIME: 'exam_start_time',
   MODE: 'exam_mode',
@@ -56,9 +56,9 @@ export default function ExamPage() {
   const router = useRouter();
   // App state
   const [name, setName] = useState('');
-  const [headBab, setHeadBab] = useState<string>('None');
+  const [bab, setBab] = useState<string>('None');
   const [subBab, setSubBab] = useState<string>('Semua Sub-bab');
-  const [availableHeadBabs, setAvailableHeadBabs] = useState<HeadBabInfo[]>([]);
+  const [availableBabs, setAvailableBabs] = useState<BabInfo[]>([]);
   const [availableSubBabs, setAvailableSubBabs] = useState<SubBabInfo[]>([]);
   const [questionCount, setQuestionCount] = useState<QuestionCount>(20);
   const [step, setStep] = useState(1); // 1=Name, 2=Confirm, 25=Preparing, 3=Quiz, 6=Score, 7=Results
@@ -110,7 +110,7 @@ export default function ExamPage() {
       answers: secureLoad<Answer[]>(STORAGE_KEYS.ANSWERS),
       sessionId: secureLoad<string>(STORAGE_KEYS.SESSION_ID),
       total: secureLoad<number>(STORAGE_KEYS.TOTAL) || 0,
-      headBab: secureLoad<string>(STORAGE_KEYS.HEAD_BAB),
+      bab: secureLoad<string>(STORAGE_KEYS.bab),
       subBab: secureLoad<string>(STORAGE_KEYS.SUB_BAB),
       startTime: secureLoad<number>(STORAGE_KEYS.START_TIME),
       mode: secureLoad<GameMode>(STORAGE_KEYS.MODE) || 'exam',
@@ -130,7 +130,7 @@ export default function ExamPage() {
     secureSave(STORAGE_KEYS.ANSWERS, answers);
     secureSave(STORAGE_KEYS.SESSION_ID, sessionId);
     secureSave(STORAGE_KEYS.TOTAL, totalQuestions);
-    secureSave(STORAGE_KEYS.HEAD_BAB, headBab);
+    secureSave(STORAGE_KEYS.bab, bab);
     secureSave(STORAGE_KEYS.SUB_BAB, subBab);
     secureSave(STORAGE_KEYS.START_TIME, startTime);
     secureSave(STORAGE_KEYS.MODE, gameMode);
@@ -138,7 +138,7 @@ export default function ExamPage() {
     secureSave(STORAGE_KEYS.SCORE, score);
     secureSave(STORAGE_KEYS.EXPIRES_AT, expiresAt);
     secureSave(STORAGE_KEYS.TIME_LIMIT, timeLimit);
-  }, [name, step, current, answers, sessionId, totalQuestions, headBab, subBab, startTime, gameMode, lives, score, expiresAt, timeLimit]);
+  }, [name, step, current, answers, sessionId, totalQuestions, bab, subBab, startTime, gameMode, lives, score, expiresAt, timeLimit]);
 
   const clearStorage = () => {
     secureClear();
@@ -166,7 +166,7 @@ export default function ExamPage() {
         setName(state.name || stored.name || '');
         setSessionId(stored.sessionId!);
         setTotalQuestions(state.question_count);
-        setHeadBab(state.head_bab || stored.headBab || 'None');
+        setBab(state.bab || stored.bab || 'None');
         setSubBab(state.sub_bab || stored.subBab || 'Semua Sub-bab');
         setGameMode(state.mode || stored.mode || 'exam');
         setLives(state.lives ?? stored.lives ?? 3);
@@ -213,28 +213,28 @@ export default function ExamPage() {
     }
 
     // Fetch dynamic categories helper
-    const loadHeadBabs = async () => {
+    const loadBabs = async () => {
       try {
         setFetchError(null);
-        const data = await fetchHeadBabs();
+        const data = await fetchbabs();
         if (data.length === 0) {
-          console.warn("No head babs found in Supabase.");
+          console.warn("No babs found in Supabase.");
         }
-        setAvailableHeadBabs(data);
+        setAvailableBabs(data);
       } catch (err: any) {
-        console.error("Failed to load head babs:", err);
+        console.error("Failed to load babs:", err);
         setFetchError(err.message || "Failed to connect to server");
       }
     };
 
-    loadHeadBabs();
-    (window as any).__retryCategoryFetch = loadHeadBabs;
+    loadBabs();
+    (window as any).__retryCategoryFetch = loadBabs;
   }, []);
 
   useEffect(() => {
     const loadSubBabs = async () => {
       try {
-        const data = await fetchSubBabs(headBab);
+        const data = await fetchSubBabs(bab);
         setAvailableSubBabs(data);
         if (!data.some((sb) => sb.value === subBab) && data.length > 0) {
           setSubBab('Semua Sub-bab');
@@ -244,7 +244,7 @@ export default function ExamPage() {
       }
     };
     loadSubBabs();
-  }, [headBab]);
+  }, [bab]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // ==================== FETCH & PREPARE NEW SESSION ====================
@@ -253,7 +253,7 @@ export default function ExamPage() {
     setIsLoading(true);
     try {
       const count = isSurvival ? 9999 : questionCount;
-      const { sessionId: newSessionId, total: newTotal, expiresAt: serverExpiresAt } = await startExamSessionViaRpc(name, headBab, subBab, gameMode, count, timeLimit);
+      const { sessionId: newSessionId, total: newTotal, expiresAt: serverExpiresAt } = await startExamSessionViaRpc(name, bab, subBab, gameMode, count, timeLimit);
 
       if (newTotal === 0) {
         throw new Error('Tidak ada soal di kategori ini.');
@@ -430,7 +430,7 @@ export default function ExamPage() {
 
   const restart = () => {
     setName('');
-    setHeadBab('None');
+    setBab('None');
     setSubBab('Semua Sub-bab');
     setQuestionCount(20);
     setStep(1);
@@ -588,7 +588,7 @@ export default function ExamPage() {
 
   // ==================== HELPERS ====================
 
-  const headBabLabel = availableHeadBabs.find(c => c.value === headBab)?.label ?? headBab;
+  const babLabel = availableBabs.find(c => c.value === bab)?.label ?? bab;
   const subBabLabel = availableSubBabs.find(c => c.value === subBab)?.label ?? subBab;
 
   // ==================== RENDER ====================
@@ -665,20 +665,20 @@ export default function ExamPage() {
                       <p className="text-nike-red text-[14px] font-medium uppercase">Error</p>
                       <button onClick={() => (window as any).__retryCategoryFetch?.()} className="px-4 h-[32px] rounded-[16px] bg-nike-red text-nike-white text-[10px] font-bold uppercase hover:bg-nike-red/80">Retry</button>
                     </div>
-                  ) : availableHeadBabs.length === 0 ? (
+                  ) : availableBabs.length === 0 ? (
                     <div className="flex items-center gap-2 h-[48px]">
                       <div className="w-4 h-4 border-2 border-nike-grey-300 border-t-nike-black rounded-full animate-spin"></div>
                       <p className="text-nike-grey-500 text-[14px] font-medium uppercase tracking-wider">Syncing...</p>
                     </div>
                   ) : (
                     <select
-                      value={headBab}
-                      onChange={(e) => setHeadBab(e.target.value)}
+                      value={bab}
+                      onChange={(e) => setBab(e.target.value)}
                       className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-4 h-[48px] text-[16px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em' }}
                     >
                       <option value="None">PILIH BAB (NONE)</option>
-                      {availableHeadBabs.map((hb) => (
+                      {availableBabs.map((hb) => (
                         <option key={hb.value} value={hb.value}>{hb.label}</option>
                       ))}
                     </select>
@@ -690,7 +690,7 @@ export default function ExamPage() {
                   <select
                     value={subBab}
                     onChange={(e) => setSubBab(e.target.value)}
-                    disabled={headBab === 'None' || availableSubBabs.length === 0}
+                    disabled={bab === 'None' || availableSubBabs.length === 0}
                     className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-4 h-[48px] text-[16px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em' }}
                   >
@@ -747,8 +747,8 @@ export default function ExamPage() {
               onClick={() => setStep(2)}
               disabled={
                 !name.trim() ||
-                !headBab ||
-                headBab === 'None'
+                !bab ||
+                bab === 'None'
               }
               className="w-full h-[54px] rounded-[27px] bg-nike-black text-nike-white text-[16px] font-bold hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider shadow-lg shadow-nike-black/10"
             >
@@ -836,7 +836,7 @@ export default function ExamPage() {
                 </div>
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Topik</p>
-                  <p className="text-[16px] font-bold text-nike-black uppercase">{headBabLabel}, {subBabLabel}</p>
+                  <p className="text-[16px] font-bold text-nike-black uppercase">{babLabel}, {subBabLabel}</p>
                 </div>
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Questions</p>
@@ -915,7 +915,7 @@ export default function ExamPage() {
                 {name}
               </span>
               <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-                Topik: {headBabLabel}, {subBabLabel} {isSurvival && '· Survival'} · Soal Nomor {current + 1}
+                Topik: {babLabel}, {subBabLabel} {isSurvival && '· Survival'} · Soal Nomor {current + 1}
               </span>
             </div>
 
@@ -1059,7 +1059,7 @@ export default function ExamPage() {
             )
           }
 
-          <p className="text-[14px] font-medium text-nike-grey-300 mb-12 uppercase tracking-widest">{headBabLabel}, {subBabLabel}</p>
+          <p className="text-[14px] font-medium text-nike-grey-300 mb-12 uppercase tracking-widest">{babLabel}, {subBabLabel}</p>
 
           <div className="h-[24px] mb-8">
             {saving ? (
@@ -1112,7 +1112,7 @@ export default function ExamPage() {
                     You have answered <span className="font-bold text-nike-black">{recapData.filter((_, idx) => idx <= current).length}</span> questions
                   </>
                 ) : (
-                  `${headBabLabel}, ${subBabLabel} — ${score} / ${total}`
+                  `${babLabel}, ${subBabLabel} — ${score} / ${total}`
                 )}
               </p>
             </div>

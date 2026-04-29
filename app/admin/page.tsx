@@ -5,7 +5,7 @@ import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
 import AdminQuizTab from '@/app/components/AdminQuizTab';
-import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchHeadBabs, fetchAllSubBabsAdmin, fetchSubBabsForMultiple, fetchHiddenSubBabs, saveHiddenSubBabs, type HeadBabInfo, type SubBabInfo } from '@/lib/questions';
+import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchbabs, fetchAllSubBabsAdmin, fetchSubBabsForMultiple, fetchHiddenSubBabs, saveHiddenSubBabs, type BabInfo, type SubBabInfo } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
 
@@ -14,7 +14,7 @@ type ExamResult = {
   name: string;
   score: number;
   total_questions: number;
-  head_bab: string;
+  bab: string;
   sub_bab: string;
   taken_at: string;
   user_answers: {
@@ -31,7 +31,7 @@ type ExamResult = {
 type LiveSession = {
   session_id: string;
   name: string;
-  head_bab: string;
+  bab: string;
   sub_bab: string;
   mode: string;
   question_count: number;
@@ -50,7 +50,7 @@ type QuestionDraft = {
   option_d: string;
   option_e: string;
   correct_answer: string;
-  head_babs: string[];
+  babs: string[];
   sub_babs: string[];
 };
 
@@ -64,7 +64,7 @@ const EMPTY_DRAFT: QuestionDraft = {
   option_d: '<p></p>',
   option_e: '<p></p>',
   correct_answer: 'A',
-  head_babs: [],
+  babs: [],
   sub_babs: [],
 };
 
@@ -137,7 +137,7 @@ export default function AdminPage() {
   const [questionLoading, setQuestionLoading] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>([]);
-  const [activeHeadBabFilter, setActiveHeadBabFilter] = useState<string>('all');
+  const [activebabFilter, setActivebabFilter] = useState<string>('all');
   const [activeSubBabFilter, setActiveSubBabFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -158,10 +158,10 @@ export default function AdminPage() {
   const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
   const [detailQuestions, setDetailQuestions] = useState<RawQuestion[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [allHeadBabs, setAllHeadBabs] = useState<HeadBabInfo[]>([]);
+  const [allbabs, setAllbabs] = useState<BabInfo[]>([]);
   const [allSubBabsAdmin, setAllSubBabsAdmin] = useState<SubBabInfo[]>([]);
   const [sessionInfo, setSessionInfo] = useState<string | null>(null);
-  const [activeResHeadBab, setActiveResHeadBab] = useState<string>('all');
+  const [activeResbab, setActiveResbab] = useState<string>('all');
   const [activeResSubBab, setActiveResSubBab] = useState<string>('all');
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
   const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
@@ -174,7 +174,7 @@ export default function AdminPage() {
 
   // Add-new-category inline state (used in question form)
   const [newSubBabInput, setNewSubBabInput] = useState('');
-  const [newHeadBabInput, setNewHeadBabInput] = useState('');
+  const [newbabInput, setNewbabInput] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
 
   // Live Tracking state
@@ -202,7 +202,7 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(session.user.id);
         void fetchAdminQuestions();
-        void loadAllHeadBabs();
+        void loadAllbabs();
         void loadHiddenSubBabs();
       } else {
         // If they have a session but wrong/missing version, log them out
@@ -245,44 +245,41 @@ export default function AdminPage() {
     };
   }, [isAuthenticated, isLiveMode]);
 
-  // Filter sub_babs based on selected head_babs in Form
+  // Filter sub_babs based on selected babs in Form
   useEffect(() => {
     if (!isAuthenticated || (!isAdding && !isEditing)) return;
 
     const syncSubBabs = async () => {
-      if (formData.head_babs.length === 0) {
-        // If no head_babs selected, show nothing or everything? 
-        // User says "langsung load subbab dari head bab tersebut", implies filtered.
-        // If empty, maybe show empty list.
+      if (formData.babs.length === 0) {
         setAllSubBabsAdmin([]);
         return;
       }
 
-      const filtered = await fetchSubBabsForMultiple(formData.head_babs);
+      const filtered = await fetchSubBabsForMultiple(formData.babs);
       setAllSubBabsAdmin(filtered);
     };
 
     void syncSubBabs();
-  }, [formData.head_babs, isAdding, isEditing, isAuthenticated]);
+  }, [formData.babs, isAdding, isEditing, isAuthenticated]);
 
-  const headBabTabs = useMemo(() => {
-    const headBabs = Array.from(new Set(adminQuestions.flatMap(q => q.head_babs || []))).sort();
-    return ['all', ...headBabs];
+  const babTabs = useMemo(() => {
+    const babs = Array.from(new Set(adminQuestions.flatMap(q => q.babs || []))).sort();
+    return ['all', ...babs];
   }, [adminQuestions]);
 
   const subBabTabs = useMemo(() => {
     let list = adminQuestions;
-    if (activeHeadBabFilter !== 'all') {
-       list = adminQuestions.filter(q => q.head_babs?.includes(activeHeadBabFilter));
+    if (activebabFilter !== 'all') {
+       list = adminQuestions.filter(q => q.babs?.includes(activebabFilter));
     }
     const subBabs = Array.from(new Set(list.flatMap(q => q.sub_babs || []))).sort();
     return ['all', ...subBabs];
-  }, [adminQuestions, activeHeadBabFilter]);
+  }, [adminQuestions, activebabFilter]);
 
   const filteredQuestions = useMemo(() => {
     let list = adminQuestions;
-    if (activeHeadBabFilter !== 'all') {
-      list = list.filter(q => q.head_babs?.includes(activeHeadBabFilter));
+    if (activebabFilter !== 'all') {
+      list = list.filter(q => q.babs?.includes(activebabFilter));
     }
     if (activeSubBabFilter !== 'all') {
       list = list.filter(q => q.sub_babs?.includes(activeSubBabFilter));
@@ -291,11 +288,11 @@ export default function AdminPage() {
       const q = searchQuery.toLowerCase();
       list = list.filter(question => {
         const plainText = stripHtml(question.question_text).toLowerCase();
-        return plainText.includes(q) || question.head_babs?.some(c => c.toLowerCase().includes(q)) || question.sub_babs?.some(c => c.toLowerCase().includes(q));
+        return plainText.includes(q) || question.babs?.some(c => c.toLowerCase().includes(q)) || question.sub_babs?.some(c => c.toLowerCase().includes(q));
       });
     }
     return list;
-  }, [activeHeadBabFilter, activeSubBabFilter, adminQuestions, searchQuery]);
+  }, [activebabFilter, activeSubBabFilter, adminQuestions, searchQuery]);
 
   const getCategoryLabel = (category: string) => {
     if (category === 'all') {
@@ -337,7 +334,7 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(data.session.user.id);
         void fetchAdminQuestions();
-        void loadAllHeadBabs();
+        void loadAllbabs();
         void loadAllSubBabsAdmin();
         void loadHiddenSubBabs();
       }
@@ -348,12 +345,12 @@ export default function AdminPage() {
     }
   };
 
-  const loadAllHeadBabs = async () => {
+  const loadAllbabs = async () => {
     try {
-      const hbs = await fetchHeadBabs();
-      setAllHeadBabs(hbs);
+      const hbs = await fetchbabs();
+      setAllbabs(hbs);
     } catch (err) {
-      console.error('Failed to load head babs list:', err);
+      console.error('Failed to load BABs list:', err);
     }
   };
 
@@ -366,7 +363,7 @@ export default function AdminPage() {
     }
   };
 
-  const fetchResults = async (page = 0, headBab = activeResHeadBab, subBab = activeResSubBab, mode = activeModeFilter) => {
+  const fetchResults = async (page = 0, bab = activeResbab, subBab = activeResSubBab, mode = activeModeFilter) => {
     setLoading(true);
     try {
       // 1. Fetch paginated data for the table
@@ -377,8 +374,8 @@ export default function AdminPage() {
         .from('exam_results')
         .select('*', { count: 'exact' });
 
-      if (headBab !== 'all') {
-        paginatedQuery = paginatedQuery.eq('head_bab', headBab);
+      if (bab !== 'all') {
+        paginatedQuery = paginatedQuery.eq('bab', bab);
       }
       if (subBab !== 'all') {
         paginatedQuery = paginatedQuery.eq('sub_bab', subBab);
@@ -404,8 +401,8 @@ export default function AdminPage() {
         .from('exam_results')
         .select('score, total_questions');
 
-      if (headBab !== 'all') {
-        statsQuery = statsQuery.eq('head_bab', headBab);
+      if (bab !== 'all') {
+        statsQuery = statsQuery.eq('bab', bab);
       }
       if (subBab !== 'all') {
         statsQuery = statsQuery.eq('sub_bab', subBab);
@@ -427,21 +424,21 @@ export default function AdminPage() {
     }
   };
 
-  const handleResHeadBabChange = (headBab: string) => {
-    setActiveResHeadBab(headBab);
-    // When changing head bab, reset sub bab to all to avoid invalid combinations
+  const handleResbabChange = (bab: string) => {
+    setActiveResbab(bab);
+    // When changing BAB, reset sub bab to all to avoid invalid combinations
     setActiveResSubBab('all');
-    void fetchResults(0, headBab, 'all', activeModeFilter);
+    void fetchResults(0, bab, 'all', activeModeFilter);
   };
 
   const handleResSubBabChange = (subBab: string) => {
     setActiveResSubBab(subBab);
-    void fetchResults(0, activeResHeadBab, subBab, activeModeFilter);
+    void fetchResults(0, activeResbab, subBab, activeModeFilter);
   };
 
   const handleModeFilterChange = (mode: string) => {
     setActiveModeFilter(mode);
-    void fetchResults(0, activeResHeadBab, activeResSubBab, mode);
+    void fetchResults(0, activeResbab, activeResSubBab, mode);
   };
 
   const handleFetchResultDetail = async (result: ExamResult) => {
@@ -570,10 +567,10 @@ export default function AdminPage() {
   };
 
   /**
-   * Creates a new head_bab slug on-the-fly and adds it to the current question draft.
+   * Creates a new bab slug on-the-fly and adds it to the current question draft.
    */
-  const handleAddNewHeadBab = async () => {
-    const raw = newHeadBabInput.trim();
+  const handleAddNewbab = async () => {
+    const raw = newbabInput.trim();
     if (!raw) return;
 
     // Normalise: lowercase, replace spaces with underscores
@@ -582,19 +579,19 @@ export default function AdminPage() {
 
     setAddingCategory(true);
     try {
-      if (!formData.head_babs.includes(slug)) {
-        handleInputChange('head_babs', [...formData.head_babs, slug]);
+      if (!formData.babs.includes(slug)) {
+        handleInputChange('babs', [...formData.babs, slug]);
       }
 
-      if (!allHeadBabs.some(c => c.value === slug)) {
+      if (!allbabs.some(c => c.value === slug)) {
         const label = slug
           .split('_')
           .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
           .join(' ');
-        setAllHeadBabs(prev => [...prev, { value: slug, label }]);
+        setAllbabs(prev => [...prev, { value: slug, label }]);
       }
 
-      setNewHeadBabInput('');
+      setNewbabInput('');
     } finally {
       setAddingCategory(false);
     }
@@ -644,6 +641,12 @@ export default function AdminPage() {
     }
   };
 
+  const handleBabFilterChange = (bab: string) => {
+    setActivebabFilter(bab);
+    setActiveSubBabFilter('all');
+    void fetchAdminQuestions();
+  };
+
    const handleTabChange = (tab: 'questions' | 'results' | 'settings' | 'quiz') => {
     setActiveTab(tab);
     localStorage.setItem('admin_active_tab', tab);
@@ -659,7 +662,7 @@ export default function AdminPage() {
     }
 
     if (tab === 'settings') {
-      void loadAllHeadBabs();
+      void loadAllbabs();
       void loadAllSubBabsAdmin();
       void loadHiddenSubBabs();
       return;
@@ -689,7 +692,7 @@ export default function AdminPage() {
       option_d: sanitizeRichHtml(formData.option_d),
       option_e: sanitizeRichHtml(formData.option_e),
       correct_answer: formData.correct_answer.toUpperCase(),
-      head_babs: formData.head_babs,
+      babs: formData.babs,
       sub_babs: formData.sub_babs,
     };
 
@@ -708,7 +711,7 @@ export default function AdminPage() {
       throw new Error('Please fill in the question and all answer options before saving.');
     }
 
-    if (payload.head_babs.length === 0 || payload.sub_babs.length === 0) {
+    if (payload.babs.length === 0 || payload.sub_babs.length === 0) {
       throw new Error('Please select at least one BAB and Sub-bab for the question.');
     }
 
@@ -740,7 +743,7 @@ export default function AdminPage() {
       }
 
       await fetchAdminQuestions();
-      await loadAllHeadBabs();
+      await loadAllbabs();
       await loadAllSubBabsAdmin();
       closeModal();
     } catch (err) {
@@ -795,7 +798,7 @@ export default function AdminPage() {
       option_d: ensureHtmlDocument(question.option_d),
       option_e: ensureHtmlDocument(question.option_e),
       correct_answer: question.correct_answer,
-      head_babs: question.head_babs || [],
+      babs: question.babs || [],
       sub_babs: question.sub_babs || [],
     });
     setIsEditing(true);
@@ -952,12 +955,12 @@ export default function AdminPage() {
             <div className="flex-1">
               <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter BAB</label>
               <select
-                value={activeHeadBabFilter}
-                onChange={(e) => setActiveHeadBabFilter(e.target.value)}
+                value={activebabFilter}
+                onChange={(e) => handleBabFilterChange(e.target.value)}
                 className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
               >
-                {headBabTabs.map((category) => (
+                {babTabs.map((category) => (
                   <option key={category} value={category}>
                     {getCategoryLabel(category).toUpperCase()}
                   </option>
@@ -1019,7 +1022,7 @@ export default function AdminPage() {
                     <div className="font-semibold text-slate-700 mb-2 text-sm leading-relaxed">
                       Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
                     </div>
-                    <div className="text-xs text-slate-400 mb-1">BAB: {question.head_babs?.join(', ').replaceAll('_', ' ')}</div>
+                    <div className="text-xs text-slate-400 mb-1">BAB: {question.babs?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-1">Sub-bab: {question.sub_babs?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-4">Correct: <span className="font-bold text-[#34C759]">{question.correct_answer}</span></div>
                     <div className="flex gap-2">
@@ -1105,12 +1108,12 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">BAB</label>
                   <select
-                    value={activeResHeadBab}
-                    onChange={(e) => handleResHeadBabChange(e.target.value)}
+                    value={activeResbab}
+                    onChange={(e) => handleResbabChange(e.target.value)}
                     className="bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
                     style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
                   >
-                    {headBabTabs.map((cat) => (
+                    {babTabs.map((cat) => (
                       <option key={cat} value={cat}>
                         {getCategoryLabel(cat)}
                       </option>
@@ -1206,7 +1209,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {liveSessions
-                        .filter(s => (activeResHeadBab === 'all' || s.head_bab === activeResHeadBab) && (activeResSubBab === 'all' || s.sub_bab === activeResSubBab) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
+                        .filter(s => (activeResbab === 'all' || s.bab === activeResbab) && (activeResSubBab === 'all' || s.sub_bab === activeResSubBab) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
                         .map((session) => {
                           const answeredCount = Object.keys(session.user_answers).length;
                           const progress = Math.round((answeredCount / session.question_count) * 100);
@@ -1220,7 +1223,7 @@ export default function AdminPage() {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span className="capitalize">{session.head_bab?.replaceAll('_', ' ')}, {session.sub_bab?.replaceAll('_', ' ')}</span>
+                                <span className="capitalize">{session.bab?.replaceAll('_', ' ')}, {session.sub_bab?.replaceAll('_', ' ')}</span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
                                 {session.mode === 'survival' ? answeredCount : `${answeredCount} / ${session.question_count}`}
@@ -1303,7 +1306,7 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className="capitalize">{result.head_bab?.replaceAll('_', ' ')}, {result.sub_bab?.replaceAll('_', ' ')}</span>
+                            <span className="capitalize">{result.bab?.replaceAll('_', ' ')}, {result.sub_bab?.replaceAll('_', ' ')}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {result.score} / {result.total_questions}
@@ -1557,17 +1560,17 @@ export default function AdminPage() {
                         </label>
                         <div className="relative group">
                           <div className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 min-h-[48px] text-sm flex flex-wrap gap-1.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all max-h-[120px] overflow-y-auto">
-                            {formData.head_babs.length === 0 ? (
+                            {formData.babs.length === 0 ? (
                               <span className="text-gray-400 py-1.5">Pilih Bab...</span>
                             ) : (
-                              formData.head_babs.map(val => {
-                                const info = allHeadBabs.find(h => h.value === val);
+                              formData.babs.map(val => {
+                                const info = allbabs.find(h => h.value === val);
                                 return (
                                   <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
                                     {info?.label || val}
                                     <button 
                                       type="button"
-                                      onClick={() => handleInputChange('head_babs', formData.head_babs.filter(v => v !== val))}
+                                      onClick={() => handleInputChange('babs', formData.babs.filter(v => v !== val))}
                                       className="hover:text-indigo-900 ml-1"
                                     >
                                       ×
@@ -1580,20 +1583,20 @@ export default function AdminPage() {
                           
                           {/* Dropdown list for Bab multi-select */}
                           <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
-                            {allHeadBabs.length === 0 ? (
+                            {allbabs.length === 0 ? (
                               <p className="text-xs text-gray-400 italic p-2 text-center">Loading Bab...</p>
                             ) : (
-                              allHeadBabs.map((cat) => {
-                                const isSelected = formData.head_babs.includes(cat.value);
+                              allbabs.map((cat) => {
+                                const isSelected = formData.babs.includes(cat.value);
                                 return (
                                   <button
                                     key={cat.value}
                                     type="button"
                                     onClick={() => {
                                       const next = isSelected
-                                        ? formData.head_babs.filter((c) => c !== cat.value)
-                                        : [...formData.head_babs, cat.value];
-                                      handleInputChange('head_babs', next);
+                                        ? formData.babs.filter((c) => c !== cat.value)
+                                        : [...formData.babs, cat.value];
+                                      handleInputChange('babs', next);
                                     }}
                                     className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${
                                       isSelected
@@ -1614,16 +1617,16 @@ export default function AdminPage() {
                         <div className="flex gap-2 pt-1">
                           <input
                             type="text"
-                            value={newHeadBabInput}
-                            onChange={(e) => setNewHeadBabInput(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewHeadBab(); } }}
+                            value={newbabInput}
+                            onChange={(e) => setNewbabInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewbab(); } }}
                             placeholder="Add new bab..."
                             className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                           <button
                             type="button"
-                            onClick={() => void handleAddNewHeadBab()}
-                            disabled={addingCategory || !newHeadBabInput.trim()}
+                            onClick={() => void handleAddNewbab()}
+                            disabled={addingCategory || !newbabInput.trim()}
                             className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
                           >
                             + New
@@ -1693,7 +1696,7 @@ export default function AdminPage() {
                         </div>
 
                         {/* Add New Sub-bab inline - only if Bab is selected */}
-                        {formData.head_babs.length > 0 && (
+                        {formData.babs.length > 0 && (
                           <div className="flex gap-2 pt-1">
                             <input
                               type="text"
@@ -1769,7 +1772,7 @@ export default function AdminPage() {
                       <div className="p-4 bg-white rounded-xl border border-gray-100">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Topik</p>
                         <p className="font-bold text-gray-900 capitalize">
-                          {selectedQuestion.head_babs?.join(', ').replace(/_/g, ' ')} — {selectedQuestion.sub_babs?.join(', ').replace(/_/g, ' ')}
+                          {selectedQuestion.babs?.join(', ').replace(/_/g, ' ')} — {selectedQuestion.sub_babs?.join(', ').replace(/_/g, ' ')}
                         </p>
                       </div>
                     </div>
@@ -1967,7 +1970,7 @@ export default function AdminPage() {
                   <>
                     <span className="font-black text-nike-black">{viewingResult.name} </span>
                   </>
-                  • {viewingResult.head_bab}, {viewingResult.sub_bab} • {new Date(viewingResult.taken_at).toLocaleDateString()}
+                  • {viewingResult.bab}, {viewingResult.sub_bab} • {new Date(viewingResult.taken_at).toLocaleDateString()}
                 </p>
               </div>
               <button onClick={() => setViewingResult(null)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
@@ -2057,7 +2060,11 @@ export default function AdminPage() {
       )}
 
       {activeTab === 'quiz' && (
-        <AdminQuizTab headBabs={allHeadBabs.map((hb) => hb.value)} subBabs={allSubBabsAdmin.filter(c => !hiddenSubBabs.includes(c.value))} />
+        <AdminQuizTab 
+          babs={allbabs.map((hb) => hb.value)} 
+          subBabs={allSubBabsAdmin.filter(c => !hiddenSubBabs.includes(c.value))} 
+          hiddenSubBabs={hiddenSubBabs}
+        />
       )}
     </div>
   );

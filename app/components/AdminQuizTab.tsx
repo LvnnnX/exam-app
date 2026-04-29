@@ -6,7 +6,7 @@ import { createQuizSession, updateQuizStatus, fetchQuizPlayers, fetchQuizHistory
 import { fetchQuestionsByIds, fetchSubBabs, type RawQuestion, type SubBabInfo } from '@/lib/questions';
 import RichContent from '@/app/components/RichContent';
 
-export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[], subBabs: {label: string, value: string}[] }) {
+export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: string[], subBabs: {label: string, value: string}[], hiddenSubBabs: string[] }) {
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
@@ -20,37 +20,39 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
   }, [activeView]);
   
   // Create state
-  const [selectedHeadBab, setSelectedHeadBab] = useState<string>('Semua BAB');
+  const [selectedBab, setSelectedBab] = useState<string>('Semua BAB');
   const [selectedSubBab, setSelectedSubBab] = useState<string>('Semua Sub-bab');
   const [displaySubBabs, setDisplaySubBabs] = useState<SubBabInfo[]>(subBabs);
   const [loadingSubBabs, setLoadingSubBabs] = useState(false);
 
   // Sync subBabs prop to displaySubBabs initially or when subBabs prop changes
   useEffect(() => {
-    if (selectedHeadBab === 'Semua Head Bab') {
+    if (selectedBab === 'Semua BAB') {
       setDisplaySubBabs(subBabs);
     }
-  }, [subBabs, selectedHeadBab]);
+  }, [subBabs, selectedBab]);
 
-  // Dynamic sub-bab loading based on selectedHeadBab
+  // Dynamic sub-bab loading based on selectedBab
   useEffect(() => {
     const loadFiltered = async () => {
-      if (selectedHeadBab === 'Semua Head Bab') {
+      if (selectedBab === 'Semua BAB') {
         setDisplaySubBabs(subBabs);
         return;
       }
       
       setLoadingSubBabs(true);
       try {
-        const filtered = await fetchSubBabs(selectedHeadBab);
-        setDisplaySubBabs(filtered);
+        const filtered = await fetchSubBabs(selectedBab);
+        // Filter out hidden sub-babs
+        const visible = filtered.filter(sb => !hiddenSubBabs.includes(sb.value));
+        setDisplaySubBabs(visible);
       } finally {
         setLoadingSubBabs(false);
       }
     };
     
     void loadFiltered();
-  }, [selectedHeadBab, subBabs]);
+  }, [selectedBab, subBabs, hiddenSubBabs]);
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);
@@ -179,7 +181,7 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
 
   const handleCreate = async () => {
     setCreating(true);
-    const session = await createQuizSession(selectedHeadBab, selectedSubBab, questionCount, durationMinutes);
+    const session = await createQuizSession(selectedBab, selectedSubBab, questionCount, durationMinutes);
     if (session) {
       setActiveSession(session);
       setActiveView('manage');
@@ -284,7 +286,7 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
 
           {/* Form Card */}
           <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
-            {/* Head Bab & Sub-bab */}
+            {/* BAB & Sub-bab */}
             <div className="p-8 pb-6 flex flex-col md:flex-row gap-6">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-4">
@@ -295,16 +297,16 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
                 </div>
                 <div className="relative">
                   <select
-                    value={selectedHeadBab}
+                    value={selectedBab}
                     onChange={(e) => {
-                      setSelectedHeadBab(e.target.value);
+                      setSelectedBab(e.target.value);
                       setSelectedSubBab('Semua Sub-bab');
                     }}
                     className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[20px] px-6 h-[64px] text-[16px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
                   >
                     <option value="Semua BAB">✨ Semua BAB</option>
-                    {headBabs.length > 0 ? (
-                      headBabs.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)
+                    {babs.length > 0 ? (
+                      babs.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)
                     ) : (
                       <option disabled>Loading BAB...</option>
                     )}
@@ -402,15 +404,19 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
             <div className="p-8 bg-[#F8FAFC]">
               <button
                 onClick={handleCreate}
-                disabled={creating}
-                className={`w-full h-[72px] rounded-[24px] text-white font-black text-[18px] tracking-widest transition-all shadow-xl active:scale-[0.98] disabled:opacity-50 ${
-                  creating ? 'bg-nike-grey-400' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
+                disabled={creating || displaySubBabs.length === 0}
+                className={`w-full h-[72px] rounded-[24px] text-white font-black text-[18px] tracking-widest transition-all shadow-xl active:scale-[0.98] disabled:opacity-80 ${
+                  creating || displaySubBabs.length === 0 ? 'bg-slate-300' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
                 }`}
               >
                 {creating ? (
                   <span className="flex items-center justify-center gap-3">
                     <span className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                     CREATING...
+                  </span>
+                ) : displaySubBabs.length === 0 ? (
+                  <span className="flex items-center justify-center gap-3">
+                    <span>❌</span> TIDAK ADA SUB-BAB TERSEDIA
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-3">
@@ -436,7 +442,7 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Join Code</p>
               <h1 className="text-4xl md:text-5xl font-black text-indigo-700 tracking-widest font-mono">{activeSession.quiz_code}</h1>
-              <p className="mt-2 text-sm text-gray-600 font-medium capitalize">Topik: {activeSession.head_bab?.replace(/_/g, ' ')}, {activeSession.sub_bab?.replace(/_/g, ' ')} <span className="mx-2">•</span> {activeSession.question_count} Questions</p>
+              <p className="mt-2 text-sm text-gray-600 font-medium capitalize">Topik: {activeSession.bab?.replace(/_/g, ' ')}, {activeSession.sub_bab?.replace(/_/g, ' ')} <span className="mx-2">•</span> {activeSession.question_count} Questions</p>
             </div>
             <div className="flex flex-col items-end gap-3">
               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
@@ -603,7 +609,7 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
                   ) : history.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map(h => (
                     <tr key={h.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{h.quiz_code}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{h.head_bab?.replace(/_/g, ' ')}, {h.sub_bab?.replace(/_/g, ' ')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{h.bab?.replace(/_/g, ' ')}, {h.sub_bab?.replace(/_/g, ' ')}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">{h.winner}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-green">{h.top_score} / {h.question_count}</td>
@@ -644,7 +650,7 @@ export default function AdminQuizTab({ headBabs, subBabs }: { headBabs: string[]
                 <div>
                   <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Player Performance</h2>
                   <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                    {viewingPlayer.name} • {activeSession?.head_bab?.replace(/_/g, ' ')}, {activeSession?.sub_bab?.replace(/_/g, ' ')}
+                    {viewingPlayer.name} • {activeSession?.bab?.replace(/_/g, ' ')}, {activeSession?.sub_bab?.replace(/_/g, ' ')}
                   </p>
                 </div>
               </div>

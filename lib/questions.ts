@@ -3,7 +3,7 @@ import { ensureHtmlDocument } from './rich-text';
 
 const getUA = () => typeof window !== 'undefined' ? window.navigator.userAgent : 'server';
 
-export type HeadBabInfo = {
+export type BabInfo = {
   value: string;
   label: string;
 };
@@ -27,7 +27,7 @@ export type RawQuestion = {
   option_d: string;
   option_e: string;
   correct_answer: string; // 'A' | 'B' | 'C' | 'D' | 'E'
-  head_babs: string[];
+  babs: string[];
   sub_babs: string[];
 };
 
@@ -113,17 +113,17 @@ export async function saveHiddenSubBabs(hidden: string[]): Promise<void> {
   }
 }
 
-export async function fetchHeadBabs(): Promise<HeadBabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('head_babs');
+export async function fetchbabs(): Promise<BabInfo[]> {
+  const { data, error } = await supabase.from('questions').select('babs');
 
   if (error) {
-    console.error('Failed to fetch head babs:', error.message);
+    console.error('Failed to fetch babs:', error.message);
     return [];
   }
 
-  const uniqueHeadBabs = Array.from(new Set(data.flatMap((q) => q.head_babs || []))).sort();
+  const uniqueBabs = Array.from(new Set(data.flatMap((q) => q.babs || []))).sort();
 
-  return uniqueHeadBabs.map((hb) => {
+  return uniqueBabs.map((hb) => {
     const label = hb
       .split('_')
       .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -132,9 +132,9 @@ export async function fetchHeadBabs(): Promise<HeadBabInfo[]> {
   });
 }
 
-export async function fetchSubBabs(headBab?: string): Promise<SubBabInfo[]> {
-  const query = headBab && headBab !== 'Semua BAB' && headBab !== 'None'
-    ? supabase.from('questions').select('sub_babs').contains('head_babs', [headBab])
+export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
+  const query = bab && bab !== 'Semua BAB' && bab !== 'None'
+    ? supabase.from('questions').select('sub_babs').contains('babs', [bab])
     : supabase.from('questions').select('sub_babs');
 
   const [subBabsResult, dbHidden] = await Promise.all([
@@ -163,18 +163,18 @@ export async function fetchSubBabs(headBab?: string): Promise<SubBabInfo[]> {
 }
 
 /** 
- * Returns sub_babs belonging to ANY of the provided head_babs.
+ * Returns sub_babs belonging to ANY of the provided babs.
  */
-export async function fetchSubBabsForMultiple(headBabs: string[]): Promise<SubBabInfo[]> {
-  if (!headBabs || headBabs.length === 0) return [];
+export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInfo[]> {
+  if (!babs || babs.length === 0) return [];
 
   const { data, error } = await supabase
     .from('questions')
     .select('sub_babs')
-    .or(headBabs.map(hb => `head_babs.cs.{${hb}}`).join(','));
+    .or(babs.map(hb => `babs.cs.{${hb}}`).join(','));
 
   if (error) {
-    console.error('Failed to fetch sub babs for multiple head babs:', error.message);
+    console.error('Failed to fetch sub babs for multiple BABs:', error.message);
     return [];
   }
 
@@ -210,13 +210,13 @@ export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
   });
 }
 
-export async function fetchQuestions(headBab?: string, subBab?: string): Promise<RawQuestion[]> {
+export async function fetchQuestions(bab?: string, subBab?: string): Promise<RawQuestion[]> {
   let query = supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, head_babs, sub_babs');
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, babs, sub_babs');
 
-  if (headBab && headBab !== 'Semua Head Bab' && headBab !== 'None') {
-    query = query.contains('head_babs', [headBab]);
+  if (bab && bab !== 'Semua BAB' && bab !== 'None') {
+    query = query.contains('babs', [bab]);
   }
   
   if (subBab && subBab !== 'Semua Sub-bab') {
@@ -238,10 +238,10 @@ export async function fetchQuestions(headBab?: string, subBab?: string): Promise
   return (data as RawQuestion[]).map(normalizeRawQuestion);
 }
 
-export async function startExamSessionViaRpc(name: string, headBab: string, subBab: string, mode: string, count: number, timeLimitMinutes: number): Promise<{ sessionId: string; total: number; expiresAt: string }> {
+export async function startExamSessionViaRpc(name: string, bab: string, subBab: string, mode: string, count: number, timeLimitMinutes: number): Promise<{ sessionId: string; total: number; expiresAt: string }> {
   const { data, error } = await supabase.rpc('start_exam_session', {
     p_name: name,
-    p_head_bab: headBab,
+    p_bab: bab,
     p_sub_bab: subBab,
     p_mode: mode,
     p_count: count,
@@ -330,7 +330,7 @@ export async function fetchQuestionsByIds(ids: number[]): Promise<RawQuestion[]>
 
   const { data, error } = await supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, head_babs, sub_babs')
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, babs, sub_babs')
     .in('id', ids);
 
   if (error) {
