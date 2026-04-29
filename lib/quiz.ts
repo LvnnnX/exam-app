@@ -101,11 +101,39 @@ export async function createQuizSession(
 
   const isAllSubBabs = subBabs.length === 0 || subBabs.includes('Semua Sub-bab');
 
-  if (percentages && !isAllSubBabs && subBabs.length > 0) {
+  let targetSubBabs = subBabs;
+  let activePercentages = percentages;
+
+  if (!percentages) {
+    // If toggle OFF, distribute equally.
+    // If "Semua Sub-bab", fetch ALL sub-babs including hidden ones.
+    if (isAllSubBabs) {
+      let q = supabase.from('questions').select('sub_babs');
+      if (bab !== 'None' && bab !== 'Semua BAB') {
+        q = q.contains('babs', [bab]);
+      }
+      const { data } = await q;
+      if (data) {
+        const allSubs = new Set<string>();
+        data.forEach(row => {
+          if (row.sub_babs) row.sub_babs.forEach((s: string) => allSubs.add(s));
+        });
+        targetSubBabs = Array.from(allSubs);
+      }
+    }
+    
+    if (targetSubBabs.length > 0) {
+      activePercentages = {};
+      const equal = 100 / targetSubBabs.length;
+      targetSubBabs.forEach(s => activePercentages![s] = equal);
+    }
+  }
+
+  if (activePercentages && targetSubBabs.length > 0) {
     // Fetch with percentages
     const pool: string[] = []; // For fallback
 
-    for (const sub of subBabs) {
+    for (const sub of targetSubBabs) {
       let query = supabase.from('questions').select('id');
       if (bab !== 'None' && bab !== 'Semua BAB') query = query.contains('babs', [bab]);
       query = query.contains('sub_babs', [sub]);
@@ -115,7 +143,7 @@ export async function createQuizSession(
         const ids = data.map(q => q.id);
         pool.push(...ids);
         
-        const pct = percentages[sub] || 0;
+        const pct = activePercentages[sub] || 0;
         const count = Math.round(questionCount * (pct / 100));
         
         const shuffled = ids.sort(() => 0.5 - Math.random()).slice(0, count);
@@ -137,15 +165,11 @@ export async function createQuizSession(
     questionIds.sort(() => 0.5 - Math.random());
 
   } else {
-    // Fetch without percentages (random from union of selected subbabs)
+    // Failsafe: Fetch without percentages or subbabs
     let query = supabase.from('questions').select('id');
     
     if (bab !== 'None' && bab !== 'Semua BAB') {
       query = query.contains('babs', [bab]);
-    }
-    
-    if (!isAllSubBabs && subBabs.length > 0) {
-      query = query.overlaps('sub_babs', subBabs);
     }
     
     const { data: qData, error: qErr } = await query;
