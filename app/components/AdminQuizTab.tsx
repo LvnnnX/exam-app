@@ -22,7 +22,10 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
   
   // Create state
   const [selectedBab, setSelectedBab] = useState<string>('Semua BAB');
-  const [selectedSubBab, setSelectedSubBab] = useState<string>('Semua Sub-bab');
+  const [selectedSubBabs, setSelectedSubBabs] = useState<string[]>([]);
+  const [percentagesEnabled, setPercentagesEnabled] = useState(false);
+  const [subBabPercentages, setSubBabPercentages] = useState<Record<string, number>>({});
+  const [isSubBabOpen, setIsSubBabOpen] = useState(false);
   const [displaySubBabs, setDisplaySubBabs] = useState<SubBabInfo[]>(subBabs);
   const [loadingSubBabs, setLoadingSubBabs] = useState(false);
 
@@ -265,7 +268,16 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       }
       scheduledAt = target.toISOString();
     }
-    const session = await createQuizSession(selectedBab, selectedSubBab, questionCount, durationMinutes, scheduledAt);
+    if (percentagesEnabled && selectedSubBabs.length > 0 && !selectedSubBabs.includes('Semua Sub-bab')) {
+      const totalPct = Object.values(subBabPercentages).reduce((acc, val) => acc + val, 0);
+      if (totalPct !== 100) {
+        alert('Total persentase soal harus 100%. Saat ini: ' + totalPct + '%');
+        setCreating(false);
+        return;
+      }
+    }
+    
+    const session = await createQuizSession(selectedBab, selectedSubBabs, questionCount, durationMinutes, scheduledAt, percentagesEnabled ? subBabPercentages : undefined);
     if (session) {
       setActiveSession(session);
       setActiveView('manage');
@@ -499,7 +511,8 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     value={selectedBab}
                     onChange={(e) => {
                       setSelectedBab(e.target.value);
-                      setSelectedSubBab('Semua Sub-bab');
+                      setSelectedSubBabs([]);
+                      setSubBabPercentages({});
                     }}
                     className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[16px] px-4 h-[48px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
                   >
@@ -526,25 +539,99 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Sub-bab</label>
                 </div>
                 <div className="relative">
-                  <select
-                    value={selectedSubBab}
-                    onChange={(e) => setSelectedSubBab(e.target.value)}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[16px] px-4 h-[48px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
+                  <div
+                    onClick={() => setIsSubBabOpen(!isSubBabOpen)}
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[16px] px-4 min-h-[48px] py-2 flex items-center justify-between cursor-pointer focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                   >
-                    <option value="Semua Sub-bab">✨ Semua Sub-bab</option>
-                    {loadingSubBabs ? (
-                      <option disabled>Loading Sub-babs...</option>
-                    ) : displaySubBabs.length > 0 ? (
-                      displaySubBabs.map(c => <option key={c.value} value={c.value}>{c.label}</option>)
-                    ) : (
-                      <option disabled>No Sub-babs found</option>
-                    )}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="flex flex-wrap gap-1">
+                      {selectedSubBabs.length === 0 ? (
+                        <span className="text-[13px] font-bold text-nike-black uppercase">✨ Semua Sub-bab</span>
+                      ) : (
+                        selectedSubBabs.map(v => {
+                          const label = displaySubBabs.find(d => d.value === v)?.label || v;
+                          return (
+                            <span key={v} className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[11px] font-bold uppercase flex items-center gap-1">
+                              {label}
+                              <button onClick={(e) => {
+                                e.stopPropagation();
+                                const next = selectedSubBabs.filter(s => s !== v);
+                                setSelectedSubBabs(next);
+                                const newPct = { ...subBabPercentages };
+                                delete newPct[v];
+                                setSubBabPercentages(newPct);
+                              }} className="hover:text-indigo-900">&times;</button>
+                            </span>
+                          );
+                        })
+                      )}
+                    </div>
+                    <svg className={`w-4 h-4 text-nike-grey-400 transition-transform ${isSubBabOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
+
+                  {isSubBabOpen && (
+                    <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[300px] overflow-y-auto">
+                      <div 
+                        className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                        onClick={() => {
+                          setSelectedSubBabs([]);
+                          setSubBabPercentages({});
+                          setIsSubBabOpen(false);
+                        }}
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedSubBabs.length === 0 ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                          {selectedSubBabs.length === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        <span className="text-[12px] font-bold text-gray-700 uppercase">✨ Semua Sub-bab</span>
+                      </div>
+                      
+                      {loadingSubBabs ? (
+                        <div className="p-3 text-center text-[12px] text-gray-500">Loading...</div>
+                      ) : (
+                        displaySubBabs.map(sb => {
+                          const isSelected = selectedSubBabs.includes(sb.value);
+                          return (
+                            <div 
+                              key={sb.value}
+                              className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                              onClick={() => {
+                                let next: string[];
+                                if (isSelected) {
+                                  next = selectedSubBabs.filter(v => v !== sb.value);
+                                } else {
+                                  next = [...selectedSubBabs, sb.value];
+                                }
+                                setSelectedSubBabs(next);
+                                
+                                if (percentagesEnabled) {
+                                  const newPct = { ...subBabPercentages };
+                                  if (!isSelected) newPct[sb.value] = 0;
+                                  else delete newPct[sb.value];
+                                  
+                                  const total = next.length;
+                                  if (total > 0) {
+                                    const equal = Math.floor(100 / total);
+                                    let rem = 100 - (equal * total);
+                                    next.forEach(v => {
+                                      newPct[v] = equal + (rem > 0 ? 1 : 0);
+                                      rem--;
+                                    });
+                                  }
+                                  setSubBabPercentages(newPct);
+                                }
+                              }}
+                            >
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                                {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                              </div>
+                              <span className="text-[12px] font-bold text-gray-700 uppercase">{sb.label}</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -573,6 +660,80 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                 ))}
               </div>
             </div>
+
+            {/* Persentase Soal */}
+            {selectedSubBabs.length > 0 && !selectedSubBabs.includes('Semua Sub-bab') && (
+              <div className="p-5 py-4 bg-white border-b border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#FFF0F6] flex items-center justify-center border border-[#FED7E2]">
+                      <span className="text-base">📊</span>
+                    </div>
+                    <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Persentase Soal</label>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newState = !percentagesEnabled;
+                      setPercentagesEnabled(newState);
+                      if (newState) {
+                        const newPct = { ...subBabPercentages };
+                        const total = selectedSubBabs.length;
+                        if (total > 0) {
+                          const equal = Math.floor(100 / total);
+                          let rem = 100 - (equal * total);
+                          selectedSubBabs.forEach(v => {
+                            newPct[v] = equal + (rem > 0 ? 1 : 0);
+                            rem--;
+                          });
+                        }
+                        setSubBabPercentages(newPct);
+                      }
+                    }}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      percentagesEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      percentagesEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+                {percentagesEnabled && (
+                  <div className="space-y-3 mt-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    {selectedSubBabs.map(sub => {
+                      const label = displaySubBabs.find(d => d.value === sub)?.label || sub;
+                      return (
+                        <div key={sub} className="flex items-center justify-between gap-4">
+                          <span className="text-xs font-bold text-gray-700 uppercase flex-1 truncate">{label}</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={subBabPercentages[sub] || 0}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                setSubBabPercentages(prev => ({ ...prev, [sub]: val }));
+                              }}
+                              className="w-16 h-8 text-center text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded focus:outline-none focus:border-[#4A90D9]"
+                            />
+                            <span className="text-xs font-bold text-gray-500">%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center">
+                      <span className="text-xs font-black text-gray-500 uppercase">Total:</span>
+                      <span className={`text-xs font-black uppercase ${
+                        Object.values(subBabPercentages).reduce((a, b) => a + b, 0) === 100 ? 'text-green-500' : 'text-red-500'
+                      }`}>
+                        {Object.values(subBabPercentages).reduce((a, b) => a + b, 0)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Duration */}
             <div className="p-5 py-4">

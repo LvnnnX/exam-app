@@ -88,33 +88,80 @@ function generateQuizCode(length = QUIZ_CODE_LENGTH): string {
 }
 
 // Admin: Create a new Quiz Live Session
-export async function createQuizSession(bab: string, subBab: string, questionCount: number, durationMinutes: number, scheduledAt?: string): Promise<KuisLog | null> {
+export async function createQuizSession(
+  bab: string, 
+  subBabs: string[], 
+  questionCount: number, 
+  durationMinutes: number, 
+  scheduledAt?: string,
+  percentages?: Record<string, number>
+): Promise<KuisLog | null> {
   const code = generateQuizCode();
-  
-  // Fetch random questions
-  let query = supabase.from('questions').select('id');
-  
-  if (bab !== 'None' && bab !== 'Semua BAB') {
-    query = query.contains('babs', [bab]);
+  let questionIds: string[] = [];
+
+  const isAllSubBabs = subBabs.length === 0 || subBabs.includes('Semua Sub-bab');
+
+  if (percentages && !isAllSubBabs && subBabs.length > 0) {
+    // Fetch with percentages
+    const pool: string[] = []; // For fallback
+
+    for (const sub of subBabs) {
+      let query = supabase.from('questions').select('id');
+      if (bab !== 'None' && bab !== 'Semua BAB') query = query.contains('babs', [bab]);
+      query = query.contains('sub_babs', [sub]);
+
+      const { data } = await query;
+      if (data) {
+        const ids = data.map(q => q.id);
+        pool.push(...ids);
+        
+        const pct = percentages[sub] || 0;
+        const count = Math.round(questionCount * (pct / 100));
+        
+        const shuffled = ids.sort(() => 0.5 - Math.random()).slice(0, count);
+        questionIds.push(...shuffled);
+      }
+    }
+
+    // Fallback if we don't have enough questions
+    if (questionIds.length < questionCount) {
+      const remainingNeeded = questionCount - questionIds.length;
+      const unusedPool = pool.filter(id => !questionIds.includes(id));
+      const fallback = unusedPool.sort(() => 0.5 - Math.random()).slice(0, remainingNeeded);
+      questionIds.push(...fallback);
+    }
+    
+    // Slice just in case it exceeded due to rounding
+    questionIds = questionIds.slice(0, questionCount);
+    // Shuffle final array
+    questionIds.sort(() => 0.5 - Math.random());
+
+  } else {
+    // Fetch without percentages (random from union of selected subbabs)
+    let query = supabase.from('questions').select('id');
+    
+    if (bab !== 'None' && bab !== 'Semua BAB') {
+      query = query.contains('babs', [bab]);
+    }
+    
+    if (!isAllSubBabs && subBabs.length > 0) {
+      query = query.overlaps('sub_babs', subBabs);
+    }
+    
+    const { data: qData, error: qErr } = await query;
+    if (qErr || !qData) {
+      console.error('Error fetching questions for quiz:', qErr);
+      return null;
+    }
+    
+    const shuffled = qData.sort(() => 0.5 - Math.random()).slice(0, questionCount);
+    questionIds = shuffled.map(q => q.id);
   }
-  if (subBab !== 'Semua Sub-bab') {
-    query = query.contains('sub_babs', [subBab]);
-  }
-  
-  const { data: qData, error: qErr } = await query;
-  if (qErr || !qData) {
-    console.error('Error fetching questions for quiz:', qErr);
-    return null;
-  }
-  
-  // Shuffle and pick
-  const shuffled = qData.sort(() => 0.5 - Math.random()).slice(0, questionCount);
-  const questionIds = shuffled.map(q => q.id);
   
   const insertData: Record<string, unknown> = {
     quiz_code: code,
     bab: bab,
-    sub_bab: subBab,
+    sub_bab: isAllSubBabs ? 'Semua Sub-bab' : subBabs.join(', '),
     question_count: questionCount,
     duration_minutes: durationMinutes,
     status: 'waiting',
