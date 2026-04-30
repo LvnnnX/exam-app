@@ -7,7 +7,7 @@ import { fetchQuestionsByIds, fetchSubBabs, type RawQuestion, type SubBabInfo } 
 import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
 
-export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: string[], subBabs: {label: string, value: string}[], hiddenSubBabs: string[] }) {
+export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: string[], subBabs: { label: string, value: string }[], hiddenSubBabs: string[] }) {
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
@@ -19,7 +19,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
   useEffect(() => {
     localStorage.setItem('admin_quiz_active_view', activeView);
   }, [activeView]);
-  
+
   // Create state
   const [selectedBab, setSelectedBab] = useState<string>('Semua BAB');
   const [selectedSubBabs, setSelectedSubBabs] = useState<string[]>([]);
@@ -43,7 +43,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
         setDisplaySubBabs(subBabs);
         return;
       }
-      
+
       setLoadingSubBabs(true);
       try {
         const filtered = await fetchSubBabs(selectedBab);
@@ -54,13 +54,13 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
         setLoadingSubBabs(false);
       }
     };
-    
+
     void loadFiltered();
   }, [selectedBab, subBabs, hiddenSubBabs]);
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);
-  
+
   // Schedule state
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
@@ -69,27 +69,30 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [editScheduleDate, setEditScheduleDate] = useState('');
   const [editScheduleTime, setEditScheduleTime] = useState('');
-  
+
   // Manage state
   const [activeSession, setActiveSession] = useState<KuisLog | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerProgress, setPlayerProgress] = useState<Record<string, number>>({});
-  
+
   // Player Details Modal state
   const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null);
   const [playerAnswers, setPlayerAnswers] = useState<KuisResult[]>([]);
   const [sessionQuestions, setSessionQuestions] = useState<RawQuestion[]>([]);
   const [loadingAnswers, setLoadingAnswers] = useState(false);
-  
+
   const [activeSessions, setActiveSessions] = useState<KuisLog[]>([]);
   const [history, setHistory] = useState<KuisLog[]>([]);
-  
+
   // Pagination state
   const [activePage, setActivePage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [playersPage, setPlayersPage] = useState(1);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showViewQuestions, setShowViewQuestions] = useState(false);
+  const [allPlayerAnswers, setAllPlayerAnswers] = useState<KuisResult[]>([]);
+  const [loadingAllAnswers, setLoadingAllAnswers] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const itemsPerPage = 20;
   const historyPerPage = 10;
@@ -104,14 +107,14 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
   useEffect(() => {
     autoFinishRef.current = false;
   }, [activeSession?.id]);
-  
+
   useEffect(() => {
     let channel: any = null;
-    
+
     if (activeSession) {
       // Fetch initial players
       fetchQuizPlayers(activeSession.id).then(setPlayers);
-      
+
       // Subscribe to players/logs only if not finished
       if (activeSession.status !== 'finished') {
         channel = supabase
@@ -140,7 +143,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
         fetchActiveSessions().then(setActiveSessions);
       }
     }
-    
+
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
@@ -203,12 +206,12 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       }
     });
   }, [activeSession, players]);
-  
+
   // Auto-finish timer
   useEffect(() => {
     if (activeSession && activeSession.status === 'active' && activeSession.started_at) {
       const expiresAt = new Date(activeSession.started_at).getTime() + (activeSession.duration_minutes * 60000);
-      
+
       const interval = setInterval(() => {
         const diff = expiresAt - Date.now();
         if (diff <= 0) {
@@ -216,11 +219,11 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
           updateQuizStatus(activeSession.id, 'finished');
         }
       }, 5000); // Check every 5 seconds is enough
-      
+
       return () => clearInterval(interval);
     }
   }, [activeSession]);
-  
+
   useEffect(() => {
     if (activeSession) {
       fetchQuestionsByIds(activeSession.question_ids || []).then(setSessionQuestions);
@@ -283,7 +286,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
         return;
       }
     }
-    
+
     const session = await createQuizSession(selectedBab, subBabsToPass, questionCount, durationMinutes, scheduledAt, percentagesEnabled ? subBabPercentages : undefined);
     if (session) {
       setActiveSession(session);
@@ -386,7 +389,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
 
       if (diff <= 0) {
         setScheduleCountdown('Memulai...');
-        
+
         // Check actual player count before starting
         const { count } = await supabase.from('player').select('*', { count: 'exact', head: true }).eq('kuis_id', activeSession.id);
         if (count === 0) {
@@ -471,7 +474,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                 setActiveSession(null);
                 setActiveView('create');
               }}
-              style={activeView === 'create' ? {background: '#4A90D9'} : {}}
+              style={activeView === 'create' ? { background: '#4A90D9' } : {}}
               className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'create'
                 ? 'text-white border-transparent shadow-md shadow-blue-200'
                 : 'bg-white border-slate-200 text-slate-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
@@ -481,7 +484,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             </button>
             <button
               onClick={() => { setActiveSession(null); setActiveView('manage'); }}
-              style={activeView === 'manage' ? {background: '#34C759'} : {}}
+              style={activeView === 'manage' ? { background: '#34C759' } : {}}
               className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'manage'
                 ? 'text-white border-transparent shadow-md shadow-green-200'
                 : 'bg-white border-slate-200 text-slate-500 hover:border-[#34C759] hover:text-[#34C759]'
@@ -498,7 +501,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                 setActiveSession(null);
                 setActiveView('history');
               }}
-              style={activeView === 'history' ? {background: '#64748B'} : {}}
+              style={activeView === 'history' ? { background: '#64748B' } : {}}
               className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'history'
                 ? 'text-white border-transparent shadow-md shadow-slate-200'
                 : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-600'
@@ -602,7 +605,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
 
                   {isSubBabOpen && (
                     <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[300px] overflow-y-auto">
-                      <div 
+                      <div
                         className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
                         onClick={() => {
                           setSelectedSubBabs([]);
@@ -615,14 +618,14 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                         </div>
                         <span className="text-[12px] font-bold text-gray-700 uppercase">✨ Semua Sub-bab</span>
                       </div>
-                      
+
                       {loadingSubBabs ? (
                         <div className="p-3 text-center text-[12px] text-gray-500">Loading...</div>
                       ) : (
                         displaySubBabs.map(sb => {
                           const isSelected = selectedSubBabs.includes(sb.value);
                           return (
-                            <div 
+                            <div
                               key={sb.value}
                               className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
                               onClick={() => {
@@ -633,12 +636,12 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                                   next = [...selectedSubBabs, sb.value];
                                 }
                                 setSelectedSubBabs(next);
-                                
+
                                 if (percentagesEnabled) {
                                   const newPct = { ...subBabPercentages };
                                   if (!isSelected) newPct[sb.value] = 0;
                                   else delete newPct[sb.value];
-                                  
+
                                   const total = next.length;
                                   if (total > 0) {
                                     const equal = Math.floor(100 / total);
@@ -679,11 +682,10 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   <button
                     key={n}
                     onClick={() => setQuestionCount(n)}
-                    className={`flex-1 h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${
-                      questionCount === n
+                    className={`flex-1 h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${questionCount === n
                         ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
                         : 'bg-white border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
-                    }`}
+                      }`}
                   >
                     {n} SOAL
                   </button>
@@ -695,7 +697,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             {(() => {
               const effectiveSubBabs = selectedSubBabs.length > 0 ? selectedSubBabs : displaySubBabs.map(sb => sb.value);
               if (effectiveSubBabs.length === 0) return null;
-              
+
               return (
                 <div className="p-5 py-4 bg-white border-b border-gray-100">
                   <div className="flex items-center justify-between mb-3">
@@ -723,17 +725,15 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                           setSubBabPercentages(newPct);
                         }
                       }}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#4A90D9] focus:ring-offset-2 ${
-                        percentagesEnabled ? 'bg-[#4A90D9]' : 'bg-gray-200'
-                      }`}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#4A90D9] focus:ring-offset-2 ${percentagesEnabled ? 'bg-[#4A90D9]' : 'bg-gray-200'
+                        }`}
                       role="switch"
                       aria-checked={percentagesEnabled}
                     >
                       <span
                         aria-hidden="true"
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          percentagesEnabled ? 'translate-x-5' : 'translate-x-0'
-                        }`}
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${percentagesEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
                       />
                     </button>
                   </div>
@@ -763,9 +763,8 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       })}
                       <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center">
                         <span className="text-xs font-black text-gray-500 uppercase">Total:</span>
-                        <span className={`text-xs font-black uppercase ${
-                          effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? 'text-green-500' : 'text-red-500'
-                        }`}>
+                        <span className={`text-xs font-black uppercase ${effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? 'text-green-500' : 'text-red-500'
+                          }`}>
                           {effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0)}%
                         </span>
                       </div>
@@ -788,11 +787,10 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   <button
                     key={m}
                     onClick={() => setDurationMinutes(m)}
-                    className={`h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${
-                      durationMinutes === m
+                    className={`h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${durationMinutes === m
                         ? 'bg-[#34C759] border-transparent text-white shadow-lg shadow-[#34C759]/20'
                         : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#34C759] hover:text-[#34C759]'
-                    }`}
+                      }`}
                   >
                     {m} MIN
                   </button>
@@ -812,13 +810,11 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                 <button
                   type="button"
                   onClick={() => setScheduleEnabled(!scheduleEnabled)}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-                    scheduleEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
-                  }`}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${scheduleEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
+                    }`}
                 >
-                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                    scheduleEnabled ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${scheduleEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
                 </button>
               </div>
               {scheduleEnabled && (
@@ -864,9 +860,8 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
               <button
                 onClick={handleCreate}
                 disabled={creating || displaySubBabs.length === 0}
-                className={`w-full h-[54px] rounded-[18px] text-white font-black text-[14px] tracking-[0.2em] transition-all shadow-xl active:scale-[0.98] disabled:opacity-80 ${
-                  creating || displaySubBabs.length === 0 ? 'bg-slate-300' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
-                }`}
+                className={`w-full h-[54px] rounded-[18px] text-white font-black text-[14px] tracking-[0.2em] transition-all shadow-xl active:scale-[0.98] disabled:opacity-80 ${creating || displaySubBabs.length === 0 ? 'bg-slate-300' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
+                  }`}
               >
                 {creating ? (
                   <span className="flex items-center justify-center gap-3">
@@ -904,12 +899,11 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
               <p className="mt-2 text-sm text-gray-600 font-medium capitalize">Topik: {activeSession.bab?.replace(/_/g, ' ')}, {activeSession.sub_bab?.replace(/_/g, ' ')} <span className="mx-2">•</span> {activeSession.question_count} Questions</p>
             </div>
             <div className="flex flex-col items-end gap-3">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                activeSession.status === 'active' ? 'bg-green-100 text-green-700' : 
-                activeSession.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' : 
-                activeSession.status === 'paused' ? 'bg-orange-100 text-orange-700' :
-                'bg-gray-100 text-gray-700'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${activeSession.status === 'active' ? 'bg-green-100 text-green-700' :
+                  activeSession.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
+                    activeSession.status === 'paused' ? 'bg-orange-100 text-orange-700' :
+                      'bg-gray-100 text-gray-700'
+                }`}>
                 {activeSession.status}
               </span>
               <div className="flex flex-row items-center gap-4 flex-wrap justify-end">
@@ -993,7 +987,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     )}
                   </div>
                 )}
-                
+
                 <div className="flex items-center gap-4">
                   {(activeSession.status === 'active' || activeSession.status === 'paused') && (
                     <div className="flex flex-col items-end">
@@ -1016,24 +1010,24 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     {activeSession.status === 'waiting' && (
                       <>
                         <button
-                          onClick={() => setShowCancelConfirm(true)}
-                          className="bg-white border-2 border-red-500 text-red-500 px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shadow-sm"
-                        >
-                          Cancel Quiz
-                        </button>
-                        <button 
-                          onClick={() => handleStatusChange('active')} 
+                          onClick={() => handleStatusChange('active')}
                           disabled={players.length === 0}
                           className={`bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm ${players.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
                         >
                           Start Quiz
                         </button>
+                        <button
+                          onClick={() => setShowCancelConfirm(true)}
+                          className="bg-white border-2 border-red-500 text-red-500 px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shadow-sm"
+                        >
+                          Cancel Quiz
+                        </button>
                       </>
                     )}
                     {(activeSession.status === 'active' || activeSession.status === 'paused') && (
                       <>
-                        <button 
-                          onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')} 
+                        <button
+                          onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')}
                           className={`${activeSession.status === 'active' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-nike-green hover:bg-green-600'} text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm`}
                         >
                           {activeSession.status === 'active' ? 'Pause' : 'Resume'}
@@ -1044,6 +1038,27 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* View Questions Button */}
+            <div className="px-5 sm:px-6 pb-5">
+              <button
+                onClick={async () => {
+                  setShowViewQuestions(true);
+                  setLoadingAllAnswers(true);
+                  // Fetch answers from all players
+                  const allAnswers: KuisResult[] = [];
+                  for (const p of players) {
+                    const ans = await fetchPlayerAnswers(p.id);
+                    allAnswers.push(...ans);
+                  }
+                  setAllPlayerAnswers(allAnswers);
+                  setLoadingAllAnswers(false);
+                }}
+                className="w-full py-3 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-2xl text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <span>📋</span> View Questions
+              </button>
             </div>
           </div>
 
@@ -1078,7 +1093,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">{p.score} / {activeSession.question_count}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.total_time}s</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button 
+                        <button
                           onClick={() => setViewingPlayer(p)}
                           className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
                         >
@@ -1091,11 +1106,11 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
               </table>
             </div>
             {players.length > itemsPerPage && (
-              <Pagination 
-                totalItems={players.length} 
-                itemsPerPage={itemsPerPage} 
-                currentPage={playersPage} 
-                onPageChange={setPlayersPage} 
+              <Pagination
+                totalItems={players.length}
+                itemsPerPage={itemsPerPage}
+                currentPage={playersPage}
+                onPageChange={setPlayersPage}
               />
             )}
           </div>
@@ -1103,139 +1118,139 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       ) : (
         <>
           {activeView === 'manage' && (
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Questions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires In</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {activeSessions.length === 0 ? (
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">No active sessions found.</td>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Questions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires In</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
-                  ) : activeSessions.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage).map(s => (
-                    <tr key={s.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-700 font-mono">
-                        <span className="block max-w-[140px] truncate" title={s.quiz_code}>{s.quiz_code}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${s.status === 'active' ? 'bg-green-100 text-green-700' : s.status === 'paused' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
-                        {s.status === 'waiting' && s.scheduled_at && (
-                          <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600" title={new Date(s.scheduled_at).toLocaleString('id-ID')}>
-                            📅 {new Date(s.scheduled_at).toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">{s.player_count || 0}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.question_count}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.duration_minutes} min</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {s.expires_at ? (
-                          <span className={`${s.status === 'active' || s.status === 'paused' ? 'text-indigo-600' : 'text-red-500'} font-bold`}>
-                            {(() => {
-                              const referenceTime = (s.status === 'paused' && s.paused_at) ? new Date(s.paused_at).getTime() : Date.now();
-                              const diff = new Date(s.expires_at).getTime() - referenceTime;
-                              if (diff <= 0) return 'Expired';
-                              const hours = Math.floor(diff / (1000 * 60 * 60));
-                              const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                              return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-                            })()}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button onClick={() => setActiveSession(s)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View Detail</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {activeSessions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500">No active sessions found.</td>
+                      </tr>
+                    ) : activeSessions.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage).map(s => (
+                      <tr key={s.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-700 font-mono">
+                          <span className="block max-w-[140px] truncate" title={s.quiz_code}>{s.quiz_code}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${s.status === 'active' ? 'bg-green-100 text-green-700' : s.status === 'paused' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                          {s.status === 'waiting' && s.scheduled_at && (
+                            <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600" title={new Date(s.scheduled_at).toLocaleString('id-ID')}>
+                              📅 {new Date(s.scheduled_at).toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">{s.player_count || 0}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.question_count}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.duration_minutes} min</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {s.expires_at ? (
+                            <span className={`${s.status === 'active' || s.status === 'paused' ? 'text-indigo-600' : 'text-red-500'} font-bold`}>
+                              {(() => {
+                                const referenceTime = (s.status === 'paused' && s.paused_at) ? new Date(s.paused_at).getTime() : Date.now();
+                                const diff = new Date(s.expires_at).getTime() - referenceTime;
+                                if (diff <= 0) return 'Expired';
+                                const hours = Math.floor(diff / (1000 * 60 * 60));
+                                const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+                              })()}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button onClick={() => setActiveSession(s)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View Detail</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {activeSessions.length > itemsPerPage && (
+                <Pagination
+                  totalItems={activeSessions.length}
+                  itemsPerPage={itemsPerPage}
+                  currentPage={activePage}
+                  onPageChange={setActivePage}
+                />
+              )}
             </div>
-            {activeSessions.length > itemsPerPage && (
-              <Pagination 
-                totalItems={activeSessions.length} 
-                itemsPerPage={itemsPerPage} 
-                currentPage={activePage} 
-                onPageChange={setActivePage} 
-              />
-            )}
-          </div>
-      )}
+          )}
 
-      {activeView === 'history' && (
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topik</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Winner</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top Score</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {history.length === 0 ? (
+          {activeView === 'history' && (
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <td colSpan={8} className="px-6 py-8 text-center text-gray-500">No history found.</td>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topik</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Winner</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top Score</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
-                  ) : history.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map(h => (
-                    <tr key={h.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                        <span className="block max-w-[140px] truncate" title={h.quiz_code}>{h.quiz_code}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                        <span
-                          className="block max-w-[220px] truncate"
-                          title={`${h.bab?.replace(/_/g, ' ')}, ${h.sub_bab?.replace(/_/g, ' ')}`}
-                        >
-                          {h.bab?.replace(/_/g, ' ')}, {h.sub_bab?.replace(/_/g, ' ')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">
-                        <span className="block max-w-[180px] truncate" title={h.winner}>{h.winner}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-green">{h.top_score} / {h.question_count}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(h.created_at).toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-gray-100 text-gray-700">{h.status}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button onClick={() => setActiveSession(h)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {history.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">No history found.</td>
+                      </tr>
+                    ) : history.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map(h => (
+                      <tr key={h.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                          <span className="block max-w-[140px] truncate" title={h.quiz_code}>{h.quiz_code}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                          <span
+                            className="block max-w-[220px] truncate"
+                            title={`${h.bab?.replace(/_/g, ' ')}, ${h.sub_bab?.replace(/_/g, ' ')}`}
+                          >
+                            {h.bab?.replace(/_/g, ' ')}, {h.sub_bab?.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">
+                          <span className="block max-w-[180px] truncate" title={h.winner}>{h.winner}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-green">{h.top_score} / {h.question_count}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(h.created_at).toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-gray-100 text-gray-700">{h.status}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button onClick={() => setActiveSession(h)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {history.length > historyPerPage && (
+                <Pagination
+                  totalItems={history.length}
+                  itemsPerPage={historyPerPage}
+                  currentPage={historyPage}
+                  onPageChange={setHistoryPage}
+                />
+              )}
             </div>
-            {history.length > historyPerPage && (
-              <Pagination 
-                totalItems={history.length} 
-                itemsPerPage={historyPerPage} 
-                currentPage={historyPage} 
-                onPageChange={setHistoryPage} 
-              />
-            )}
-          </div>
+          )}
+        </>
       )}
-    </>
-  )}
       {/* Player Answers Modal */}
       {viewingPlayer && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)}>
@@ -1294,7 +1309,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       if (!question) return null;
 
                       const correctOptionText = (question as any)[`option_${question.correct_answer.toLowerCase()}`];
-                      
+
                       return (
                         <div key={qId} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
                           <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
@@ -1343,6 +1358,92 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
         </div>
       )}
 
+      {/* View Questions Modal */}
+      {showViewQuestions && activeSession && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setShowViewQuestions(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+              <div>
+                <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Question Analytics</h2>
+                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">
+                  {activeSession.question_count} Soal • {players.length} Pemain
+                </p>
+              </div>
+              <button onClick={() => setShowViewQuestions(false)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">✕</button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-white">
+              {loadingAllAnswers ? (
+                <div className="text-center py-20 text-gray-400 font-bold uppercase text-xs tracking-widest animate-pulse">Loading question data...</div>
+              ) : (
+                <div className="space-y-6">
+                  {(activeSession.question_ids || []).map((qId, idx) => {
+                    const question = sessionQuestions.find(q => q.id === qId);
+                    if (!question) return null;
+
+                    const correctLabel = question.correct_answer;
+                    const correctOptionText = (question as any)[`option_${correctLabel.toLowerCase()}`];
+                    const correctAnswers = allPlayerAnswers.filter(a => a.question_id === qId && a.is_correct);
+                    const totalAnswers = allPlayerAnswers.filter(a => a.question_id === qId);
+                    const correctPlayerNames = correctAnswers.map(a => {
+                      const player = players.find(p => p.id === a.player_id);
+                      return player?.name || 'Unknown';
+                    });
+
+                    return (
+                      <div key={qId} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Soal {idx + 1}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${correctAnswers.length === 0 ? 'bg-red-100 text-red-600' : correctAnswers.length === totalAnswers.length ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                              {correctAnswers.length}/{totalAnswers.length} Benar
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-5 space-y-4">
+                          <RichContent html={question.question_text} className="text-[15px] font-bold text-gray-900 leading-relaxed" />
+
+                          {/* Correct Answer */}
+                          <div className="p-4 rounded-xl border-2 border-green-100 bg-green-50/30">
+                            <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-2">Jawaban Benar ({correctLabel})</p>
+                            <RichContent html={correctOptionText} className="text-sm font-medium text-green-800" />
+                          </div>
+
+                          {/* Who answered correctly */}
+                          <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">
+                              Pemain yang Benar ({correctAnswers.length})
+                            </p>
+                            {correctPlayerNames.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic">Belum ada yang menjawab benar</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {correctPlayerNames.map((name, i) => (
+                                  <span key={i} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                                    {name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-gray-50 border-t flex justify-end">
+              <button onClick={() => setShowViewQuestions(false)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* End Quiz Confirmation Modal */}
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]" onClick={() => setShowEndConfirm(false)}>
@@ -1353,17 +1454,17 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             <h3 className="text-lg font-black text-gray-900 mb-2">Akhiri Quiz?</h3>
             <p className="text-sm text-gray-500 mb-6 font-medium">Apakah anda yakin menyelesaikan quiz sekarang?</p>
             <div className="flex gap-3">
-              <button 
-                onClick={() => setShowEndConfirm(false)} 
+              <button
+                onClick={() => setShowEndConfirm(false)}
                 className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
               >
                 Tidak
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setShowEndConfirm(false);
                   handleStatusChange('finished');
-                }} 
+                }}
                 className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-md shadow-red-500/20"
               >
                 Ya
@@ -1383,13 +1484,13 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             <h3 className="text-lg font-black text-gray-900 mb-2">Batalkan Quiz?</h3>
             <p className="text-sm text-gray-500 mb-6 font-medium">Apakah anda yakin ingin membatalkan kuis ini? Semua data pemain dan jawaban akan dihapus secara permanen.</p>
             <div className="flex gap-3">
-              <button 
-                onClick={() => setShowCancelConfirm(false)} 
+              <button
+                onClick={() => setShowCancelConfirm(false)}
                 className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
               >
                 Tidak
               </button>
-              <button 
+              <button
                 onClick={async () => {
                   setShowCancelConfirm(false);
                   const ok = await deleteQuizSession(activeSession.id);
@@ -1399,7 +1500,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   } else {
                     alert('Gagal membatalkan kuis.');
                   }
-                }} 
+                }}
                 className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-md shadow-red-500/20"
               >
                 Ya, Batalkan
@@ -1457,11 +1558,10 @@ function Pagination({ totalItems, itemsPerPage, currentPage, onPageChange }: { t
               <button
                 key={i + 1}
                 onClick={() => onPageChange(i + 1)}
-                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                  currentPage === i + 1
+                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === i + 1
                     ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
                     : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 {i + 1}
               </button>
