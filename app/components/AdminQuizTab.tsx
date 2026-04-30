@@ -1006,6 +1006,10 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       </span>
                     </div>
                   )}
+                </div>
+
+                {/* Buttons column: control row + View Questions below */}
+                <div className="flex flex-col items-end gap-2">
                   <div className="flex gap-2">
                     {activeSession.status === 'waiting' && (
                       <>
@@ -1036,25 +1040,23 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       </>
                     )}
                   </div>
+                  <button
+                    onClick={async () => {
+                      setShowViewQuestions(true);
+                      setLoadingAllAnswers(true);
+                      const allAnswers: KuisResult[] = [];
+                      for (const p of players) {
+                        const ans = await fetchPlayerAnswers(p.id);
+                        allAnswers.push(...ans);
+                      }
+                      setAllPlayerAnswers(allAnswers);
+                      setLoadingAllAnswers(false);
+                    }}
+                    className="px-6 py-2 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>📋</span> View Questions
+                  </button>
                 </div>
-
-                {/* View Questions Button */}
-                <button
-                  onClick={async () => {
-                    setShowViewQuestions(true);
-                    setLoadingAllAnswers(true);
-                    const allAnswers: KuisResult[] = [];
-                    for (const p of players) {
-                      const ans = await fetchPlayerAnswers(p.id);
-                      allAnswers.push(...ans);
-                    }
-                    setAllPlayerAnswers(allAnswers);
-                    setLoadingAllAnswers(false);
-                  }}
-                  className="px-6 py-2 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <span>📋</span> View Questions
-                </button>
               </div>
             </div>
           </div>
