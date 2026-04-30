@@ -683,8 +683,8 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     key={n}
                     onClick={() => setQuestionCount(n)}
                     className={`flex-1 h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${questionCount === n
-                        ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
-                        : 'bg-white border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
+                      ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
+                      : 'bg-white border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
                       }`}
                   >
                     {n} SOAL
@@ -788,8 +788,8 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     key={m}
                     onClick={() => setDurationMinutes(m)}
                     className={`h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${durationMinutes === m
-                        ? 'bg-[#34C759] border-transparent text-white shadow-lg shadow-[#34C759]/20'
-                        : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#34C759] hover:text-[#34C759]'
+                      ? 'bg-[#34C759] border-transparent text-white shadow-lg shadow-[#34C759]/20'
+                      : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#34C759] hover:text-[#34C759]'
                       }`}
                   >
                     {m} MIN
@@ -900,9 +900,9 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             </div>
             <div className="flex flex-col items-end gap-3">
               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${activeSession.status === 'active' ? 'bg-green-100 text-green-700' :
-                  activeSession.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
-                    activeSession.status === 'paused' ? 'bg-orange-100 text-orange-700' :
-                      'bg-gray-100 text-gray-700'
+                activeSession.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
+                  activeSession.status === 'paused' ? 'bg-orange-100 text-orange-700' :
+                    'bg-gray-100 text-gray-700'
                 }`}>
                 {activeSession.status}
               </span>
@@ -1051,7 +1051,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     setAllPlayerAnswers(allAnswers);
                     setLoadingAllAnswers(false);
                   }}
-                  className="w-full py-3 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-2xl text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                  className="px-6 py-2 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
                 >
                   <span>📋</span> View Questions
                 </button>
@@ -1556,8 +1556,8 @@ function Pagination({ totalItems, itemsPerPage, currentPage, onPageChange }: { t
                 key={i + 1}
                 onClick={() => onPageChange(i + 1)}
                 className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === i + 1
-                    ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                   }`}
               >
                 {i + 1}
