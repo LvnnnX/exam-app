@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, use, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { secureLoad, secureSave, secureRemove } from '@/lib/security';
 import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, normalizeQuizCode, type KuisLog, type Player } from '@/lib/quiz';
 import { type ShuffledOption } from '@/lib/questions';
 import { useRouter } from 'next/navigation';
@@ -52,7 +53,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       }
 
       // Check localStorage for existing player
-      const savedPlayerId = localStorage.getItem(`quiz_player_${quizCode}`);
+      const savedPlayerId = secureLoad<string>(`quiz_player_${quizCode}`);
       if (savedPlayerId) {
         supabase.from('player').select('*').eq('id', savedPlayerId).single().then(({ data }) => {
           if (data) {
@@ -63,7 +64,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             }
             setPlayer(data);
             // Restore index (Questions are loaded JIT)
-            const savedIndex = localStorage.getItem(`quiz_index_${quizCode}`);
+            const savedIndex = secureLoad<string>(`quiz_index_${quizCode}`);
             if (savedIndex) {
               setCurrentIndex(parseInt(savedIndex));
             }
@@ -128,8 +129,8 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     }
 
     setPlayer(result);
-    localStorage.setItem(`quiz_player_${quizCode}`, result.id);
-    localStorage.setItem(`quiz_index_${quizCode}`, '0');
+    secureSave(`quiz_player_${quizCode}`, result.id);
+    secureSave(`quiz_index_${quizCode}`, '0');
     setLoading(false);
   };
 
@@ -168,7 +169,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     }
     
     await finishPlayerQuiz(player.id);
-    localStorage.removeItem(`quiz_index_${quizCode}`);
+    secureRemove(`quiz_index_${quizCode}`);
     setIsFinished(true);
   }, [player, session, isFinished, startTime, currentQuestion, quizCode]);
 
@@ -235,13 +236,13 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
       setCurrentQuestion(null); // Trigger JIT load
-      localStorage.setItem(`quiz_index_${quizCode}`, nextIndex.toString());
+      secureSave(`quiz_index_${quizCode}`, nextIndex.toString());
       setStartTime(Date.now());
     } else {
       await finishPlayerQuiz(player.id);
       // Rule 6: Clear active session data
-      localStorage.removeItem(`quiz_index_${quizCode}`);
-      localStorage.removeItem(`quiz_player_${quizCode}`); 
+      secureRemove(`quiz_index_${quizCode}`);
+      secureRemove(`quiz_player_${quizCode}`); 
       setIsFinished(true);
       // Rule 7: Replace history state
       router.replace(`/quiz/${quizCode}`);

@@ -1,10 +1,14 @@
 import CryptoJS from 'crypto-js';
 
-const STORAGE_VERSION = '3';
-const STORAGE_SALT = 'exam-app-storage-v3';
+const STORAGE_VERSION = '4';
+const STORAGE_SALT = 'exam-app-storage-v4';
 const STORAGE_PREFIX = 's2_';
 const LEGACY_PREFIX = 's_';
 const LEGACY_SECRET = process.env.NEXT_PUBLIC_EXAM_SECRET_KEY?.trim() || '';
+
+const INTERNAL_SECRET = 'smd-exam-v4-sec-' + STORAGE_SALT;
+const AES_KEY = CryptoJS.PBKDF2(INTERNAL_SECRET, 'aes-salt', { keySize: 256 / 32, iterations: 10 }).toString();
+const HMAC_KEY = CryptoJS.PBKDF2(INTERNAL_SECRET, 'hmac-salt', { keySize: 256 / 32, iterations: 10 }).toString();
 
 function stableHash(key: string): string {
   return CryptoJS.SHA512(`${key}|${STORAGE_SALT}`).toString().substring(0, 32);
@@ -70,7 +74,16 @@ function readLegacyValue<T>(key: string, payloadStr: string): T | null {
  */
 export function secureSave(key: string, value: unknown): void {
   try {
-    const payload = JSON.stringify({ v: STORAGE_VERSION, value: value === undefined ? null : value });
+    const rawValue = JSON.stringify(value === undefined ? null : value);
+    
+    // Encrypt with AES-256
+    const iv = CryptoJS.lib.WordArray.random(128 / 8);
+    const ct = CryptoJS.AES.encrypt(rawValue, AES_KEY, { iv }).toString();
+    
+    // Sign with HMAC-SHA256
+    const mac = CryptoJS.HmacSHA256(iv.toString() + ct, HMAC_KEY).toString();
+    
+    const payload = JSON.stringify({ v: STORAGE_VERSION, iv: iv.toString(), ct, mac });
     localStorage.setItem(currentStorageKey(key), payload);
 
     const legacyKey = legacyStorageKey(key);
@@ -89,10 +102,27 @@ export function secureLoad<T>(key: string): T | null {
   try {
     const payloadStr = localStorage.getItem(currentStorageKey(key));
     if (payloadStr) {
-      const payload = parseJsonPayload(payloadStr) as { v?: string; value?: unknown; data?: string; signature?: string } | null;
+      const payload = parseJsonPayload(payloadStr) as { v?: string; value?: unknown; iv?: string; ct?: string; mac?: string; data?: string; signature?: string } | null;
 
-      if (payload && payload.v === STORAGE_VERSION && Object.prototype.hasOwnProperty.call(payload, 'value')) {
-        return payload.value as T;
+      if (payload) {
+        if (payload.v === '4' && payload.iv && payload.ct && payload.mac) {
+          // Verify MAC
+          const expectedMac = CryptoJS.HmacSHA256(payload.iv + payload.ct, HMAC_KEY).toString();
+          if (expectedMac === payload.mac) {
+            const decryptedBytes = CryptoJS.AES.decrypt(payload.ct, AES_KEY, { iv: CryptoJS.enc.Hex.parse(payload.iv) });
+            const decryptedStr = decryptedBytes.toString(CryptoJS.enc.Utf8);
+            if (decryptedStr) {
+              return JSON.parse(decryptedStr) as T;
+            }
+          } else {
+            console.warn('Storage integrity check failed for key:', key);
+          }
+        } else if (payload.v === '3' && Object.prototype.hasOwnProperty.call(payload, 'value')) {
+          // Fallback to version 3 plaintext migration
+          const legacyValue = payload.value as T;
+          secureSave(key, legacyValue); // Migrate to v4
+          return legacyValue;
+        }
       }
 
       if (payload?.data && payload?.signature) {
