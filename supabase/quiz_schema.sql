@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS player (
   total_time INTEGER NOT NULL DEFAULT 0,
   joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   finished_at TIMESTAMPTZ,
+  question_ids INT[],
   UNIQUE(kuis_id, name)
 );
 

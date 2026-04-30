@@ -1222,7 +1222,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                 <div className="space-y-8">
                   {(() => {
                     const answeredIds = playerAnswers.map(a => a.question_id);
-                    const allIds = activeSession?.question_ids || [];
+                    const allIds = viewingPlayer.question_ids || activeSession?.question_ids || [];
                     const orderedIds = [
                       ...answeredIds,
                       ...allIds.filter(id => !answeredIds.includes(id))

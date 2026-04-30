@@ -37,6 +37,7 @@ export type Player = {
   total_time: number;
   joined_at: string;
   finished_at?: string;
+  question_ids?: number[];
 };
 
 export type KuisResult = {
