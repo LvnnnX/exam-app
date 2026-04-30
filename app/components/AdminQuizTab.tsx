@@ -1037,28 +1037,25 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                     )}
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* View Questions Button */}
-            <div className="px-5 sm:px-6 pb-5">
-              <button
-                onClick={async () => {
-                  setShowViewQuestions(true);
-                  setLoadingAllAnswers(true);
-                  // Fetch answers from all players
-                  const allAnswers: KuisResult[] = [];
-                  for (const p of players) {
-                    const ans = await fetchPlayerAnswers(p.id);
-                    allAnswers.push(...ans);
-                  }
-                  setAllPlayerAnswers(allAnswers);
-                  setLoadingAllAnswers(false);
-                }}
-                className="w-full py-3 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-2xl text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
-              >
-                <span>📋</span> View Questions
-              </button>
+                {/* View Questions Button */}
+                <button
+                  onClick={async () => {
+                    setShowViewQuestions(true);
+                    setLoadingAllAnswers(true);
+                    const allAnswers: KuisResult[] = [];
+                    for (const p of players) {
+                      const ans = await fetchPlayerAnswers(p.id);
+                      allAnswers.push(...ans);
+                    }
+                    setAllPlayerAnswers(allAnswers);
+                    setLoadingAllAnswers(false);
+                  }}
+                  className="w-full py-3 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-2xl text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                >
+                  <span>📋</span> View Questions
+                </button>
+              </div>
             </div>
           </div>
 
