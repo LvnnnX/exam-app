@@ -1873,12 +1873,7 @@ export default function AdminPage() {
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Index</p>
                   <p className="text-2xl font-black text-gray-900">
-                    {(() => {
-                      const lastIdx = trackingSession.question_ids.length - 1;
-                      const isLastAns = trackingSession.user_answers[lastIdx.toString()] !== undefined;
-                      const activeIdx = (lastIdx >= 0 && !isLastAns) ? lastIdx : trackingSession.current_index + 1;
-                      return Math.min(activeIdx + 1, trackingSession.question_count);
-                    })()}
+                    {Math.min((trackingSession.current_index || 0) + 1, trackingSession.question_count || 1)}
                     <span className="text-sm text-gray-300"> / {trackingSession.question_count}</span>
                   </p>
                 </div>
