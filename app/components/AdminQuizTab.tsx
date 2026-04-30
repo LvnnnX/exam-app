@@ -1359,7 +1359,7 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
 
       {/* View Questions Modal */}
       {showViewQuestions && activeSession && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setShowViewQuestions(false)}>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]">
           <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className="p-6 border-b flex justify-between items-center bg-gray-50">
