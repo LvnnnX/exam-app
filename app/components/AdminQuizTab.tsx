@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
+import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, deleteQuizSession, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
 import { fetchQuestionsByIds, fetchSubBabs, type RawQuestion, type SubBabInfo } from '@/lib/questions';
 import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
@@ -88,6 +88,9 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
   const [activePage, setActivePage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [playersPage, setPlayersPage] = useState(1);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const itemsPerPage = 20;
   const historyPerPage = 10;
   const autoFinishRef = useRef(false);
@@ -383,6 +386,16 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
 
       if (diff <= 0) {
         setScheduleCountdown('Memulai...');
+        
+        // Check actual player count before starting
+        const { count } = await supabase.from('player').select('*', { count: 'exact', head: true }).eq('kuis_id', activeSession.id);
+        if (count === 0) {
+          await deleteQuizSession(activeSession.id);
+          setActiveSession(null);
+          setActiveView('manage');
+          return;
+        }
+
         const ok = await updateQuizStatus(activeSession.id, 'active');
         if (ok) {
           setActiveSession({ ...activeSession, status: 'active', started_at: new Date().toISOString() });
@@ -413,7 +426,11 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
       const now = Date.now();
       for (const s of sessions) {
         if (s.status === 'waiting' && s.scheduled_at && new Date(s.scheduled_at).getTime() <= now) {
-          await updateQuizStatus(s.id, 'active');
+          if (s.player_count === 0) {
+            await deleteQuizSession(s.id);
+          } else {
+            await updateQuizStatus(s.id, 'active');
+          }
         }
       }
     };
@@ -423,19 +440,36 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
     return () => clearInterval(interval);
   }, [activeView, activeSession]);
 
+  // Tick current time for active sessions
+  useEffect(() => {
+    if (activeSession?.status !== 'active') return;
+    const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [activeSession?.status]);
+
   return (
     <div>
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h2 className="text-lg sm:text-xl font-bold text-slate-700">Quiz Management</h2>
-          {(activeView !== 'create' || activeSession) && (
-            <button
-              onClick={handleRefresh}
-              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-[#34C759]/20 text-[#34C759] rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#34C759]/5 transition-colors"
-            >
-              ↻ Refresh
-            </button>
-          )}
+          <div className="flex gap-2">
+            {activeSession && (
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-red-500/20 text-red-500 rounded-xl font-semibold text-xs sm:text-sm hover:bg-red-50 transition-colors"
+              >
+                ✕ Cancel Quiz
+              </button>
+            )}
+            {(activeView !== 'create' || activeSession) && (
+              <button
+                onClick={handleRefresh}
+                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-[#34C759]/20 text-[#34C759] rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#34C759]/5 transition-colors"
+              >
+                ↻ Refresh
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -968,21 +1002,46 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   </div>
                 )}
                 
-                <div className="flex gap-2">
-                  {activeSession.status === 'waiting' && (
-                    <button onClick={() => handleStatusChange('active')} className="bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-green-600 transition-colors shadow-sm">Start Quiz</button>
-                  )}
+                <div className="flex items-center gap-4">
                   {(activeSession.status === 'active' || activeSession.status === 'paused') && (
-                    <>
-                      <button 
-                        onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')} 
-                        className={`${activeSession.status === 'active' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-nike-green hover:bg-green-600'} text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm`}
-                      >
-                        {activeSession.status === 'active' ? 'Pause' : 'Resume'}
-                      </button>
-                      <button onClick={() => handleStatusChange('finished')} className="bg-nike-red text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm">End Quiz</button>
-                    </>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Sisa Waktu</span>
+                      <span className={`text-lg font-black tracking-tight ${activeSession.status === 'paused' ? 'text-orange-500' : 'text-indigo-600'}`}>
+                        {(() => {
+                          if (!activeSession.expires_at) return '-';
+                          const referenceTime = (activeSession.status === 'paused' && activeSession.paused_at) ? new Date(activeSession.paused_at).getTime() : currentTime;
+                          const diff = new Date(activeSession.expires_at).getTime() - referenceTime;
+                          if (diff <= 0) return '00:00:00';
+                          const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                          const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                          const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                          return `${h}:${m}:${s}`;
+                        })()}
+                      </span>
+                    </div>
                   )}
+                  <div className="flex gap-2">
+                    {activeSession.status === 'waiting' && (
+                      <button 
+                        onClick={() => handleStatusChange('active')} 
+                        disabled={players.length === 0}
+                        className={`bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm ${players.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
+                      >
+                        Start Quiz
+                      </button>
+                    )}
+                    {(activeSession.status === 'active' || activeSession.status === 'paused') && (
+                      <>
+                        <button 
+                          onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')} 
+                          className={`${activeSession.status === 'active' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-nike-green hover:bg-green-600'} text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm`}
+                        >
+                          {activeSession.status === 'active' ? 'Pause' : 'Resume'}
+                        </button>
+                        <button onClick={() => setShowEndConfirm(true)} className="bg-nike-red text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm">End Quiz</button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1279,6 +1338,72 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
             {/* Footer */}
             <div className="p-6 bg-gray-50 border-t flex justify-end">
               <button onClick={() => setViewingPlayer(null)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Close Breakdown</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* End Quiz Confirmation Modal */}
+      {showEndConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]" onClick={() => setShowEndConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+              ⚠️
+            </div>
+            <h3 className="text-lg font-black text-gray-900 mb-2">Akhiri Quiz?</h3>
+            <p className="text-sm text-gray-500 mb-6 font-medium">Apakah anda yakin menyelesaikan quiz sekarang?</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowEndConfirm(false)} 
+                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Tidak
+              </button>
+              <button 
+                onClick={() => {
+                  setShowEndConfirm(false);
+                  handleStatusChange('finished');
+                }} 
+                className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-md shadow-red-500/20"
+              >
+                Ya
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Quiz Confirmation Modal */}
+      {showCancelConfirm && activeSession && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]" onClick={() => setShowCancelConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+              🗑️
+            </div>
+            <h3 className="text-lg font-black text-gray-900 mb-2">Batalkan Quiz?</h3>
+            <p className="text-sm text-gray-500 mb-6 font-medium">Apakah anda yakin ingin membatalkan kuis ini? Semua data pemain dan jawaban akan dihapus secara permanen.</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowCancelConfirm(false)} 
+                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Tidak
+              </button>
+              <button 
+                onClick={async () => {
+                  setShowCancelConfirm(false);
+                  const ok = await deleteQuizSession(activeSession.id);
+                  if (ok) {
+                    setActiveSession(null);
+                    setActiveView('manage');
+                  } else {
+                    alert('Gagal membatalkan kuis.');
+                  }
+                }} 
+                className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-md shadow-red-500/20"
+              >
+                Ya, Batalkan
+              </button>
             </div>
           </div>
         </div>

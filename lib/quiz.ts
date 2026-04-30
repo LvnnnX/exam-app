@@ -373,6 +373,15 @@ export async function updateQuizStatus(id: string, status: KuisStatus): Promise<
   return true;
 }
 
+export async function deleteQuizSession(id: string): Promise<boolean> {
+  const { error } = await supabase.from('kuis_logs').delete().eq('id', id);
+  if (error) {
+    console.error('Error deleting quiz:', error);
+    return false;
+  }
+  return true;
+}
+
 export async function fetchQuizPlayers(kuisId: string): Promise<Player[]> {
   const { data, error } = await supabase
     .from('player')
