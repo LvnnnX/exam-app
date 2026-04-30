@@ -453,14 +453,6 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <h2 className="text-lg sm:text-xl font-bold text-slate-700">Quiz Management</h2>
           <div className="flex gap-2">
-            {activeSession && (
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-red-500/20 text-red-500 rounded-xl font-semibold text-xs sm:text-sm hover:bg-red-50 transition-colors"
-              >
-                ✕ Cancel Quiz
-              </button>
-            )}
             {(activeView !== 'create' || activeSession) && (
               <button
                 onClick={handleRefresh}
@@ -1022,13 +1014,21 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                   )}
                   <div className="flex gap-2">
                     {activeSession.status === 'waiting' && (
-                      <button 
-                        onClick={() => handleStatusChange('active')} 
-                        disabled={players.length === 0}
-                        className={`bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm ${players.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
-                      >
-                        Start Quiz
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setShowCancelConfirm(true)}
+                          className="bg-white border-2 border-red-500 text-red-500 px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shadow-sm"
+                        >
+                          Cancel Quiz
+                        </button>
+                        <button 
+                          onClick={() => handleStatusChange('active')} 
+                          disabled={players.length === 0}
+                          className={`bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm ${players.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
+                        >
+                          Start Quiz
+                        </button>
+                      </>
                     )}
                     {(activeSession.status === 'active' || activeSession.status === 'paused') && (
                       <>
