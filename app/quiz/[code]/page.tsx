@@ -181,17 +181,15 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   }, [session?.status, isFinished, handleTimeout]);
 
   useEffect(() => {
-    // Global timer
-    if ((session?.status === 'active' || session?.status === 'paused') && session.started_at && !isFinished) {
-      const expiresAt = new Date(session.started_at).getTime() + (session.duration_minutes * 60000);
-      
+    // Global timer - use server's expires_at for perfect sync with admin
+    if ((session?.status === 'active' || session?.status === 'paused') && session.expires_at && !isFinished) {
       const interval = setInterval(() => {
         if (session.status === 'paused') {
           setTimeLeftDisplay('PAUSED');
           return;
         }
         
-        const diff = expiresAt - Date.now();
+        const diff = new Date(session.expires_at!).getTime() - Date.now();
         if (diff <= 0) {
           clearInterval(interval);
           handleTimeout();
@@ -204,7 +202,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
       return () => clearInterval(interval);
     }
-  }, [session?.status, session?.started_at, player, isFinished, session?.question_count, startTime, handleTimeout]);
+  }, [session?.status, session?.expires_at, player, isFinished, handleTimeout]);
 
   // Adjust startTime when quiz is paused/resumed
   useEffect(() => {

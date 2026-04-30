@@ -443,9 +443,9 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
     return () => clearInterval(interval);
   }, [activeView, activeSession]);
 
-  // Tick current time for active sessions
+  // Tick current time for active sessions (also during paused to handle re-mounts)
   useEffect(() => {
-    if (activeSession?.status !== 'active') return;
+    if (activeSession?.status !== 'active' && activeSession?.status !== 'paused') return;
     const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(interval);
   }, [activeSession?.status]);
@@ -995,7 +995,10 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
                       <span className={`text-lg font-black tracking-tight ${activeSession.status === 'paused' ? 'text-orange-500' : 'text-indigo-600'}`}>
                         {(() => {
                           if (!activeSession.expires_at) return '-';
-                          const referenceTime = (activeSession.status === 'paused' && activeSession.paused_at) ? new Date(activeSession.paused_at).getTime() : currentTime;
+                          // When paused, freeze the countdown at the moment of pause
+                          const referenceTime = (activeSession.status === 'paused' && activeSession.paused_at)
+                            ? new Date(activeSession.paused_at).getTime()
+                            : currentTime;
                           const diff = new Date(activeSession.expires_at).getTime() - referenceTime;
                           if (diff <= 0) return '00:00:00';
                           const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
