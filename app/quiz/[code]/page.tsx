@@ -4,11 +4,11 @@ import React, { useState, useEffect, use, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { secureLoad, secureSave, secureRemove } from '@/lib/security';
 import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, normalizeQuizCode, type KuisLog, type Player } from '@/lib/quiz';
-import { type ShuffledOption } from '@/lib/questions';
+import { type ShuffledQuestion } from '@/lib/questions';
 import { useRouter } from 'next/navigation';
 import RichContent from '@/app/components/RichContent';
 
-type AnswerData = ShuffledOption;
+type AnswerData = string;
 
 export default function QuizSessionPage({ params }: { params: Promise<{ code: string }> }) {
   const unwrappedParams = use(params);
@@ -19,9 +19,9 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const [session, setSession] = useState<KuisLog | null>(null);
   const [player, setPlayer] = useState<Player | null>(null);
   const [name, setName] = useState('');
-  
+
   // Game state
-  const [currentQuestion, setCurrentQuestion] = useState<{ id: number; question_text: string; options: ShuffledOption[] } | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<ShuffledQuestion | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
@@ -114,7 +114,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const handleJoin = async () => {
     if (!name.trim()) return;
     setLoading(true);
-    
+
     if (session?.status === 'active' || session?.status === 'paused') {
       alert('Kuis sedang berjalan atau ditunda. Anda tidak dapat bergabung.');
       setLoading(false);
@@ -158,16 +158,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
   const handleTimeout = useCallback(async () => {
     if (!player || !session || isFinished) return;
-    
+
     const timeTaken = Math.floor((Date.now() - startTime) / 1000);
     const q = currentQuestion;
-    
+
     if (q) {
       const currentSelection = selectedAnswerRef.current;
-      const answerText = currentSelection ? currentSelection.text : '';
+      const answerText = currentSelection || '';
       await submitSecureAnswer(player.id, q.id, answerText, timeTaken);
     }
-    
+
     await finishPlayerQuiz(player.id);
     secureRemove(`quiz_index_${quizCode}`);
     setIsFinished(true);
@@ -188,7 +188,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
           setTimeLeftDisplay('PAUSED');
           return;
         }
-        
+
         const diff = new Date(session.expires_at!).getTime() - Date.now();
         if (diff <= 0) {
           clearInterval(interval);
@@ -219,16 +219,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
   const handleAnswer = async (opt: AnswerData | null) => {
     if (!player || !session || isFinished) return;
-    
+
     const timeTaken = Math.floor((Date.now() - startTime) / 1000);
     if (!currentQuestion) return;
-    const answerText = opt ? opt.text : '';
-    
+    const answerText = opt || '';
+
     const result = await submitSecureAnswer(player.id, currentQuestion.id, answerText, timeTaken);
     const isCorrect = result.success ? result.is_correct : false;
-    
+
     if (isCorrect) setScore(s => s + 1);
-    
+
     setSelectedAnswer(null);
     if (currentIndex + 1 < (session?.question_count || 0)) {
       const nextIndex = currentIndex + 1;
@@ -240,7 +240,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       await finishPlayerQuiz(player.id);
       // Rule 6: Clear active session data
       secureRemove(`quiz_index_${quizCode}`);
-      secureRemove(`quiz_player_${quizCode}`); 
+      secureRemove(`quiz_player_${quizCode}`);
       setIsFinished(true);
       // Rule 7: Replace history state
       router.replace(`/quiz/${quizCode}`);
@@ -308,16 +308,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
           <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest mb-1">Live Quiz</p>
           <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.bab?.replace(/_/g, ' ')}, {session.sub_bab?.replace(/_/g, ' ')}</p>
           <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8">Join</h2>
-          
-          <input 
-            type="text" 
-            placeholder="NAMA KAMU" 
-            value={name} 
+
+          <input
+            type="text"
+            placeholder="NAMA KAMU"
+            value={name}
             onChange={e => setName(e.target.value.toUpperCase())}
             className="w-full text-center text-[16px] font-bold py-4 rounded-[30px] border-[1.5px] border-nike-grey-200 focus:border-nike-black focus:outline-none mb-6 uppercase tracking-wider transition-colors"
           />
-          <button 
-            onClick={handleJoin} 
+          <button
+            onClick={handleJoin}
             disabled={!name.trim() || loading}
             className="w-full h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 uppercase tracking-wider"
           >
@@ -357,13 +357,13 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16 min-h-screen bg-white relative">
       {session.status === 'paused' && (
         <div className="fixed inset-0 bg-white/30 backdrop-blur-md z-[9999] flex items-center justify-center animate-in fade-in duration-300">
-           <div className="text-center p-12 bg-white/80 rounded-[40px] shadow-2xl border border-white/50">
-             <div className="w-24 h-24 bg-nike-black rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse shadow-lg">
-                <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-             </div>
-             <h1 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-none tracking-tight uppercase mb-4">PAUSED</h1>
-             <p className="text-nike-grey-500 font-bold text-sm tracking-[0.2em] uppercase">Kuis sedang dijeda oleh admin</p>
-           </div>
+          <div className="text-center p-12 bg-white/80 rounded-[40px] shadow-2xl border border-white/50">
+            <div className="w-24 h-24 bg-nike-black rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse shadow-lg">
+              <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+            </div>
+            <h1 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-none tracking-tight uppercase mb-4">PAUSED</h1>
+            <p className="text-nike-grey-500 font-bold text-sm tracking-[0.2em] uppercase">Kuis sedang dijeda oleh admin</p>
+          </div>
         </div>
       )}
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
@@ -388,9 +388,9 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                 <span className="text-[14px] font-black font-mono text-nike-black">{timeLeftDisplay}</span>
               </div>
             )}
-            
+
             <div className="sm:text-right">
-              {selectedAnswer ? (
+              {selectedAnswer && selectedAnswer.trim().length > 0 ? (
                 <span className="text-[14px] font-bold text-nike-green uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
                   Answer Selected
                 </span>
@@ -402,7 +402,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             </div>
           </div>
         </div>
-        
+
         {/* Question Display Layout */}
         <div className="mb-0 h-auto md:h-[min(65vh,620px)] md:min-h-[420px] overflow-y-auto md:overflow-hidden border border-nike-grey-200 rounded-[24px] bg-white shadow-sm flex flex-col">
           <div className="flex flex-col md:grid md:h-full md:grid-cols-[70%_1px_1fr] flex-1">
@@ -412,40 +412,56 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                 className="exam-question-content text-[18px] md:text-[28px] font-bold text-nike-black leading-[1.25] tracking-tight"
               />
             </div>
-            
+
             <div className="hidden md:flex items-center">
               <div className="w-px h-[85%] bg-nike-grey-200" aria-hidden="true" />
             </div>
-            
+
             <div className="flex-1 h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable p-6 md:p-10 flex flex-col justify-center bg-nike-grey-50 md:bg-white min-w-0">
-              <div className="grid grid-rows-5 gap-3 w-full">
-                {q.options.map((opt, i) => {
-                  const prefix = opt.label;
-                  const isSelected = selectedAnswer?.label === opt.label;
-                  return (
-                    <button 
-                      key={i}
-                      onClick={() => setSelectedAnswer(opt)}
-                      className={`w-full min-w-0 group flex items-center p-4 md:p-5 rounded-[16px] text-left transition-all duration-200 border-[1.5px] ${
-                        isSelected
-                          ? 'bg-nike-black border-nike-black text-nike-white'
-                          : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4 w-full min-w-0">
-                        <span className={`font-display shrink-0 text-[18px] md:text-[20px] transition-colors ${isSelected ? 'text-nike-grey-300' : 'text-nike-grey-500 group-hover:text-nike-black'}`}>
-                          {prefix}
-                        </span>
-                        <div className="w-px h-6 shrink-0 bg-nike-grey-200 group-hover:bg-nike-grey-300 transition-colors" />
-                        <RichContent
-                          html={opt.text}
-                          className={`exam-option-content flex-1 min-w-0 text-[15px] md:text-[17px] font-medium tracking-tight leading-tight ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              {q.question_type === 'short_answer' ? (
+                <div className="w-full space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12px] font-bold uppercase tracking-widest text-nike-grey-500">Jawaban Singkat</p>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-nike-grey-400">Text / Angka</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={selectedAnswer ?? ''}
+                    onChange={(event) => setSelectedAnswer(event.target.value)}
+                    placeholder="Ketik jawaban di sini..."
+                    className="w-full rounded-[16px] border-[1.5px] border-nike-grey-200 bg-white px-4 py-3 text-[15px] font-medium text-nike-black focus:border-nike-black focus:outline-none focus:ring-4 focus:ring-nike-black/5 transition-all"
+                  />
+                  <p className="text-[11px] text-nike-grey-400 uppercase tracking-widest">Tekan Next untuk lanjut.</p>
+                </div>
+              ) : (
+                <div className="grid grid-rows-5 gap-3 w-full">
+                  {q.options.map((opt, i) => {
+                    const prefix = opt.label;
+                    const isSelected = selectedAnswer === opt.text;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedAnswer(opt.text)}
+                        className={`w-full min-w-0 group flex items-center p-4 md:p-5 rounded-[16px] text-left transition-all duration-200 border-[1.5px] ${isSelected
+                            ? 'bg-nike-black border-nike-black text-nike-white'
+                            : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
+                          }`}
+                      >
+                        <div className="flex items-center gap-4 w-full min-w-0">
+                          <span className={`font-display shrink-0 text-[18px] md:text-[20px] transition-colors ${isSelected ? 'text-nike-grey-300' : 'text-nike-grey-500 group-hover:text-nike-black'}`}>
+                            {prefix}
+                          </span>
+                          <div className="w-px h-6 shrink-0 bg-nike-grey-200 group-hover:bg-nike-grey-300 transition-colors" />
+                          <RichContent
+                            html={opt.text}
+                            className={`exam-option-content flex-1 min-w-0 text-[15px] md:text-[17px] font-medium tracking-tight leading-tight ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -454,7 +470,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
         <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-nike-grey-200 pt-8 mt-6">
           <button
             onClick={() => handleAnswer(selectedAnswer)}
-            disabled={!selectedAnswer}
+            disabled={!selectedAnswer || selectedAnswer.trim().length === 0}
             className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider"
           >
             Next Question

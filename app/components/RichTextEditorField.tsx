@@ -16,6 +16,8 @@ type RichTextEditorFieldProps = {
   label: string;
   value: string;
   onChange: (html: string) => void;
+  description?: string;
+  density?: 'compact' | 'comfortable';
 };
 
 const lowlight = createLowlight(common);
@@ -39,11 +41,14 @@ export default function RichTextEditorField({
   label,
   value,
   onChange,
+  description,
+  density = 'compact',
 }: RichTextEditorFieldProps) {
   const [selectedLanguage, setSelectedLanguage] = useState('plaintext');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const normalizedValue = useMemo(() => ensureHtmlDocument(value), [value]);
+  const isCompact = density === 'compact';
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -81,7 +86,7 @@ export default function RichTextEditorField({
     content: normalizedValue,
     editorProps: {
       attributes: {
-        class: 'tiptap-editor min-h-[160px] p-4',
+        class: `tiptap-editor ${isCompact ? 'min-h-[120px] px-3 py-2 text-sm' : 'min-h-[160px] p-4'}`,
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
@@ -169,15 +174,21 @@ export default function RichTextEditorField({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-sm font-medium text-gray-700">{label}</label>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Rich Text</span>
+      </div>
+      {description && (
+        <p className="text-[11px] text-gray-400 mb-2">{description}</p>
+      )}
 
-      <div className="tiptap-shell border-2 border-gray-100 rounded-xl bg-white overflow-hidden shadow-sm transition-all focus-within:border-nike-black">
-        <div className="tiptap-toolbar border-b bg-gray-50/50 p-2 flex flex-wrap items-center gap-1.5 sticky top-0 z-10 backdrop-blur-md">
+      <div className={`tiptap-shell border border-slate-200 ${isCompact ? 'rounded-xl' : 'rounded-2xl'} bg-white overflow-hidden shadow-sm transition-all focus-within:border-nike-black`}>
+        <div className={`tiptap-toolbar border-b bg-slate-50/70 ${isCompact ? 'p-1.5 gap-1' : 'p-2 gap-1.5'} flex flex-wrap items-center sticky top-0 z-10 backdrop-blur-md`}>
           <div className="flex flex-wrap gap-1 items-center">
             <button
               type="button"
               onClick={() => editor.chain().focus().toggleBold().run()}
-              className={`toolbar-btn ${editor.isActive('bold') ? 'is-active' : ''}`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('bold') ? 'is-active' : ''}`}
               title="Bold"
             >
               <span className="font-bold px-1">B</span>
@@ -185,7 +196,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={() => editor.chain().focus().toggleItalic().run()}
-              className={`toolbar-btn ${editor.isActive('italic') ? 'is-active' : ''}`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('italic') ? 'is-active' : ''}`}
               title="Italic"
             >
               <span className="italic px-1">I</span>
@@ -193,7 +204,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={() => editor.chain().focus().toggleStrike().run()}
-              className={`toolbar-btn ${editor.isActive('strike') ? 'is-active' : ''}`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('strike') ? 'is-active' : ''}`}
               title="Strikethrough"
             >
               <span className="line-through px-1">S</span>
@@ -201,7 +212,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={() => editor.chain().focus().toggleCode().run()}
-              className={`toolbar-btn ${editor.isActive('code') ? 'is-active' : ''}`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('code') ? 'is-active' : ''}`}
               title="Inline Code"
             >
               <span className="font-mono px-1 text-xs">{`<>`}</span>
@@ -214,7 +225,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={() => editor.chain().focus().toggleBulletList().run()}
-              className={`toolbar-btn ${editor.isActive('bulletList') ? 'is-active' : ''}`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('bulletList') ? 'is-active' : ''}`}
               title="Bullet List"
             >
               • Bullets
@@ -222,7 +233,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              className={`toolbar-btn ${editor.isActive('orderedList') ? 'is-active' : ''}`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('orderedList') ? 'is-active' : ''}`}
               title="Ordered List"
             >
               1. List
@@ -230,7 +241,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={() => editor.chain().focus().toggleBlockquote().run()}
-              className={`toolbar-btn ${editor.isActive('blockquote') ? 'is-active' : ''}`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('blockquote') ? 'is-active' : ''}`}
               title="Blockquote"
             >
               ❝ Quote
@@ -238,7 +249,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={() => editor.chain().focus().setHorizontalRule().run()}
-              className="toolbar-btn"
+              className={`toolbar-btn ${isCompact ? 'compact' : ''}`}
               title="Horizontal Rule"
             >
               ― HR
@@ -251,7 +262,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={insertImage}
-              className="toolbar-btn flex items-center gap-2 text-xs font-bold"
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} flex items-center gap-2 text-xs font-bold`}
               disabled={isUploading}
             >
               {isUploading ? '...' : '🖼️ IMAGE'}
@@ -273,7 +284,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={insertInlineMath}
-              className="toolbar-btn text-xs font-bold whitespace-nowrap"
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs font-bold whitespace-nowrap`}
               title="Insert inline LaTeX formula"
             >
               Σ Inline
@@ -281,7 +292,7 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={insertBlockMath}
-              className="toolbar-btn text-xs font-bold whitespace-nowrap"
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs font-bold whitespace-nowrap`}
               title="Insert block LaTeX formula"
             >
               Σ Block
@@ -292,7 +303,7 @@ export default function RichTextEditorField({
             <select
               value={selectedLanguage}
               onChange={(event) => setSelectedLanguage(event.target.value)}
-              className="text-[10px] sm:text-xs font-bold border-2 border-gray-200 rounded-lg px-2 h-[32px] bg-white focus:border-nike-black outline-none transition-colors uppercase tracking-wider"
+              className={`text-[10px] sm:text-xs font-bold border border-gray-200 rounded-lg px-2 ${isCompact ? 'h-[28px]' : 'h-[32px]'} bg-white focus:border-nike-black outline-none transition-colors uppercase tracking-wider`}
             >
               {CODE_LANGUAGES.map((language) => (
                 <option key={language.value} value={language.value}>
@@ -303,14 +314,14 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={applyCodeBlock}
-              className={`toolbar-btn text-xs font-bold ${editor.isActive('codeBlock') ? 'is-active' : ''} whitespace-nowrap`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs font-bold ${editor.isActive('codeBlock') ? 'is-active' : ''} whitespace-nowrap`}
             >
               {'</>'} CODE
             </button>
             <button
               type="button"
               onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
-              className="toolbar-btn text-nike-red hover:bg-red-50 border-red-100 font-bold"
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} text-nike-red hover:bg-red-50 border-red-100 font-bold`}
               title="Clear Formatting"
             >
               ×

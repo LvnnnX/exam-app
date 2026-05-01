@@ -5,7 +5,7 @@ import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
 import AdminQuizTab from '@/app/components/AdminQuizTab';
-import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchbabs, fetchAllSubBabsAdmin, fetchSubBabsForMultiple, fetchHiddenSubBabs, saveHiddenSubBabs, type BabInfo, type SubBabInfo } from '@/lib/questions';
+import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchbabs, fetchAllSubBabsAdmin, fetchAllBabsAdmin, fetchSubBabsForMultiple, fetchVisibilitySettings, saveVisibilitySettings, type VisibilitySettings, type BabInfo, type SubBabInfo } from '@/lib/questions';
 import { categorySlugToLabel, normalizeCategorySlug } from '@/lib/categories';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
@@ -51,6 +51,9 @@ type QuestionDraft = {
   option_d: string;
   option_e: string;
   correct_answer: string;
+  question_type: 'multiple_choice' | 'short_answer';
+  short_answer: string;
+  is_hidden: boolean;
   babs: string[];
   sub_babs: string[];
 };
@@ -65,6 +68,9 @@ const EMPTY_DRAFT: QuestionDraft = {
   option_d: '<p></p>',
   option_e: '<p></p>',
   correct_answer: 'A',
+  question_type: 'multiple_choice',
+  short_answer: '',
+  is_hidden: false,
   babs: [],
   sub_babs: [],
 };
@@ -93,17 +99,19 @@ export default function AdminPage() {
 
   useEffect(() => {
     localStorage.setItem('admin_active_tab', activeTab);
-    
+
     // Trigger initial fetch for specific tabs
     if (activeTab === 'results') {
       void fetchResults();
-      void loadHiddenSubBabs();
+      void loadVisibilitySettings();
     } else if (activeTab === 'settings') {
+      void loadAllBabsAdmin();
       void loadAllSubBabsAdmin();
-      void loadHiddenSubBabs();
+      void loadVisibilitySettings();
     } else if (activeTab === 'quiz') {
+      void loadAllBabsAdmin();
       void loadAllSubBabsAdmin();
-      void loadHiddenSubBabs();
+      void loadVisibilitySettings();
     } else {
       void fetchAdminQuestions();
     }
@@ -113,9 +121,9 @@ export default function AdminPage() {
     // Auth Check
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       const savedVersion = localStorage.getItem('admin_auth_version');
-      
+
       if (session && savedVersion === AUTH_VERSION) {
         setIsAuthenticated(true);
       } else {
@@ -140,6 +148,8 @@ export default function AdminPage() {
   const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>([]);
   const [activebabFilter, setActivebabFilter] = useState<string>('all');
   const [activeSubBabFilter, setActiveSubBabFilter] = useState<string>('all');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'short_answer'>('all');
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'visible' | 'hidden'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Auth state
@@ -168,7 +178,13 @@ export default function AdminPage() {
   const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
 
   // Settings state
-  const [hiddenSubBabs, setHiddenSubBabs] = useState<string[]>([]);
+  const [visibilitySettings, setVisibilitySettings] = useState<VisibilitySettings>({
+    hidden_babs: [],
+    admin_only_babs: [],
+    hidden_sub_babs: [],
+    admin_only_sub_babs: []
+  });
+  const [expandedBabs, setExpandedBabs] = useState<string[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
@@ -203,8 +219,9 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(session.user.id);
         void fetchAdminQuestions();
-        void loadAllbabs();
-        void loadHiddenSubBabs();
+        void loadAllBabsAdmin();
+        void loadAllSubBabsAdmin();
+        void loadVisibilitySettings();
       } else {
         // If they have a session but wrong/missing version, log them out
         await supabase.auth.signOut();
@@ -221,10 +238,11 @@ export default function AdminPage() {
       // Trigger initial fetch for that tab
       if (savedTab === 'results') {
         void fetchResults();
-        void loadHiddenSubBabs();
+        void loadVisibilitySettings();
       } else if (savedTab === 'settings' || savedTab === 'quiz') {
+        void loadAllBabsAdmin();
         void loadAllSubBabsAdmin();
-        void loadHiddenSubBabs();
+        void loadVisibilitySettings();
       } else {
         void fetchAdminQuestions();
       }
@@ -271,7 +289,7 @@ export default function AdminPage() {
   const subBabTabs = useMemo(() => {
     let list = adminQuestions;
     if (activebabFilter !== 'all') {
-       list = adminQuestions.filter(q => q.babs?.includes(activebabFilter));
+      list = adminQuestions.filter(q => q.babs?.includes(activebabFilter));
     }
     const subBabs = Array.from(new Set(list.flatMap(q => q.sub_babs || []))).sort();
     return ['all', ...subBabs];
@@ -285,6 +303,13 @@ export default function AdminPage() {
     if (activeSubBabFilter !== 'all') {
       list = list.filter(q => q.sub_babs?.includes(activeSubBabFilter));
     }
+    if (questionTypeFilter !== 'all') {
+      list = list.filter(q => q.question_type === questionTypeFilter);
+    }
+    if (visibilityFilter !== 'all') {
+      const shouldBeHidden = visibilityFilter === 'hidden';
+      list = list.filter(q => Boolean(q.is_hidden) === shouldBeHidden);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(question => {
@@ -293,7 +318,7 @@ export default function AdminPage() {
       });
     }
     return list;
-  }, [activebabFilter, activeSubBabFilter, adminQuestions, searchQuery]);
+  }, [activebabFilter, activeSubBabFilter, visibilityFilter, questionTypeFilter, adminQuestions, searchQuery]);
 
   const getCategoryLabel = (category: string) => {
     if (category === 'all') {
@@ -333,9 +358,9 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(data.session.user.id);
         void fetchAdminQuestions();
-        void loadAllbabs();
+        void loadAllBabsAdmin();
         void loadAllSubBabsAdmin();
-        void loadHiddenSubBabs();
+        void loadVisibilitySettings();
       }
     } catch (err: any) {
       setAuthError(err.message || 'Login failed');
@@ -344,12 +369,14 @@ export default function AdminPage() {
     }
   };
 
-  const loadAllbabs = async () => {
+
+
+  const loadAllBabsAdmin = async () => {
     try {
-      const hbs = await fetchbabs();
+      const hbs = await fetchAllBabsAdmin();
       setAllbabs(hbs);
     } catch (err) {
-      console.error('Failed to load BABs list:', err);
+      console.error('Failed to load Admin BABs list:', err);
     }
   };
 
@@ -488,10 +515,10 @@ export default function AdminPage() {
       // In Survival, question_ids is populated lazily.
       // The "active" question is the latest one in question_ids that isn't answered,
       // OR if all in question_ids are answered, it's the one at current_index + 1 (which might not exist yet).
-      
+
       const lastQuestionIdx = session.question_ids.length - 1;
       const isLastAnswered = session.user_answers[lastQuestionIdx.toString()] !== undefined;
-      
+
       let currentIdxToFetch = -1;
       if (lastQuestionIdx >= 0 && !isLastAnswered) {
         // User has fetched a question but not answered it yet
@@ -502,7 +529,7 @@ export default function AdminPage() {
       }
 
       const currentQuestionId = currentIdxToFetch >= 0 ? session.question_ids[currentIdxToFetch] : null;
-      
+
       if (currentQuestionId) {
         const [question] = await fetchQuestionsByIds([currentQuestionId]);
         setCurrentTrackedQuestion(question || null);
@@ -513,7 +540,7 @@ export default function AdminPage() {
       // History = questions that have an entry in user_answers
       const answeredIndices = Object.keys(session.user_answers).map(Number).sort((a, b) => a - b);
       const answeredIds = answeredIndices.map(idx => session.question_ids[idx]).filter(Boolean);
-      
+
       if (answeredIds.length > 0) {
         const questions = await fetchQuestionsByIds(answeredIds);
         // Map back to maintain order if fetch returns different order
@@ -530,14 +557,14 @@ export default function AdminPage() {
   };
 
 
-  const loadHiddenSubBabs = async () => {
+  const loadVisibilitySettings = async () => {
     setSettingsLoading(true);
     try {
-      const hidden = await fetchHiddenSubBabs();
-      setHiddenSubBabs(hidden);
+      const vs = await fetchVisibilitySettings();
+      setVisibilitySettings(vs);
       setSettingsDirty(false);
     } catch (err) {
-      console.error('Failed to load hidden sub_babs:', err);
+      console.error('Failed to load visibility settings:', err);
     } finally {
       setSettingsLoading(false);
     }
@@ -546,7 +573,7 @@ export default function AdminPage() {
   const handleSaveSettings = async () => {
     setSettingsSaving(true);
     try {
-      await saveHiddenSubBabs(hiddenSubBabs);
+      await saveVisibilitySettings(visibilitySettings);
       setSettingsDirty(false);
       window.alert('Settings saved. Changes will appear to users on next page load.');
     } catch (err) {
@@ -557,14 +584,46 @@ export default function AdminPage() {
     }
   };
 
-  const toggleSubBabVisibility = (sb: string) => {
-    const normalized = normalizeCategorySlug(sb);
-    setHiddenSubBabs(prev => {
-      const next = prev.includes(normalized) ? prev.filter(s => s !== normalized) : [...prev, normalized];
+  const handleVisibilityChange = (type: 'babs' | 'sub_babs', slug: string, state: 'visible' | 'admin_only' | 'hidden') => {
+    setVisibilitySettings(prev => {
+      const next = { ...prev };
+      const normalized = normalizeCategorySlug(slug);
+
+      if (type === 'babs') {
+        next.hidden_babs = next.hidden_babs.filter(s => s !== normalized);
+        next.admin_only_babs = next.admin_only_babs.filter(s => s !== normalized);
+        if (state === 'hidden') next.hidden_babs.push(normalized);
+        else if (state === 'admin_only') next.admin_only_babs.push(normalized);
+      } else {
+        next.hidden_sub_babs = next.hidden_sub_babs.filter(s => s !== normalized);
+        next.admin_only_sub_babs = next.admin_only_sub_babs.filter(s => s !== normalized);
+        if (state === 'hidden') next.hidden_sub_babs.push(normalized);
+        else if (state === 'admin_only') next.admin_only_sub_babs.push(normalized);
+      }
+
       setSettingsDirty(true);
       return next;
     });
   };
+
+  const babSubBabMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    allbabs.forEach(b => map.set(normalizeCategorySlug(b.value), new Set()));
+
+    adminQuestions.forEach(q => {
+      const qBabs = q.babs || [];
+      const qSubBabs = q.sub_babs || [];
+
+      qBabs.forEach(b => {
+        const nb = normalizeCategorySlug(b);
+        if (!map.has(nb)) map.set(nb, new Set());
+        qSubBabs.forEach(sb => {
+          map.get(nb)!.add(normalizeCategorySlug(sb));
+        });
+      });
+    });
+    return map;
+  }, [adminQuestions, allbabs]);
 
   /**
    * Creates a new bab slug on-the-fly and adds it to the current question draft.
@@ -633,7 +692,7 @@ export default function AdminPage() {
     void fetchAdminQuestions();
   };
 
-   const handleTabChange = (tab: 'questions' | 'results' | 'settings' | 'quiz') => {
+  const handleTabChange = (tab: 'questions' | 'results' | 'settings' | 'quiz') => {
     setActiveTab(tab);
     localStorage.setItem('admin_active_tab', tab);
 
@@ -643,14 +702,14 @@ export default function AdminPage() {
 
     if (tab === 'results') {
       void fetchResults();
-      void loadHiddenSubBabs();
+      void loadVisibilitySettings();
       return;
     }
 
     if (tab === 'settings') {
-      void loadAllbabs();
+      void loadAllBabsAdmin();
       void loadAllSubBabsAdmin();
-      void loadHiddenSubBabs();
+      void loadVisibilitySettings();
       return;
     }
 
@@ -665,11 +724,13 @@ export default function AdminPage() {
     void loadAllSubBabsAdmin();
   };
 
-  const handleInputChange = (field: keyof QuestionDraft, value: string | string[]) => {
+  const handleInputChange = (field: keyof QuestionDraft, value: string | string[] | boolean) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
   };
 
   const buildQuestionPayload = () => {
+    const questionType = formData.question_type || 'multiple_choice';
+    const normalizedShortAnswer = stripHtml(String(formData.short_answer ?? '')).trim();
     const payload: Omit<RawQuestion, 'id'> = {
       question_text: sanitizeRichHtml(formData.question_text),
       option_a: sanitizeRichHtml(formData.option_a),
@@ -677,24 +738,35 @@ export default function AdminPage() {
       option_c: sanitizeRichHtml(formData.option_c),
       option_d: sanitizeRichHtml(formData.option_d),
       option_e: sanitizeRichHtml(formData.option_e),
-      correct_answer: formData.correct_answer.toUpperCase(),
+      correct_answer: questionType === 'short_answer' ? 'A' : formData.correct_answer.toUpperCase(),
+      question_type: questionType,
+      short_answer: questionType === 'short_answer' ? normalizedShortAnswer : '',
+      is_hidden: formData.is_hidden,
       babs: formData.babs,
       sub_babs: formData.sub_babs,
     };
 
     const hasMedia = (html: string) => /<(img|iframe)[^>]*>/i.test(html);
 
-    const missingContent = [
-      payload.question_text,
-      payload.option_a,
-      payload.option_b,
-      payload.option_c,
-      payload.option_d,
-      payload.option_e,
-    ].some((entry) => stripHtml(entry).length === 0 && !hasMedia(entry));
+    const missingQuestion = stripHtml(payload.question_text).length === 0 && !hasMedia(payload.question_text);
+    if (missingQuestion) {
+      throw new Error('Please fill in the question text before saving.');
+    }
 
-    if (missingContent) {
-      throw new Error('Please fill in the question and all answer options before saving.');
+    if (questionType === 'multiple_choice') {
+      const missingOptions = [
+        payload.option_a,
+        payload.option_b,
+        payload.option_c,
+        payload.option_d,
+        payload.option_e,
+      ].some((entry) => stripHtml(entry).length === 0 && !hasMedia(entry));
+
+      if (missingOptions) {
+        throw new Error('Please fill in all answer options before saving.');
+      }
+    } else if (!normalizedShortAnswer) {
+      throw new Error('Please provide the short answer before saving.');
     }
 
     if (payload.babs.length === 0 || payload.sub_babs.length === 0) {
@@ -729,7 +801,7 @@ export default function AdminPage() {
       }
 
       await fetchAdminQuestions();
-      await loadAllbabs();
+      await loadAllBabsAdmin();
       await loadAllSubBabsAdmin();
       closeModal();
     } catch (err) {
@@ -784,6 +856,9 @@ export default function AdminPage() {
       option_d: ensureHtmlDocument(question.option_d),
       option_e: ensureHtmlDocument(question.option_e),
       correct_answer: question.correct_answer,
+      question_type: question.question_type === 'short_answer' ? 'short_answer' : 'multiple_choice',
+      short_answer: question.short_answer || '',
+      is_hidden: Boolean(question.is_hidden),
       babs: question.babs || [],
       sub_babs: question.sub_babs || [],
     });
@@ -811,14 +886,14 @@ export default function AdminPage() {
             <div className="w-20 h-20 bg-[#FF9500]/10 text-[#FF9500] rounded-[24px] flex items-center justify-center mx-auto mb-8 text-3xl shadow-inner">
               🔒
             </div>
-            
+
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">Admin Login</h1>
             <p className="text-slate-400 text-sm mb-10 font-medium tracking-tight">Enter your credentials to access the panel.</p>
 
             <form onSubmit={handleLogin} className="space-y-4 text-left">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Email Address</label>
-                <input 
+                <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -830,7 +905,7 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Password</label>
-                <input 
+                <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -846,7 +921,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              <button 
+              <button
                 type="submit"
                 disabled={authLoading}
                 style={{ background: '#4A90D9' }}
@@ -855,7 +930,7 @@ export default function AdminPage() {
                 {authLoading ? 'Verifying...' : 'Sign In to Dashboard'}
               </button>
 
-              <button 
+              <button
                 type="button"
                 onClick={() => window.location.href = '/'}
                 className="w-full py-4 bg-white border-2 border-slate-100 text-slate-400 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-colors mt-2"
@@ -864,7 +939,7 @@ export default function AdminPage() {
               </button>
             </form>
           </div>
-          
+
           <p className="text-center mt-8 text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">
             OSN SMANDAPURA • SECURE ADMIN ACCESS
           </p>
@@ -891,28 +966,28 @@ export default function AdminPage() {
       <div className="grid grid-cols-2 sm:flex gap-2 mb-6 md:mb-8 border-b border-slate-100 pb-4">
         <button
           onClick={() => handleTabChange('questions')}
-          style={activeTab === 'questions' ? {background: '#4A90D9'} : {}}
+          style={activeTab === 'questions' ? { background: '#4A90D9' } : {}}
           className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'questions' ? 'text-white shadow-md shadow-blue-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#4A90D9] hover:text-[#4A90D9]'}`}
         >
           📝 Questions
         </button>
         <button
           onClick={() => handleTabChange('results')}
-          style={activeTab === 'results' ? {background: '#FF9500'} : {}}
+          style={activeTab === 'results' ? { background: '#FF9500' } : {}}
           className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'results' ? 'text-white shadow-md shadow-orange-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#FF9500] hover:text-[#FF9500]'}`}
         >
           📊 Results
         </button>
         <button
           onClick={() => handleTabChange('quiz')}
-          style={activeTab === 'quiz' ? {background: '#34C759'} : {}}
+          style={activeTab === 'quiz' ? { background: '#34C759' } : {}}
           className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'quiz' ? 'text-white shadow-md shadow-green-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#34C759] hover:text-[#34C759]'}`}
         >
           🎮 Quiz
         </button>
         <button
           onClick={() => handleTabChange('settings')}
-          style={activeTab === 'settings' ? {background: '#64748B'} : {}}
+          style={activeTab === 'settings' ? { background: '#64748B' } : {}}
           className={`sm:ml-auto px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'settings' ? 'text-white shadow-md shadow-slate-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-400 hover:text-slate-600'}`}
         >
           ⚙️ Settings
@@ -924,7 +999,7 @@ export default function AdminPage() {
           <div className="mb-5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
             <button
               onClick={startAddNew}
-              style={{background: '#34C759'}}
+              style={{ background: '#34C759' }}
               className="px-4 sm:px-5 py-2.5 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity shadow-md shadow-green-200 flex items-center justify-center gap-2"
             >
               <span className="text-lg leading-none">+</span> Add New Question
@@ -937,7 +1012,7 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="mb-5 flex flex-col sm:flex-row gap-4 w-full sm:max-w-xl">
+          <div className="mb-5 flex flex-col sm:flex-row gap-4 w-full sm:max-w-4xl">
             <div className="flex-1">
               <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter BAB</label>
               <select
@@ -966,6 +1041,32 @@ export default function AdminPage() {
                     {getCategoryLabel(category).toUpperCase()}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Jenis Soal</label>
+              <select
+                value={questionTypeFilter}
+                onChange={(e) => setQuestionTypeFilter(e.target.value as 'all' | 'multiple_choice' | 'short_answer')}
+                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+              >
+                <option value="all">Semua Jenis</option>
+                <option value="multiple_choice">Pilihan Ganda</option>
+                <option value="short_answer">Isian Singkat</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Visibility</label>
+              <select
+                value={visibilityFilter}
+                onChange={(e) => setVisibilityFilter(e.target.value as 'all' | 'visible' | 'hidden')}
+                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+              >
+                <option value="all">All</option>
+                <option value="visible">Visible</option>
+                <option value="hidden">Hidden</option>
               </select>
             </div>
           </div>
@@ -1002,40 +1103,54 @@ export default function AdminPage() {
 
               {filteredQuestions.map((question, index) => {
                 const previewText = stripHtml(question.question_text);
+                const isShortAnswer = question.question_type === 'short_answer';
+                const shortAnswerPreview = question.short_answer?.length > 36
+                  ? `${question.short_answer.slice(0, 36)}...`
+                  : question.short_answer || '-';
 
                 return (
-                  <div key={question.id ?? index} className="border-2 border-slate-100 rounded-xl p-5 bg-white hover:border-[#4A90D9]/30 hover:shadow-md hover:shadow-blue-50 transition-all">
+                  <div key={question.id ?? index} className="relative border-2 border-slate-100 rounded-xl p-5 bg-white hover:border-[#4A90D9]/30 hover:shadow-md hover:shadow-blue-50 transition-all">
                     <div className="font-semibold text-slate-700 mb-2 text-sm leading-relaxed">
                       Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
                     </div>
                     <div className="text-xs text-slate-400 mb-1">BAB: {question.babs?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-1">Sub-bab: {question.sub_babs?.join(', ').replaceAll('_', ' ')}</div>
-                    <div className="text-xs text-slate-400 mb-4">Correct: <span className="font-bold text-[#34C759]">{question.correct_answer}</span></div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedQuestion(question);
-                          setIsEditing(false);
-                          setIsAdding(false);
-                        }}
-                        className="px-3 py-1.5 bg-[#4A90D9]/10 text-[#4A90D9] rounded-lg text-xs font-semibold hover:bg-[#4A90D9]/20 transition-colors"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => startEdit(question)}
-                        className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-xs font-semibold hover:bg-[#FF9500]/20 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeletingQuestion(question)}
-                        className="px-3 py-1.5 bg-[#FF3B30]/10 text-[#FF3B30] rounded-lg text-xs font-semibold hover:bg-[#FF3B30]/20 transition-colors cursor-pointer"
-                      >
-                        Delete
-                      </button>
+                    <div className="text-xs text-slate-400 mb-4">
+                      {isShortAnswer ? 'Answer:' : 'Correct:'}{' '}
+                      <span className={`font-bold ${isShortAnswer ? 'text-slate-600' : 'text-[#34C759]'}`}>
+                        {isShortAnswer ? shortAnswerPreview : question.correct_answer}
+                      </span>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedQuestion(question);
+                            setIsEditing(false);
+                            setIsAdding(false);
+                          }}
+                          className="px-3 py-1.5 bg-[#4A90D9]/10 text-[#4A90D9] rounded-lg text-xs font-semibold hover:bg-[#4A90D9]/20 transition-colors"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => startEdit(question)}
+                          className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-xs font-semibold hover:bg-[#FF9500]/20 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingQuestion(question)}
+                          className="px-3 py-1.5 bg-[#FF3B30]/10 text-[#FF3B30] rounded-lg text-xs font-semibold hover:bg-[#FF3B30]/20 transition-colors cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                    </div>
+                    <span
+                      className={`absolute bottom-3 right-3 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shadow-sm ${question.is_hidden ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-green-100 text-green-700 border border-green-200'}`}
+                    >
+                      {question.is_hidden ? 'HIDDEN' : 'VISIBLE'}
+                    </span>
                   </div>
                 );
               })}
@@ -1065,7 +1180,7 @@ export default function AdminPage() {
                     setIsLiveMode(true);
                     void fetchLiveSessions();
                   }}
-                  style={isLiveMode ? {background: '#34C759'} : {}}
+                  style={isLiveMode ? { background: '#34C759' } : {}}
                   className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all flex items-center gap-2 ${isLiveMode
                     ? 'text-white border-transparent shadow-md shadow-green-200'
                     : 'bg-white border-slate-200 text-slate-500 hover:border-[#34C759] hover:text-[#34C759]'
@@ -1079,7 +1194,7 @@ export default function AdminPage() {
                 </button>
                 <button
                   onClick={() => setIsLiveMode(false)}
-                  style={!isLiveMode ? {background: '#FF9500'} : {}}
+                  style={!isLiveMode ? { background: '#FF9500' } : {}}
                   className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all flex items-center gap-2 ${!isLiveMode
                     ? 'text-white border-transparent shadow-md shadow-orange-200'
                     : 'bg-white border-slate-200 text-slate-500 hover:border-[#FF9500] hover:text-[#FF9500]'
@@ -1106,7 +1221,7 @@ export default function AdminPage() {
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap sm:ml-2">Sub-bab</label>
                   <select
@@ -1130,7 +1245,7 @@ export default function AdminPage() {
                   <button
                     key={mode}
                     onClick={() => handleModeFilterChange(mode)}
-                    style={activeModeFilter === mode ? {background: mode === 'survival' ? '#FF3B30' : '#4A90D9'} : {}}
+                    style={activeModeFilter === mode ? { background: mode === 'survival' ? '#FF3B30' : '#4A90D9' } : {}}
                     className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${activeModeFilter === mode
                       ? 'text-white border-transparent shadow-md ' + (mode === 'survival' ? 'shadow-red-200' : 'shadow-blue-200')
                       : 'bg-white border-slate-200 text-slate-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
@@ -1146,23 +1261,23 @@ export default function AdminPage() {
           {!isLiveMode && statsData.length > 0 && (
             <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#FF9500]/30 transition-colors">
-                <div className="text-2xl font-bold" style={{color: '#FF9500'}}>{statsData.length}</div>
+                <div className="text-2xl font-bold" style={{ color: '#FF9500' }}>{statsData.length}</div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Attempts</div>
               </div>
               <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#34C759]/30 transition-colors">
-                <div className="text-2xl font-bold" style={{color: '#34C759'}}>
+                <div className="text-2xl font-bold" style={{ color: '#34C759' }}>
                   {Math.round(statsData.reduce((sum, row) => sum + row.score, 0) / statsData.length * 10) / 10}
                 </div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Average Score</div>
               </div>
               <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#4A90D9]/30 transition-colors">
-                <div className="text-2xl font-bold" style={{color: '#4A90D9'}}>
+                <div className="text-2xl font-bold" style={{ color: '#4A90D9' }}>
                   {statsData.reduce((sum, row) => sum + row.total_questions, 0)}
                 </div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Questions Answered</div>
               </div>
               <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#AF52DE]/30 transition-colors">
-                <div className="text-2xl font-bold" style={{color: '#AF52DE'}}>
+                <div className="text-2xl font-bold" style={{ color: '#AF52DE' }}>
                   {statsData.length > 0 ? Math.round(statsData.filter((row) => (row.score / row.total_questions) >= 0.7).length / statsData.length * 100) : 0}%
                 </div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pass Rate (70%+)</div>
@@ -1389,11 +1504,10 @@ export default function AdminPage() {
                               <button
                                 key={i}
                                 onClick={() => fetchResults(i)}
-                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                                  resultPage === i
-                                    ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                }`}
+                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${resultPage === i
+                                  ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                  }`}
                               >
                                 {i + 1}
                               </button>
@@ -1423,51 +1537,130 @@ export default function AdminPage() {
       )}
 
       {activeTab === 'settings' && (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b">
-              <h2 className="text-lg font-bold text-gray-900">Sub-bab Visibility</h2>
+              <h2 className="text-lg font-bold text-gray-900">Visibility Settings</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Hidden sub-babs are removed from the user-facing exam frontend. Admin panel is unaffected.
+                Configure visibility for Bab and Sub-bab. "Hidden" removes it completely. "Only Admin" allows admins to select it but hides it from users.
               </p>
             </div>
 
             {settingsLoading ? (
               <div className="p-6 text-gray-400 text-sm animate-pulse">Loading settings...</div>
             ) : (
-              <div className="p-6 space-y-3">
-                {allSubBabsAdmin.length === 0 && (
-                  <p className="text-sm text-gray-400 italic">No sub-babs found. Add questions first.</p>
+              <div className="p-6 space-y-4">
+                {babSubBabMap.size === 0 && (
+                  <p className="text-sm text-gray-400 italic">No categories found. Add questions first.</p>
                 )}
-                {allSubBabsAdmin.map((cat) => {
-                  const isHidden = hiddenSubBabs.includes(normalizeCategorySlug(cat.value));
+                {Array.from(babSubBabMap.entries()).map(([babSlug, subBabsSet]) => {
+                  const babLabel = allbabs.find(b => normalizeCategorySlug(b.value) === babSlug)?.label || babSlug;
+                  const isExpanded = expandedBabs.includes(babSlug);
+
+                  const babState = visibilitySettings.hidden_babs.includes(babSlug)
+                    ? 'hidden'
+                    : visibilitySettings.admin_only_babs.includes(babSlug)
+                      ? 'admin_only'
+                      : 'visible';
+
                   return (
-                    <div key={cat.value} className="flex items-center justify-between py-3 px-4 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
-                      <div>
-                        <p className="font-semibold text-gray-800 capitalize">{cat.label}</p>
-                        <p className="text-xs text-gray-400 uppercase tracking-wider">{cat.value}</p>
+                    <div key={babSlug} className="border border-gray-200 rounded-xl overflow-hidden">
+                      {/* Bab Row */}
+                      <div
+                        className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${isExpanded ? 'bg-indigo-50/50' : 'bg-gray-50 hover:bg-gray-100'}`}
+                        onClick={() => setExpandedBabs(prev => isExpanded ? prev.filter(b => b !== babSlug) : [...prev, babSlug])}
+                      >
+                        <div className="flex items-center gap-3">
+                          <svg className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                          <div>
+                            <h3 className="font-bold text-gray-800 capitalize">{babLabel}</h3>
+                            <p className="text-xs text-gray-500 uppercase tracking-wider">{babSlug} ({subBabsSet.size} Sub-babs)</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                          <div className="flex bg-[#c2c2c2] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => handleVisibilityChange('babs', babSlug, 'hidden')}
+                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${babState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                              title="Hidden (Sembunyikan dari semua)"
+                            >
+                              <svg className="w-4 h-4 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleVisibilityChange('babs', babSlug, 'admin_only')}
+                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${babState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                              title="Admin Only (Hanya muncul di Admin Panel)"
+                            >
+                              <span className="font-bold text-lg leading-none text-white pb-0.5">/</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleVisibilityChange('babs', babSlug, 'visible')}
+                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${babState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                              title="Visible (Muncul untuk User)"
+                            >
+                              <svg className="w-5 h-5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs font-bold uppercase ${
-                          isHidden ? 'text-gray-400' : 'text-indigo-600'
-                        }`}>
-                          {isHidden ? 'Hidden' : 'Visible'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => toggleSubBabVisibility(cat.value)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                            isHidden ? 'bg-gray-300' : 'bg-indigo-600'
-                          }`}
-                          title={isHidden ? 'Hidden from users — click to show' : 'Visible to users — click to hide'}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                              isHidden ? 'translate-x-1' : 'translate-x-6'
-                            }`}
-                          />
-                        </button>
-                      </div>
+
+                      {/* Sub-bab Rows */}
+                      {isExpanded && (
+                        <div className="divide-y divide-gray-100 bg-white border-t border-gray-100">
+                          {subBabsSet.size === 0 ? (
+                            <div className="p-4 text-sm text-gray-400 italic pl-12">No sub-babs under this Bab.</div>
+                          ) : (
+                            Array.from(subBabsSet).sort().map(subSlug => {
+                              const subLabel = allSubBabsAdmin.find(s => normalizeCategorySlug(s.value) === subSlug)?.label || subSlug;
+                              const subState = visibilitySettings.hidden_sub_babs.includes(subSlug)
+                                ? 'hidden'
+                                : visibilitySettings.admin_only_sub_babs.includes(subSlug)
+                                  ? 'admin_only'
+                                  : 'visible';
+
+                              return (
+                                <div key={subSlug} className="flex items-center justify-between p-3 pl-12 hover:bg-gray-50 transition-colors">
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-700 capitalize">{subLabel}</p>
+                                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">{subSlug}</p>
+                                  </div>
+                                  <div className="flex bg-[#c2c2c2] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleVisibilityChange('sub_babs', subSlug, 'hidden')}
+                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${subState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                      title="Hidden (Sembunyikan dari semua)"
+                                    >
+                                      <svg className="w-3.5 h-3.5 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleVisibilityChange('sub_babs', subSlug, 'admin_only')}
+                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${subState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                      title="Admin Only (Hanya muncul di Admin Panel)"
+                                    >
+                                      <span className="font-bold text-base leading-none text-white pb-0.5">/</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleVisibilityChange('sub_babs', subSlug, 'visible')}
+                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${subState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                      title="Visible (Muncul untuk User)"
+                                    >
+                                      <svg className="w-4 h-4 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1500,9 +1693,21 @@ export default function AdminPage() {
           >
             {/* Modal Header */}
             <div className="p-4 sm:p-6 border-b flex justify-between items-center bg-white sticky top-0 z-10">
-              <h2 className="text-xl font-bold">
-                {isAdding ? 'Add New Question' : isEditing ? 'Edit Question' : 'Question Details'}
-              </h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-xl font-bold">
+                  {isAdding ? 'Add New Question' : isEditing ? 'Edit Question' : 'Question Details'}
+                </h2>
+                {selectedQuestion && !isAdding && !isEditing && (
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+                      ID: {selectedQuestion.id}
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-full ${selectedQuestion.is_hidden ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                      {selectedQuestion.is_hidden ? 'HIDDEN' : 'VISIBLE'}
+                    </span>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={closeModal}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-xl"
@@ -1520,35 +1725,85 @@ export default function AdminPage() {
                     label="Question Text"
                     value={formData.question_text}
                     onChange={(value) => handleInputChange('question_text', value)}
+                    density="compact"
                   />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <RichTextEditorField
-                      label="Option A"
-                      value={formData.option_a}
-                      onChange={(value) => handleInputChange('option_a', value)}
-                    />
-                    <RichTextEditorField
-                      label="Option B"
-                      value={formData.option_b}
-                      onChange={(value) => handleInputChange('option_b', value)}
-                    />
-                    <RichTextEditorField
-                      label="Option C"
-                      value={formData.option_c}
-                      onChange={(value) => handleInputChange('option_c', value)}
-                    />
-                    <RichTextEditorField
-                      label="Option D"
-                      value={formData.option_d}
-                      onChange={(value) => handleInputChange('option_d', value)}
-                    />
-                    <RichTextEditorField
-                      label="Option E"
-                      value={formData.option_e}
-                      onChange={(value) => handleInputChange('option_e', value)}
-                    />
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">Jenis Pertanyaan</label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('question_type', 'multiple_choice')}
+                          className={`px-4 h-10 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${formData.question_type === 'multiple_choice'
+                            ? 'bg-nike-black text-white'
+                            : 'bg-white border border-gray-200 text-gray-500 hover:border-nike-black hover:text-nike-black'
+                            }`}
+                        >
+                          Pilihan Ganda
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('question_type', 'short_answer')}
+                          className={`px-4 h-10 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${formData.question_type === 'short_answer'
+                            ? 'bg-nike-black text-white'
+                            : 'bg-white border border-gray-200 text-gray-500 hover:border-nike-black hover:text-nike-black'
+                            }`}
+                        >
+                          Isian Singkat
+                        </button>
+                      </div>
+                    </div>
+
+                    {formData.question_type === 'short_answer' && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">Jawaban Singkat</label>
+                        <input
+                          type="text"
+                          value={formData.short_answer}
+                          onChange={(event) => handleInputChange('short_answer', event.target.value)}
+                          placeholder="Jawaban teks atau angka"
+                          className="w-full px-4 h-11 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-nike-black/10 focus:border-nike-black text-sm font-medium"
+                        />
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">Hanya teks atau angka.</p>
+                      </div>
+                    )}
                   </div>
+
+                  {formData.question_type === 'multiple_choice' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <RichTextEditorField
+                        label="Option A"
+                        value={formData.option_a}
+                        onChange={(value) => handleInputChange('option_a', value)}
+                        density="compact"
+                      />
+                      <RichTextEditorField
+                        label="Option B"
+                        value={formData.option_b}
+                        onChange={(value) => handleInputChange('option_b', value)}
+                        density="compact"
+                      />
+                      <RichTextEditorField
+                        label="Option C"
+                        value={formData.option_c}
+                        onChange={(value) => handleInputChange('option_c', value)}
+                        density="compact"
+                      />
+                      <RichTextEditorField
+                        label="Option D"
+                        value={formData.option_d}
+                        onChange={(value) => handleInputChange('option_d', value)}
+                        density="compact"
+                      />
+                      <RichTextEditorField
+                        label="Option E"
+                        value={formData.option_e}
+                        onChange={(value) => handleInputChange('option_e', value)}
+                        density="compact"
+                      />
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2">
@@ -1568,7 +1823,7 @@ export default function AdminPage() {
                                 return (
                                   <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
                                     {info?.label || val}
-                                    <button 
+                                    <button
                                       type="button"
                                       onClick={() => handleInputChange('babs', formData.babs.filter(v => v !== val))}
                                       className="hover:text-indigo-900 ml-1"
@@ -1580,7 +1835,7 @@ export default function AdminPage() {
                               })
                             )}
                           </div>
-                          
+
                           {/* Dropdown list for Bab multi-select */}
                           <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
                             {allbabs.length === 0 ? (
@@ -1598,11 +1853,10 @@ export default function AdminPage() {
                                         : [...formData.babs, cat.value];
                                       handleInputChange('babs', next);
                                     }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${
-                                      isSelected
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
-                                    }`}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${isSelected
+                                      ? 'bg-indigo-600 text-white shadow-sm'
+                                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
+                                      }`}
                                   >
                                     <span>{cat.label}</span>
                                     {isSelected && <span>✓</span>}
@@ -1612,7 +1866,7 @@ export default function AdminPage() {
                             )}
                           </div>
                         </div>
-                        
+
                         {/* Add New Bab inline */}
                         <div className="flex gap-2 pt-1">
                           <input
@@ -1650,7 +1904,7 @@ export default function AdminPage() {
                                 return (
                                   <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
                                     {info?.label || val}
-                                    <button 
+                                    <button
                                       type="button"
                                       onClick={() => handleInputChange('sub_babs', formData.sub_babs.filter(v => v !== val))}
                                       className="hover:text-indigo-900 ml-1"
@@ -1662,7 +1916,7 @@ export default function AdminPage() {
                               })
                             )}
                           </div>
-                          
+
                           {/* Dropdown list for multi-select */}
                           <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
                             {allSubBabsAdmin.length === 0 ? (
@@ -1680,11 +1934,10 @@ export default function AdminPage() {
                                         : [...formData.sub_babs, cat.value];
                                       handleInputChange('sub_babs', next);
                                     }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${
-                                      isSelected
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
-                                    }`}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${isSelected
+                                      ? 'bg-indigo-600 text-white shadow-sm'
+                                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
+                                      }`}
                                   >
                                     <span>{cat.label}</span>
                                     {isSelected && <span>✓</span>}
@@ -1719,59 +1972,106 @@ export default function AdminPage() {
                       </div>
                     </div>
 
+                    {formData.question_type === 'multiple_choice' && (
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">Correct Answer</label>
+                        <select
+                          value={formData.correct_answer}
+                          onChange={(event) => handleInputChange('correct_answer', event.target.value)}
+                          className="w-full px-4 h-[48px] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium appearance-none bg-white"
+                        >
+                          <option value="A">Option A</option>
+                          <option value="B">Option B</option>
+                          <option value="C">Option C</option>
+                          <option value="D">Option D</option>
+                          <option value="E">Option E</option>
+                        </select>
+                      </div>
+                    )}
+
                     <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">Correct Answer</label>
-                      <select
-                        value={formData.correct_answer}
-                        onChange={(event) => handleInputChange('correct_answer', event.target.value)}
-                        className="w-full px-4 h-[48px] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium appearance-none bg-white"
+                      <label className="block text-sm font-medium text-gray-700">Is Hidden</label>
+                      <label
+                        className={`flex items-center justify-between w-full h-[48px] px-4 border-2 rounded-lg cursor-pointer transition-all ${formData.is_hidden ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}
                       >
-                        <option value="A">Option A</option>
-                        <option value="B">Option B</option>
-                        <option value="C">Option C</option>
-                        <option value="D">Option D</option>
-                        <option value="E">Option E</option>
-                      </select>
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={formData.is_hidden}
+                          onChange={(event) => handleInputChange('is_hidden', event.target.checked)}
+                        />
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${formData.is_hidden ? 'text-red-600' : 'text-gray-500'}`}>
+                          {formData.is_hidden ? 'Hidden' : 'Visible'}
+                        </span>
+                        <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_hidden ? 'bg-red-500' : 'bg-gray-300'}`}>
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_hidden ? 'translate-x-6' : 'translate-x-1'}`}
+                          />
+                        </span>
+                      </label>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest">
+                        Hidden questions will be skipped for users.
+                      </p>
                     </div>
                   </div>
                 </div>
               ) : (
                 selectedQuestion && (
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Question Prompt</h3>
-                      <div className="p-4 sm:p-6 bg-white rounded-xl border border-gray-100 shadow-sm">
-                        <RichContent html={selectedQuestion.question_text} className="text-lg text-gray-900" />
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6">
+                    <div className="space-y-4">
+                      <div className="p-4 sm:p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Question Prompt</p>
+                        <RichContent html={selectedQuestion.question_text} className="text-base text-gray-900" />
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
-                        <div
-                          key={label}
-                          className={`p-4 rounded-xl border-2 transition-all ${selectedQuestion.correct_answer?.toLowerCase() === label
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-100 bg-white'
-                            }`}
-                        >
-                          <div className="flex items-center justify-between mb-3 pb-2 border-b border-inherit">
-                            <span className="font-bold uppercase text-gray-400 text-sm">Option {label}</span>
-                            {selectedQuestion.correct_answer?.toLowerCase() === label && (
-                              <span className="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Correct</span>
-                            )}
-                          </div>
-                          <RichContent
-                            html={(selectedQuestion as any)[`option_${label}`]}
-                            className="text-gray-900 font-medium"
-                          />
+                      {selectedQuestion.question_type === 'short_answer' ? (
+                        <div className="p-4 sm:p-5 bg-white rounded-2xl border border-gray-100">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Correct Answer</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {selectedQuestion.short_answer || '-'}
+                          </p>
                         </div>
-                      ))}
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
+                            <div
+                              key={label}
+                              className={`p-3 rounded-xl border-2 transition-all ${selectedQuestion.correct_answer?.toLowerCase() === label
+                                ? 'border-green-500 bg-green-50'
+                                : 'border-gray-100 bg-white'
+                                }`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-bold uppercase text-gray-400 text-[11px]">Option {label}</span>
+                                {selectedQuestion.correct_answer?.toLowerCase() === label && (
+                                  <span className="bg-green-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">Correct</span>
+                                )}
+                              </div>
+                              <RichContent
+                                html={(selectedQuestion as any)[`option_${label}`]}
+                                className="text-gray-900 text-sm font-medium"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="p-4 bg-white rounded-xl border border-gray-100">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Topik</p>
-                        <p className="font-bold text-gray-900 capitalize">
+                    <div className="space-y-3">
+                      <div className="p-4 bg-white rounded-2xl border border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Summary</p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-widest">
+                            {selectedQuestion.question_type === 'short_answer' ? 'Isian Singkat' : 'Pilihan Ganda'}
+                          </span>
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${selectedQuestion.is_hidden ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                            {selectedQuestion.is_hidden ? 'Hidden' : 'Visible'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white rounded-2xl border border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Topik</p>
+                        <p className="text-sm font-bold text-gray-900 capitalize">
                           {selectedQuestion.babs?.join(', ').replace(/_/g, ' ')} — {selectedQuestion.sub_babs?.join(', ').replace(/_/g, ' ')}
                         </p>
                       </div>
@@ -1849,17 +2149,26 @@ export default function AdminPage() {
                     <div className="p-6 bg-nike-grey-100 rounded-2xl border border-gray-200">
                       <RichContent html={currentTrackedQuestion.question_text} className="text-xl font-bold text-gray-900 leading-tight" />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
-                        <div key={label} className={`p-4 rounded-xl border-2 transition-all ${currentTrackedQuestion.correct_answer.toLowerCase() === label ? 'border-nike-green bg-green-50' : 'border-gray-100 bg-white'}`}>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-black uppercase text-gray-400">Option {label}</span>
-                            {currentTrackedQuestion.correct_answer.toLowerCase() === label && <span className="text-[10px] font-black uppercase text-nike-green">Correct Answer</span>}
+                    {currentTrackedQuestion.question_type === 'short_answer' ? (
+                      <div className="p-4 rounded-2xl border border-gray-200 bg-white">
+                        <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Correct Answer</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {currentTrackedQuestion.short_answer || '-'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
+                          <div key={label} className={`p-4 rounded-xl border-2 transition-all ${currentTrackedQuestion.correct_answer.toLowerCase() === label ? 'border-nike-green bg-green-50' : 'border-gray-100 bg-white'}`}>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-[10px] font-black uppercase text-gray-400">Option {label}</span>
+                              {currentTrackedQuestion.correct_answer.toLowerCase() === label && <span className="text-[10px] font-black uppercase text-nike-green">Correct Answer</span>}
+                            </div>
+                            <RichContent html={(currentTrackedQuestion as any)[`option_${label}`]} className="text-sm font-medium text-gray-800" />
                           </div>
-                          <RichContent html={(currentTrackedQuestion as any)[`option_${label}`]} className="text-sm font-medium text-gray-800" />
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-10 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
@@ -1906,8 +2215,11 @@ export default function AdminPage() {
 
                       if (!question) return null;
 
-                      const correctOptionText = (question as any)[`option_${question.correct_answer.toLowerCase()}`];
-                      const isCorrect = stripHtml(userAnswerText || '').trim() === stripHtml(correctOptionText || '').trim();
+                      const isShortAnswer = question.question_type === 'short_answer';
+                      const correctText = isShortAnswer
+                        ? question.short_answer
+                        : (question as any)[`option_${question.correct_answer.toLowerCase()}`];
+                      const isCorrect = stripHtml(userAnswerText || '').trim() === stripHtml(correctText || '').trim();
                       const isSkipped = userAnswerText === 'skipped' || !userAnswerText;
 
                       return (
@@ -1932,8 +2244,10 @@ export default function AdminPage() {
 
                               {!isCorrect && !isSkipped && (
                                 <div className="p-3 rounded-xl border-2 border-nike-green/20 bg-green-50/50">
-                                  <p className="text-[9px] font-black text-nike-green uppercase mb-1">Correct Answer ({question.correct_answer})</p>
-                                  <RichContent html={correctOptionText} className="text-sm font-medium text-nike-green" />
+                                  <p className="text-[9px] font-black text-nike-green uppercase mb-1">
+                                    Correct Answer{isShortAnswer ? '' : ` (${question.correct_answer})`}
+                                  </p>
+                                  <RichContent html={correctText} className="text-sm font-medium text-nike-green" />
                                 </div>
                               )}
                             </div>
@@ -1981,7 +2295,10 @@ export default function AdminPage() {
                     const question = detailQuestions.find(q => q.id === answer.question_id);
                     if (!question) return null;
 
-                    const correctOptionText = (question as any)[`option_${question.correct_answer.toLowerCase()}`];
+                    const isShortAnswer = question.question_type === 'short_answer';
+                    const correctText = isShortAnswer
+                      ? question.short_answer
+                      : (question as any)[`option_${question.correct_answer.toLowerCase()}`];
 
                     return (
                       <div key={idx} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
@@ -2002,8 +2319,10 @@ export default function AdminPage() {
 
                             {!answer.is_correct && (
                               <div className="p-3 rounded-xl border-2 border-nike-green/20 bg-green-50/50">
-                                <p className="text-[9px] font-black text-nike-green uppercase mb-1">Correct Answer ({question.correct_answer})</p>
-                                <RichContent html={correctOptionText} className="text-sm font-medium text-nike-green" />
+                                <p className="text-[9px] font-black text-nike-green uppercase mb-1">
+                                  Correct Answer{isShortAnswer ? '' : ` (${question.correct_answer})`}
+                                </p>
+                                <RichContent html={correctText} className="text-sm font-medium text-nike-green" />
                               </div>
                             )}
                           </div>
@@ -2055,10 +2374,9 @@ export default function AdminPage() {
       )}
 
       {activeTab === 'quiz' && (
-        <AdminQuizTab 
-          babs={allbabs.map((hb) => hb.value)} 
-          subBabs={allSubBabsAdmin.filter(c => !hiddenSubBabs.includes(normalizeCategorySlug(c.value)))} 
-          hiddenSubBabs={hiddenSubBabs}
+        <AdminQuizTab
+          babs={allbabs.filter(b => !visibilitySettings.hidden_babs.includes(normalizeCategorySlug(b.value))).map(hb => hb.value)}
+          subBabs={allSubBabsAdmin.filter(c => !visibilitySettings.hidden_sub_babs.includes(normalizeCategorySlug(c.value)))}
         />
       )}
     </div>

@@ -107,9 +107,9 @@ export async function createQuizSession(
 
   if (!percentages) {
     // If toggle OFF, distribute equally.
-    // If "Semua Sub-bab", fetch ALL sub-babs including hidden ones.
+    // If "Semua Sub-bab", fetch ALL sub-babs from visible questions.
     if (isAllSubBabs) {
-      let q = supabase.from('questions').select('sub_babs');
+      let q = supabase.from('questions').select('sub_babs').eq('is_hidden', false);
       if (bab !== 'None' && bab !== 'Semua BAB') {
         q = q.contains('babs', [bab]);
       }
@@ -135,7 +135,7 @@ export async function createQuizSession(
     const pool: string[] = []; // For fallback
 
     for (const sub of targetSubBabs) {
-      let query = supabase.from('questions').select('id');
+      let query = supabase.from('questions').select('id').eq('is_hidden', false);
       if (bab !== 'None' && bab !== 'Semua BAB') query = query.contains('babs', [bab]);
       query = query.contains('sub_babs', [sub]);
 
@@ -167,7 +167,7 @@ export async function createQuizSession(
 
   } else {
     // Failsafe: Fetch without percentages or subbabs
-    let query = supabase.from('questions').select('id');
+    let query = supabase.from('questions').select('id').eq('is_hidden', false);
     
     if (bab !== 'None' && bab !== 'Semua BAB') {
       query = query.contains('babs', [bab]);
@@ -183,11 +183,17 @@ export async function createQuizSession(
     questionIds = shuffled.map(q => q.id);
   }
   
+  const actualQuestionCount = questionIds.length;
+  if (actualQuestionCount === 0) {
+    console.error('No questions found for the given criteria.');
+    return null;
+  }
+
   const insertData: Record<string, unknown> = {
     quiz_code: code,
     bab: bab,
     sub_bab: isAllSubBabs ? 'Semua Sub-bab' : subBabs.join(', '),
-    question_count: questionCount,
+    question_count: actualQuestionCount,
     duration_minutes: durationMinutes,
     status: 'waiting',
     question_ids: questionIds,

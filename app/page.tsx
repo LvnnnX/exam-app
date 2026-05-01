@@ -93,7 +93,8 @@ export default function ExamPage() {
   const isSurvival = gameMode === 'survival';
 
   const total = totalQuestions;
-  const hasAnswerSelected = total > 0 && answers[current] !== undefined && answers[current] !== null;
+  const currentAnswerValue = answers[current];
+  const hasAnswerSelected = total > 0 && typeof currentAnswerValue === 'string' && currentAnswerValue.trim().length > 0;
 
   // ==================== SCORE CALCULATION ====================
   // Score is now calculated securely on the server via RPC.
@@ -124,6 +125,7 @@ export default function ExamPage() {
 
   // ==================== AUTOMATIC PERSISTENCE ====================
   useEffect(() => {
+    if (!isRestored) return; // Prevent overwriting storage with default state before restoration
     // Only save if we are in a valid state (e.g. have started or at least have a name)
     if (name) secureSave(STORAGE_KEYS.NAME, name);
     secureSave(STORAGE_KEYS.STEP, step);
@@ -139,7 +141,7 @@ export default function ExamPage() {
     secureSave(STORAGE_KEYS.SCORE, score);
     secureSave(STORAGE_KEYS.EXPIRES_AT, expiresAt);
     secureSave(STORAGE_KEYS.TIME_LIMIT, timeLimit);
-  }, [name, step, current, answers, sessionId, totalQuestions, bab, subBab, startTime, gameMode, lives, score, expiresAt, timeLimit]);
+  }, [isRestored, name, step, current, answers, sessionId, totalQuestions, bab, subBab, startTime, gameMode, lives, score, expiresAt, timeLimit]);
 
   const clearStorage = () => {
     secureClear();
@@ -185,14 +187,23 @@ export default function ExamPage() {
         }
         setAnswers(newAnswers);
 
-        // Fix rollback: if current question was already answered, advance to next
-        let restoreIndex = state.current_index;
-        if (state.user_answers && state.user_answers[String(restoreIndex)] != null) {
-          const nextIdx = restoreIndex + 1;
-          if (nextIdx < state.question_count) {
-            restoreIndex = nextIdx;
+        // Fix rollback: calculate the correct index by taking the max of local state and server answered state
+        let maxServerIndex = 0;
+        if (state.user_answers) {
+          for (let i = 0; i < state.question_count; i++) {
+            if (state.user_answers[String(i)] != null) {
+              maxServerIndex = i + 1;
+            } else {
+              break;
+            }
           }
         }
+        
+        let restoreIndex = Math.max(stored.current ?? 0, maxServerIndex);
+        if (restoreIndex > state.question_count) {
+          restoreIndex = state.question_count;
+        }
+
         setCurrent(restoreIndex);
         setStep(restoreIndex >= state.question_count ? 6 : 3);
 
@@ -294,7 +305,7 @@ export default function ExamPage() {
 
   const selectAnswer = (val: string) => {
     const updated = [...answers];
-    updated[current] = val;
+    updated[current] = val.trim().length > 0 ? val : null;
     setAnswers(updated);
   };
 

@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS questions (
   option_d TEXT NOT NULL,
   option_e TEXT NOT NULL,
   correct_answer CHAR(1) NOT NULL,
+  question_type TEXT NOT NULL DEFAULT 'multiple_choice',
+  short_answer TEXT,
+  is_hidden BOOLEAN NOT NULL DEFAULT false,
   categories TEXT[] NOT NULL DEFAULT '{general_informatics}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -564,6 +567,10 @@ $$;
 CREATE TABLE IF NOT EXISTS app_settings (
   id INTEGER PRIMARY KEY DEFAULT 1,
   hidden_categories TEXT[] NOT NULL DEFAULT '{}',
+  hidden_sub_babs TEXT[] NOT NULL DEFAULT '{}',
+  hidden_babs TEXT[] NOT NULL DEFAULT '{}',
+  admin_only_babs TEXT[] NOT NULL DEFAULT '{}',
+  admin_only_sub_babs TEXT[] NOT NULL DEFAULT '{}',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -596,7 +603,8 @@ ON CONFLICT (id) DO NOTHING;
 -- If questions table has old TEXT category column:
 --   ALTER TABLE questions ADD COLUMN IF NOT EXISTS categories TEXT[] NOT NULL DEFAULT '{general_informatics}';
 --   UPDATE questions SET categories = ARRAY[category] WHERE categories = '{general_informatics}';
---   ALTER TABLE questions DROP COLUMN IF EXISTS category;
+--   ALTER TABLE questions DROP COLUMN IF EXISTS category;
+
 -- ============================================================
 -- Quiz Live Game Schema
 -- ============================================================

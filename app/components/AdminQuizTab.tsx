@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, deleteQuizSession, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
-import { fetchQuestionsByIds, fetchSubBabs, type RawQuestion, type SubBabInfo } from '@/lib/questions';
+import { fetchQuestionsByIds, fetchSubBabsAdmin, type RawQuestion, type SubBabInfo } from '@/lib/questions';
 import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
 
-export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: string[], subBabs: { label: string, value: string }[], hiddenSubBabs: string[] }) {
+export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBabs: { label: string, value: string }[] }) {
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
@@ -46,17 +46,15 @@ export default function AdminQuizTab({ babs, subBabs, hiddenSubBabs }: { babs: s
 
       setLoadingSubBabs(true);
       try {
-        const filtered = await fetchSubBabs(selectedBab);
-        // Filter out hidden sub-babs
-        const visible = filtered.filter(sb => !hiddenSubBabs.includes(normalizeCategorySlug(sb.value)));
-        setDisplaySubBabs(visible);
+        const filtered = await fetchSubBabsAdmin(selectedBab);
+        setDisplaySubBabs(filtered);
       } finally {
         setLoadingSubBabs(false);
       }
     };
 
     void loadFiltered();
-  }, [selectedBab, subBabs, hiddenSubBabs]);
+  }, [selectedBab, subBabs]);
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);

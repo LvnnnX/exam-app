@@ -19,6 +19,8 @@ export const QUESTION_COUNTS = [5, 10, 20, 25, 30, 40] as const;
 export type QuestionCount = typeof QUESTION_COUNTS[number];
 
 // Raw question shape from Supabase (also used as fallback)
+export type QuestionType = 'multiple_choice' | 'short_answer';
+
 export type RawQuestion = {
   id: number;
   question_text: string;
@@ -28,11 +30,14 @@ export type RawQuestion = {
   option_d: string;
   option_e: string;
   correct_answer: string; // 'A' | 'B' | 'C' | 'D' | 'E'
+  question_type: QuestionType;
+  short_answer: string;
+  is_hidden: boolean;
   babs: string[];
   sub_babs: string[];
 };
 
-export type PublicQuestion = Omit<RawQuestion, 'correct_answer'>;
+export type PublicQuestion = Omit<RawQuestion, 'correct_answer' | 'is_hidden' | 'short_answer'>;
 
 // A single shuffled option for rendering
 export type ShuffledOption = {
@@ -44,6 +49,7 @@ export type ShuffledOption = {
 export type ShuffledQuestion = {
   id: number;
   question_text: string;
+  question_type: QuestionType;
   options: ShuffledOption[];   // 5 options in shuffled order
   correct_label: string;       // the new label (A-E) pointing to the correct answer
 };
@@ -87,7 +93,13 @@ function normalizeCorrectAnswer(value: string): string {
   return ANSWER_LABELS.includes(candidate as typeof ANSWER_LABELS[number]) ? candidate : 'A';
 }
 
+function normalizeQuestionType(value: string | null | undefined): QuestionType {
+  return value === 'short_answer' ? 'short_answer' : 'multiple_choice';
+}
+
 function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
+  const hasShortAnswer = raw.short_answer !== null && raw.short_answer !== undefined && String(raw.short_answer).trim() !== '';
+  
   return {
     ...raw,
     question_text: ensureHtmlDocument(String(raw.question_text ?? '')),
@@ -97,6 +109,9 @@ function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
     option_d: ensureHtmlDocument(String(raw.option_d ?? '')),
     option_e: ensureHtmlDocument(String(raw.option_e ?? '')),
     correct_answer: normalizeCorrectAnswer(raw.correct_answer),
+    question_type: hasShortAnswer ? 'short_answer' : 'multiple_choice',
+    short_answer: String(raw.short_answer ?? ''),
+    is_hidden: Boolean(raw.is_hidden),
   };
 }
 
@@ -109,54 +124,119 @@ export function normalizePublicQuestion(raw: PublicQuestion): PublicQuestion {
     option_c: ensureHtmlDocument(String(raw.option_c ?? '')),
     option_d: ensureHtmlDocument(String(raw.option_d ?? '')),
     option_e: ensureHtmlDocument(String(raw.option_e ?? '')),
+    question_type: normalizeQuestionType(raw.question_type),
   };
 }
 
+export type VisibilitySettings = {
+  hidden_babs: string[];
+  admin_only_babs: string[];
+  hidden_sub_babs: string[];
+  admin_only_sub_babs: string[];
+};
+
 /**
- * Fetches the list of admin-hidden sub_bab values from the app_settings table.
- * Returns an empty array if the table doesn't exist yet or has no entry.
+ * Fetches all visibility settings from the app_settings table.
  */
-export async function fetchHiddenSubBabs(): Promise<string[]> {
+export async function fetchVisibilitySettings(): Promise<VisibilitySettings> {
   const { data, error } = await supabase
     .from('app_settings')
-    .select('hidden_sub_babs')
+    .select('hidden_babs, admin_only_babs, hidden_sub_babs, admin_only_sub_babs')
     .eq('id', 1)
     .maybeSingle();
 
   if (error) {
-    console.error('Failed to fetch hidden sub_babs:', error.message);
-    return [];
+    console.error('Failed to fetch visibility settings:', error.message);
   }
 
-  return (data?.hidden_sub_babs as string[]) || [];
+  return {
+    hidden_babs: (data?.hidden_babs as string[]) || [],
+    admin_only_babs: (data?.admin_only_babs as string[]) || [],
+    hidden_sub_babs: (data?.hidden_sub_babs as string[]) || [],
+    admin_only_sub_babs: (data?.admin_only_sub_babs as string[]) || [],
+  };
 }
 
 /**
- * Persists the hidden sub_bab list to the app_settings table.
- * Uses upsert so the row is created on first save.
+ * Persists the visibility settings to the app_settings table.
  */
-export async function saveHiddenSubBabs(hidden: string[]): Promise<void> {
+export async function saveVisibilitySettings(settings: VisibilitySettings): Promise<void> {
   const { error } = await supabase
     .from('app_settings')
-    .upsert({ id: 1, hidden_sub_babs: hidden }, { onConflict: 'id' });
+    .upsert({ id: 1, ...settings }, { onConflict: 'id' });
 
   if (error) {
-    console.error('Failed to save hidden sub_babs:', error.message);
+    console.error('Failed to save visibility settings:', error.message);
     throw new Error(`Failed to save settings: ${error.message}`);
   }
 }
 
 export async function fetchbabs(): Promise<BabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('babs');
+  const [babsResult, visibility] = await Promise.all([
+    supabase.from('questions').select('babs').eq('is_hidden', false),
+    fetchVisibilitySettings(),
+  ]);
+
+  const { data, error } = babsResult;
 
   if (error) {
     console.error('Failed to fetch babs:', error.message);
     return [];
   }
 
-  // Collect all raw bab values from DB, deduplicate by normalized slug but keep raw value
   const rawBabs = data.flatMap((q) => q.babs || []).filter(Boolean);
-  const seen = new Map<string, string>(); // normalized -> first raw value
+  const seen = new Map<string, string>();
+  for (const raw of rawBabs) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
+
+  return Array.from(seen.entries())
+    .filter(([slug]) => !visibility.hidden_babs.includes(slug) && !visibility.admin_only_babs.includes(slug))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
+}
+
+export async function fetchBabsAdmin(): Promise<BabInfo[]> {
+  const [babsResult, visibility] = await Promise.all([
+    supabase.from('questions').select('babs'),
+    fetchVisibilitySettings(),
+  ]);
+
+  const { data, error } = babsResult;
+
+  if (error) {
+    console.error('Failed to fetch babs admin:', error.message);
+    return [];
+  }
+
+  const rawBabs = data.flatMap((q) => q.babs || []).filter(Boolean);
+  const seen = new Map<string, string>();
+  for (const raw of rawBabs) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
+
+  return Array.from(seen.entries())
+    .filter(([slug]) => !visibility.hidden_babs.includes(slug))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
+}
+
+export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
+  const { data, error } = await supabase.from('questions').select('babs');
+
+  if (error) {
+    console.error('Failed to fetch all babs:', error.message);
+    return [];
+  }
+
+  const rawBabs = data.flatMap((q) => q.babs || []).filter(Boolean);
+  const seen = new Map<string, string>();
   for (const raw of rawBabs) {
     const slug = normalizeCategorySlug(raw);
     if (isSafeCategorySlug(slug) && !seen.has(slug)) {
@@ -170,14 +250,14 @@ export async function fetchbabs(): Promise<BabInfo[]> {
 }
 
 export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
-  // Use the raw bab value directly for the .contains() query (case-sensitive match)
+  const baseQuery = supabase.from('questions').select('sub_babs').eq('is_hidden', false);
   const query = bab && bab !== 'Semua BAB' && bab !== 'None'
-    ? supabase.from('questions').select('sub_babs').contains('babs', [bab])
-    : supabase.from('questions').select('sub_babs');
+    ? baseQuery.contains('babs', [bab])
+    : baseQuery;
 
-  const [subBabsResult, dbHidden] = await Promise.all([
+  const [subBabsResult, visibility] = await Promise.all([
     query,
-    fetchHiddenSubBabs(),
+    fetchVisibilitySettings(),
   ]);
 
   const { data, error } = subBabsResult;
@@ -187,9 +267,8 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
     return [];
   }
 
-  // Collect raw sub_bab values, deduplicate by normalized slug but keep raw value
   const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
-  const seen = new Map<string, string>(); // normalized -> first raw value
+  const seen = new Map<string, string>();
   for (const raw of rawSubBabs) {
     const slug = normalizeCategorySlug(raw);
     if (isSafeCategorySlug(slug) && !seen.has(slug)) {
@@ -198,7 +277,39 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
   }
 
   return Array.from(seen.entries())
-    .filter(([slug]) => !dbHidden.includes(slug))
+    .filter(([slug]) => !visibility.hidden_sub_babs.includes(slug) && !visibility.admin_only_sub_babs.includes(slug))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
+}
+
+export async function fetchSubBabsAdmin(bab?: string): Promise<SubBabInfo[]> {
+  const query = bab && bab !== 'Semua BAB' && bab !== 'None'
+    ? supabase.from('questions').select('sub_babs').contains('babs', [bab])
+    : supabase.from('questions').select('sub_babs');
+
+  const [subBabsResult, visibility] = await Promise.all([
+    query,
+    fetchVisibilitySettings(),
+  ]);
+
+  const { data, error } = subBabsResult;
+
+  if (error) {
+    console.error('Failed to fetch sub babs admin:', error.message);
+    return [];
+  }
+
+  const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
+  const seen = new Map<string, string>();
+  for (const raw of rawSubBabs) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
+
+  return Array.from(seen.entries())
+    .filter(([slug]) => !visibility.hidden_sub_babs.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
@@ -261,7 +372,7 @@ export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
 export async function fetchQuestions(bab?: string, subBab?: string): Promise<RawQuestion[]> {
   let query = supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, babs, sub_babs');
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, babs, sub_babs');
 
   if (bab && bab !== 'Semua BAB' && bab !== 'None') {
     query = query.contains('babs', [bab]);
@@ -380,7 +491,7 @@ export async function fetchQuestionsByIds(ids: number[]): Promise<RawQuestion[]>
 
   const { data, error } = await supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, babs, sub_babs')
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, babs, sub_babs')
     .in('id', ids);
 
   if (error) {
@@ -409,6 +520,16 @@ const LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
 export function shuffleOptions(raw: PublicQuestion): ShuffledQuestion {
   const normalized = normalizePublicQuestion(raw);
 
+  if (normalized.question_type === 'short_answer') {
+    return {
+      id: normalized.id,
+      question_text: normalized.question_text,
+      question_type: normalized.question_type,
+      options: [],
+      correct_label: 'HIDDEN',
+    };
+  }
+
   const originalOptions = [
     { text: normalized.option_a },
     { text: normalized.option_b },
@@ -426,6 +547,7 @@ export function shuffleOptions(raw: PublicQuestion): ShuffledQuestion {
   return {
     id: normalized.id,
     question_text: normalized.question_text,
+    question_type: normalized.question_type,
     options,
     correct_label: 'HIDDEN',
   };

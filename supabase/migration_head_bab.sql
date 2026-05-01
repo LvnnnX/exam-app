@@ -45,13 +45,31 @@ BEGIN
   END IF;
 END $$;
 
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS question_type TEXT NOT NULL DEFAULT 'multiple_choice';
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS short_answer TEXT;
 ALTER TABLE questions ADD COLUMN IF NOT EXISTS babs TEXT[] NOT NULL DEFAULT '{INFORMATIKA}';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'questions_type_check'
+  ) THEN
+    ALTER TABLE questions
+      ADD CONSTRAINT questions_type_check
+      CHECK (question_type IN ('multiple_choice', 'short_answer'));
+  END IF;
+END
+$$;
 
 -- Update public_questions view to reflect new columns
 DROP VIEW IF EXISTS public_questions;
 CREATE OR REPLACE VIEW public_questions AS
-SELECT id, question_text, option_a, option_b, option_c, option_d, option_e, babs, sub_babs
-FROM questions;
+SELECT id, question_text, option_a, option_b, option_c, option_d, option_e, question_type, babs, sub_babs
+FROM questions
+WHERE is_hidden = false;
 
 ALTER TABLE exam_results ADD COLUMN IF NOT EXISTS bab TEXT NOT NULL DEFAULT 'INFORMATIKA';
 ALTER TABLE exam_logs ADD COLUMN IF NOT EXISTS bab TEXT NOT NULL DEFAULT 'INFORMATIKA';
@@ -59,7 +77,7 @@ ALTER TABLE kuis_logs ADD COLUMN IF NOT EXISTS bab TEXT NOT NULL DEFAULT 'INFORM
 
 -- ENSURE QUESTIONS ACCESSIBLE TO PLAYERS
 DROP POLICY IF EXISTS "questions_select" ON questions;
-CREATE POLICY "questions_select" ON questions FOR SELECT USING (true);
+CREATE POLICY "questions_select" ON questions FOR SELECT USING (is_hidden = false OR auth.jwt() ->> 'email' = 'admin@exam.local');
 GRANT SELECT ON questions TO anon, authenticated;
 GRANT SELECT ON public_questions TO anon, authenticated;
 
@@ -89,19 +107,19 @@ DECLARE
 BEGIN
   IF p_mode = 'survival' THEN
     IF p_sub_bab = 'Semua Sub-bab' THEN
-      SELECT COUNT(*) INTO v_actual_count FROM questions WHERE p_bab = ANY(babs);
+      SELECT COUNT(*) INTO v_actual_count FROM questions WHERE p_bab = ANY(babs) AND is_hidden = false;
     ELSE
-      SELECT COUNT(*) INTO v_actual_count FROM questions WHERE p_bab = ANY(babs) AND p_sub_bab = ANY(sub_babs);
+      SELECT COUNT(*) INTO v_actual_count FROM questions WHERE p_bab = ANY(babs) AND p_sub_bab = ANY(sub_babs) AND is_hidden = false;
     END IF;
     v_question_ids := ARRAY[]::INT[];
   ELSE
     IF p_sub_bab = 'Semua Sub-bab' THEN
       SELECT array_agg(id) INTO v_question_ids FROM (
-        SELECT id FROM questions WHERE p_bab = ANY(babs) ORDER BY random() LIMIT p_count
+        SELECT id FROM questions WHERE p_bab = ANY(babs) AND is_hidden = false ORDER BY random() LIMIT p_count
       ) sq;
     ELSE
       SELECT array_agg(id) INTO v_question_ids FROM (
-        SELECT id FROM questions WHERE p_bab = ANY(babs) AND p_sub_bab = ANY(sub_babs) ORDER BY random() LIMIT p_count
+        SELECT id FROM questions WHERE p_bab = ANY(babs) AND p_sub_bab = ANY(sub_babs) AND is_hidden = false ORDER BY random() LIMIT p_count
       ) sq;
     END IF;
 
@@ -166,6 +184,7 @@ RETURNS TABLE (
   option_c TEXT,
   option_d TEXT,
   option_e TEXT,
+  question_type TEXT,
   babs TEXT[],
   sub_babs TEXT[]
 )
@@ -188,9 +207,9 @@ BEGIN
     IF v_q_id IS NULL THEN
       -- Pick next random question that matches bab/sub_bab
       IF v_sub_bab = 'Semua Sub-bab' THEN
-        SELECT q.id INTO v_q_id FROM questions q WHERE v_bab = ANY(q.babs) ORDER BY random() LIMIT 1;
+        SELECT q.id INTO v_q_id FROM questions q WHERE v_bab = ANY(q.babs) AND q.is_hidden = false ORDER BY random() LIMIT 1;
       ELSE
-        SELECT q.id INTO v_q_id FROM questions q WHERE v_bab = ANY(q.babs) AND v_sub_bab = ANY(q.sub_babs) ORDER BY random() LIMIT 1;
+        SELECT q.id INTO v_q_id FROM questions q WHERE v_bab = ANY(q.babs) AND v_sub_bab = ANY(q.sub_babs) AND q.is_hidden = false ORDER BY random() LIMIT 1;
       END IF;
 
       -- Persist it so save_session_answer can find it
@@ -202,7 +221,7 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.option_e, q.babs, q.sub_babs
+  SELECT q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.option_e, q.question_type, q.babs, q.sub_babs
   FROM questions q
   WHERE q.id = v_q_id;
 END;
@@ -223,8 +242,10 @@ DECLARE
   v_q_index INT;
   v_q_id INT;
   v_user_ans_text TEXT;
+  v_question_type TEXT;
   v_correct_label CHAR(1);
   v_correct_text TEXT;
+  v_short_answer TEXT;
   v_is_correct BOOLEAN;
   v_processed_answers JSONB := '[]'::jsonb;
   v_recap JSONB := '[]'::jsonb;
@@ -256,13 +277,19 @@ BEGIN
       CONTINUE;
     END IF;
 
-    SELECT question_text, correct_answer INTO v_question_text, v_correct_label FROM questions WHERE id = v_q_id;
+    SELECT question_text, question_type, correct_answer, short_answer
+    INTO v_question_text, v_question_type, v_correct_label, v_short_answer
+    FROM questions WHERE id = v_q_id;
 
-    IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
-    ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_q_id;
-    ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_q_id;
-    ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_q_id;
-    ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
+    IF v_question_type = 'short_answer' THEN
+      v_correct_text := COALESCE(v_short_answer, '');
+    ELSE
+      IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_q_id;
+      ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_q_id;
+      ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_q_id;
+      ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_q_id;
+      ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_q_id;
+      END IF;
     END IF;
 
     IF v_user_ans_text IS NOT NULL AND v_user_ans_text != 'skipped' THEN
@@ -347,6 +374,7 @@ BEGIN
     'option_c', q.option_c,
     'option_d', q.option_d,
     'option_e', q.option_e,
+    'question_type', q.question_type,
     'babs', q.babs,
     'sub_babs', q.sub_babs
   ) INTO v_result
@@ -418,8 +446,10 @@ AS $$
 DECLARE
   v_log exam_logs%ROWTYPE;
   v_question_id INT;
+  v_question_type TEXT;
   v_correct_label CHAR(1);
   v_correct_text TEXT;
+  v_short_answer TEXT;
   v_is_correct BOOLEAN := false;
 BEGIN
   SELECT * INTO v_log FROM exam_logs WHERE session_id = p_session_id;
@@ -453,13 +483,19 @@ BEGIN
   -- Grading logic (especially for Survival live feedback)
   v_question_id := v_log.question_ids[p_index + 1];
   IF v_question_id IS NOT NULL THEN
-    SELECT correct_answer INTO v_correct_label FROM questions WHERE id = v_question_id;
+    SELECT question_type, correct_answer, short_answer
+    INTO v_question_type, v_correct_label, v_short_answer
+    FROM questions WHERE id = v_question_id;
     
-    IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_question_id;
-    ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_question_id;
-    ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_question_id;
-    ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_question_id;
-    ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_question_id;
+    IF v_question_type = 'short_answer' THEN
+      v_correct_text := COALESCE(v_short_answer, '');
+    ELSE
+      IF v_correct_label = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = v_question_id;
+      ELSIF v_correct_label = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = v_question_id;
+      ELSIF v_correct_label = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = v_question_id;
+      ELSIF v_correct_label = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = v_question_id;
+      ELSIF v_correct_label = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = v_question_id;
+      END IF;
     END IF;
     
     v_is_correct := (lower(trim(strip_html(p_answer_text))) = lower(trim(strip_html(v_correct_text))));
@@ -489,19 +525,27 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
+  v_question_type TEXT;
   v_correct_answer CHAR(1);
   v_correct_text TEXT;
+  v_short_answer TEXT;
   v_is_correct BOOLEAN := false;
   v_kuis_id UUID;
 BEGIN
   -- 1. Get correct answer
-  SELECT correct_answer INTO v_correct_answer FROM questions WHERE id = p_question_id;
+  SELECT question_type, correct_answer, short_answer
+  INTO v_question_type, v_correct_answer, v_short_answer
+  FROM questions WHERE id = p_question_id;
   
-  IF v_correct_answer = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_answer = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_answer = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_answer = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = p_question_id;
-  ELSIF v_correct_answer = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = p_question_id;
+  IF v_question_type = 'short_answer' THEN
+    v_correct_text := COALESCE(v_short_answer, '');
+  ELSE
+    IF v_correct_answer = 'A' THEN SELECT option_a INTO v_correct_text FROM questions WHERE id = p_question_id;
+    ELSIF v_correct_answer = 'B' THEN SELECT option_b INTO v_correct_text FROM questions WHERE id = p_question_id;
+    ELSIF v_correct_answer = 'C' THEN SELECT option_c INTO v_correct_text FROM questions WHERE id = p_question_id;
+    ELSIF v_correct_answer = 'D' THEN SELECT option_d INTO v_correct_text FROM questions WHERE id = p_question_id;
+    ELSIF v_correct_answer = 'E' THEN SELECT option_e INTO v_correct_text FROM questions WHERE id = p_question_id;
+    END IF;
   END IF;
 
   v_is_correct := (lower(trim(strip_html(p_user_answer))) = lower(trim(strip_html(v_correct_text))));

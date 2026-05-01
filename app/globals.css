@@ -282,6 +282,12 @@ body {
   background: #ffffff;
 }
 
+.toolbar-btn.compact {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.72rem;
+  border-radius: 6px;
+}
+
 .toolbar-btn:hover {
   background: #f3f4f6;
 }

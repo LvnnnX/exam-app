@@ -35,6 +35,7 @@ BEGIN
     'option_c', q.option_c,
     'option_d', q.option_d,
     'option_e', q.option_e,
+    'question_type', q.question_type,
     'babs', q.babs,
     'sub_babs', q.sub_babs
   ) INTO v_result
