@@ -620,19 +620,19 @@ export default function ExamPage() {
   // Step 1: Name Entry + Category + Question Count
   if (step === 1) {
     return (
-      <div className="flex-1 flex flex-col pt-16 md:pt-24 px-6">
+      <div className="flex-1 flex flex-col pt-8 md:pt-14 px-6 pb-8">
         <div className="max-w-3xl mx-auto w-full">
-          <h1 className="font-display text-[56px] sm:text-[96px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8 md:mb-12">
+          <h1 className="font-display text-[40px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-5 md:mb-7">
             Take The<br />Exam.
           </h1>
-          <div className="max-w-md w-full space-y-6">
+          <div className="max-w-md w-full space-y-4">
             {/* Game Mode Selector */}
-            <div className="space-y-3">
-              <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Select Mode</span>
+            <div className="space-y-2">
+              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Select Mode</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setGameMode('exam')}
-                  className={`flex-1 h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider ${gameMode === 'exam'
+                  className={`flex-1 h-[36px] rounded-[18px] text-[12px] font-bold transition-all uppercase tracking-wider ${gameMode === 'exam'
                     ? 'bg-nike-black text-nike-white'
                     : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
                     }`}
@@ -641,7 +641,7 @@ export default function ExamPage() {
                 </button>
                 <button
                   onClick={() => setGameMode('survival')}
-                  className={`flex-1 h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider ${gameMode === 'survival'
+                  className={`flex-1 h-[36px] rounded-[18px] text-[12px] font-bold transition-all uppercase tracking-wider ${gameMode === 'survival'
                     ? 'bg-nike-red text-nike-white'
                     : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-red hover:bg-red-50'
                     }`}
@@ -649,10 +649,10 @@ export default function ExamPage() {
                   ⚔️ Survival
                 </button>
               </div>
-              <div className="mt-4">
+              <div className="mt-2">
                 <button
                   onClick={() => setIsJoinModalOpen(true)}
-                  className="w-full h-[44px] rounded-[22px] text-[14px] font-bold transition-all uppercase tracking-wider bg-transparent border-[1.5px] border-nike-black text-nike-black hover:bg-nike-black hover:text-white shadow-sm"
+                  className="w-full h-[36px] rounded-[18px] text-[12px] font-bold transition-all uppercase tracking-wider bg-transparent border-[1.5px] border-nike-black text-nike-black hover:bg-nike-black hover:text-white shadow-sm"
                 >
                   🎮 Join with Code
                 </button>
@@ -660,38 +660,38 @@ export default function ExamPage() {
             </div>
 
             {/* Name Input */}
-            <div className="space-y-3">
-              <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Your Name</span>
+            <div className="space-y-1.5">
+              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Your Name</span>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="ENTER NAME"
-                className="w-full bg-nike-grey-100 rounded-[12px] border border-nike-grey-300 px-4 h-[48px] text-[16px] placeholder-nike-grey-400 focus:outline-none focus:border-nike-black transition-all uppercase font-medium"
+                className="w-full bg-nike-grey-100 rounded-[10px] border border-nike-grey-300 px-4 h-[40px] text-[14px] placeholder-nike-grey-400 focus:outline-none focus:border-nike-black transition-all uppercase font-medium"
               />
             </div>
 
             {/* Hierarchy Selectors */}
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 space-y-3">
-                  <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">BAB</span>
+            <div className="space-y-1.5">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 space-y-1.5">
+                  <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">BAB</span>
                   {fetchError ? (
-                    <div className="w-full flex items-center justify-between bg-nike-red/10 p-4 rounded-[12px] border border-nike-red/20">
-                      <p className="text-nike-red text-[14px] font-medium uppercase">Error</p>
-                      <button onClick={() => (window as any).__retryCategoryFetch?.()} className="px-4 h-[32px] rounded-[16px] bg-nike-red text-nike-white text-[10px] font-bold uppercase hover:bg-nike-red/80">Retry</button>
+                    <div className="w-full flex items-center justify-between bg-nike-red/10 p-3 rounded-[10px] border border-nike-red/20">
+                      <p className="text-nike-red text-[12px] font-medium uppercase">Error</p>
+                      <button onClick={() => (window as any).__retryCategoryFetch?.()} className="px-3 h-[28px] rounded-[14px] bg-nike-red text-nike-white text-[10px] font-bold uppercase hover:bg-nike-red/80">Retry</button>
                     </div>
                   ) : availableBabs.length === 0 ? (
-                    <div className="flex items-center gap-2 h-[48px]">
+                    <div className="flex items-center gap-2 h-[40px]">
                       <div className="w-4 h-4 border-2 border-nike-grey-300 border-t-nike-black rounded-full animate-spin"></div>
-                      <p className="text-nike-grey-500 text-[14px] font-medium uppercase tracking-wider">Syncing...</p>
+                      <p className="text-nike-grey-500 text-[12px] font-medium uppercase tracking-wider">Syncing...</p>
                     </div>
                   ) : (
                     <select
                       value={bab}
                       onChange={(e) => setBab(e.target.value)}
-                      className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-4 h-[48px] text-[16px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em' }}
+                      className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-3 h-[40px] text-[13px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.2em' }}
                     >
                       <option value="None">PILIH BAB (NONE)</option>
                       {availableBabs.map((hb) => (
@@ -701,14 +701,14 @@ export default function ExamPage() {
                   )}
                 </div>
 
-                <div className="flex-1 space-y-3">
-                  <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Sub-bab</span>
+                <div className="flex-1 space-y-1.5">
+                  <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Sub-bab</span>
                   <select
                     value={subBab}
                     onChange={(e) => setSubBab(e.target.value)}
                     disabled={bab === 'None' || availableSubBabs.length === 0}
-                    className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-4 h-[48px] text-[16px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em' }}
+                    className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-3 h-[40px] text-[13px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.2em' }}
                   >
                     <option value="Semua Sub-bab">SEMUA SUB-BAB</option>
                     {availableSubBabs.map((sb) => (
@@ -720,14 +720,14 @@ export default function ExamPage() {
             </div>
 
             {/* Time Limit Selector Buttons */}
-            <div className="space-y-3">
-              <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Time Limit (Global)</span>
-              <div className="flex flex-wrap gap-2">
+            <div className="space-y-1.5">
+              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Time Limit (Global)</span>
+              <div className="flex flex-wrap gap-1.5">
                 {TIME_LIMIT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => setTimeLimit(opt.value)}
-                    className={`px-6 h-[44px] rounded-[22px] text-[14px] font-bold uppercase transition-all whitespace-nowrap ${timeLimit === opt.value
+                    className={`px-4 h-[34px] rounded-[17px] text-[12px] font-bold uppercase transition-all whitespace-nowrap ${timeLimit === opt.value
                       ? 'bg-nike-black text-nike-white'
                       : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
                       }`}
@@ -740,14 +740,14 @@ export default function ExamPage() {
 
             {/* Question Count Selector — hidden in Survival mode */}
             {!isSurvival && (
-              <div className="space-y-3">
-                <span className="block text-[16px] font-medium text-nike-black uppercase tracking-tight">Question Count</span>
-                <div className="flex flex-wrap gap-2">
+              <div className="space-y-1.5">
+                <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Question Count</span>
+                <div className="flex flex-wrap gap-1.5">
                   {QUESTION_COUNTS.map((count) => (
                     <button
                       key={count}
                       onClick={() => setQuestionCount(count)}
-                      className={`px-6 h-[44px] rounded-[22px] text-[16px] font-bold transition-all ${questionCount === count
+                      className={`px-5 h-[34px] rounded-[17px] text-[13px] font-bold transition-all ${questionCount === count
                         ? 'bg-nike-black text-nike-white'
                         : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-grey-500 hover:bg-nike-grey-100'
                         }`}
@@ -766,7 +766,7 @@ export default function ExamPage() {
                 !bab ||
                 bab === 'None'
               }
-              className="w-full h-[54px] rounded-[27px] bg-nike-black text-nike-white text-[16px] font-bold hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider shadow-lg shadow-nike-black/10"
+              className="w-full h-[46px] rounded-[23px] bg-nike-black text-nike-white text-[14px] font-bold hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider shadow-lg shadow-nike-black/10"
             >
               Begin Session
             </button>

@@ -27,8 +27,8 @@ html {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* Fallbacks for typography since we don't have Nike fonts
-  --font-sans: Helvetica, Arial, sans-serif;
+  /* Fallbacks for typography since we don't have Nike fonts */
+  /* --font-sans: Helvetica, Arial, sans-serif;
   --font-display: Impact, "Arial Black", sans-serif; */
 
   /* Prefer SF Pro when available, fall back to system UI fonts */
@@ -156,6 +156,7 @@ body {
 }
 
 @media (max-width: 767px) {
+
   .rich-content pre,
   .exam-question-content pre,
   .exam-option-content pre {
