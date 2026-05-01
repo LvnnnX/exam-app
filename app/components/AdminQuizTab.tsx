@@ -514,28 +514,28 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
       {activeView === 'create' && !activeSession && (
         <div className="max-w-2xl mx-auto py-4 md:py-6">
           {/* Header Card */}
-          <div className="bg-white rounded-[24px] p-5 mb-4 border border-nike-grey-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-14 h-14 rounded-[18px] bg-[#F0F7FF] flex items-center justify-center shadow-inner">
-                <span className="text-2xl animate-bounce">🎯</span>
+          <div className="bg-white rounded-[20px] p-3 md:p-4 mb-3 border border-nike-grey-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-[14px] bg-[#F0F7FF] flex items-center justify-center shadow-inner">
+                <span className="text-xl animate-bounce">🎯</span>
               </div>
               <div>
-                <h3 className="text-lg md:text-xl font-black text-nike-black uppercase tracking-tight">Buat Kuis Baru</h3>
-                <p className="text-[11px] font-medium text-nike-grey-400 uppercase tracking-[0.2em] mt-1">Konfigurasikan sesi kuis Live</p>
+                <h3 className="text-md md:text-lg font-black text-nike-black uppercase tracking-tight leading-tight">Buat Kuis Baru</h3>
+                <p className="text-[10px] font-medium text-nike-grey-400 uppercase tracking-[0.2em] mt-0.5">Sesi kuis Live</p>
               </div>
             </div>
           </div>
 
           {/* Form Card */}
-          <div className="bg-white rounded-[24px] shadow-[0_16px_40px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
+          <div className="bg-white rounded-[20px] shadow-[0_16px_40px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
             {/* BAB & Sub-bab */}
-            <div className="p-5 pb-4 flex flex-col md:flex-row gap-4">
+            <div className="p-3 md:p-4 pb-3 flex flex-col md:flex-row gap-3">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
-                    <span className="text-base">📚</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-md bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
+                    <span className="text-sm">📚</span>
                   </div>
-                  <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">BAB</label>
+                  <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">BAB</label>
                 </div>
                 <div className="relative">
                   <select
@@ -545,7 +545,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                       setSelectedSubBabs([]);
                       setSubBabPercentages({});
                     }}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[16px] px-4 h-[48px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-3 h-[38px] md:h-[42px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
                   >
                     <option value="Semua BAB">✨ Semua BAB</option>
                     {babs.length > 0 ? (
@@ -554,8 +554,8 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                       <option disabled>Loading BAB...</option>
                     )}
                   </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-3.5 h-3.5 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
@@ -563,25 +563,25 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
               </div>
 
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
-                    <span className="text-base">📖</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-md bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
+                    <span className="text-sm">📖</span>
                   </div>
-                  <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Sub-bab</label>
+                  <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Sub-bab</label>
                 </div>
                 <div className="relative">
                   <div
                     onClick={() => setIsSubBabOpen(!isSubBabOpen)}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[16px] px-4 min-h-[48px] py-2 flex items-center justify-between cursor-pointer focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-3 min-h-[38px] md:min-h-[42px] py-1.5 flex items-center justify-between cursor-pointer focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                   >
                     <div className="flex flex-wrap gap-1">
                       {selectedSubBabs.length === 0 ? (
-                        <span className="text-[13px] font-bold text-nike-black uppercase">✨ Semua Sub-bab</span>
+                        <span className="text-[12px] font-bold text-nike-black uppercase">✨ Semua Sub-bab</span>
                       ) : (
                         selectedSubBabs.map(v => {
                           const label = displaySubBabs.find(d => d.value === v)?.label || v;
                           return (
-                            <span key={v} className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[11px] font-bold uppercase flex items-center gap-1">
+                            <span key={v} className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1">
                               {label}
                               <button onClick={(e) => {
                                 e.stopPropagation();
@@ -596,7 +596,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                         })
                       )}
                     </div>
-                    <svg className={`w-4 h-4 text-nike-grey-400 transition-transform ${isSubBabOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className={`w-3.5 h-3.5 text-nike-grey-400 transition-transform ${isSubBabOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
@@ -668,24 +668,24 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
             </div>
 
             {/* Question Count */}
-            <div className="p-5 py-4 bg-[#FAFBFF]">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-[#F0FFF4] flex items-center justify-center border border-[#C6F6D5]">
-                  <span className="text-base">✏️</span>
+            <div className="p-3 md:p-4 py-3 bg-[#FAFBFF]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-md bg-[#F0FFF4] flex items-center justify-center border border-[#C6F6D5]">
+                  <span className="text-sm">✏️</span>
                 </div>
-                <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Jumlah Soal</label>
+                <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Jumlah Soal</label>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                 {[5, 10, 20, 25, 30, 40].map(n => (
                   <button
                     key={n}
                     onClick={() => setQuestionCount(n)}
-                    className={`flex-1 h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${questionCount === n
+                    className={`flex-1 h-[36px] md:h-[40px] rounded-[12px] text-[12px] font-black transition-all border-2 ${questionCount === n
                       ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
                       : 'bg-white border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
                       }`}
                   >
-                    {n} SOAL
+                    {n}
                   </button>
                 ))}
               </div>
@@ -697,13 +697,13 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
               if (effectiveSubBabs.length === 0) return null;
 
               return (
-                <div className="p-5 py-4 bg-white border-b border-gray-100">
-                  <div className="flex items-center justify-between mb-3">
+                <div className="p-3 md:p-4 py-3 bg-white border-b border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-[#FFF0F6] flex items-center justify-center border border-[#FED7E2]">
-                        <span className="text-base">📊</span>
+                      <div className="w-6 h-6 rounded-md bg-[#FFF0F6] flex items-center justify-center border border-[#FED7E2]">
+                        <span className="text-sm">📊</span>
                       </div>
-                      <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Persentase Soal</label>
+                      <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Persentase Soal</label>
                     </div>
                     <button
                       onClick={() => {
@@ -723,26 +723,26 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                           setSubBabPercentages(newPct);
                         }
                       }}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#4A90D9] focus:ring-offset-2 ${percentagesEnabled ? 'bg-[#4A90D9]' : 'bg-gray-200'
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#4A90D9] focus:ring-offset-2 ${percentagesEnabled ? 'bg-[#4A90D9]' : 'bg-gray-200'
                         }`}
                       role="switch"
                       aria-checked={percentagesEnabled}
                     >
                       <span
                         aria-hidden="true"
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${percentagesEnabled ? 'translate-x-5' : 'translate-x-0'
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${percentagesEnabled ? 'translate-x-4' : 'translate-x-0'
                           }`}
                       />
                     </button>
                   </div>
                   {percentagesEnabled && (
-                    <div className="space-y-3 mt-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <div className="space-y-2.5 mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
                       {effectiveSubBabs.map(sub => {
                         const label = displaySubBabs.find(d => d.value === sub)?.label || sub;
                         return (
-                          <div key={sub} className="flex items-center justify-between gap-4">
-                            <span className="text-xs font-bold text-gray-700 uppercase flex-1 truncate">{label}</span>
-                            <div className="flex items-center gap-2">
+                          <div key={sub} className="flex items-center justify-between gap-3">
+                            <span className="text-[10px] font-bold text-gray-700 uppercase flex-1 truncate">{label}</span>
+                            <div className="flex items-center gap-1.5">
                               <input
                                 type="number"
                                 min="0"
@@ -752,16 +752,16 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                                   const val = parseInt(e.target.value) || 0;
                                   setSubBabPercentages(prev => ({ ...prev, [sub]: val }));
                                 }}
-                                className="w-16 h-8 text-center text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded focus:outline-none focus:border-[#4A90D9]"
+                                className="w-14 h-7 text-center text-[11px] font-bold text-gray-700 bg-white border border-gray-300 rounded focus:outline-none focus:border-[#4A90D9]"
                               />
-                              <span className="text-xs font-bold text-gray-500">%</span>
+                              <span className="text-[10px] font-bold text-gray-500">%</span>
                             </div>
                           </div>
                         );
                       })}
-                      <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center">
-                        <span className="text-xs font-black text-gray-500 uppercase">Total:</span>
-                        <span className={`text-xs font-black uppercase ${effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? 'text-green-500' : 'text-red-500'
+                      <div className="pt-1.5 mt-1.5 border-t border-gray-200 flex justify-between items-center">
+                        <span className="text-[10px] font-black text-gray-500 uppercase">Total:</span>
+                        <span className={`text-[10px] font-black uppercase ${effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? 'text-green-500' : 'text-red-500'
                           }`}>
                           {effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0)}%
                         </span>
@@ -773,19 +773,19 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
             })()}
 
             {/* Duration */}
-            <div className="p-5 py-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-[#EBF8FF] flex items-center justify-center border border-[#BEE3F8]">
-                  <span className="text-base">⏱️</span>
+            <div className="p-3 md:p-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-md bg-[#EBF8FF] flex items-center justify-center border border-[#BEE3F8]">
+                  <span className="text-sm">⏱️</span>
                 </div>
-                <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Durasi Waktu</label>
+                <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Durasi Waktu</label>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {[30, 60, 90, 120].map(m => (
                   <button
                     key={m}
                     onClick={() => setDurationMinutes(m)}
-                    className={`h-[44px] rounded-[16px] text-[13px] font-black transition-all border-2 ${durationMinutes === m
+                    className={`h-[36px] md:h-[40px] rounded-[12px] text-[12px] font-black transition-all border-2 ${durationMinutes === m
                       ? 'bg-[#34C759] border-transparent text-white shadow-lg shadow-[#34C759]/20'
                       : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#34C759] hover:text-[#34C759]'
                       }`}
@@ -797,82 +797,81 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
             </div>
 
             {/* Schedule */}
-            <div className="p-5 py-4 bg-[#FAFBFF]">
-              <div className="flex items-center justify-between mb-3">
+            <div className="p-3 md:p-4 py-3 bg-[#FAFBFF]">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[#FFF8E1] flex items-center justify-center border border-[#FFE082]">
-                    <span className="text-base">📅</span>
+                  <div className="w-6 h-6 rounded-md bg-[#FFF8E1] flex items-center justify-center border border-[#FFE082]">
+                    <span className="text-sm">📅</span>
                   </div>
-                  <label className="text-[11px] font-black text-nike-black uppercase tracking-[0.2em]">Schedule Quiz</label>
+                  <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Schedule Quiz</label>
                 </div>
                 <button
                   type="button"
                   onClick={() => setScheduleEnabled(!scheduleEnabled)}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${scheduleEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
+                  className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none ${scheduleEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
                     }`}
                 >
-                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${scheduleEnabled ? 'translate-x-6' : 'translate-x-1'
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${scheduleEnabled ? 'translate-x-5' : 'translate-x-1'
                     }`} />
                 </button>
               </div>
               {scheduleEnabled && (
-                <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                <div className="flex flex-col sm:flex-row gap-2 mt-2">
                   <div className="flex-1">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Tanggal</label>
+                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 block">Tanggal</label>
                     <input
                       type="date"
                       value={scheduleDate}
                       onChange={(e) => {
                         setScheduleDate(e.target.value);
-                        // Clear time if it's now in the past
                         if (e.target.value === new Date().toISOString().split('T')[0] && scheduleTime < new Date().toTimeString().slice(0, 5)) {
                           setScheduleTime('');
                         }
                       }}
                       min={new Date().toISOString().split('T')[0]}
                       max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
-                      className="w-full bg-white border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                      className="w-full bg-white border-2 border-[#E2E8F0] rounded-[10px] px-3 h-[38px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Waktu</label>
+                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 block">Waktu</label>
                     <input
                       type="time"
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
                       min={scheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                      className="w-full bg-white border-2 border-[#E2E8F0] rounded-[12px] px-4 h-[44px] text-[13px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                      className="w-full bg-white border-2 border-[#E2E8F0] rounded-[10px] px-3 h-[38px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                     />
                   </div>
                 </div>
               )}
               {scheduleEnabled && scheduleDate && scheduleTime && (
-                <p className="text-[11px] font-semibold text-[#4A90D9] mt-2 flex items-center gap-1">
-                  ⏰ Kuis akan dimulai otomatis pada {new Date(`${scheduleDate}T${scheduleTime}:00`).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                <p className="text-[10px] font-semibold text-[#4A90D9] mt-1.5 flex items-center gap-1">
+                  ⏰ Mulai otomatis: {new Date(`${scheduleDate}T${scheduleTime}:00`).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
                 </p>
               )}
             </div>
 
             {/* Submit */}
-            <div className="p-5 bg-[#F8FAFC]">
+            <div className="p-3 md:p-4 bg-[#F8FAFC]">
               <button
                 onClick={handleCreate}
                 disabled={creating || displaySubBabs.length === 0}
-                className={`w-full h-[54px] rounded-[18px] text-white font-black text-[14px] tracking-[0.2em] transition-all shadow-xl active:scale-[0.98] disabled:opacity-80 ${creating || displaySubBabs.length === 0 ? 'bg-slate-300' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
+                className={`w-full h-[46px] md:h-[50px] rounded-[14px] text-white font-black text-[13px] tracking-[0.2em] transition-all shadow-lg active:scale-[0.98] disabled:opacity-80 ${creating || displaySubBabs.length === 0 ? 'bg-slate-300' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
                   }`}
               >
                 {creating ? (
-                  <span className="flex items-center justify-center gap-3">
+                  <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     CREATING...
                   </span>
                 ) : displaySubBabs.length === 0 ? (
-                  <span className="flex items-center justify-center gap-3">
-                    <span>❌</span> TIDAK ADA SUB-BAB TERSEDIA
+                  <span className="flex items-center justify-center gap-2">
+                    <span>❌</span> TIADAK ADA SOAL
                   </span>
                 ) : (
-                  <span className="flex items-center justify-center gap-3">
-                    <span>🚀</span> BUAT SESI KUIS
+                  <span className="flex items-center justify-center gap-2">
+                    <span>🚀</span> BUAT KUIS
                   </span>
                 )}
               </button>
