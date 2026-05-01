@@ -939,13 +939,13 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                     )}
 
                     {editingSchedule && (
-                      <div className="absolute right-0 top-full mt-2 w-[320px] bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-10">
+                      <div className="absolute right-0 top-full mt-2 w-[280px] min-[400px]:w-[320px] max-w-[calc(100vw-2.5rem)] bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-10">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-xs font-bold uppercase text-gray-700">Set Schedule</h4>
                           <button onClick={() => setEditingSchedule(false)} className="text-gray-400 hover:text-gray-600">✕</button>
                         </div>
                         <div className="space-y-3">
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <div className="flex-1">
                               <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Tanggal</label>
                               <input
