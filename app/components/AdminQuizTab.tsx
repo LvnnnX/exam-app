@@ -512,7 +512,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
       </div>
 
       {activeView === 'create' && !activeSession && (
-        <div className="max-w-2xl mx-auto py-4 md:py-6">
+        <div className="max-w-2xl mx-auto px-3 md:px-0 py-4 md:py-6">
           {/* Header Card */}
           <div className="bg-white rounded-[20px] p-3 md:p-4 mb-3 border border-nike-grey-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
             <div className="flex flex-col items-center gap-2">
@@ -830,7 +830,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                       }}
                       min={new Date().toISOString().split('T')[0]}
                       max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
-                      className="w-full bg-white border-2 border-[#E2E8F0] rounded-[10px] px-3 h-[38px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                      className="w-full min-w-0 max-w-full bg-white border-2 border-[#E2E8F0] rounded-[10px] px-3 h-[38px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                     />
                   </div>
                   <div className="flex-1">
@@ -840,7 +840,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
                       min={scheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                      className="w-full bg-white border-2 border-[#E2E8F0] rounded-[10px] px-3 h-[38px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                      className="w-full min-w-0 max-w-full bg-white border-2 border-[#E2E8F0] rounded-[10px] px-3 h-[38px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                     />
                   </div>
                 </div>
@@ -939,7 +939,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                     )}
 
                     {editingSchedule && (
-                      <div className="absolute right-0 top-full mt-2 w-[280px] min-[400px]:w-[320px] max-w-[calc(100vw-2.5rem)] bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-10">
+                      <div className="absolute right-0 top-full mt-2 w-[280px] min-[400px]:w-[320px] max-w-[calc(100vw-3rem)] bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-10 overflow-hidden">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-xs font-bold uppercase text-gray-700">Set Schedule</h4>
                           <button onClick={() => setEditingSchedule(false)} className="text-gray-400 hover:text-gray-600">✕</button>
@@ -959,7 +959,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                                 }}
                                 min={new Date().toISOString().split('T')[0]}
                                 max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
-                                className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
+                                className="w-full min-w-0 max-w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
                               />
                             </div>
                             <div className="flex-1">
@@ -969,7 +969,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                                 value={editScheduleTime}
                                 onChange={(e) => setEditScheduleTime(e.target.value)}
                                 min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                                className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
+                                className="w-full min-w-0 max-w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
                               />
                             </div>
                           </div>
