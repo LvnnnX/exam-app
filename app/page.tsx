@@ -19,6 +19,7 @@ import {
 } from '@/lib/questions';
 import { QUIZ_CODE_LENGTH, normalizeQuizCode } from '@/lib/quiz';
 import { secureSave, secureLoad, secureClear } from '@/lib/security';
+import { useExamSecurity } from '@/app/hooks/useExamSecurity';
 
 type Answer = string | null;
 type GameMode = 'exam' | 'survival';
@@ -91,6 +92,15 @@ export default function ExamPage() {
   const [isCheckingCode, setIsCheckingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
   const isSurvival = gameMode === 'survival';
+
+  // ─── Anti-Cheat Security (text selection, right-click, shortcuts) ──
+  const examSecurityActive = step >= 3 && step <= 5;
+  useExamSecurity({
+    isActive: examSecurityActive,
+    enableTabDetection: false,
+    enableWakeLock: true,
+    onForceSubmit: () => {}, // Not used — tab detection disabled
+  });
 
   const total = totalQuestions;
   const currentAnswerValue = answers[current];

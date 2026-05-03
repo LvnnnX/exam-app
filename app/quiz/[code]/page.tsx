@@ -7,6 +7,8 @@ import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, fini
 import { type ShuffledQuestion } from '@/lib/questions';
 import { useRouter } from 'next/navigation';
 import RichContent from '@/app/components/RichContent';
+import { useExamSecurity } from '@/app/hooks/useExamSecurity';
+import TabWarningModal from '@/app/components/TabWarningModal';
 
 type AnswerData = string;
 
@@ -35,6 +37,28 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   useEffect(() => {
     selectedAnswerRef.current = selectedAnswer;
   }, [selectedAnswer]);
+
+  // ─── Anti-Cheat Security ──────────────────────────────────────────
+  const examSecurityActive = session?.status === 'active' && !!player && !isFinished;
+  const { warningCount, showWarningModal, dismissWarning } = useExamSecurity({
+    isActive: examSecurityActive,
+    enableTabDetection: true,
+    enableWakeLock: true,
+    onForceSubmit: useCallback(() => {
+      // Strike 3 — auto-submit all answers immediately
+      if (!player || isFinished) return;
+      const timeTaken = startTime > 0 ? Math.floor((Date.now() - startTime) / 1000) : 0;
+      const q = currentQuestion;
+      if (q) {
+        const currentSelection = selectedAnswerRef.current;
+        const answerText = currentSelection || '';
+        void submitSecureAnswer(player.id, q.id, answerText, timeTaken);
+      }
+      void finishPlayerQuiz(player.id);
+      secureRemove(`quiz_index_${quizCode}`);
+      setIsFinished(true);
+    }, [player, isFinished, startTime, currentQuestion, quizCode]),
+  });
 
   // 1. Initial Load & Subscription
   useEffect(() => {
@@ -483,6 +507,13 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
           </button>
         </div>
       </div>
+
+      {/* Anti-Cheat: Tab Warning Modal */}
+      <TabWarningModal
+        warningCount={warningCount}
+        isOpen={showWarningModal}
+        onDismiss={dismissWarning}
+      />
     </div>
   );
 }

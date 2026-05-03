@@ -299,6 +299,21 @@ body {
   border-color: #111827;
 }
 
+/* ─── Anti-Cheat: Exam Mode Text Selection Blocking ─── */
+body.exam-active {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body.exam-active input,
+body.exam-active textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* Mobile title color fix: override gray utility colors for heading/title elements */
 @media (max-width: 767px) {
 
