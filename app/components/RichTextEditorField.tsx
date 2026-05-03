@@ -6,6 +6,10 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { Mathematics } from '@tiptap/extension-mathematics';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import { common, createLowlight } from 'lowlight';
 import { ensureHtmlDocument } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
@@ -61,6 +65,12 @@ export default function RichTextEditorField({
         lowlight,
         defaultLanguage: 'plaintext',
       }),
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Mathematics.configure({
         katexOptions: {
           throwOnError: false,
@@ -275,6 +285,64 @@ export default function RichTextEditorField({
               accept="image/*" 
               className="hidden" 
             />
+          </div>
+
+          <div className="h-6 w-[1px] bg-gray-300 mx-0.5 hidden sm:block" />
+
+          {/* Table Controls */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs font-bold whitespace-nowrap`}
+              title="Insert Table"
+            >
+              ▦ TBL
+            </button>
+            {editor.isActive('table') && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => editor.chain().focus().addColumnAfter().run()}
+                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs`}
+                  title="Add Column"
+                >
+                  +C
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor.chain().focus().addRowAfter().run()}
+                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs`}
+                  title="Add Row"
+                >
+                  +R
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor.chain().focus().deleteColumn().run()}
+                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-red-600`}
+                  title="Delete Column"
+                >
+                  -C
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor.chain().focus().deleteRow().run()}
+                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-red-600`}
+                  title="Delete Row"
+                >
+                  -R
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor.chain().focus().deleteTable().run()}
+                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-red-600 font-bold`}
+                  title="Delete Table"
+                >
+                  Del
+                </button>
+              </>
+            )}
           </div>
 
           <div className="h-6 w-[1px] bg-gray-300 mx-0.5 hidden sm:block" />
