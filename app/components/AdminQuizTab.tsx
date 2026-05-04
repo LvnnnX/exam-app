@@ -7,7 +7,7 @@ import { fetchQuestionsByIds, fetchSubBabsAdmin, type RawQuestion, type SubBabIn
 import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
 
-export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBabs: { label: string, value: string }[] }) {
+export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string[], babs: string[], subBabs: { label: string, value: string }[] }) {
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
@@ -21,32 +21,60 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
   }, [activeView]);
 
   // Create state
-  const [selectedBab, setSelectedBab] = useState<string>('Semua BAB');
+  const [selectedMapels, setSelectedMapels] = useState<string[]>([]);
+  const [selectedBabs, setSelectedBabs] = useState<string[]>([]);
   const [selectedSubBabs, setSelectedSubBabs] = useState<string[]>([]);
   const [percentagesEnabled, setPercentagesEnabled] = useState(false);
   const [subBabPercentages, setSubBabPercentages] = useState<Record<string, number>>({});
+  const [isMapelOpen, setIsMapelOpen] = useState(false);
+  const [isBabOpen, setIsBabOpen] = useState(false);
   const [isSubBabOpen, setIsSubBabOpen] = useState(false);
+  const [displayBabs, setDisplayBabs] = useState<string[]>(babs);
   const [displaySubBabs, setDisplaySubBabs] = useState<SubBabInfo[]>(subBabs);
+  const [loadingBabs, setLoadingBabs] = useState(false);
   const [loadingSubBabs, setLoadingSubBabs] = useState(false);
 
-  // Sync subBabs prop to displaySubBabs initially or when subBabs prop changes
+  // Sync props initially or when they change
   useEffect(() => {
-    if (selectedBab === 'Semua BAB') {
+    if (selectedMapels.length === 0) {
+      setDisplayBabs(babs);
+    }
+    if (selectedBabs.length === 0) {
       setDisplaySubBabs(subBabs);
     }
-  }, [subBabs, selectedBab]);
+  }, [babs, subBabs, selectedMapels, selectedBabs]);
 
-  // Dynamic sub-bab loading based on selectedBab
+  // Dynamic bab loading based on selectedMapels
+  useEffect(() => {
+    const loadBabs = async () => {
+      if (selectedMapels.length === 0) {
+        setDisplayBabs(babs);
+        return;
+      }
+
+      setLoadingBabs(true);
+      try {
+        const { fetchBabsAdmin } = await import('@/lib/questions');
+        const filtered = await fetchBabsAdmin(selectedMapels);
+        setDisplayBabs(filtered.map(f => f.value));
+      } finally {
+        setLoadingBabs(false);
+      }
+    };
+    void loadBabs();
+  }, [selectedMapels, babs]);
+
+  // Dynamic sub-bab loading based on selectedBabs
   useEffect(() => {
     const loadFiltered = async () => {
-      if (selectedBab === 'Semua BAB') {
+      if (selectedBabs.length === 0) {
         setDisplaySubBabs(subBabs);
         return;
       }
 
       setLoadingSubBabs(true);
       try {
-        const filtered = await fetchSubBabsAdmin(selectedBab);
+        const filtered = await fetchSubBabsAdmin(selectedBabs);
         setDisplaySubBabs(filtered);
       } finally {
         setLoadingSubBabs(false);
@@ -54,7 +82,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
     };
 
     void loadFiltered();
-  }, [selectedBab, subBabs]);
+  }, [selectedBabs, subBabs]);
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);
@@ -92,6 +120,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
   const [allPlayerAnswers, setAllPlayerAnswers] = useState<KuisResult[]>([]);
   const [loadingAllAnswers, setLoadingAllAnswers] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showAllAnswers, setShowAllAnswers] = useState(false);
   const itemsPerPage = 20;
   const historyPerPage = 10;
   const autoFinishRef = useRef(false);
@@ -285,7 +314,15 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
       }
     }
 
-    const session = await createQuizSession(selectedBab, subBabsToPass, questionCount, durationMinutes, scheduledAt, percentagesEnabled ? subBabPercentages : undefined);
+    const session = await createQuizSession(
+      selectedMapels.length === 0 ? 'Semua MAPEL' : selectedMapels,
+      selectedBabs.length === 0 ? 'Semua BAB' : selectedBabs,
+      subBabsToPass,
+      questionCount,
+      durationMinutes,
+      scheduledAt,
+      percentagesEnabled ? subBabPercentages : undefined
+    );
     if (session) {
       setActiveSession(session);
       setActiveView('manage');
@@ -528,8 +565,84 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
 
           {/* Form Card */}
           <div className="bg-white rounded-[20px] shadow-[0_16px_40px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
-            {/* BAB & Sub-bab */}
+            {/* MAPEL & BAB & Sub-bab */}
             <div className="p-3 md:p-4 pb-3 flex flex-col md:flex-row gap-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-md bg-[#F0F7FF] flex items-center justify-center border border-[#BEE3F8]">
+                    <span className="text-sm">📌</span>
+                  </div>
+                  <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">MAPEL</label>
+                </div>
+                <div className="relative">
+                  <div
+                    onClick={() => setIsMapelOpen(!isMapelOpen)}
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-3 min-h-[38px] md:min-h-[42px] py-1.5 flex items-center justify-between cursor-pointer focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                  >
+                    <div className="flex flex-wrap gap-1">
+                      {selectedMapels.length === 0 ? (
+                        <span className="text-[12px] font-bold text-nike-black uppercase">✨ Semua MAPEL</span>
+                      ) : (
+                        selectedMapels.map(m => (
+                          <span key={m} className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1">
+                            {m.replace(/_/g, ' ')}
+                            <button onClick={(e) => {
+                              e.stopPropagation();
+                              const next = selectedMapels.filter(v => v !== m);
+                              setSelectedMapels(next);
+                              setSelectedBabs([]);
+                              setSelectedSubBabs([]);
+                            }} className="hover:text-blue-900">&times;</button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <svg className={`w-3.5 h-3.5 text-nike-grey-400 transition-transform ${isMapelOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+
+                  {isMapelOpen && (
+                    <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[300px] overflow-y-auto">
+                      <div
+                        className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                        onClick={() => {
+                          setSelectedMapels([]);
+                          setSelectedBabs([]);
+                          setSelectedSubBabs([]);
+                          setIsMapelOpen(false);
+                        }}
+                      >
+                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedMapels.length === 0 ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                          {selectedMapels.length === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        <span className="text-[12px] font-bold text-gray-700 uppercase">✨ Semua MAPEL</span>
+                      </div>
+                      {mapels.map(m => {
+                        const isSelected = selectedMapels.includes(m);
+                        return (
+                          <div
+                            key={m}
+                            className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                            onClick={() => {
+                              const next = isSelected ? selectedMapels.filter(v => v !== m) : [...selectedMapels, m];
+                              setSelectedMapels(next);
+                              setSelectedBabs([]);
+                              setSelectedSubBabs([]);
+                            }}
+                          >
+                            <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                              {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                            <span className="text-[12px] font-bold text-gray-700 uppercase">{m.replace(/_/g, ' ')}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded-md bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
@@ -538,27 +651,74 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                   <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">BAB</label>
                 </div>
                 <div className="relative">
-                  <select
-                    value={selectedBab}
-                    onChange={(e) => {
-                      setSelectedBab(e.target.value);
-                      setSelectedSubBabs([]);
-                      setSubBabPercentages({});
-                    }}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-3 h-[38px] md:h-[42px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all appearance-none cursor-pointer uppercase"
+                  <div
+                    onClick={() => setIsBabOpen(!isBabOpen)}
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-3 min-h-[38px] md:min-h-[42px] py-1.5 flex items-center justify-between cursor-pointer focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
                   >
-                    <option value="Semua BAB">✨ Semua BAB</option>
-                    {babs.length > 0 ? (
-                      babs.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)
-                    ) : (
-                      <option disabled>Loading BAB...</option>
-                    )}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-3.5 h-3.5 text-nike-grey-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="flex flex-wrap gap-1">
+                      {selectedBabs.length === 0 ? (
+                        <span className="text-[12px] font-bold text-nike-black uppercase">✨ Semua BAB</span>
+                      ) : (
+                        selectedBabs.map(b => (
+                          <span key={b} className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1">
+                            {b.replace(/_/g, ' ')}
+                            <button onClick={(e) => {
+                              e.stopPropagation();
+                              const next = selectedBabs.filter(v => v !== b);
+                              setSelectedBabs(next);
+                              setSelectedSubBabs([]);
+                            }} className="hover:text-red-900">&times;</button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <svg className={`w-3.5 h-3.5 text-nike-grey-400 transition-transform ${isBabOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
+
+                  {isBabOpen && (
+                    <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[300px] overflow-y-auto">
+                      <div
+                        className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                        onClick={() => {
+                          setSelectedBabs([]);
+                          setSelectedSubBabs([]);
+                          setIsBabOpen(false);
+                        }}
+                      >
+                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedBabs.length === 0 ? 'bg-red-500 border-red-500' : 'border-gray-300'}`}>
+                          {selectedBabs.length === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        <span className="text-[12px] font-bold text-gray-700 uppercase">✨ Semua BAB</span>
+                      </div>
+                      {loadingBabs ? (
+                        <div className="p-3 text-center text-[12px] text-gray-500 italic">Loading BAB...</div>
+                      ) : displayBabs.length > 0 ? (
+                        displayBabs.map(b => {
+                          const isSelected = selectedBabs.includes(b);
+                          return (
+                            <div
+                              key={b}
+                              className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                              onClick={() => {
+                                const next = isSelected ? selectedBabs.filter(v => v !== b) : [...selectedBabs, b];
+                                setSelectedBabs(next);
+                                setSelectedSubBabs([]);
+                              }}
+                            >
+                              <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-red-500 border-red-500' : 'border-gray-300'}`}>
+                                {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                              </div>
+                              <span className="text-[12px] font-bold text-gray-700 uppercase">{b.replace(/_/g, ' ')}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="p-3 text-center text-[12px] text-gray-400 italic">No BAB found</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -611,7 +771,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                           setIsSubBabOpen(false);
                         }}
                       >
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedSubBabs.length === 0 ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedSubBabs.length === 0 ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
                           {selectedSubBabs.length === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                         </div>
                         <span className="text-[12px] font-bold text-gray-700 uppercase">✨ Semua Sub-bab</span>
@@ -653,7 +813,7 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                                 }
                               }}
                             >
-                              <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                              <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
                                 {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                               </div>
                               <span className="text-[12px] font-bold text-gray-700 uppercase">{sb.label}</span>
@@ -760,11 +920,34 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                         );
                       })}
                       <div className="pt-1.5 mt-1.5 border-t border-gray-200 flex justify-between items-center">
-                        <span className="text-[10px] font-black text-gray-500 uppercase">Total:</span>
-                        <span className={`text-[10px] font-black uppercase ${effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? 'text-green-500' : 'text-red-500'
-                          }`}>
-                          {effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0)}%
-                        </span>
+                        <button
+                          onClick={() => {
+                            const newPct = { ...subBabPercentages };
+                            const total = effectiveSubBabs.length;
+                            if (total > 0) {
+                              const equal = Math.floor(100 / total);
+                              let rem = 100 - (equal * total);
+                              effectiveSubBabs.forEach(v => {
+                                newPct[v] = equal + (rem > 0 ? 1 : 0);
+                                rem--;
+                              });
+                            }
+                            setSubBabPercentages(newPct);
+                          }}
+                          className="text-[10px] font-black text-indigo-500 uppercase hover:text-indigo-700 transition-colors flex items-center gap-1"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Reset
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-gray-500 uppercase">Total:</span>
+                          <span className={`text-[10px] font-black uppercase ${effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? 'text-green-500' : 'text-red-500'
+                            }`}>
+                            {effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1307,10 +1490,13 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
 
                       if (!question) return null;
 
-                      const correctOptionText = (question as any)[`option_${question.correct_answer.toLowerCase()}`];
+                      const isShortAnswer = question.question_type === 'short_answer';
+                      const correctText = isShortAnswer
+                        ? question.short_answer
+                        : (question as any)[`option_${question.correct_answer.toLowerCase()}`];
 
                       return (
-                        <div key={qId} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
+                        <div key={`${qId}-${idx}`} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
                           <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Question {idx + 1}</span>
                             {answer ? (
@@ -1334,8 +1520,10 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
 
                                 {!answer.is_correct && (
                                   <div className="p-4 rounded-xl border-2 border-green-100 bg-green-50/20">
-                                    <p className="text-[10px] font-black text-green-600 uppercase mb-2">Correct Answer ({question.correct_answer})</p>
-                                    <RichContent html={correctOptionText} className="text-sm font-medium text-green-800" />
+                                    <p className="text-[10px] font-black text-green-600 uppercase mb-2">
+                                      Correct Answer{isShortAnswer ? '' : ` (${question.correct_answer})`}
+                                    </p>
+                                    <RichContent html={correctText} className="text-sm font-medium text-green-800" />
                                   </div>
                                 )}
                               </div>
@@ -1369,7 +1557,19 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                   {activeSession.question_count} Soal • {players.length} Pemain
                 </p>
               </div>
-              <button onClick={() => setShowViewQuestions(false)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">✕</button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowAllAnswers(!showAllAnswers)}
+                  className={`h-10 px-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2 ${
+                    showAllAnswers 
+                      ? 'bg-indigo-600 border-transparent text-white shadow-lg shadow-indigo-200' 
+                      : 'bg-white border-gray-200 text-gray-500 hover:border-indigo-600 hover:text-indigo-600'
+                  }`}
+                >
+                  {showAllAnswers ? '👁️ Hide Answers' : '👁️ Show Answers'}
+                </button>
+                <button onClick={() => setShowViewQuestions(false)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">✕</button>
+              </div>
             </div>
 
             {/* Content */}
@@ -1382,8 +1582,11 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                     const question = sessionQuestions.find(q => q.id === qId);
                     if (!question) return null;
 
+                    const isShortAnswer = question.question_type === 'short_answer';
                     const correctLabel = question.correct_answer;
-                    const correctOptionText = (question as any)[`option_${correctLabel.toLowerCase()}`];
+                    const correctOptionText = isShortAnswer 
+                      ? question.short_answer 
+                      : (question as any)[`option_${correctLabel.toLowerCase()}`];
                     const correctAnswers = allPlayerAnswers.filter(a => a.question_id === qId && a.is_correct);
                     const totalAnswers = allPlayerAnswers.filter(a => a.question_id === qId);
                     const correctPlayerNames = correctAnswers.map(a => {
@@ -1405,10 +1608,12 @@ export default function AdminQuizTab({ babs, subBabs }: { babs: string[], subBab
                           <RichContent html={question.question_text} className="text-[15px] font-bold text-gray-900 leading-relaxed" />
 
                           {/* Correct Answer */}
-                          <div className="p-4 rounded-xl border-2 border-green-100 bg-green-50/30">
-                            <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-2">Jawaban Benar ({correctLabel})</p>
-                            <RichContent html={correctOptionText} className="text-sm font-medium text-green-800" />
-                          </div>
+                          {showAllAnswers && (
+                            <div className="p-4 rounded-xl border-2 border-green-100 bg-green-50/30">
+                              <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-2">Jawaban Benar</p>
+                              <RichContent html={correctOptionText} className="text-sm font-medium text-green-800" />
+                            </div>
+                          )}
 
                           {/* Who answered correctly */}
                           <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50">

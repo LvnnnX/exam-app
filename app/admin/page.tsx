@@ -5,7 +5,7 @@ import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
 import AdminQuizTab from '@/app/components/AdminQuizTab';
-import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchbabs, fetchAllSubBabsAdmin, fetchAllBabsAdmin, fetchSubBabsForMultiple, fetchVisibilitySettings, saveVisibilitySettings, type VisibilitySettings, type BabInfo, type SubBabInfo } from '@/lib/questions';
+import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchMapelsAdmin, fetchBabsAdmin, fetchAllMapelsAdmin, fetchAllSubBabsAdmin, fetchAllBabsAdmin, fetchSubBabsForMultiple, fetchVisibilitySettings, saveVisibilitySettings, type VisibilitySettings, type BabInfo, type SubBabInfo } from '@/lib/questions';
 import { categorySlugToLabel, normalizeCategorySlug } from '@/lib/categories';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
@@ -15,6 +15,7 @@ type ExamResult = {
   name: string;
   score: number;
   total_questions: number;
+  mapel: string;
   bab: string;
   sub_bab: string;
   taken_at: string;
@@ -32,6 +33,7 @@ type ExamResult = {
 type LiveSession = {
   session_id: string;
   name: string;
+  mapel: string;
   bab: string;
   sub_bab: string;
   mode: string;
@@ -54,6 +56,7 @@ type QuestionDraft = {
   question_type: 'multiple_choice' | 'short_answer';
   short_answer: string;
   is_hidden: boolean;
+  mapels: string[];
   babs: string[];
   sub_babs: string[];
 };
@@ -71,6 +74,7 @@ const EMPTY_DRAFT: QuestionDraft = {
   question_type: 'multiple_choice',
   short_answer: '',
   is_hidden: false,
+  mapels: [],
   babs: [],
   sub_babs: [],
 };
@@ -109,6 +113,7 @@ export default function AdminPage() {
       void loadAllSubBabsAdmin();
       void loadVisibilitySettings();
     } else if (activeTab === 'quiz') {
+      void loadAllMapelsAdmin();
       void loadAllBabsAdmin();
       void loadAllSubBabsAdmin();
       void loadVisibilitySettings();
@@ -146,6 +151,7 @@ export default function AdminPage() {
   const [questionLoading, setQuestionLoading] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>([]);
+  const [activeMapelFilter, setActiveMapelFilter] = useState<string>('all');
   const [activebabFilter, setActivebabFilter] = useState<string>('all');
   const [activeSubBabFilter, setActiveSubBabFilter] = useState<string>('all');
   const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'short_answer'>('all');
@@ -169,9 +175,11 @@ export default function AdminPage() {
   const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
   const [detailQuestions, setDetailQuestions] = useState<RawQuestion[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [allMapels, setAllMapels] = useState<BabInfo[]>([]);
   const [allbabs, setAllbabs] = useState<BabInfo[]>([]);
   const [allSubBabsAdmin, setAllSubBabsAdmin] = useState<SubBabInfo[]>([]);
   const [sessionInfo, setSessionInfo] = useState<string | null>(null);
+  const [activeResMapel, setActiveResMapel] = useState<string>('all');
   const [activeResbab, setActiveResbab] = useState<string>('all');
   const [activeResSubBab, setActiveResSubBab] = useState<string>('all');
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
@@ -179,6 +187,8 @@ export default function AdminPage() {
 
   // Settings state
   const [visibilitySettings, setVisibilitySettings] = useState<VisibilitySettings>({
+    hidden_mapels: [],
+    admin_only_mapels: [],
     hidden_babs: [],
     admin_only_babs: [],
     hidden_sub_babs: [],
@@ -190,6 +200,7 @@ export default function AdminPage() {
   const [settingsDirty, setSettingsDirty] = useState(false);
 
   // Add-new-category inline state (used in question form)
+  const [newMapelInput, setNewMapelInput] = useState('');
   const [newSubBabInput, setNewSubBabInput] = useState('');
   const [newbabInput, setNewbabInput] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
@@ -219,6 +230,7 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(session.user.id);
         void fetchAdminQuestions();
+        void loadAllMapelsAdmin();
         void loadAllBabsAdmin();
         void loadAllSubBabsAdmin();
         void loadVisibilitySettings();
@@ -240,6 +252,7 @@ export default function AdminPage() {
         void fetchResults();
         void loadVisibilitySettings();
       } else if (savedTab === 'settings' || savedTab === 'quiz') {
+        void loadAllMapelsAdmin();
         void loadAllBabsAdmin();
         void loadAllSubBabsAdmin();
         void loadVisibilitySettings();
@@ -264,6 +277,25 @@ export default function AdminPage() {
     };
   }, [isAuthenticated, isLiveMode]);
 
+  // Filter babs based on selected mapels in Form
+  useEffect(() => {
+    if (!isAuthenticated || (!isAdding && !isEditing)) return;
+
+    const syncBabs = async () => {
+      if (formData.mapels.length === 0) {
+        setAllbabs([]);
+        return;
+      }
+
+      const promises = formData.mapels.map(m => fetchBabsAdmin(m));
+      const results = await Promise.all(promises);
+      const merged = results.flat();
+      const unique = merged.filter((v, i, a) => a.findIndex(t => t.value === v.value) === i);
+      setAllbabs(unique);
+    };
+    void syncBabs();
+  }, [formData.mapels, isAdding, isEditing, isAuthenticated]);
+
   // Filter sub_babs based on selected babs in Form
   useEffect(() => {
     if (!isAuthenticated || (!isAdding && !isEditing)) return;
@@ -281,10 +313,19 @@ export default function AdminPage() {
     void syncSubBabs();
   }, [formData.babs, isAdding, isEditing, isAuthenticated]);
 
-  const babTabs = useMemo(() => {
-    const babs = Array.from(new Set(adminQuestions.flatMap(q => q.babs || []))).sort();
-    return ['all', ...babs];
+  const mapelTabs = useMemo(() => {
+    const mapels = Array.from(new Set(adminQuestions.flatMap(q => q.mapels || []))).sort();
+    return ['all', ...mapels];
   }, [adminQuestions]);
+
+  const babTabs = useMemo(() => {
+    let list = adminQuestions;
+    if (activeMapelFilter !== 'all') {
+      list = adminQuestions.filter(q => q.mapels?.includes(activeMapelFilter));
+    }
+    const babs = Array.from(new Set(list.flatMap(q => q.babs || []))).sort();
+    return ['all', ...babs];
+  }, [adminQuestions, activeMapelFilter]);
 
   const subBabTabs = useMemo(() => {
     let list = adminQuestions;
@@ -297,6 +338,9 @@ export default function AdminPage() {
 
   const filteredQuestions = useMemo(() => {
     let list = adminQuestions;
+    if (activeMapelFilter !== 'all') {
+      list = list.filter(q => q.mapels?.includes(activeMapelFilter));
+    }
     if (activebabFilter !== 'all') {
       list = list.filter(q => q.babs?.includes(activebabFilter));
     }
@@ -314,11 +358,14 @@ export default function AdminPage() {
       const q = searchQuery.toLowerCase();
       list = list.filter(question => {
         const plainText = stripHtml(question.question_text).toLowerCase();
-        return plainText.includes(q) || question.babs?.some(c => c.toLowerCase().includes(q)) || question.sub_babs?.some(c => c.toLowerCase().includes(q));
+        return plainText.includes(q) ||
+          question.mapels?.some(c => c.toLowerCase().includes(q)) ||
+          question.babs?.some(c => c.toLowerCase().includes(q)) ||
+          question.sub_babs?.some(c => c.toLowerCase().includes(q));
       });
     }
     return list;
-  }, [activebabFilter, activeSubBabFilter, visibilityFilter, questionTypeFilter, adminQuestions, searchQuery]);
+  }, [activeMapelFilter, activebabFilter, activeSubBabFilter, visibilityFilter, questionTypeFilter, adminQuestions, searchQuery]);
 
   const getCategoryLabel = (category: string) => {
     if (category === 'all') {
@@ -358,6 +405,7 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setSessionInfo(data.session.user.id);
         void fetchAdminQuestions();
+        void loadAllMapelsAdmin();
         void loadAllBabsAdmin();
         void loadAllSubBabsAdmin();
         void loadVisibilitySettings();
@@ -370,6 +418,15 @@ export default function AdminPage() {
   };
 
 
+
+  const loadAllMapelsAdmin = async () => {
+    try {
+      const hbs = await fetchAllMapelsAdmin();
+      setAllMapels(hbs);
+    } catch (err) {
+      console.error('Failed to load Admin Mapels list:', err);
+    }
+  };
 
   const loadAllBabsAdmin = async () => {
     try {
@@ -389,7 +446,7 @@ export default function AdminPage() {
     }
   };
 
-  const fetchResults = async (page = 0, bab = activeResbab, subBab = activeResSubBab, mode = activeModeFilter) => {
+  const fetchResults = async (page = 0, mapel = activeResMapel, bab = activeResbab, subBab = activeResSubBab, mode = activeModeFilter) => {
     setLoading(true);
     try {
       // 1. Fetch paginated data for the table
@@ -400,6 +457,9 @@ export default function AdminPage() {
         .from('exam_results')
         .select('*', { count: 'exact' });
 
+      if (mapel !== 'all') {
+        paginatedQuery = paginatedQuery.eq('mapel', mapel);
+      }
       if (bab !== 'all') {
         paginatedQuery = paginatedQuery.eq('bab', bab);
       }
@@ -427,6 +487,9 @@ export default function AdminPage() {
         .from('exam_results')
         .select('score, total_questions');
 
+      if (mapel !== 'all') {
+        statsQuery = statsQuery.eq('mapel', mapel);
+      }
       if (bab !== 'all') {
         statsQuery = statsQuery.eq('bab', bab);
       }
@@ -450,21 +513,28 @@ export default function AdminPage() {
     }
   };
 
+  const handleResMapelChange = (mapel: string) => {
+    setActiveResMapel(mapel);
+    setActiveResbab('all');
+    setActiveResSubBab('all');
+    void fetchResults(0, mapel, 'all', 'all', activeModeFilter);
+  };
+
   const handleResbabChange = (bab: string) => {
     setActiveResbab(bab);
     // When changing BAB, reset sub bab to all to avoid invalid combinations
     setActiveResSubBab('all');
-    void fetchResults(0, bab, 'all', activeModeFilter);
+    void fetchResults(0, activeResMapel, bab, 'all', activeModeFilter);
   };
 
   const handleResSubBabChange = (subBab: string) => {
     setActiveResSubBab(subBab);
-    void fetchResults(0, activeResbab, subBab, activeModeFilter);
+    void fetchResults(0, activeResMapel, activeResbab, subBab, activeModeFilter);
   };
 
   const handleModeFilterChange = (mode: string) => {
     setActiveModeFilter(mode);
-    void fetchResults(0, activeResbab, activeResSubBab, mode);
+    void fetchResults(0, activeResMapel, activeResbab, activeResSubBab, mode);
   };
 
   const handleFetchResultDetail = async (result: ExamResult) => {
@@ -584,12 +654,17 @@ export default function AdminPage() {
     }
   };
 
-  const handleVisibilityChange = (type: 'babs' | 'sub_babs', slug: string, state: 'visible' | 'admin_only' | 'hidden') => {
+  const handleVisibilityChange = (type: 'mapels' | 'babs' | 'sub_babs', slug: string, state: 'visible' | 'admin_only' | 'hidden') => {
     setVisibilitySettings(prev => {
       const next = { ...prev };
       const normalized = normalizeCategorySlug(slug);
 
-      if (type === 'babs') {
+      if (type === 'mapels') {
+        next.hidden_mapels = next.hidden_mapels.filter(s => s !== normalized);
+        next.admin_only_mapels = next.admin_only_mapels.filter(s => s !== normalized);
+        if (state === 'hidden') next.hidden_mapels.push(normalized);
+        else if (state === 'admin_only') next.admin_only_mapels.push(normalized);
+      } else if (type === 'babs') {
         next.hidden_babs = next.hidden_babs.filter(s => s !== normalized);
         next.admin_only_babs = next.admin_only_babs.filter(s => s !== normalized);
         if (state === 'hidden') next.hidden_babs.push(normalized);
@@ -628,6 +703,27 @@ export default function AdminPage() {
   /**
    * Creates a new bab slug on-the-fly and adds it to the current question draft.
    */
+  const handleAddNewMapel = async () => {
+    const slug = normalizeCategorySlug(newMapelInput);
+    if (!slug) return;
+
+    setAddingCategory(true);
+    try {
+      if (!formData.mapels.includes(slug)) {
+        handleInputChange('mapels', [...formData.mapels, slug]);
+      }
+
+      if (!allMapels.some(c => c.value === slug)) {
+        const label = categorySlugToLabel(slug);
+        setAllMapels(prev => [...prev, { value: slug, label }]);
+      }
+
+      setNewMapelInput('');
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+
   const handleAddNewbab = async () => {
     const slug = normalizeCategorySlug(newbabInput);
     if (!slug) return;
@@ -686,6 +782,13 @@ export default function AdminPage() {
     }
   };
 
+  const handleMapelFilterChange = (mapel: string) => {
+    setActiveMapelFilter(mapel);
+    setActivebabFilter('all');
+    setActiveSubBabFilter('all');
+    void fetchAdminQuestions();
+  };
+
   const handleBabFilterChange = (bab: string) => {
     setActivebabFilter(bab);
     setActiveSubBabFilter('all');
@@ -707,6 +810,7 @@ export default function AdminPage() {
     }
 
     if (tab === 'settings') {
+      void loadAllMapelsAdmin();
       void loadAllBabsAdmin();
       void loadAllSubBabsAdmin();
       void loadVisibilitySettings();
@@ -742,6 +846,7 @@ export default function AdminPage() {
       question_type: questionType,
       short_answer: questionType === 'short_answer' ? normalizedShortAnswer : '',
       is_hidden: formData.is_hidden,
+      mapels: formData.mapels,
       babs: formData.babs,
       sub_babs: formData.sub_babs,
     };
@@ -769,8 +874,8 @@ export default function AdminPage() {
       throw new Error('Please provide the short answer before saving.');
     }
 
-    if (payload.babs.length === 0 || payload.sub_babs.length === 0) {
-      throw new Error('Please select at least one BAB and Sub-bab for the question.');
+    if (payload.mapels.length === 0 || payload.babs.length === 0) {
+      throw new Error('Please select at least one MAPEL and BAB for the question.');
     }
 
     return payload;
@@ -859,6 +964,7 @@ export default function AdminPage() {
       question_type: question.question_type === 'short_answer' ? 'short_answer' : 'multiple_choice',
       short_answer: question.short_answer || '',
       is_hidden: Boolean(question.is_hidden),
+      mapels: question.mapels || [],
       babs: question.babs || [],
       sub_babs: question.sub_babs || [],
     });
@@ -1012,7 +1118,22 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="mb-5 flex flex-col sm:flex-row gap-4 w-full sm:max-w-4xl">
+          <div className="mb-5 flex flex-col sm:flex-row gap-4 w-full sm:max-w-6xl">
+            <div className="flex-1">
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter Mapel</label>
+              <select
+                value={activeMapelFilter}
+                onChange={(e) => handleMapelFilterChange(e.target.value)}
+                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+              >
+                {mapelTabs.map((category) => (
+                  <option key={category} value={category}>
+                    {getCategoryLabel(category).toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex-1">
               <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter BAB</label>
               <select
@@ -1113,6 +1234,7 @@ export default function AdminPage() {
                     <div className="font-semibold text-slate-700 mb-2 text-sm leading-relaxed">
                       Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
                     </div>
+                    <div className="text-xs text-slate-400 mb-1">MAPEL: {question.mapels?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-1">BAB: {question.babs?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-1">Sub-bab: {question.sub_babs?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-4">
@@ -1122,29 +1244,29 @@ export default function AdminPage() {
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedQuestion(question);
-                            setIsEditing(false);
-                            setIsAdding(false);
-                          }}
-                          className="px-3 py-1.5 bg-[#4A90D9]/10 text-[#4A90D9] rounded-lg text-xs font-semibold hover:bg-[#4A90D9]/20 transition-colors"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => startEdit(question)}
-                          className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-xs font-semibold hover:bg-[#FF9500]/20 transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeletingQuestion(question)}
-                          className="px-3 py-1.5 bg-[#FF3B30]/10 text-[#FF3B30] rounded-lg text-xs font-semibold hover:bg-[#FF3B30]/20 transition-colors cursor-pointer"
-                        >
-                          Delete
-                        </button>
+                      <button
+                        onClick={() => {
+                          setSelectedQuestion(question);
+                          setIsEditing(false);
+                          setIsAdding(false);
+                        }}
+                        className="px-3 py-1.5 bg-[#4A90D9]/10 text-[#4A90D9] rounded-lg text-xs font-semibold hover:bg-[#4A90D9]/20 transition-colors"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => startEdit(question)}
+                        className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-xs font-semibold hover:bg-[#FF9500]/20 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingQuestion(question)}
+                        className="px-3 py-1.5 bg-[#FF3B30]/10 text-[#FF3B30] rounded-lg text-xs font-semibold hover:bg-[#FF3B30]/20 transition-colors cursor-pointer"
+                      >
+                        Delete
+                      </button>
                     </div>
                     <span
                       className={`absolute bottom-3 right-3 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shadow-sm ${question.is_hidden ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-green-100 text-green-700 border border-green-200'}`}
@@ -1205,55 +1327,76 @@ export default function AdminPage() {
               </div>
 
               {/* Row 2: Category selection — dropdown */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">BAB</label>
-                  <select
-                    value={activeResbab}
-                    onChange={(e) => handleResbabChange(e.target.value)}
-                    className="bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
-                  >
-                    {babTabs.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {getCategoryLabel(cat)}
-                      </option>
-                    ))}
-                  </select>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">MAPEL Filter</label>
+                  <div className="relative">
+                    <select
+                      value={activeResMapel}
+                      onChange={(e) => handleResMapelChange(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                    >
+                      {mapelTabs.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {getCategoryLabel(cat).toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap sm:ml-2">Sub-bab</label>
-                  <select
-                    value={activeResSubBab}
-                    onChange={(e) => handleResSubBabChange(e.target.value)}
-                    className="bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
-                  >
-                    {subBabTabs.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {getCategoryLabel(cat)}
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">BAB Filter</label>
+                  <div className="relative">
+                    <select
+                      value={activeResbab}
+                      onChange={(e) => handleResbabChange(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                    >
+                      {babTabs.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {getCategoryLabel(cat).toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              {/* Row 3: Mode selection */}
-              <div className="flex flex-wrap gap-2">
-                {['all', 'exam', 'survival'].map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => handleModeFilterChange(mode)}
-                    style={activeModeFilter === mode ? { background: mode === 'survival' ? '#FF3B30' : '#4A90D9' } : {}}
-                    className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${activeModeFilter === mode
-                      ? 'text-white border-transparent shadow-md ' + (mode === 'survival' ? 'shadow-red-200' : 'shadow-blue-200')
-                      : 'bg-white border-slate-200 text-slate-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
-                      }`}
-                  >
-                    {mode === 'all' ? 'All Modes' : mode === 'exam' ? '📝 Exam' : '⚔️ Survival'}
-                  </button>
-                ))}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Sub-bab Filter</label>
+                  <div className="relative">
+                    <select
+                      value={activeResSubBab}
+                      onChange={(e) => handleResSubBabChange(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                    >
+                      {subBabTabs.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {getCategoryLabel(cat).toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mode Filter</label>
+                  <div className="relative">
+                    <select
+                      value={activeModeFilter}
+                      onChange={(e) => handleModeFilterChange(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                    >
+                      <option value="all">Semua Mode</option>
+                      <option value="exam">📝 Exam</option>
+                      <option value="survival">⚔️ Survival</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1310,7 +1453,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {liveSessions
-                        .filter(s => (activeResbab === 'all' || s.bab === activeResbab) && (activeResSubBab === 'all' || s.sub_bab === activeResSubBab) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
+                        .filter(s => (activeResMapel === 'all' || s.mapel === activeResMapel) && (activeResbab === 'all' || s.bab === activeResbab) && (activeResSubBab === 'all' || s.sub_bab === activeResSubBab) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
                         .map((session) => {
                           const answeredCount = Object.keys(session.user_answers).length;
                           const progress = Math.round((answeredCount / session.question_count) * 100);
@@ -1328,9 +1471,9 @@ export default function AdminPage() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 <span
                                   className="block max-w-[220px] truncate capitalize"
-                                  title={`${session.bab?.replaceAll('_', ' ')}, ${session.sub_bab?.replaceAll('_', ' ')}`}
+                                  title={`${session.mapel?.replaceAll('_', ' ')} · ${session.bab?.replaceAll('_', ' ')} · ${session.sub_bab?.replaceAll('_', ' ')}`}
                                 >
-                                  {session.bab?.replaceAll('_', ' ')}, {session.sub_bab?.replaceAll('_', ' ')}
+                                  {session.mapel?.replaceAll('_', ' ')} · {session.bab?.replaceAll('_', ' ')} · {session.sub_bab?.replaceAll('_', ' ')}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
@@ -1418,9 +1561,9 @@ export default function AdminPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <span
                               className="block max-w-[220px] truncate capitalize"
-                              title={`${result.bab?.replaceAll('_', ' ')}, ${result.sub_bab?.replaceAll('_', ' ')}`}
+                              title={`${result.mapel?.replaceAll('_', ' ')} · ${result.bab?.replaceAll('_', ' ')} · ${result.sub_bab?.replaceAll('_', ' ')}`}
                             >
-                              {result.bab?.replaceAll('_', ' ')}, {result.sub_bab?.replaceAll('_', ' ')}
+                              {result.mapel?.replaceAll('_', ' ')} · {result.bab?.replaceAll('_', ' ')} · {result.sub_bab?.replaceAll('_', ' ')}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1550,58 +1693,57 @@ export default function AdminPage() {
               <div className="p-6 text-gray-400 text-sm animate-pulse">Loading settings...</div>
             ) : (
               <div className="p-6 space-y-4">
-                {babSubBabMap.size === 0 && (
-                  <p className="text-sm text-gray-400 italic">No categories found. Add questions first.</p>
+                {allMapels.length === 0 && (
+                  <p className="text-sm text-gray-400 italic">No Mapel found. Add questions first.</p>
                 )}
-                {Array.from(babSubBabMap.entries()).map(([babSlug, subBabsSet]) => {
-                  const babLabel = allbabs.find(b => normalizeCategorySlug(b.value) === babSlug)?.label || babSlug;
-                  const isExpanded = expandedBabs.includes(babSlug);
-
-                  const babState = visibilitySettings.hidden_babs.includes(babSlug)
+                {allMapels.map(mapel => {
+                  const mapelSlug = normalizeCategorySlug(mapel.value);
+                  const isMapelExpanded = expandedBabs.includes(mapelSlug);
+                  const mapelState = visibilitySettings.hidden_mapels.includes(mapelSlug)
                     ? 'hidden'
-                    : visibilitySettings.admin_only_babs.includes(babSlug)
+                    : visibilitySettings.admin_only_mapels.includes(mapelSlug)
                       ? 'admin_only'
                       : 'visible';
 
                   return (
-                    <div key={babSlug} className="border border-gray-200 rounded-xl overflow-hidden">
-                      {/* Bab Row */}
+                    <div key={mapelSlug} className="border border-gray-200 rounded-xl overflow-hidden">
+                      {/* Mapel Row */}
                       <div
-                        className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${isExpanded ? 'bg-indigo-50/50' : 'bg-gray-50 hover:bg-gray-100'}`}
-                        onClick={() => setExpandedBabs(prev => isExpanded ? prev.filter(b => b !== babSlug) : [...prev, babSlug])}
+                        className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${isMapelExpanded ? 'bg-indigo-50/50' : 'bg-gray-50 hover:bg-gray-100'}`}
+                        onClick={() => setExpandedBabs(prev => isMapelExpanded ? prev.filter(b => b !== mapelSlug) : [...prev, mapelSlug])}
                       >
                         <div className="flex items-center gap-3">
-                          <svg className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className={`w-5 h-5 text-gray-400 transition-transform ${isMapelExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                           <div>
-                            <h3 className="font-bold text-gray-800 capitalize">{babLabel}</h3>
-                            <p className="text-xs text-gray-500 uppercase tracking-wider">{babSlug} ({subBabsSet.size} Sub-babs)</p>
+                            <h3 className="font-bold text-gray-800 uppercase tracking-tight">{mapel.label}</h3>
+                            <p className="text-xs text-gray-500 uppercase tracking-wider">{mapelSlug}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-                          <div className="flex bg-[#c2c2c2] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                          <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
                             <button
                               type="button"
-                              onClick={() => handleVisibilityChange('babs', babSlug, 'hidden')}
-                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${babState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                              title="Hidden (Sembunyikan dari semua)"
+                              onClick={() => handleVisibilityChange('mapels', mapelSlug, 'hidden')}
+                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${mapelState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                              title="Hidden"
                             >
                               <svg className="w-4 h-4 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleVisibilityChange('babs', babSlug, 'admin_only')}
-                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${babState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                              title="Admin Only (Hanya muncul di Admin Panel)"
+                              onClick={() => handleVisibilityChange('mapels', mapelSlug, 'admin_only')}
+                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${mapelState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                              title="Admin Only"
                             >
                               <span className="font-bold text-lg leading-none text-white pb-0.5">/</span>
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleVisibilityChange('babs', babSlug, 'visible')}
-                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${babState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                              title="Visible (Muncul untuk User)"
+                              onClick={() => handleVisibilityChange('mapels', mapelSlug, 'visible')}
+                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${mapelState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                              title="Visible"
                             >
                               <svg className="w-5 h-5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                             </button>
@@ -1609,56 +1751,95 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Sub-bab Rows */}
-                      {isExpanded && (
+                      {isMapelExpanded && (
                         <div className="divide-y divide-gray-100 bg-white border-t border-gray-100">
-                          {subBabsSet.size === 0 ? (
-                            <div className="p-4 text-sm text-gray-400 italic pl-12">No sub-babs under this Bab.</div>
-                          ) : (
-                            Array.from(subBabsSet).sort().map(subSlug => {
-                              const subLabel = allSubBabsAdmin.find(s => normalizeCategorySlug(s.value) === subSlug)?.label || subSlug;
-                              const subState = visibilitySettings.hidden_sub_babs.includes(subSlug)
-                                ? 'hidden'
-                                : visibilitySettings.admin_only_sub_babs.includes(subSlug)
-                                  ? 'admin_only'
-                                  : 'visible';
+                          {Array.from(babSubBabMap.entries()).map(([babSlug, subBabsSet]) => {
+                            // Note: This shows ALL Babs under EVERY Mapel for now because we don't have a Mapel->Bab map easily.
+                            // However, we can filter based on if this Bab has been used with this Mapel in any question.
+                            const babLabel = allbabs.find(b => normalizeCategorySlug(b.value) === babSlug)?.label || babSlug;
+                            const isBabExpanded = expandedBabs.includes(`${mapelSlug}:${babSlug}`);
+                            const babState = visibilitySettings.hidden_babs.includes(babSlug) ? 'hidden' : visibilitySettings.admin_only_babs.includes(babSlug) ? 'admin_only' : 'visible';
 
-                              return (
-                                <div key={subSlug} className="flex items-center justify-between p-3 pl-12 hover:bg-gray-50 transition-colors">
-                                  <div>
-                                    <p className="text-sm font-semibold text-gray-700 capitalize">{subLabel}</p>
-                                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">{subSlug}</p>
+                            return (
+                              <div key={babSlug} className="pl-6">
+                                <div
+                                  className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${isBabExpanded ? 'bg-slate-50' : 'hover:bg-gray-50'}`}
+                                  onClick={() => setExpandedBabs(prev => isBabExpanded ? prev.filter(b => b !== `${mapelSlug}:${babSlug}`) : [...prev, `${mapelSlug}:${babSlug}`])}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${isBabExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                    <h4 className="font-semibold text-gray-700 text-sm uppercase">{babLabel}</h4>
                                   </div>
-                                  <div className="flex bg-[#c2c2c2] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                                  <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
                                     <button
                                       type="button"
-                                      onClick={() => handleVisibilityChange('sub_babs', subSlug, 'hidden')}
-                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${subState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                      title="Hidden (Sembunyikan dari semua)"
+                                      onClick={() => handleVisibilityChange('babs', babSlug, 'hidden')}
+                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
                                     >
                                       <svg className="w-3.5 h-3.5 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleVisibilityChange('sub_babs', subSlug, 'admin_only')}
-                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${subState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                      title="Admin Only (Hanya muncul di Admin Panel)"
+                                      onClick={() => handleVisibilityChange('babs', babSlug, 'admin_only')}
+                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
                                     >
                                       <span className="font-bold text-base leading-none text-white pb-0.5">/</span>
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleVisibilityChange('sub_babs', subSlug, 'visible')}
-                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${subState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                      title="Visible (Muncul untuk User)"
+                                      onClick={() => handleVisibilityChange('babs', babSlug, 'visible')}
+                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
                                     >
                                       <svg className="w-4 h-4 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                     </button>
                                   </div>
                                 </div>
-                              );
-                            })
-                          )}
+
+                                {isBabExpanded && (
+                                  <div className="divide-y divide-gray-50 bg-white border-t border-gray-50 pl-6">
+                                    {subBabsSet.size === 0 ? (
+                                      <div className="p-3 text-xs text-gray-400 italic">No sub-babs.</div>
+                                    ) : (
+                                      Array.from(subBabsSet).sort().map(subSlug => {
+                                        const subLabel = allSubBabsAdmin.find(s => normalizeCategorySlug(s.value) === subSlug)?.label || subSlug;
+                                        const subState = visibilitySettings.hidden_sub_babs.includes(subSlug) ? 'hidden' : visibilitySettings.admin_only_sub_babs.includes(subSlug) ? 'admin_only' : 'visible';
+                                        return (
+                                          <div key={subSlug} className="flex items-center justify-between p-2 hover:bg-gray-50 transition-colors">
+                                            <p className="text-xs font-medium text-gray-500 capitalize">{subLabel}</p>
+                                            <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleVisibilityChange('sub_babs', subSlug, 'hidden')}
+                                                className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                              >
+                                                <svg className="w-3 h-3 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleVisibilityChange('sub_babs', subSlug, 'admin_only')}
+                                                className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                              >
+                                                <span className="font-bold text-sm leading-none text-white pb-0.5">/</span>
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleVisibilityChange('sub_babs', subSlug, 'visible')}
+                                                className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                              >
+                                                <svg className="w-3.5 h-3.5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -1806,7 +1987,88 @@ export default function AdminPage() {
                   )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:col-span-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:col-span-2">
+                      {/* Mapel (Multi Select) */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">
+                          Mapel
+                          <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
+                        </label>
+                        <div className="relative group">
+                          <div className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 min-h-[48px] text-sm flex flex-wrap gap-1.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all max-h-[120px] overflow-y-auto">
+                            {formData.mapels.length === 0 ? (
+                              <span className="text-gray-400 py-1.5">Pilih Mapel...</span>
+                            ) : (
+                              formData.mapels.map(val => {
+                                const info = allMapels.find(h => h.value === val);
+                                return (
+                                  <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
+                                    {info?.label || val}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleInputChange('mapels', formData.mapels.filter(v => v !== val))}
+                                      className="hover:text-indigo-900 ml-1"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                );
+                              })
+                            )}
+                          </div>
+
+                          {/* Dropdown list for Mapel multi-select */}
+                          <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
+                            {allMapels.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic p-2 text-center">Loading Mapel...</p>
+                            ) : (
+                              allMapels.map((cat) => {
+                                const isSelected = formData.mapels.includes(cat.value);
+                                return (
+                                  <button
+                                    key={cat.value}
+                                    type="button"
+                                    onClick={() => {
+                                      const next = isSelected
+                                        ? formData.mapels.filter((c) => c !== cat.value)
+                                        : [...formData.mapels, cat.value];
+                                      handleInputChange('mapels', next);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${isSelected
+                                      ? 'bg-indigo-600 text-white shadow-sm'
+                                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
+                                      }`}
+                                  >
+                                    <span>{cat.label}</span>
+                                    {isSelected && <span>✓</span>}
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Add New Mapel inline */}
+                        <div className="flex gap-2 pt-1">
+                          <input
+                            type="text"
+                            value={newMapelInput}
+                            onChange={(e) => setNewMapelInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewMapel(); } }}
+                            placeholder="Add new mapel..."
+                            className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void handleAddNewMapel()}
+                            disabled={addingCategory || !newMapelInput.trim()}
+                            className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
+                          >
+                            + New
+                          </button>
+                        </div>
+                      </div>
+
                       {/* Bab (Multi Select) */}
                       <div className="space-y-2">
                         <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">
@@ -1897,7 +2159,7 @@ export default function AdminPage() {
                         <div className="relative group">
                           <div className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 min-h-[48px] text-sm flex flex-wrap gap-1.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all max-h-[120px] overflow-y-auto">
                             {formData.sub_babs.length === 0 ? (
-                              <span className="text-gray-400 py-1.5">Pilih Sub-bab...</span>
+                              <span className="text-gray-400 py-1.5">Optional...</span>
                             ) : (
                               formData.sub_babs.map(val => {
                                 const info = allSubBabsAdmin.find(s => s.value === val);
@@ -2069,11 +2331,29 @@ export default function AdminPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="p-4 bg-white rounded-2xl border border-gray-100">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Topik</p>
-                        <p className="text-sm font-bold text-gray-900 capitalize">
-                          {selectedQuestion.babs?.join(', ').replace(/_/g, ' ')} — {selectedQuestion.sub_babs?.join(', ').replace(/_/g, ' ')}
-                        </p>
+                      <div className="p-4 bg-white rounded-2xl border border-gray-100 space-y-4">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Topik</p>
+
+                        <div>
+                          <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">Mapel</p>
+                          <p className="text-sm font-bold text-gray-900 capitalize">
+                            {selectedQuestion.mapels?.join(', ').replace(/_/g, ' ') || '-'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">BAB</p>
+                          <p className="text-sm font-bold text-gray-900 capitalize">
+                            {selectedQuestion.babs?.join(', ').replace(/_/g, ' ') || '-'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">Subbab</p>
+                          <p className="text-sm font-bold text-gray-900 capitalize">
+                            {selectedQuestion.sub_babs?.join(', ').replace(/_/g, ' ') || '-'}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2219,11 +2499,11 @@ export default function AdminPage() {
                       const correctText = isShortAnswer
                         ? question.short_answer
                         : (question as any)[`option_${question.correct_answer.toLowerCase()}`];
-                      const isCorrect = stripHtml(userAnswerText || '').trim() === stripHtml(correctText || '').trim();
+                      const isCorrect = stripHtml(userAnswerText || '').trim().toLowerCase() === stripHtml(correctText || '').trim().toLowerCase();
                       const isSkipped = userAnswerText === 'skipped' || !userAnswerText;
 
                       return (
-                        <div key={qId} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
+                        <div key={`${qId}-${idx}`} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
                           <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
                             <span className="text-[10px] font-black text-gray-400 uppercase">Question {idx + 1}</span>
                             {!isSkipped && (
@@ -2375,6 +2655,7 @@ export default function AdminPage() {
 
       {activeTab === 'quiz' && (
         <AdminQuizTab
+          mapels={allMapels.filter(m => !visibilitySettings.hidden_mapels.includes(normalizeCategorySlug(m.value))).map(m => m.value)}
           babs={allbabs.filter(b => !visibilitySettings.hidden_babs.includes(normalizeCategorySlug(b.value))).map(hb => hb.value)}
           subBabs={allSubBabsAdmin.filter(c => !visibilitySettings.hidden_sub_babs.includes(normalizeCategorySlug(c.value)))}
         />

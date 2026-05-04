@@ -33,6 +33,7 @@ export type RawQuestion = {
   question_type: QuestionType;
   short_answer: string;
   is_hidden: boolean;
+  mapels: string[];
   babs: string[];
   sub_babs: string[];
 };
@@ -64,6 +65,7 @@ type SessionStateRpcRow = {
   is_finished?: boolean;
   name?: string;
   question_count: number;
+  mapel?: string;
   bab?: string;
   sub_bab?: string;
   mode?: string;
@@ -129,6 +131,8 @@ export function normalizePublicQuestion(raw: PublicQuestion): PublicQuestion {
 }
 
 export type VisibilitySettings = {
+  hidden_mapels: string[];
+  admin_only_mapels: string[];
   hidden_babs: string[];
   admin_only_babs: string[];
   hidden_sub_babs: string[];
@@ -141,7 +145,7 @@ export type VisibilitySettings = {
 export async function fetchVisibilitySettings(): Promise<VisibilitySettings> {
   const { data, error } = await supabase
     .from('app_settings')
-    .select('hidden_babs, admin_only_babs, hidden_sub_babs, admin_only_sub_babs')
+    .select('hidden_mapels, admin_only_mapels, hidden_babs, admin_only_babs, hidden_sub_babs, admin_only_sub_babs')
     .eq('id', 1)
     .maybeSingle();
 
@@ -150,6 +154,8 @@ export async function fetchVisibilitySettings(): Promise<VisibilitySettings> {
   }
 
   return {
+    hidden_mapels: (data?.hidden_mapels as string[]) || [],
+    admin_only_mapels: (data?.admin_only_mapels as string[]) || [],
     hidden_babs: (data?.hidden_babs as string[]) || [],
     admin_only_babs: (data?.admin_only_babs as string[]) || [],
     hidden_sub_babs: (data?.hidden_sub_babs as string[]) || [],
@@ -171,9 +177,92 @@ export async function saveVisibilitySettings(settings: VisibilitySettings): Prom
   }
 }
 
-export async function fetchbabs(): Promise<BabInfo[]> {
+export async function fetchMapels(): Promise<BabInfo[]> {
+  const [mapelsResult, visibility] = await Promise.all([
+    supabase.from('questions').select('mapels').eq('is_hidden', false),
+    fetchVisibilitySettings(),
+  ]);
+
+  const { data, error } = mapelsResult;
+
+  if (error) {
+    console.error('Failed to fetch mapels:', error.message);
+    return [];
+  }
+
+  const rawMapels = data.flatMap((q) => q.mapels || []).filter(Boolean);
+  const seen = new Map<string, string>();
+  for (const raw of rawMapels) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
+
+  return Array.from(seen.entries())
+    .filter(([slug]) => !visibility.hidden_mapels.includes(slug) && !visibility.admin_only_mapels.includes(slug))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
+}
+
+export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
+  const [mapelsResult, visibility] = await Promise.all([
+    supabase.from('questions').select('mapels'),
+    fetchVisibilitySettings(),
+  ]);
+
+  const { data, error } = mapelsResult;
+
+  if (error) {
+    console.error('Failed to fetch mapels admin:', error.message);
+    return [];
+  }
+
+  const rawMapels = data.flatMap((q) => q.mapels || []).filter(Boolean);
+  const seen = new Map<string, string>();
+  for (const raw of rawMapels) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
+
+  return Array.from(seen.entries())
+    .filter(([slug]) => !visibility.hidden_mapels.includes(slug))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
+}
+
+export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
+  const { data, error } = await supabase.from('questions').select('mapels');
+
+  if (error) {
+    console.error('Failed to fetch all mapels:', error.message);
+    return [];
+  }
+
+  const rawMapels = data.flatMap((q) => q.mapels || []).filter(Boolean);
+  const seen = new Map<string, string>();
+  for (const raw of rawMapels) {
+    const slug = normalizeCategorySlug(raw);
+    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+      seen.set(slug, raw);
+    }
+  }
+
+  return Array.from(seen.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
+}
+
+export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
+  const baseQuery = supabase.from('questions').select('babs').eq('is_hidden', false);
+  const query = mapel && mapel !== 'Semua Mapel' && mapel !== 'None'
+    ? baseQuery.contains('mapels', [mapel])
+    : baseQuery;
+
   const [babsResult, visibility] = await Promise.all([
-    supabase.from('questions').select('babs').eq('is_hidden', false),
+    query,
     fetchVisibilitySettings(),
   ]);
 
@@ -199,9 +288,19 @@ export async function fetchbabs(): Promise<BabInfo[]> {
     .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
 
-export async function fetchBabsAdmin(): Promise<BabInfo[]> {
+export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo[]> {
+  let query = supabase.from('questions').select('babs');
+  
+  if (mapel) {
+    const mapels = Array.isArray(mapel) ? mapel : [mapel];
+    const filteredMapels = mapels.filter(m => m !== 'Semua MAPEL' && m !== 'None');
+    if (filteredMapels.length > 0) {
+      query = query.overlaps('mapels', filteredMapels);
+    }
+  }
+
   const [babsResult, visibility] = await Promise.all([
-    supabase.from('questions').select('babs'),
+    query,
     fetchVisibilitySettings(),
   ]);
 
@@ -282,10 +381,16 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
     .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
 
-export async function fetchSubBabsAdmin(bab?: string): Promise<SubBabInfo[]> {
-  const query = bab && bab !== 'Semua BAB' && bab !== 'None'
-    ? supabase.from('questions').select('sub_babs').contains('babs', [bab])
-    : supabase.from('questions').select('sub_babs');
+export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBabInfo[]> {
+  let query = supabase.from('questions').select('sub_babs');
+  
+  if (bab) {
+    const babs = Array.isArray(bab) ? bab : [bab];
+    const filteredBabs = babs.filter(b => b !== 'Semua BAB' && b !== 'None');
+    if (filteredBabs.length > 0) {
+      query = query.overlaps('babs', filteredBabs);
+    }
+  }
 
   const [subBabsResult, visibility] = await Promise.all([
     query,
@@ -321,10 +426,16 @@ export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInf
   if (!babs || babs.length === 0) return [];
 
   // Use raw bab values directly for the query (case-sensitive match in DB)
-  const { data, error } = await supabase
-    .from('questions')
-    .select('sub_babs')
-    .or(babs.map((hb) => `babs.cs.{${hb}}`).join(','));
+  const [subBabsResult, visibility] = await Promise.all([
+    supabase
+      .from('questions')
+      .select('sub_babs')
+      .eq('is_hidden', false)
+      .or(babs.map((hb) => `babs.cs.{${hb}}`).join(',')),
+    fetchVisibilitySettings(),
+  ]);
+
+  const { data, error } = subBabsResult;
 
   if (error) {
     console.error('Failed to fetch sub babs for multiple BABs:', error.message);
@@ -341,6 +452,7 @@ export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInf
   }
 
   return Array.from(seen.entries())
+    .filter(([slug]) => !visibility.hidden_sub_babs.includes(slug) && !visibility.admin_only_sub_babs.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
@@ -369,10 +481,14 @@ export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
     .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
 
-export async function fetchQuestions(bab?: string, subBab?: string): Promise<RawQuestion[]> {
+export async function fetchQuestions(mapel?: string, bab?: string, subBab?: string): Promise<RawQuestion[]> {
   let query = supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, babs, sub_babs');
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, mapels, babs, sub_babs');
+
+  if (mapel && mapel !== 'Semua Mapel' && mapel !== 'None') {
+    query = query.contains('mapels', [mapel]);
+  }
 
   if (bab && bab !== 'Semua BAB' && bab !== 'None') {
     query = query.contains('babs', [bab]);
@@ -397,11 +513,12 @@ export async function fetchQuestions(bab?: string, subBab?: string): Promise<Raw
   return (data as RawQuestion[]).map(normalizeRawQuestion);
 }
 
-export async function startExamSessionViaRpc(name: string, bab: string, subBab: string, mode: string, count: number, timeLimitMinutes: number): Promise<{ sessionId: string; total: number; expiresAt: string }> {
+export async function startExamSessionViaRpc(name: string, mapels: string[], babs: string[], subBabs: string[], mode: string, count: number, timeLimitMinutes: number): Promise<{ sessionId: string; total: number; expiresAt: string }> {
   const { data, error } = await supabase.rpc('start_exam_session', {
     p_name: name,
-    p_bab: bab,
-    p_sub_bab: subBab,
+    p_mapels: mapels,
+    p_babs: babs,
+    p_sub_babs: subBabs,
     p_mode: mode,
     p_count: count,
     p_time_limit_minutes: timeLimitMinutes > 0 ? timeLimitMinutes : null,
@@ -491,7 +608,7 @@ export async function fetchQuestionsByIds(ids: number[]): Promise<RawQuestion[]>
 
   const { data, error } = await supabase
     .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, babs, sub_babs')
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, mapels, babs, sub_babs')
     .in('id', ids);
 
   if (error) {

@@ -57,7 +57,7 @@ export default function QuestionDisplay({
                   <button
                     key={option.label}
                     onClick={() => onSelectAnswer(option.text)}
-                    className={`w-full min-w-0 group flex items-center px-3 py-2.5 md:px-4 md:py-3 rounded-[12px] text-left transition-all duration-200 border-[1.5px] ${
+                    className={`w-full min-w-0 group flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-[12px] text-left transition-all duration-200 border-[1.5px] ${
                       isSelected
                         ? 'bg-nike-black border-nike-black text-nike-white'
                         : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'

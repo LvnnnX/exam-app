@@ -9,8 +9,10 @@ import {
   type BabInfo,
   type SubBabInfo,
   QUESTION_COUNTS,
+  fetchMapels,
   fetchbabs,
   fetchSubBabs,
+  fetchSubBabsForMultiple,
   startExamSessionViaRpc,
   getSessionQuestionViaRpc,
   getSessionStateViaRpc,
@@ -26,6 +28,127 @@ type GameMode = 'exam' | 'survival';
 
 const PREPARING_STEP = 25;
 
+// ─── MultiSelectDropdown Component ───
+interface MultiSelectDropdownProps {
+  label: string;
+  options: { value: string; label: string }[];
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}
+
+const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disabled, placeholder }: MultiSelectDropdownProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleOption = (value: string) => {
+    if (selectedValues.includes(value)) {
+      onChange(selectedValues.filter(v => v !== value));
+    } else {
+      onChange([...selectedValues, value]);
+    }
+  };
+
+  const getDisplayText = () => {
+    if (selectedValues.length === 0) return placeholder || `Select ${label}`;
+    if (selectedValues.length === options.length && options.length > 0) return `All ${label}s Selected`;
+    if (selectedValues.length > 2) return `${selectedValues.length} ${label}s Selected`;
+    return selectedValues.map(v => options.find(o => o.value === v)?.label || v).join(', ');
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={disabled || options.length === 0}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between bg-nike-grey-100 rounded-[10px] border border-nike-grey-300 px-4 h-[44px] text-[14px] transition-all ${disabled || options.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-nike-black'
+          }`}
+      >
+        <span className={`truncate font-medium ${selectedValues.length > 0 ? 'text-nike-black' : 'text-nike-grey-400'}`}>
+          {getDisplayText()}
+        </span>
+        <svg
+          className={`w-4 h-4 text-nike-grey-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-[110] mt-2 w-full bg-white border border-nike-grey-200 rounded-[12px] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="max-h-[250px] overflow-y-auto p-2 space-y-1">
+            {options.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedValues.length === options.length) {
+                      onChange([]);
+                    } else {
+                      onChange(options.map(o => o.value));
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-[8px] hover:bg-nike-grey-100 transition-colors text-left"
+                >
+                  <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedValues.length === options.length ? 'bg-nike-black border-nike-black' : 'border-nike-grey-300'
+                    }`}>
+                    {selectedValues.length === options.length && (
+                      <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-[13px] font-bold uppercase tracking-tight text-nike-black">Select All</span>
+                </button>
+                <div className="h-[1px] bg-nike-grey-100 my-1" />
+                {options.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => toggleOption(option.value)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-[8px] hover:bg-nike-grey-100 transition-colors text-left"
+                  >
+                    <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedValues.includes(option.value) ? 'bg-nike-black border-nike-black' : 'border-nike-grey-300'
+                      }`}>
+                      {selectedValues.includes(option.value) && (
+                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className={`text-[13px] font-medium ${selectedValues.includes(option.value) ? 'text-nike-black' : 'text-nike-grey-500'}`}>
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </>
+            ) : (
+              <div className="p-4 text-center text-nike-grey-400 text-[12px] uppercase font-bold tracking-widest">
+                No Options Available
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Local Storage keys
 const STORAGE_KEYS = {
   NAME: 'exam_name',
@@ -34,8 +157,9 @@ const STORAGE_KEYS = {
   ANSWERS: 'exam_answers',
   SESSION_ID: 'exam_session_id',
   TOTAL: 'exam_total_questions',
-  bab: 'exam_bab',
-  SUB_BAB: 'exam_sub_bab',
+  MAPELS: 'exam_mapels',
+  BABS: 'exam_babs',
+  SUB_BABS: 'exam_sub_babs',
   START_TIME: 'exam_start_time',
   MODE: 'exam_mode',
   LIVES: 'exam_lives',
@@ -57,9 +181,11 @@ const TIME_LIMIT_OPTIONS = [
 export default function ExamPage() {
   const router = useRouter();
   // App state
-  const [name, setName] = useState('');
-  const [bab, setBab] = useState<string>('None');
-  const [subBab, setSubBab] = useState<string>('Semua Sub-bab');
+  const [userName, setUserName] = useState('');
+  const [mapels, setMapels] = useState<string[]>([]);
+  const [babs, setBabs] = useState<string[]>([]);
+  const [subBabs, setSubBabs] = useState<string[]>([]);
+  const [availableMapels, setAvailableMapels] = useState<BabInfo[]>([]);
   const [availableBabs, setAvailableBabs] = useState<BabInfo[]>([]);
   const [availableSubBabs, setAvailableSubBabs] = useState<SubBabInfo[]>([]);
   const [questionCount, setQuestionCount] = useState<QuestionCount>(20);
@@ -99,7 +225,7 @@ export default function ExamPage() {
     isActive: examSecurityActive,
     enableTabDetection: false,
     enableWakeLock: true,
-    onForceSubmit: () => {}, // Not used — tab detection disabled
+    onForceSubmit: () => { }, // Not used — tab detection disabled
   });
 
   const total = totalQuestions;
@@ -122,8 +248,9 @@ export default function ExamPage() {
       answers: secureLoad<Answer[]>(STORAGE_KEYS.ANSWERS),
       sessionId: secureLoad<string>(STORAGE_KEYS.SESSION_ID),
       total: secureLoad<number>(STORAGE_KEYS.TOTAL) || 0,
-      bab: secureLoad<string>(STORAGE_KEYS.bab),
-      subBab: secureLoad<string>(STORAGE_KEYS.SUB_BAB),
+      mapels: secureLoad<string[]>(STORAGE_KEYS.MAPELS) || [],
+      babs: secureLoad<string[]>(STORAGE_KEYS.BABS) || [],
+      subBabs: secureLoad<string[]>(STORAGE_KEYS.SUB_BABS) || [],
       startTime: secureLoad<number>(STORAGE_KEYS.START_TIME),
       mode: secureLoad<GameMode>(STORAGE_KEYS.MODE) || 'exam',
       lives: secureLoad<number>(STORAGE_KEYS.LIVES) || 3,
@@ -137,21 +264,22 @@ export default function ExamPage() {
   useEffect(() => {
     if (!isRestored) return; // Prevent overwriting storage with default state before restoration
     // Only save if we are in a valid state (e.g. have started or at least have a name)
-    if (name) secureSave(STORAGE_KEYS.NAME, name);
+    if (userName) secureSave(STORAGE_KEYS.NAME, userName);
     secureSave(STORAGE_KEYS.STEP, step);
     secureSave(STORAGE_KEYS.CURRENT, current);
     secureSave(STORAGE_KEYS.ANSWERS, answers);
     secureSave(STORAGE_KEYS.SESSION_ID, sessionId);
     secureSave(STORAGE_KEYS.TOTAL, totalQuestions);
-    secureSave(STORAGE_KEYS.bab, bab);
-    secureSave(STORAGE_KEYS.SUB_BAB, subBab);
+    secureSave(STORAGE_KEYS.MAPELS, mapels);
+    secureSave(STORAGE_KEYS.BABS, babs);
+    secureSave(STORAGE_KEYS.SUB_BABS, subBabs);
     secureSave(STORAGE_KEYS.START_TIME, startTime);
     secureSave(STORAGE_KEYS.MODE, gameMode);
     secureSave(STORAGE_KEYS.LIVES, lives);
     secureSave(STORAGE_KEYS.SCORE, score);
     secureSave(STORAGE_KEYS.EXPIRES_AT, expiresAt);
     secureSave(STORAGE_KEYS.TIME_LIMIT, timeLimit);
-  }, [isRestored, name, step, current, answers, sessionId, totalQuestions, bab, subBab, startTime, gameMode, lives, score, expiresAt, timeLimit]);
+  }, [isRestored, userName, step, current, answers, sessionId, totalQuestions, mapels, babs, subBabs, startTime, gameMode, lives, score, expiresAt, timeLimit]);
 
   const clearStorage = () => {
     secureClear();
@@ -169,18 +297,19 @@ export default function ExamPage() {
       getSessionStateViaRpc(stored.sessionId).then(state => {
         if (!state || state.is_finished) {
           // No active session or finished -> show start screen
-          if (stored.name) setName(stored.name);
+          if (stored.name) setUserName(stored.name);
           setIsRestored(true);
           setIsLoading(false);
           return;
         }
 
         // Restore everything from Server State or Local Backups
-        setName(state.name || stored.name || '');
+        setUserName(state.name || stored.name || '');
         setSessionId(stored.sessionId!);
         setTotalQuestions(state.question_count);
-        setBab(state.bab || stored.bab || 'None');
-        setSubBab(state.sub_bab || stored.subBab || 'Semua Sub-bab');
+        setMapels(state.mapel ? state.mapel.split(', ') : (stored.mapels || []));
+        setBabs(state.bab ? state.bab.split(', ') : (stored.babs || []));
+        setSubBabs(state.sub_bab ? state.sub_bab.split(', ') : (stored.subBabs || []));
         setGameMode((state.mode || stored.mode || 'exam') as GameMode);
         setLives(state.lives ?? stored.lives ?? 3);
         setScore(stored.score ?? 0);
@@ -208,7 +337,7 @@ export default function ExamPage() {
             }
           }
         }
-        
+
         let restoreIndex = Math.max(stored.current ?? 0, maxServerIndex);
         if (restoreIndex > state.question_count) {
           restoreIndex = state.question_count;
@@ -229,46 +358,93 @@ export default function ExamPage() {
         setIsRestored(true);
         setIsLoading(false);
       });
+      if (stored.name) {
+        setUserName(stored.name);
+        setIsRestored(true);
+      } else {
+        setIsRestored(true);
+      }
     } else if (stored.name) {
-      setName(stored.name);
+      setUserName(stored.name);
       setIsRestored(true);
     } else {
       setIsRestored(true);
     }
 
     // Fetch dynamic categories helper
-    const loadBabs = async () => {
+    const loadMapels = async () => {
       try {
         setFetchError(null);
-        const data = await fetchbabs();
+        const data = await fetchMapels();
         if (data.length === 0) {
-          console.warn("No babs found in Supabase.");
+          console.warn("No mapels found in Supabase.");
         }
-        setAvailableBabs(data);
+        setAvailableMapels(data);
       } catch (err: any) {
-        console.error("Failed to load babs:", err);
+        console.error("Failed to load mapels:", err);
         setFetchError(err.message || "Failed to connect to server");
       }
     };
 
-    loadBabs();
-    (window as any).__retryCategoryFetch = loadBabs;
+    loadMapels();
+    (window as any).__retryCategoryFetch = loadMapels;
   }, []);
+
+  useEffect(() => {
+    const loadBabs = async () => {
+      try {
+        // Fetch Babs for ANY of the selected Mapels
+        // If mapels empty, we could fetch all or none. Let's fetch none if no mapel selected to enforce hierarchy.
+        if (mapels.length === 0) {
+          setAvailableBabs([]);
+          setBabs([]);
+          return;
+        }
+
+        // We need a helper to fetch babs for multiple mapels.
+        // Let's assume fetchbabs can handle multiple if we pass a comma string or update it.
+        // For now, I'll update lib/questions to handle array or loop here.
+
+        // Since we want to be efficient, let's use the first one for now or update fetchbabs.
+        // Actually, I updated fetchbabs to take a single mapel.
+        // I should probably update it to take string[].
+
+        const promises = mapels.map(m => fetchbabs(m));
+        const results = await Promise.all(promises);
+        const merged = results.flat();
+        const seen = new Set();
+        const unique = merged.filter(b => {
+          if (seen.has(b.value)) return false;
+          seen.add(b.value);
+          return true;
+        });
+
+        setAvailableBabs(unique);
+        setBabs(prev => prev.filter(v => unique.some(u => u.value === v)));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadBabs();
+  }, [mapels]);
 
   useEffect(() => {
     const loadSubBabs = async () => {
       try {
-        const data = await fetchSubBabs(bab);
-        setAvailableSubBabs(data);
-        if (!data.some((sb) => sb.value === subBab) && data.length > 0) {
-          setSubBab('Semua Sub-bab');
+        if (babs.length === 0) {
+          setAvailableSubBabs([]);
+          setSubBabs([]);
+          return;
         }
+        const data = await fetchSubBabsForMultiple(babs);
+        setAvailableSubBabs(data);
+        setSubBabs(prev => prev.filter(v => data.some((u: SubBabInfo) => u.value === v)));
       } catch (err) {
         console.error(err);
       }
     };
     loadSubBabs();
-  }, [bab]);
+  }, [babs]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // ==================== FETCH & PREPARE NEW SESSION ====================
@@ -277,7 +453,7 @@ export default function ExamPage() {
     setIsLoading(true);
     try {
       const count = isSurvival ? 9999 : questionCount;
-      const { sessionId: newSessionId, total: newTotal, expiresAt: serverExpiresAt } = await startExamSessionViaRpc(name, bab, subBab, gameMode, count, timeLimit);
+      const { sessionId: newSessionId, total: newTotal, expiresAt: serverExpiresAt } = await startExamSessionViaRpc(userName, mapels, babs, subBabs, gameMode, count, timeLimit);
 
       if (newTotal === 0) {
         throw new Error('Tidak ada soal di kategori ini.');
@@ -453,9 +629,10 @@ export default function ExamPage() {
   };
 
   const restart = () => {
-    setName('');
-    setBab('None');
-    setSubBab('Semua Sub-bab');
+    setUserName('');
+    setMapels([]);
+    setBabs([]);
+    setSubBabs([]);
     setQuestionCount(20);
     setStep(1);
     setCurrent(0);
@@ -477,7 +654,7 @@ export default function ExamPage() {
   // ==================== AUTO-SAVE TO SUPABASE ====================
 
   const autoSaveToSupabase = useCallback(async () => {
-    if (!name || total === 0 || saved || !sessionId) return;
+    if (!userName || total === 0 || saved || !sessionId) return;
     setSaving(true);
     try {
       const finalEndTime = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
@@ -502,14 +679,14 @@ export default function ExamPage() {
     } finally {
       setSaving(false);
     }
-  }, [name, total, endTime, saved, sessionId]);
+  }, [userName, total, endTime, saved, sessionId]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (step === 6 && !saved && !saveFailed && name && isRestored && total > 0) {
+    if (step === 6 && !saved && !saveFailed && userName && isRestored && total > 0) {
       void autoSaveToSupabase();
     }
-  }, [autoSaveToSupabase, isRestored, name, saved, saveFailed, step, total]);
+  }, [autoSaveToSupabase, isRestored, userName, saved, saveFailed, step, total]);
 
   // Global Timer Effect
   useEffect(() => {
@@ -614,8 +791,9 @@ export default function ExamPage() {
 
   // ==================== HELPERS ====================
 
-  const babLabel = availableBabs.find(c => c.value === bab)?.label ?? bab;
-  const subBabLabel = availableSubBabs.find(c => c.value === subBab)?.label ?? subBab;
+  const mapelsLabel = mapels.length > 0 ? mapels.map(m => availableMapels.find(am => am.value === m)?.label || m).join(', ') : 'None';
+  const babsLabel = babs.length > 0 ? babs.map(b => availableBabs.find(ab => ab.value === b)?.label || b).join(', ') : 'None';
+  const subBabsLabel = subBabs.length > 0 ? subBabs.map(sb => availableSubBabs.find(as => as.value === sb)?.label || sb).join(', ') : 'None';
 
   // ==================== RENDER ====================
 
@@ -674,58 +852,51 @@ export default function ExamPage() {
               <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Your Name</span>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
                 placeholder="ENTER NAME"
                 className="w-full bg-nike-grey-100 rounded-[10px] border border-nike-grey-300 px-4 h-[40px] text-[14px] placeholder-nike-grey-400 focus:outline-none focus:border-nike-black transition-all uppercase font-medium"
               />
             </div>
 
             {/* Hierarchy Selectors */}
-            <div className="space-y-1.5">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 space-y-1.5">
-                  <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">BAB</span>
-                  {fetchError ? (
-                    <div className="w-full flex items-center justify-between bg-nike-red/10 p-3 rounded-[10px] border border-nike-red/20">
-                      <p className="text-nike-red text-[12px] font-medium uppercase">Error</p>
-                      <button onClick={() => (window as any).__retryCategoryFetch?.()} className="px-3 h-[28px] rounded-[14px] bg-nike-red text-nike-white text-[10px] font-bold uppercase hover:bg-nike-red/80">Retry</button>
-                    </div>
-                  ) : availableBabs.length === 0 ? (
-                    <div className="flex items-center gap-2 h-[40px]">
-                      <div className="w-4 h-4 border-2 border-nike-grey-300 border-t-nike-black rounded-full animate-spin"></div>
-                      <p className="text-nike-grey-500 text-[12px] font-medium uppercase tracking-wider">Syncing...</p>
-                    </div>
-                  ) : (
-                    <select
-                      value={bab}
-                      onChange={(e) => setBab(e.target.value)}
-                      className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-3 h-[40px] text-[13px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.2em' }}
-                    >
-                      <option value="None">PILIH BAB (NONE)</option>
-                      {availableBabs.map((hb) => (
-                        <option key={hb.value} value={hb.value}>{hb.label}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Mapel */}
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Mapel</span>
+                <MultiSelectDropdown
+                  label="Mapel"
+                  options={availableMapels}
+                  selectedValues={mapels}
+                  onChange={setMapels}
+                  placeholder="CHOOSE MAPEL"
+                />
+              </div>
 
-                <div className="flex-1 space-y-1.5">
-                  <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Sub-bab</span>
-                  <select
-                    value={subBab}
-                    onChange={(e) => setSubBab(e.target.value)}
-                    disabled={bab === 'None' || availableSubBabs.length === 0}
-                    className="w-full bg-nike-grey-100 rounded-[8px] border border-nike-grey-300 px-3 h-[40px] text-[13px] focus:outline-none focus:border-nike-black transition-colors uppercase font-medium appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.2em' }}
-                  >
-                    <option value="Semua Sub-bab">SEMUA SUB-BAB</option>
-                    {availableSubBabs.map((sb) => (
-                      <option key={sb.value} value={sb.value}>{sb.label}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* BAB */}
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">BAB</span>
+                <MultiSelectDropdown
+                  label="BAB"
+                  options={availableBabs}
+                  selectedValues={babs}
+                  onChange={setBabs}
+                  disabled={mapels.length === 0}
+                  placeholder={mapels.length === 0 ? "CHOOSE MAPEL" : "CHOOSE BAB"}
+                />
+              </div>
+
+              {/* Sub-bab */}
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Sub-bab</span>
+                <MultiSelectDropdown
+                  label="Sub-bab"
+                  options={availableSubBabs}
+                  selectedValues={subBabs}
+                  onChange={setSubBabs}
+                  disabled={babs.length === 0}
+                  placeholder={babs.length === 0 ? "CHOOSE BAB" : "CHOOSE SUB-BAB"}
+                />
               </div>
             </div>
 
@@ -772,9 +943,10 @@ export default function ExamPage() {
             <button
               onClick={() => setStep(2)}
               disabled={
-                !name.trim() ||
-                !bab ||
-                bab === 'None'
+                !userName.trim() ||
+                mapels.length === 0 ||
+                babs.length === 0 ||
+                subBabs.length === 0
               }
               className="w-full h-[46px] rounded-[23px] bg-nike-black text-nike-white text-[14px] font-bold hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider shadow-lg shadow-nike-black/10"
             >
@@ -856,7 +1028,7 @@ export default function ExamPage() {
             <div className="bg-nike-grey-100 p-6 rounded-[20px] mb-8 border border-nike-grey-200 space-y-4">
               <div>
                 <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Candidate</p>
-                <p className="text-[24px] font-bold text-nike-black uppercase">{name}</p>
+                <p className="text-[24px] font-bold text-nike-black uppercase">{userName}</p>
               </div>
               <div className="flex gap-8 flex-wrap">
                 <div>
@@ -865,7 +1037,7 @@ export default function ExamPage() {
                 </div>
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Topik</p>
-                  <p className="text-[16px] font-bold text-nike-black uppercase">{babLabel}, {subBabLabel}</p>
+                  <p className="text-[16px] font-bold text-nike-black uppercase">{mapelsLabel} · {babsLabel} · {subBabsLabel}</p>
                 </div>
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Questions</p>
@@ -941,11 +1113,14 @@ export default function ExamPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-4 border-b border-nike-grey-200 gap-4">
             <div className="flex flex-col">
               <span className="text-[17px] font-bold text-nike-black uppercase tracking break-words">
-                {name}
+                {userName}
               </span>
-              <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-                Topik: {babLabel}, {subBabLabel} {isSurvival && '· Survival'} · Soal Nomor {current + 1}
-              </span>
+              <div className="flex flex-col gap-0.5 mt-2">
+                <span className="text-[12px] font-bold text-nike-grey-500 uppercase tracking-tight">{mapelsLabel}</span>
+                <span className="text-[12px] font-bold text-nike-grey-500 uppercase tracking-tight">{babsLabel}</span>
+                <span className="text-[12px] font-bold text-nike-grey-500 uppercase tracking-tight">{subBabsLabel}</span>
+                <span className="text-[13px] font-black text-nike uppercase tracking-widest mt-1.5">SOAL NOMOR {current + 1}</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-6">
@@ -1088,7 +1263,7 @@ export default function ExamPage() {
             )
           }
 
-          <p className="text-[14px] font-medium text-nike-grey-300 mb-12 uppercase tracking-widest">{babLabel}, {subBabLabel}</p>
+          <p className="text-[14px] font-medium text-nike-grey-300 mb-12 uppercase tracking-widest">{mapelsLabel} · {babsLabel} · {subBabsLabel}</p>
 
           <div className="h-[24px] mb-8">
             {saving ? (
@@ -1134,16 +1309,27 @@ export default function ExamPage() {
                   <span className="text-[16px] md:text-[20px] text-nike-grey-400 tracking-normal normal-case font-medium font-sans">{formattedDuration}</span>
                 )}
               </h2>
-              <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{name}</p>
-              <p className="text-[16px] font-medium text-nike-grey-500 uppercase">
-                {isSurvival ? (
-                  <>
-                    You have answered <span className="font-bold text-nike-black">{recapData.filter((_, idx) => idx <= current).length}</span> questions
-                  </>
-                ) : (
-                  `${babLabel}, ${subBabLabel} — ${score} / ${total}`
-                )}
-              </p>
+              <div className="flex justify-between items-start mb-2">
+                <p className="text-[20px] font-bold text-nike-black uppercase">{userName}</p>
+                <p className="text-[18px] font-black text-nike-black uppercase">
+                  {isSurvival ? (
+                    <>
+                      <span className="text-nike-grey-400 text-[12px] font-bold mr-2 tracking-widest">ANSWERED</span>
+                      <span className="text-nike-red">{recapData.filter((_, idx) => idx <= current).length}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-nike-grey-400 text-[12px] font-bold mr-2 tracking-widest">SCORE</span>
+                      <span className="text-nike-black">{score} / {total}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="flex flex-col gap-0.5 mb-4">
+                <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-tight">{mapelsLabel}</p>
+                <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-tight">{babsLabel}</p>
+                <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-tight">{subBabsLabel}</p>
+              </div>
             </div>
             <div>
               {saved ? (
@@ -1162,8 +1348,6 @@ export default function ExamPage() {
                 const isCorrect = item.is_correct;
                 const isSkipped = !userAnswer;
 
-                const userOptionHtml = userAnswer || null;
-
                 return (
                   <div key={idx} className="bg-nike-grey-100 p-6 sm:p-8 rounded-[20px]">
                     <div className="flex gap-4 mb-4">
@@ -1173,22 +1357,24 @@ export default function ExamPage() {
 
                     <div className="ml-[10px] sm:ml-[40px] pl-6 border-l-[2px] border-nike-grey-300">
                       {isSkipped ? (
-                        <p className="text-[14px] font-medium text-nike-grey-500 uppercase">No Answer</p>
+                        <div className="space-y-4">
+                          <p className="text-[14px] font-medium text-nike-grey-500 uppercase">Skipped</p>
+                        </div>
                       ) : isCorrect ? (
                         <div className="flex items-start gap-3">
                           <div className="w-2 h-2 rounded-full bg-nike-green mt-2 shrink-0"></div>
                           <div className="text-[16px] font-bold text-nike-green flex-1 min-w-0">
-                            <p className="uppercase mb-1">CORRECT</p>
-                            <RichContent html={userOptionHtml ?? ''} />
+                            <p className="uppercase mb-1 text-[12px] tracking-widest">CORRECT</p>
+                            <RichContent html={userAnswer} />
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-5">
                           <div className="flex items-start gap-3">
                             <div className="w-2 h-2 rounded-full bg-nike-red mt-2 shrink-0"></div>
                             <div className="text-[16px] font-bold text-nike-red flex-1 min-w-0">
-                              <p className="uppercase mb-1">WRONG</p>
-                              <RichContent html={userOptionHtml ?? ''} />
+                              <p className="uppercase mb-1 text-[12px] tracking-widest">YOUR ANSWER</p>
+                              <RichContent html={userAnswer} />
                             </div>
                           </div>
                         </div>

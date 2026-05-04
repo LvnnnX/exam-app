@@ -283,7 +283,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2 flex flex-wrap items-baseline gap-4">
                 <span>Leaderboard.</span>
               </h2>
-              <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{session.bab}, {session.sub_bab}</p>
+              <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{session.mapel} · {session.bab} · {session.sub_bab}</p>
               <p className="text-[16px] font-medium text-nike-grey-500 uppercase">
                 {player && (
                   <>
@@ -330,7 +330,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       <div className="min-h-screen flex items-center justify-center p-6 bg-white">
         <div className="text-center max-w-sm w-full">
           <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest mb-1">Live Quiz</p>
-          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.bab?.replace(/_/g, ' ')}, {session.sub_bab?.replace(/_/g, ' ')}</p>
+          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.mapel?.replace(/_/g, ' ')} · {session.bab?.replace(/_/g, ' ')} · {session.sub_bab?.replace(/_/g, ' ')}</p>
           <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8">Join</h2>
 
           <input
@@ -358,7 +358,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
         <div className="text-center">
           <div className="w-12 h-12 border-[3px] border-nike-grey-200 border-t-nike-black rounded-full animate-spin mx-auto mb-6"></div>
           <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest mb-1">Ruang Tunggu</p>
-          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.bab?.replace(/_/g, ' ')}, {session.sub_bab?.replace(/_/g, ' ')}</p>
+          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.mapel?.replace(/_/g, ' ')} · {session.bab?.replace(/_/g, ' ')} · {session.sub_bab?.replace(/_/g, ' ')}</p>
           <h2 className="font-display text-[32px] sm:text-[48px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2">Menunggu Admin</h2>
           <p className="text-[12px] text-nike-grey-300 uppercase tracking-[0.2em]">Kuis akan segera dimulai</p>
         </div>
@@ -397,12 +397,12 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             <span className="text-[17px] font-bold text-nike-black uppercase tracking break-words">
               {player.name}
             </span>
-            <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-              Topik: {session.bab}, {session.sub_bab}
-            </span>
-            <span className="text-[16px] font-bold text-nike-grey-400 uppercase tracking-widest mb-1">
-              Soal Nomor {currentIndex + 1}
-            </span>
+            <div className="flex flex-col gap-0.5 mt-2">
+              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{session.mapel}</span>
+              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{session.bab}</span>
+              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{session.sub_bab}</span>
+              <span className="text-[13px] font-black text-nike uppercase tracking-widest mt-1.5">SOAL NOMOR {currentIndex + 1}</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-6">
@@ -458,7 +458,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   <p className="text-[11px] text-nike-grey-400 uppercase tracking-widest">Tekan Next untuk lanjut.</p>
                 </div>
               ) : (
-                <div className="grid grid-rows-5 gap-3 w-full">
+                <div className="grid grid-rows-5 gap-1.5 w-full">
                   {q.options.map((opt, i) => {
                     const prefix = opt.label;
                     const isSelected = selectedAnswer === opt.text;
@@ -466,19 +466,19 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                       <button
                         key={i}
                         onClick={() => setSelectedAnswer(opt.text)}
-                        className={`w-full min-w-0 group flex items-center p-4 md:p-5 rounded-[16px] text-left transition-all duration-200 border-[1.5px] ${isSelected
+                    className={`w-full min-w-0 group flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-[12px] text-left transition-all duration-200 border-[1.5px] ${isSelected
                             ? 'bg-nike-black border-nike-black text-nike-white'
                             : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
                           }`}
                       >
-                        <div className="flex items-center gap-4 w-full min-w-0">
-                          <span className={`font-display shrink-0 text-[18px] md:text-[20px] transition-colors ${isSelected ? 'text-nike-grey-300' : 'text-nike-grey-500 group-hover:text-nike-black'}`}>
+                        <div className="flex items-center gap-2.5 w-full min-w-0">
+                          <span className={`font-display shrink-0 text-[15px] md:text-[17px] transition-colors ${isSelected ? 'text-nike-grey-300' : 'text-nike-grey-500 group-hover:text-nike-black'}`}>
                             {prefix}
                           </span>
-                          <div className="w-px h-6 shrink-0 bg-nike-grey-200 group-hover:bg-nike-grey-300 transition-colors" />
+                          <div className="w-px h-4 shrink-0 bg-nike-grey-200 group-hover:bg-nike-grey-300 transition-colors" />
                           <RichContent
                             html={opt.text}
-                            className={`exam-option-content flex-1 min-w-0 text-[15px] md:text-[17px] font-medium tracking-tight leading-tight ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
+                            className={`exam-option-content flex-1 min-w-0 text-[14px] md:text-[15px] font-medium tracking-tight leading-snug ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
                           />
                         </div>
                       </button>

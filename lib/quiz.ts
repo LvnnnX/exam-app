@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './questions';
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
-const KUIS_SAFE_COLUMNS = 'id, quiz_code, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at, scheduled_at';
+const KUIS_SAFE_COLUMNS = 'id, quiz_code, mapel, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at, scheduled_at';
 export const QUIZ_CODE_LENGTH = 6;
 
 const QUIZ_CODE_ALPHABET = '0123456789';
@@ -12,6 +12,7 @@ export type KuisStatus = 'waiting' | 'active' | 'finished' | 'paused';
 export type KuisLog = {
   id: string;
   quiz_code: string;
+  mapel: string;
   bab: string;
   sub_bab: string;
   question_count: number;
@@ -90,7 +91,8 @@ function generateQuizCode(length = QUIZ_CODE_LENGTH): string {
 
 // Admin: Create a new Quiz Live Session
 export async function createQuizSession(
-  bab: string, 
+  mapel: string | string[],
+  bab: string | string[], 
   subBabs: string[], 
   questionCount: number, 
   durationMinutes: number, 
@@ -98,7 +100,7 @@ export async function createQuizSession(
   percentages?: Record<string, number>
 ): Promise<KuisLog | null> {
   const code = generateQuizCode();
-  let questionIds: string[] = [];
+  let questionIds: number[] = [];
 
   const isAllSubBabs = subBabs.length === 0 || subBabs.includes('Semua Sub-bab');
 
@@ -110,9 +112,18 @@ export async function createQuizSession(
     // If "Semua Sub-bab", fetch ALL sub-babs from visible questions.
     if (isAllSubBabs) {
       let q = supabase.from('questions').select('sub_babs').eq('is_hidden', false);
-      if (bab !== 'None' && bab !== 'Semua BAB') {
-        q = q.contains('babs', [bab]);
+      const mapels = Array.isArray(mapel) ? mapel : [mapel];
+      const filteredMapels = mapels.filter(m => m !== 'None' && m !== 'Semua MAPEL');
+      if (filteredMapels.length > 0) {
+        q = q.overlaps('mapels', filteredMapels);
       }
+      
+      const babs = Array.isArray(bab) ? bab : [bab];
+      const filteredBabs = babs.filter(b => b !== 'None' && b !== 'Semua BAB');
+      if (filteredBabs.length > 0) {
+        q = q.overlaps('babs', filteredBabs);
+      }
+
       const { data } = await q;
       if (data) {
         const allSubs = new Set<string>();
@@ -132,30 +143,44 @@ export async function createQuizSession(
 
   if (activePercentages && targetSubBabs.length > 0) {
     // Fetch with percentages
-    const pool: string[] = []; // For fallback
+    const pool = new Set<number>();
 
     for (const sub of targetSubBabs) {
       let query = supabase.from('questions').select('id').eq('is_hidden', false);
-      if (bab !== 'None' && bab !== 'Semua BAB') query = query.contains('babs', [bab]);
+      
+      const mapels = Array.isArray(mapel) ? mapel : [mapel];
+      const filteredMapels = mapels.filter(m => m !== 'None' && m !== 'Semua MAPEL');
+      if (filteredMapels.length > 0) {
+        query = query.overlaps('mapels', filteredMapels);
+      }
+      
+      const babs = Array.isArray(bab) ? bab : [bab];
+      const filteredBabs = babs.filter(b => b !== 'None' && b !== 'Semua BAB');
+      if (filteredBabs.length > 0) {
+        query = query.overlaps('babs', filteredBabs);
+      }
+      
       query = query.contains('sub_babs', [sub]);
 
       const { data } = await query;
       if (data) {
-        const ids = data.map(q => q.id);
-        pool.push(...ids);
+        const ids = data.map(q => q.id as number);
+        ids.forEach(id => pool.add(id));
         
         const pct = activePercentages[sub] || 0;
         const count = Math.round(questionCount * (pct / 100));
         
-        const shuffled = ids.sort(() => 0.5 - Math.random()).slice(0, count);
+        // Filter out already selected IDs to avoid duplicates across sub-chapters
+        const availableIds = ids.filter(id => !questionIds.includes(id));
+        const shuffled = availableIds.sort(() => 0.5 - Math.random()).slice(0, count);
         questionIds.push(...shuffled);
       }
     }
 
-    // Fallback if we don't have enough questions
+    // Fallback if we don't have enough questions due to overlap or small pool
     if (questionIds.length < questionCount) {
       const remainingNeeded = questionCount - questionIds.length;
-      const unusedPool = pool.filter(id => !questionIds.includes(id));
+      const unusedPool = Array.from(pool).filter(id => !questionIds.includes(id));
       const fallback = unusedPool.sort(() => 0.5 - Math.random()).slice(0, remainingNeeded);
       questionIds.push(...fallback);
     }
@@ -169,6 +194,9 @@ export async function createQuizSession(
     // Failsafe: Fetch without percentages or subbabs
     let query = supabase.from('questions').select('id').eq('is_hidden', false);
     
+    if (mapel !== 'None' && mapel !== 'Semua MAPEL') {
+      query = query.contains('mapels', [mapel]);
+    }
     if (bab !== 'None' && bab !== 'Semua BAB') {
       query = query.contains('babs', [bab]);
     }
@@ -189,9 +217,13 @@ export async function createQuizSession(
     return null;
   }
 
+  const isAllMapels = !mapel || (Array.isArray(mapel) && mapel.length === 0) || (typeof mapel === 'string' && mapel === 'Semua MAPEL');
+  const isAllBabs = !bab || (Array.isArray(bab) && bab.length === 0) || (typeof bab === 'string' && bab === 'Semua BAB');
+
   const insertData: Record<string, unknown> = {
     quiz_code: code,
-    bab: bab,
+    mapel: isAllMapels ? 'Semua MAPEL' : (Array.isArray(mapel) ? mapel.join(', ') : mapel),
+    bab: isAllBabs ? 'Semua BAB' : (Array.isArray(bab) ? bab.join(', ') : bab),
     sub_bab: isAllSubBabs ? 'Semua Sub-bab' : subBabs.join(', '),
     question_count: actualQuestionCount,
     duration_minutes: durationMinutes,
