@@ -5,7 +5,8 @@ import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import RichContent from '@/app/components/RichContent';
 import RichTextEditorField from '@/app/components/RichTextEditorField';
 import AdminQuizTab from '@/app/components/AdminQuizTab';
-import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchMapelsAdmin, fetchBabsAdmin, fetchAllMapelsAdmin, fetchAllSubBabsAdmin, fetchAllBabsAdmin, fetchSubBabsForMultiple, fetchVisibilitySettings, saveVisibilitySettings, type VisibilitySettings, type BabInfo, type SubBabInfo } from '@/lib/questions';
+import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
+import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin, fetchAllMapelsAdmin, fetchAllSubBabsAdmin, fetchAllBabsAdmin, fetchSubBabsForMultiple, fetchVisibilitySettings, saveVisibilitySettings, type VisibilitySettings, type BabInfo, type SubBabInfo } from '@/lib/questions';
 import { categorySlugToLabel, normalizeCategorySlug } from '@/lib/categories';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
@@ -306,12 +307,26 @@ export default function AdminPage() {
         return;
       }
 
-      const filtered = await fetchSubBabsForMultiple(formData.babs);
+      // Use the admin version which includes admin_only sub-babs
+      const filtered = await fetchSubBabsAdmin(formData.babs);
       setAllSubBabsAdmin(filtered);
     };
 
     void syncSubBabs();
   }, [formData.babs, isAdding, isEditing, isAuthenticated]);
+
+  // Filtered lists for the "Add/Edit Question" form based on visibility settings
+  const filteredMapelsForForm = useMemo(() => {
+    return allMapels.filter(m => !visibilitySettings.hidden_mapels.includes(normalizeCategorySlug(m.value)));
+  }, [allMapels, visibilitySettings.hidden_mapels]);
+
+  const filteredBabsForForm = useMemo(() => {
+    return allbabs.filter(b => !visibilitySettings.hidden_babs.includes(normalizeCategorySlug(b.value)));
+  }, [allbabs, visibilitySettings.hidden_babs]);
+
+  const filteredSubBabsForForm = useMemo(() => {
+    return allSubBabsAdmin.filter(s => !visibilitySettings.hidden_sub_babs.includes(normalizeCategorySlug(s.value)));
+  }, [allSubBabsAdmin, visibilitySettings.hidden_sub_babs]);
 
   const mapelTabs = useMemo(() => {
     const mapels = Array.from(new Set(adminQuestions.flatMap(q => q.mapels || []))).sort();
@@ -1326,16 +1341,16 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              {/* Row 2: Category selection — dropdown */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">MAPEL Filter</label>
+              <div className="flex flex-col sm:flex-row gap-4 w-full">
+                {/* Category selection — dropdown */}
+                <div className="flex-1">
+                  <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Filter Mapel</label>
                   <div className="relative">
                     <select
                       value={activeResMapel}
                       onChange={(e) => handleResMapelChange(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
                     >
                       {mapelTabs.map((cat) => (
                         <option key={cat} value={cat}>
@@ -1346,14 +1361,14 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">BAB Filter</label>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Filter BAB</label>
                   <div className="relative">
                     <select
                       value={activeResbab}
                       onChange={(e) => handleResbabChange(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
                     >
                       {babTabs.map((cat) => (
                         <option key={cat} value={cat}>
@@ -1364,14 +1379,14 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Sub-bab Filter</label>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Filter Sub-bab</label>
                   <div className="relative">
                     <select
                       value={activeResSubBab}
                       onChange={(e) => handleResSubBabChange(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
                     >
                       {subBabTabs.map((cat) => (
                         <option key={cat} value={cat}>
@@ -1382,14 +1397,14 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mode Filter</label>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Mode Filter</label>
                   <div className="relative">
                     <select
                       value={activeModeFilter}
                       onChange={(e) => handleModeFilterChange(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 h-10 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.1em' }}
+                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
                     >
                       <option value="all">Semua Mode</option>
                       <option value="exam">📝 Exam</option>
@@ -1541,8 +1556,6 @@ export default function AdminPage() {
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Score</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Percentage</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Start Time</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">End Time</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Duration</th>
                         <th className="px-6 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Action</th>
                       </tr>
@@ -1579,12 +1592,6 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(result.taken_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {result.start_time ? new Date(result.start_time).toLocaleTimeString() : '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {result.end_time ? new Date(result.end_time).toLocaleTimeString() : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {result.duration_seconds != null ? `${Math.floor(result.duration_seconds / 60)}m ${result.duration_seconds % 60}s` : '-'}
@@ -1994,59 +2001,14 @@ export default function AdminPage() {
                           Mapel
                           <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
                         </label>
-                        <div className="relative group">
-                          <div className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 min-h-[48px] text-sm flex flex-wrap gap-1.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all max-h-[120px] overflow-y-auto">
-                            {formData.mapels.length === 0 ? (
-                              <span className="text-gray-400 py-1.5">Pilih Mapel...</span>
-                            ) : (
-                              formData.mapels.map(val => {
-                                const info = allMapels.find(h => h.value === val);
-                                return (
-                                  <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
-                                    {info?.label || val}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleInputChange('mapels', formData.mapels.filter(v => v !== val))}
-                                      className="hover:text-indigo-900 ml-1"
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
-                                );
-                              })
-                            )}
-                          </div>
-
-                          {/* Dropdown list for Mapel multi-select */}
-                          <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
-                            {allMapels.length === 0 ? (
-                              <p className="text-xs text-gray-400 italic p-2 text-center">Loading Mapel...</p>
-                            ) : (
-                              allMapels.map((cat) => {
-                                const isSelected = formData.mapels.includes(cat.value);
-                                return (
-                                  <button
-                                    key={cat.value}
-                                    type="button"
-                                    onClick={() => {
-                                      const next = isSelected
-                                        ? formData.mapels.filter((c) => c !== cat.value)
-                                        : [...formData.mapels, cat.value];
-                                      handleInputChange('mapels', next);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${isSelected
-                                      ? 'bg-indigo-600 text-white shadow-sm'
-                                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
-                                      }`}
-                                  >
-                                    <span>{cat.label}</span>
-                                    {isSelected && <span>✓</span>}
-                                  </button>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
+                        <MultiSelectDropdown
+                          label="Mapel"
+                          options={filteredMapelsForForm}
+                          selectedValues={formData.mapels}
+                          onChange={(vals) => handleInputChange('mapels', vals)}
+                          placeholder="Pilih Mapel..."
+                          hideSelectAll={true}
+                        />
 
                         {/* Add New Mapel inline */}
                         <div className="flex gap-2 pt-1">
@@ -2075,79 +2037,42 @@ export default function AdminPage() {
                           Bab
                           <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
                         </label>
-                        <div className="relative group">
-                          <div className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 min-h-[48px] text-sm flex flex-wrap gap-1.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all max-h-[120px] overflow-y-auto">
-                            {formData.babs.length === 0 ? (
-                              <span className="text-gray-400 py-1.5">Pilih Bab...</span>
-                            ) : (
-                              formData.babs.map(val => {
-                                const info = allbabs.find(h => h.value === val);
-                                return (
-                                  <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
-                                    {info?.label || val}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleInputChange('babs', formData.babs.filter(v => v !== val))}
-                                      className="hover:text-indigo-900 ml-1"
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
-                                );
-                              })
-                            )}
+                        {formData.mapels.length === 0 ? (
+                          <div className="w-full bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 py-8 text-xs text-gray-400 italic text-center">
+                            Pilih Mapel dulu untuk melihat Bab
                           </div>
+                        ) : (
+                          <>
+                            <MultiSelectDropdown
+                              label="Bab"
+                              options={filteredBabsForForm}
+                              selectedValues={formData.babs}
+                              onChange={(vals) => handleInputChange('babs', vals)}
+                              placeholder="Pilih Bab..."
+                              hideSelectAll={true}
+                            />
 
-                          {/* Dropdown list for Bab multi-select */}
-                          <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
-                            {allbabs.length === 0 ? (
-                              <p className="text-xs text-gray-400 italic p-2 text-center">Loading Bab...</p>
-                            ) : (
-                              allbabs.map((cat) => {
-                                const isSelected = formData.babs.includes(cat.value);
-                                return (
-                                  <button
-                                    key={cat.value}
-                                    type="button"
-                                    onClick={() => {
-                                      const next = isSelected
-                                        ? formData.babs.filter((c) => c !== cat.value)
-                                        : [...formData.babs, cat.value];
-                                      handleInputChange('babs', next);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${isSelected
-                                      ? 'bg-indigo-600 text-white shadow-sm'
-                                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
-                                      }`}
-                                  >
-                                    <span>{cat.label}</span>
-                                    {isSelected && <span>✓</span>}
-                                  </button>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Add New Bab inline */}
-                        <div className="flex gap-2 pt-1">
-                          <input
-                            type="text"
-                            value={newbabInput}
-                            onChange={(e) => setNewbabInput(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewbab(); } }}
-                            placeholder="Add new bab..."
-                            className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => void handleAddNewbab()}
-                            disabled={addingCategory || !newbabInput.trim()}
-                            className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
-                          >
-                            + New
-                          </button>
-                        </div>
+                            {/* Add New Bab inline */}
+                            <div className="flex gap-2 pt-1">
+                              <input
+                                type="text"
+                                value={newbabInput}
+                                onChange={(e) => setNewbabInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewbab(); } }}
+                                placeholder="Add new bab..."
+                                className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void handleAddNewbab()}
+                                disabled={addingCategory || !newbabInput.trim()}
+                                className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
+                              >
+                                + New
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       {/* Sub-bab (Multi Select) */}
@@ -2156,80 +2081,41 @@ export default function AdminPage() {
                           Sub-bab
                           <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
                         </label>
-                        <div className="relative group">
-                          <div className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2 min-h-[48px] text-sm flex flex-wrap gap-1.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all max-h-[120px] overflow-y-auto">
-                            {formData.sub_babs.length === 0 ? (
-                              <span className="text-gray-400 py-1.5">Optional...</span>
-                            ) : (
-                              formData.sub_babs.map(val => {
-                                const info = allSubBabsAdmin.find(s => s.value === val);
-                                return (
-                                  <span key={val} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
-                                    {info?.label || val}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleInputChange('sub_babs', formData.sub_babs.filter(v => v !== val))}
-                                      className="hover:text-indigo-900 ml-1"
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
-                                );
-                              })
-                            )}
+                        {formData.babs.length === 0 ? (
+                          <div className="w-full bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 py-8 text-xs text-gray-400 italic text-center">
+                            Pilih Bab dulu untuk melihat Subbab
                           </div>
-
-                          {/* Dropdown list for multi-select */}
-                          <div className="mt-2 p-2 border border-gray-100 bg-gray-50 rounded-xl grid grid-cols-1 gap-1 max-h-[160px] overflow-y-auto shadow-inner">
-                            {allSubBabsAdmin.length === 0 ? (
-                              <p className="text-xs text-gray-400 italic p-2 text-center">Pilih Bab dulu untuk melihat Sub-bab</p>
-                            ) : (
-                              allSubBabsAdmin.map((cat) => {
-                                const isSelected = formData.sub_babs.includes(cat.value);
-                                return (
-                                  <button
-                                    key={cat.value}
-                                    type="button"
-                                    onClick={() => {
-                                      const next = isSelected
-                                        ? formData.sub_babs.filter((c) => c !== cat.value)
-                                        : [...formData.sub_babs, cat.value];
-                                      handleInputChange('sub_babs', next);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between ${isSelected
-                                      ? 'bg-indigo-600 text-white shadow-sm'
-                                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-100'
-                                      }`}
-                                  >
-                                    <span>{cat.label}</span>
-                                    {isSelected && <span>✓</span>}
-                                  </button>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Add New Sub-bab inline - only if Bab is selected */}
-                        {formData.babs.length > 0 && (
-                          <div className="flex gap-2 pt-1">
-                            <input
-                              type="text"
-                              value={newSubBabInput}
-                              onChange={(e) => setNewSubBabInput(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewSubBab(); } }}
-                              placeholder="Add new sub-bab..."
-                              className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
+                        ) : (
+                          <>
+                            <MultiSelectDropdown
+                              label="Sub-bab"
+                              options={filteredSubBabsForForm}
+                              selectedValues={formData.sub_babs}
+                              onChange={(vals) => handleInputChange('sub_babs', vals)}
+                              placeholder="Optional..."
+                              hideSelectAll={true}
                             />
-                            <button
-                              type="button"
-                              onClick={() => void handleAddNewSubBab()}
-                              disabled={addingCategory || !newSubBabInput.trim()}
-                              className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
-                            >
-                              + New
-                            </button>
-                          </div>
+
+                            {/* Add New Sub-bab inline - only if Bab is selected */}
+                            <div className="flex gap-2 pt-1">
+                              <input
+                                type="text"
+                                value={newSubBabInput}
+                                onChange={(e) => setNewSubBabInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewSubBab(); } }}
+                                placeholder="Add new sub-bab..."
+                                className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void handleAddNewSubBab()}
+                                disabled={addingCategory || !newSubBabInput.trim()}
+                                className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
+                              >
+                                + New
+                              </button>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -2552,17 +2438,29 @@ export default function AdminPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingResult(null)}>
           <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+            <div className="p-6 border-b relative bg-gray-50">
+              <button
+                onClick={() => setViewingResult(null)}
+                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all z-10"
+              >
+                ×
+              </button>
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Exam Breakdown</h2>
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                  <>
-                    <span className="font-black text-nike-black">{viewingResult.name} </span>
-                  </>
-                  • {viewingResult.bab}, {viewingResult.sub_bab} • {new Date(viewingResult.taken_at).toLocaleDateString()}
-                </p>
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center justify-between gap-4 text-sm font-black uppercase tracking-widest pr-12">
+                    <span className="text-nike-black">{viewingResult.name}</span>
+                    <span className="text-gray-500">
+                      {viewingResult.start_time ? new Date(viewingResult.start_time).toLocaleTimeString() : '-'} - {viewingResult.end_time ? new Date(viewingResult.end_time).toLocaleTimeString() : '-'}
+                    </span>
+                  </div>
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+                    <p>{viewingResult.mapel?.replaceAll('_', ' ') || '-'}</p>
+                    <p>{viewingResult.bab?.replaceAll('_', ' ') || '-'}</p>
+                    <p>{viewingResult.sub_bab?.replaceAll('_', ' ') || '-'}</p>
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setViewingResult(null)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
             </div>
 
             {/* Content */}

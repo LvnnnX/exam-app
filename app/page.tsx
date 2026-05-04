@@ -1115,12 +1115,9 @@ export default function ExamPage() {
               <span className="text-[17px] font-bold text-nike-black uppercase tracking break-words">
                 {userName}
               </span>
-              <div className="flex flex-col gap-0.5 mt-2">
-                <span className="text-[12px] font-bold text-nike-grey-500 uppercase tracking-tight">{mapelsLabel}</span>
-                <span className="text-[12px] font-bold text-nike-grey-500 uppercase tracking-tight">{babsLabel}</span>
-                <span className="text-[12px] font-bold text-nike-grey-500 uppercase tracking-tight">{subBabsLabel}</span>
-                <span className="text-[13px] font-black text-nike uppercase tracking-widest mt-1.5">SOAL NOMOR {current + 1}</span>
-              </div>
+              <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
+                Topik: {mapelsLabel} · {babsLabel} · {subBabsLabel} {isSurvival && '· Survival'} · Soal Nomor {current + 1}
+              </span>
             </div>
 
             <div className="flex items-center gap-6">
