@@ -53,7 +53,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       if (q) {
         const currentSelection = selectedAnswerRef.current;
         const answerText = currentSelection || '';
-        void submitSecureAnswer(player.id, q.id, answerText, timeTaken);
+        void submitSecureAnswer(player.id, q.id, answerText, timeTaken, currentIndex);
       }
       void finishPlayerQuiz(player.id);
       secureRemove(`quiz_index_${quizCode}`);
@@ -191,7 +191,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     if (q) {
       const currentSelection = selectedAnswerRef.current;
       const answerText = currentSelection || '';
-      await submitSecureAnswer(player.id, q.id, answerText, timeTaken);
+      await submitSecureAnswer(player.id, q.id, answerText, timeTaken, currentIndex);
     }
 
     await finishPlayerQuiz(player.id);
