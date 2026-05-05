@@ -58,7 +58,7 @@ export async function getLiveQuizQuestionAction(playerId: string, index: number)
   }
 
   // Scramble the data before sending to browser
-  const result = data as { success: boolean; error?: string; data: PublicQuestion };
+  const result = data as { success: boolean; error?: string; data: PublicQuestion | null; scrambled?: string };
   if (result.success && result.data) {
     return { ...result, scrambled: scramble(result.data), data: null };
   }

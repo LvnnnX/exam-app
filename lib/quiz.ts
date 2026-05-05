@@ -329,6 +329,7 @@ export async function getJitQuestion(playerId: string, index: number): Promise<S
     }
     
     // Unscramble the data from the server
+    // Unscramble the data from the server
     const rawData = result.scrambled ? unscramble(result.scrambled) : result.data;
     if (!rawData) return null;
 
