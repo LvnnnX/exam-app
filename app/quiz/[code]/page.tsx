@@ -286,7 +286,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     if (!currentQuestion) return;
     const answerText = opt || '';
 
-    const result = await submitSecureAnswer(player.id, currentQuestion.id, answerText, timeTaken);
+    const result = await submitSecureAnswer(player.id, currentQuestion.id, answerText, timeTaken, currentIndex);
     const isCorrect = result.success ? result.is_correct : false;
 
     if (isCorrect) setScore(s => s + 1);

@@ -318,6 +318,7 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
 }
 
 import { getLiveQuizQuestionAction, submitLiveQuizAnswerAction } from '@/app/actions/exam';
+import { scramble, unscramble } from './crypto';
 
 export async function getJitQuestion(playerId: string, index: number): Promise<ShuffledQuestion | null> {
   try {
@@ -326,7 +327,12 @@ export async function getJitQuestion(playerId: string, index: number): Promise<S
       console.error('JIT fetch logic failed:', result?.error || 'Unknown error');
       return null;
     }
-    return shuffleOptions(result.data);
+    
+    // Unscramble the data from the server
+    const rawData = result.scrambled ? unscramble(result.scrambled) : result.data;
+    if (!rawData) return null;
+
+    return shuffleOptions(rawData);
   } catch (err: any) {
     console.error('JIT fetch action failed:', err.message);
     return null;
@@ -337,17 +343,22 @@ export async function submitSecureAnswer(
   playerId: string,
   questionId: number,
   userAnswer: string,
-  timeTaken: number
-): Promise<{ success: boolean; is_correct?: boolean }> {
+  timeTaken: number,
+  index: number
+): Promise<{ success: boolean; is_correct?: boolean; error?: string }> {
   try {
-    const result = await submitLiveQuizAnswerAction(playerId, questionId, userAnswer, timeTaken);
+    // Scramble the answer before sending to server
+    const scrambled = scramble(userAnswer);
+    
+    const result = await submitLiveQuizAnswerAction(playerId, questionId, scrambled, timeTaken, index);
     return {
       success: result?.success || false,
-      is_correct: result?.is_correct
+      is_correct: result?.is_correct,
+      error: result?.error
     };
   } catch (err: any) {
     console.error('Security verification action failed:', err.message);
-    return { success: false };
+    return { success: false, error: err.message };
   }
 }
 
