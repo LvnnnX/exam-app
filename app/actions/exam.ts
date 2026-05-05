@@ -43,7 +43,7 @@ export async function startExamSessionAction(
  * Server Action to fetch a question JIT for live quiz.
  * Returns a SCRAMBLED payload to hide it from DevTools.
  */
-export async function getLiveQuizQuestionAction(playerId: string, index: number) {
+export async function getLiveQuizQuestionAction(playerId: string, index: number): Promise<{ success: boolean; error?: string; data: PublicQuestion | null; scrambled?: string }> {
   const supabase = getSupabaseServer();
   const secret = process.env.EXAM_SECRET_KEY || process.env.NEXT_PUBLIC_EXAM_SECRET_KEY || 'default-secret-key-123';
   
