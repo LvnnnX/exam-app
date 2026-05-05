@@ -14,53 +14,31 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 *   **Registrasi Instan**: Sistem pendaftaran nama cepat sebelum memulai ujian.
 *   **Kustomisasi Ujian**: Pilih mode permainan (Exam atau Survival), kategori soal, dan jumlah soal.
 *   **Survival Mode**: Mode tantangan ekstrim dengan sistem 3-Nyawa (Lives). Jawaban salah langsung mengurangi nyawa — habis, game over.
-*   **Global Timer (Server-Side)**:
-    *   Pilihan batas waktu: 30, 60, 90, 120 menit, atau **No Time**.
-    *   Timer dihitung dari server (`expires_at`), tidak bisa dimanipulasi client.
-    *   Ujian otomatis berakhir dan auto-submit saat waktu habis.
-    *   Timer tersembunyi saat memilih **No Time**.
 *   **Zero-Trust Security (ANTI-HACK)**:
     *   **JIT Question Fetching**: Soal diambil dari server **satu per satu** (Just-In-Time). Tidak ada soal masa depan di browser.
     *   **Encrypted Storage**: Data lokal di-enkripsi (**AES-256**) dan diverifikasi (**HMAC-SHA256**).
-    *   **Obfuscated Keys**: Nama storage key di-hash (SHA256).
     *   **Server-Side Authority**: Kalkulasi skor, nyawa, dan validasi jawaban dilakukan di database (Supabase RPC).
-    *   **Row Level Security (RLS)**: Tabel `questions` dilindungi RLS. Client hanya bisa mengakses view `public_questions` yang menyembunyikan `correct_answer`.
+    *   **Anti-Cheat Hardware**: Deteksi perpindahan tab, penguncian layar (Wake Lock), dan pemblokiran seleksi teks/pintasan keyboard.
 *   **Session Persistence**: Sinkronisasi status otomatis dari database setelah *page reload*. Score, lives, current question, dan mode permainan tetap utuh.
-*   **Auto-Cleanup**: Pembersihan otomatis sesi ujian kadaluarsa (>2 hari).
-*   **Laporan Skor Terperinci**: Hasil pengerjaan instan tanpa kebocoran kunci jawaban.
-*   **Layout Stability**: `scrollbar-gutter: stable` mencegah layout shift saat scrollbar muncul/hilang.
+*   **Layout Stability**: Dynamic font resizing untuk soal panjang & centering gambar otomatis agar visual tetap proporsional.
 
 ### 🎮 Fitur Live Quiz (Kuis Real-Time)
-*   **Lobby System**: Admin membuat sesi kuis dengan kode 8-character. Peserta bergabung via kode.
-*   **Waiting Room**: Peserta menunggu di ruang tunggu sampai admin memulai kuis.
-*   **Per-User Randomization**: Urutan soal dan opsi jawaban diacak unik per peserta (server-side via `array_agg(ORDER BY random())`).
-*   **JIT Question Delivery**: Soal dikirim satu per satu melalui RPC. Tidak ada bulk fetching.
-*   **Server-Side Scoring**: Jawaban divalidasi di server menggunakan regex-based key matching (`strip_html` + normalisasi). Client tidak bisa memanipulasi skor.
-*   **Pause/Resume**: Admin dapat menjeda dan melanjutkan kuis. Timer peserta disesuaikan otomatis.
-*   **Auto-Finish**: Kuis otomatis berakhir saat waktu habis. Peserta langsung diarahkan ke leaderboard.
+*   **Lobby System**: Admin membuat sesi kuis dengan kode unik.
+*   **Waiting Room**: UI interaktif yang menampilkan topik kuis (MAPEL - BAB - SUBBAB) dan status admin.
+*   **Scheduled Quiz**: Dukungan penjadwalan kuis dengan **Dark-Themed Countdown Timer**.
+*   **Per-User Randomization**: Urutan soal dan opsi jawaban diacak unik per peserta.
+*   **Server-Side Flow Validation**: Validasi urutan soal dan kepemilikan sesi di server untuk mencegah bypass jawaban.
 *   **Live Leaderboard**: Papan skor real-time dengan sinkronisasi Supabase Realtime.
-*   **Session Recovery**: Peserta yang kehilangan koneksi dapat kembali ke sesi yang sama.
-*   **Anti-Cheat**: Semua operasi melalui `SECURITY DEFINER` RPC. Kolom `question_ids` dan `correct_answer` tidak bisa diakses oleh anonymous users.
 
 ### 🔐 Fitur Admin (Dashboard)
-*   **Autentikasi Admin**: Login menggunakan Supabase Auth untuk akses dashboard.
-*   **Dashboard Hasil Berhalaman**: Manajemen hasil ujian dengan paginasi (20 item per halaman).
-*   **Manajemen Hasil & Mode**: Filter interaktif untuk memisahkan hasil mode *Exam* dan *Survival*.
-*   **Analitik Waktu Pengerjaan**: Kolom Start Time, End Time, dan Durasi setiap peserta.
-*   **Track Live Progress**: Modal real-time untuk memantau progress peserta aktif — pertanyaan yang sedang dijawab, histori jawaban, dan indikator jawaban benar/salah.
-*   **History Page**: Halaman riwayat ujian yang telah selesai dengan tombol **View Details** untuk inspeksi jawaban per soal.
-*   **Smart Search**: Search bar dinamis untuk memfilter soal berdasarkan kategori atau potongan teks.
+*   **Admin Quiz Management**:
+    *   **Topic Standardization**: Format topik otomatis `(MAPEL) - (BAB) - (SUBBAB)` di seluruh dashboard & history.
+    *   **Live Monitoring**: Pantau progress, skor, dan jawaban peserta secara real-time.
+    *   **Session Control**: Start, Pause, Resume, dan End kuis secara instan.
 *   **Manajemen Soal (CRUD)**:
-    *   **Rich Text Editor (TipTap) & LaTeX**: Editor teks canggih (KaTeX, bold, italic, list, table, code block).
+    *   **Rich Text Editor (TipTap) & LaTeX**: Dukungan KaTeX, tabel, blok kode, dan formatting list yang sudah diperbaiki.
     *   **Integrasi Gambar**: Upload gambar langsung ke Supabase Storage.
-    *   **Category Creator**: Tambahkan kategori baru langsung saat membuat soal.
-    *   **Category Dropdown**: Pemilihan kategori menggunakan dropdown dengan opsi **NONE** sebagai default.
-*   **Admin Quiz Panel**:
-    *   **Create Session**: Pilih kategori, jumlah soal, dan durasi untuk membuat sesi kuis baru.
-    *   **Manage Sessions**: Start, Pause, Resume, dan End kuis secara real-time.
-    *   **Player Monitoring**: Lihat skor, waktu, dan jawaban setiap peserta secara live.
-    *   **Auto-Expire**: Sesi kuis yang melewati batas waktu otomatis di-finish dan dipindahkan ke History.
-    *   **History & Pagination**: Riwayat kuis dengan paginasi (10 item per halaman) dan horizontal scrolling.
+*   **History & Analytics**: Laporan riwayat kuis dengan paginasi dan filter kategori.
 
 ---
 
@@ -68,176 +46,57 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 
 *   **Frontend**: Next.js 15 (App Router), React, Tailwind CSS 4.
 *   **Backend & DB**: Supabase (PostgreSQL, RPC Functions, RLS, Storage, Realtime).
-*   **Security**: CryptoJS (AES-256, HMAC-SHA256, SHA256 Hashing), Row Level Security, Column-Level REVOKE.
-*   **Rich Text**: TipTap Content Editor, KaTeX.
-*   **Utility**: DOMPurify, Highlight.js.
+*   **Security**: CryptoJS (AES-256, HMAC-SHA256), Row Level Security, Custom Secret Header (`x-exam-secret`).
+*   **Rich Text**: TipTap Content Editor, KaTeX, DOMPurify.
 
 ---
 
-## 🔒 Arsitektur Keamanan
+## 🔒 Arsitektur Keamanan (Zero-Trust)
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│                      CLIENT (Browser)                   │
-│                                                         │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐ │
-│  │ AES-256     │  │ HMAC-SHA256  │  │ SHA256 Key     │ │
-│  │ Encryption  │  │ Integrity    │  │ Obfuscation    │ │
-│  └─────────────┘  └──────────────┘  └────────────────┘ │
-│                                                         │
-│  public_questions view ← (no correct_answer exposed)    │
-│  KUIS_SAFE_COLUMNS  ← (no question_ids exposed)        │
-└────────────────────────┬────────────────────────────────┘
-                         │ RPC Calls Only
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                    SUPABASE (Server)                     │
-│                                                         │
-│  ┌── Exam Mode ───────┐  ┌── Quiz Mode ──────────────┐ │
-│  │ start_exam_session  │  │ join_live_quiz            │ │
-│  │ get_session_state   │  │ get_live_quiz_question    │ │
-│  │ get_session_question│  │ submit_live_quiz_answer_v2│ │
-│  │ save_session_answer │  │                           │ │
-│  │ submit_session_exam │  │ strip_html (regex util)   │ │
-│  │ cleanup_stale       │  │                           │ │
-│  └─────────────────────┘  └───────────────────────────┘ │
-│                                                         │
-│  RLS Policies: questions → admin only                   │
-│  Column REVOKE: question_ids, correct_answer → anon     │
-│  SECURITY DEFINER: all RPC functions                    │
-│  Timer: expires_at enforced server-side                 │
-│  Auth: auth.uid() ownership check on all quiz RPCs      │
-└─────────────────────────────────────────────────────────┘
-```
+Sistem ini menerapkan lapisan keamanan berlapis untuk memastikan integritas ujian:
+
+1.  **Custom Secret Authorization**: Semua request ke database wajib menyertakan `x-exam-secret` di header. Request dengan `anon` key tanpa secret akan ditolak otomatis oleh database.
+2.  **Server-Side State Tracking**: Progress ujian dilacak di server. User tidak bisa menjawab soal di luar urutan yang ditentukan atau mengirim jawaban untuk soal yang tidak ditugaskan kepada mereka.
+3.  **Encrypted Local Data**: Semua data sensitif di `localStorage` dienkripsi menggunakan AES-256 dengan key yang diderivasi dari secret aplikasi.
+4.  **Database Hardening**:
+    *   **RLS Lockdown**: Tabel utama tertutup dari akses publik.
+    *   **Sanitized Views**: Data filter diambil melalui view khusus yang menyembunyikan kolom sensitif.
+    *   **Security Definer RPC**: Semua logika krusial (grading, state transition) berjalan di dalam fungsi database yang aman.
 
 ---
 
-## 📂 Struktur Proyek
+## 📂 Struktur Proyek (Penting)
 
 ```text
 exam-app/
 ├── app/
-│   ├── admin/             # Dashboard Admin & Manajemen Hasil
+│   ├── admin/             # Dashboard Admin
 │   ├── quiz/              # Live Quiz Module
-│   │   ├── page.tsx       # Halaman Join Quiz (input kode)
-│   │   └── [code]/
-│   │       └── page.tsx   # Halaman Sesi Kuis (waiting room, gameplay, leaderboard)
-│   ├── components/        # Komponen UI
-│   │   ├── AdminQuizTab.tsx     # Panel admin untuk manajemen kuis
-│   │   ├── QuestionDisplay.tsx  # Renderer soal dengan scrollbar-stable
-│   │   ├── RichContent.tsx      # HTML/LaTeX/Code renderer
-│   │   └── RichTextEditorField.tsx # TipTap editor wrapper
-│   ├── globals.css        # Design system & scrollbar-gutter
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Logika Utama & Interface Ujian (Anti-Hack)
+│   │   └── [code]/        # Waiting room & Gameplay kuis
+│   ├── components/        # UI Components (RichContent, QuestionDisplay)
+│   └── page.tsx           # Logika Utama Exam/Survival Mode
 ├── lib/
-│   ├── security.ts        # Layer Enkripsi & Integrity Check
-│   ├── questions.ts       # RPC Wrappers & JIT Fetching (Exam Mode)
-│   ├── quiz.ts            # RPC Wrappers & Logic (Live Quiz Mode)
-│   ├── rich-text.ts       # Sanitasi HTML & utilitas teks
-│   └── supabase.ts        # Konfigurasi Supabase Client
-├── scripts/
-│   └── seed-questions.ts  # Script untuk seeding data awal
-├── supabase/
-│   ├── schema.sql         # Skema Database Exam, RPC, RLS & Auto-Cleanup
-│   └── quiz_schema.sql    # Skema Database Quiz (kuis_logs, player, kuis_results)
-└── README.md              # Dokumentasi proyek
+│   ├── security.ts        # Layer Enkripsi
+│   ├── quiz.ts            # Logic Live Quiz
+│   └── supabase.ts        # Client Config dengan Secret Header
+└── supabase/
+    └── migrations/        # SQL Hardening & Final Schema
 ```
 
 ---
 
-## 📦 Instalasi Lokal
+## 📦 Instalasi & Konfigurasi
 
-1.  **Clone Repositori**
-    ```bash
-    git clone https://github.com/LvnnnX/exam-app.git
-    cd exam-app
-    ```
-
-2.  **Instal Dependensi**
-    ```bash
-    npm install
-    ```
-
-3.  **Konfigurasi Environment Variable**
-    Buat file `.env` di root direktori:
+1.  **Environment Variables**:
     ```env
-    NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+    NEXT_PUBLIC_SUPABASE_URL=your_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
+    NEXT_PUBLIC_EXAM_SECRET_KEY=your_secret_key
     ```
-
-    Jika masih ada data browser lama dari versi sebelumnya, `NEXT_PUBLIC_EXAM_SECRET_KEY` bisa diset sementara untuk migrasi localStorage lama.
-
-4.  **Siapkan Database**
-    Jalankan skrip SQL berikut di Supabase SQL Editor (urutan penting):
-    1.  `/supabase/schema.sql` — Skema utama (exam mode, RLS, RPC).
-    2.  `/supabase/quiz_schema.sql` — Skema kuis (tabel & RLS dasar).
-    3.  RPC Functions kuis (dari artifact SQL patches):
-        *   `join_live_quiz` — Join & per-user shuffle.
-        *   `get_live_quiz_question` — JIT delivery dengan option shuffle.
-        *   `submit_live_quiz_answer_v2` — Server-side scoring via key mapping.
-        *   `strip_html` — Regex utility untuk normalisasi teks jawaban.
-
-    Pastikan:
-    *   Aktifkan **Anonymous Sign-In** di Authentication > Providers.
-    *   Jalankan `CREATE OR REPLACE VIEW public_questions` untuk view publik.
-    *   Pastikan RLS aktif pada semua tabel.
-
-5.  **Jalankan Aplikasi**
-    ```bash
-    npm run dev
-    ```
-    Buka [http://localhost:3000](http://localhost:3000) di browser.
+2.  **Database Setup**:
+    *   Jalankan `supabase/migrations/20260505_final_hardened_schema.sql` di SQL Editor Supabase.
+    *   Set database secret: `ALTER DATABASE postgres SET "app.settings.exam_secret" TO 'your_secret_key';`
 
 ---
-
-## 🌐 Deployment ke Vercel
-
-1.  Push proyek ke GitHub.
-2.  Masuk ke [Vercel Dashboard](https://vercel.com/) dan impor proyek.
-3.  Di bagian **Environment Variables**, masukkan:
-    *   `NEXT_PUBLIC_SUPABASE_URL`
-    *   `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4.  Klik **Deploy**.
-
----
-
-## ⚙️ Variabel Lingkungan
-
-| Variable | Deskripsi |
-| :--- | :--- |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL API Project Supabase. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Anon Key dari Project Supabase. |
-| `NEXT_PUBLIC_EXAM_SECRET_KEY` | Opsional. Dipakai hanya untuk migrasi data localStorage lama. |
-
----
-
-## 🗄️ Supabase RPC Functions
-
-### Exam Mode
-
-| Function | Deskripsi |
-| :--- | :--- |
-| `start_exam_session` | Membuat sesi ujian baru dengan timer server-side. |
-| `get_session_state` | Mengambil state sesi aktif (index, jawaban, lives, mode). |
-| `get_session_question` | Mengambil 1 soal berdasarkan index (JIT). |
-| `save_session_answer` | Menyimpan jawaban & validasi (Survival: cek benar/salah). |
-| `submit_session_exam` | Menyelesaikan ujian & menghitung skor final. |
-| `cleanup_stale_sessions` | Membersihkan sesi kadaluarsa (>2 hari). |
-
-### Live Quiz Mode
-
-| Function | Deskripsi |
-| :--- | :--- |
-| `join_live_quiz` | Mendaftarkan peserta & generate urutan soal acak unik per user. |
-| `get_live_quiz_question` | Mengambil 1 soal dengan opsi teracak (JIT delivery). |
-| `submit_live_quiz_answer_v2` | Validasi jawaban server-side via key-based matching & regex. |
-| `strip_html` | Utility regex untuk menghapus tag HTML dari teks jawaban. |
-
----
-
-## 🤝 Kontribusi
-
-Kontribusi selalu terbuka! Silakan buat *Issue* atau *Pull Request*.
 
 Created by [LvnnnX](https://github.com/LvnnnX)
