@@ -111,7 +111,7 @@ export async function createQuizSession(
     // If toggle OFF, distribute equally.
     // If "Semua Sub-bab", fetch ALL sub-babs from visible questions.
     if (isAllSubBabs) {
-      let q = supabase.from('questions').select('sub_babs').eq('is_hidden', false);
+      let q = supabase.from('public_categories').select('sub_babs');
       const mapels = Array.isArray(mapel) ? mapel : [mapel];
       const filteredMapels = mapels.filter(m => m !== 'None' && m !== 'Semua MAPEL');
       if (filteredMapels.length > 0) {

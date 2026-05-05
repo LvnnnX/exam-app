@@ -380,6 +380,7 @@ export default function ExamPage() {
           console.warn("No mapels found in Supabase.");
         }
         setAvailableMapels(data);
+        setMapels(prev => prev.filter(v => data.some((u: BabInfo) => u.value === v)));
       } catch (err: any) {
         console.error("Failed to load mapels:", err);
         setFetchError(err.message || "Failed to connect to server");

@@ -179,7 +179,7 @@ export async function saveVisibilitySettings(settings: VisibilitySettings): Prom
 
 export async function fetchMapels(): Promise<BabInfo[]> {
   const [mapelsResult, visibility] = await Promise.all([
-    supabase.from('public_categories').select('mapels').eq('is_hidden', false),
+    supabase.from('public_categories').select('mapels'),
     fetchVisibilitySettings(),
   ]);
 
@@ -256,7 +256,7 @@ export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
-  const baseQuery = supabase.from('public_categories').select('babs').eq('is_hidden', false);
+  const baseQuery = supabase.from('public_categories').select('babs');
   const query = mapel && mapel !== 'Semua Mapel' && mapel !== 'None'
     ? baseQuery.contains('mapels', [mapel])
     : baseQuery;
@@ -271,6 +271,14 @@ export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
   if (error) {
     console.error('Failed to fetch babs:', error.message);
     return [];
+  }
+
+  // Defensive: if a parent mapel is provided, check its visibility
+  if (mapel && mapel !== 'Semua Mapel' && mapel !== 'None') {
+    const mapelSlug = normalizeCategorySlug(mapel);
+    if (visibility.hidden_mapels.includes(mapelSlug) || visibility.admin_only_mapels.includes(mapelSlug)) {
+      return [];
+    }
   }
 
   const rawBabs = data.flatMap((q) => q.babs || []).filter(Boolean);
@@ -349,7 +357,7 @@ export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
-  const baseQuery = supabase.from('public_categories').select('sub_babs').eq('is_hidden', false);
+  const baseQuery = supabase.from('public_categories').select('sub_babs');
   const query = bab && bab !== 'Semua BAB' && bab !== 'None'
     ? baseQuery.contains('babs', [bab])
     : baseQuery;
@@ -364,6 +372,14 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
   if (error) {
     console.error('Failed to fetch sub babs:', error.message);
     return [];
+  }
+
+  // Defensive: if a parent bab is provided, check its visibility
+  if (bab && bab !== 'Semua BAB' && bab !== 'None') {
+    const babSlug = normalizeCategorySlug(bab);
+    if (visibility.hidden_babs.includes(babSlug) || visibility.admin_only_babs.includes(babSlug)) {
+      return [];
+    }
   }
 
   const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
@@ -428,9 +444,8 @@ export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInf
   // Use raw bab values directly for the query (case-sensitive match in DB)
   const [subBabsResult, visibility] = await Promise.all([
     supabase
-      .from('questions')
+      .from('public_categories')
       .select('sub_babs')
-      .eq('is_hidden', false)
       .or(babs.map((hb) => `babs.cs.{${hb}}`).join(',')),
     fetchVisibilitySettings(),
   ]);
@@ -441,6 +456,14 @@ export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInf
     console.error('Failed to fetch sub babs for multiple BABs:', error.message);
     return [];
   }
+
+  // Defensive: ensure none of the requested babs are restricted
+  const visibleBabs = babs.filter(b => {
+    const slug = normalizeCategorySlug(b);
+    return !visibility.hidden_babs.includes(slug) && !visibility.admin_only_babs.includes(slug);
+  });
+
+  if (visibleBabs.length === 0) return [];
 
   const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
   const seen = new Map<string, string>();
