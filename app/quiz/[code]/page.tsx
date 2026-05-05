@@ -246,17 +246,33 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   // Handle waiting room countdown
   useEffect(() => {
     if (session?.status === 'waiting' && session.scheduled_at) {
-      const interval = setInterval(() => {
+      const updateTimer = () => {
         const diff = new Date(session.scheduled_at!).getTime() - Date.now();
         if (diff <= 0) {
           setWaitTimer(null);
-          clearInterval(interval);
+          return false; // stop
         } else {
-          const m = Math.floor(diff / 60000);
-          const s = Math.floor((diff % 60000) / 1000);
-          setWaitTimer(`${m}:${s.toString().padStart(2, '0')}`);
+          const hours = Math.floor(diff / 3600000);
+          const minutes = Math.floor((diff % 3600000) / 60000);
+          const seconds = Math.floor((diff % 60000) / 1000);
+
+          if (hours > 0) {
+            setWaitTimer(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+          } else {
+            setWaitTimer(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+          }
+          return true; // continue
         }
+      };
+
+      const shouldContinue = updateTimer();
+      if (!shouldContinue) return;
+
+      const interval = setInterval(() => {
+        const keepGoing = updateTimer();
+        if (!keepGoing) clearInterval(interval);
       }, 1000);
+
       return () => clearInterval(interval);
     } else {
       setWaitTimer(null);
