@@ -100,7 +100,7 @@ function RichContent({ html, className = '' }: RichContentProps) {
   return (
     <div
       ref={containerRef}
-      className={`rich-content ${className}`.trim()}
+      className={`rich-content ${className} [&_img]:mx-auto [&_img]:block [&_img]:max-w-full [&_img]:h-auto [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6`.trim()}
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );

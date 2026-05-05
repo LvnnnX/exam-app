@@ -31,6 +31,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const [leaderboard, setLeaderboard] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeLeftDisplay, setTimeLeftDisplay] = useState<string>('');
+  const [waitTimer, setWaitTimer] = useState<string | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerData | null>(null);
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const selectedAnswerRef = useRef<AnswerData | null>(null);
@@ -79,14 +80,15 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       // Check localStorage for existing player
       const savedPlayerId = secureLoad<string>(`quiz_player_${quizCode}`);
       if (savedPlayerId) {
-        supabase.from('player').select('*').eq('id', savedPlayerId).single().then(({ data }) => {
+        supabase.from('public_players').select('*').eq('id', savedPlayerId).single().then(({ data }) => {
           if (data) {
             // Rule 4 & 5: Strict check for completion state on mount
             if (data.finished_at) {
               setIsFinished(true);
               return;
             }
-            setPlayer(data);
+            // Add missing properties for Player type
+            setPlayer({ ...data, question_ids: [] } as Player);
             // Restore index (Questions are loaded JIT)
             const savedIndex = secureLoad<string>(`quiz_index_${quizCode}`);
             if (savedIndex) {
@@ -131,8 +133,8 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   }, [isFinished, session]);
 
   const fetchLeaderboard = async (kuisId: string) => {
-    const { data } = await supabase.from('player').select('*').eq('kuis_id', kuisId).order('score', { ascending: false }).order('total_time', { ascending: true });
-    if (data) setLeaderboard(data);
+    const { data } = await supabase.from('public_players').select('*').eq('kuis_id', kuisId).order('score', { ascending: false }).order('total_time', { ascending: true });
+    if (data) setLeaderboard(data as Player[]);
   };
 
   const handleJoin = async () => {
@@ -241,6 +243,26 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     }
   }, [session?.status, pausedAt, startTime]);
 
+  // Handle waiting room countdown
+  useEffect(() => {
+    if (session?.status === 'waiting' && session.scheduled_at) {
+      const interval = setInterval(() => {
+        const diff = new Date(session.scheduled_at!).getTime() - Date.now();
+        if (diff <= 0) {
+          setWaitTimer(null);
+          clearInterval(interval);
+        } else {
+          const m = Math.floor(diff / 60000);
+          const s = Math.floor((diff % 60000) / 1000);
+          setWaitTimer(`${m}:${s.toString().padStart(2, '0')}`);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setWaitTimer(null);
+    }
+  }, [session?.status, session?.scheduled_at]);
+
   const handleAnswer = async (opt: AnswerData | null) => {
     if (!player || !session || isFinished) return;
 
@@ -329,24 +351,41 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-white">
         <div className="text-center max-w-sm w-full">
-          <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest mb-1">Live Quiz</p>
-          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.mapel?.replace(/_/g, ' ')} · {session.bab?.replace(/_/g, ' ')} · {session.sub_bab?.replace(/_/g, ' ')}</p>
-          <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8">Join</h2>
+          <p className="text-[14px] font-black text-nike-black uppercase tracking-[0.3em] mb-4">Live Quiz</p>
 
-          <input
-            type="text"
-            placeholder="NAMA KAMU"
-            value={name}
-            onChange={e => setName(e.target.value.toUpperCase())}
-            className="w-full text-center text-[16px] font-bold py-4 rounded-[30px] border-[1.5px] border-nike-grey-200 focus:border-nike-black focus:outline-none mb-6 uppercase tracking-wider transition-colors"
-          />
-          <button
-            onClick={handleJoin}
-            disabled={!name.trim() || loading}
-            className="w-full h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 uppercase tracking-wider"
-          >
-            {loading ? 'MENYAMBUNGKAN...' : 'MASUK RUANG TUNGGU'}
-          </button>
+          <div className="mb-8 flex flex-col gap-3">
+            <div>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mapel</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.mapel?.replace(/_/g, ' ') || '-'}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Bab</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.bab?.replace(/_/g, ' ') || '-'}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Subbab</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.sub_bab?.replace(/_/g, ' ') || '-'}</p>
+            </div>
+          </div>
+
+          <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8">Join.</h2>
+
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="MASUKKAN NAMA KAMU"
+              value={name}
+              onChange={e => setName(e.target.value.toUpperCase())}
+              className="w-full text-center text-[16px] font-bold py-5 rounded-[24px] border-2 border-gray-100 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/5 focus:outline-none mb-2 uppercase tracking-widest transition-all shadow-sm"
+            />
+            <button
+              onClick={handleJoin}
+              disabled={!name.trim() || loading}
+              className="w-full h-[64px] rounded-[32px] bg-nike-black text-nike-white text-[16px] font-black uppercase tracking-widest hover:bg-nike-grey-500 transition-all disabled:opacity-20 active:scale-[0.98] shadow-xl shadow-nike-black/20"
+            >
+              {loading ? 'MENYAMBUNGKAN...' : 'MASUK RUANG TUNGGU'}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -355,12 +394,35 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   if (session.status === 'waiting') {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-white">
-        <div className="text-center">
-          <div className="w-12 h-12 border-[3px] border-nike-grey-200 border-t-nike-black rounded-full animate-spin mx-auto mb-6"></div>
-          <p className="text-[14px] font-medium text-nike-grey-500 uppercase tracking-widest mb-1">Ruang Tunggu</p>
-          <p className="text-[11px] font-bold text-nike-grey-400 uppercase tracking-[0.2em] mb-3">Topik : {session.mapel?.replace(/_/g, ' ')} · {session.bab?.replace(/_/g, ' ')} · {session.sub_bab?.replace(/_/g, ' ')}</p>
-          <h2 className="font-display text-[32px] sm:text-[48px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2">Menunggu Admin</h2>
-          <p className="text-[12px] text-nike-grey-300 uppercase tracking-[0.2em]">Kuis akan segera dimulai</p>
+        <div className="text-center max-w-sm w-full">
+          <h2 className="font-display text-[32px] sm:text-[48px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-1">Menunggu Admin</h2>
+          <p className="text-[14px] font-black text-nike-black uppercase tracking-[0.3em] mb-10">Ruang Tunggu</p>
+
+          <div className="w-16 h-16 border-[4px] border-gray-100 border-t-nike-black rounded-full animate-spin mx-auto mb-6"></div>
+
+          <p className="text-[12px] font-bold text-nike-grey-300 uppercase tracking-[0.2em] mb-10">Kuis akan segera dimulai</p>
+
+          {waitTimer && (
+            <div className="mb-10 -mt-6 bg-nike-black rounded-2xl py-3 px-8 inline-block animate-in fade-in zoom-in duration-300">
+              <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] block mb-1">Mulai Otomatis Dalam</span>
+              <span className="text-[28px] font-black font-mono text-white leading-none tabular-nums">{waitTimer}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3">
+            <div>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mapel</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.mapel?.replace(/_/g, ' ') || '-'}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Bab</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.bab?.replace(/_/g, ' ') || '-'}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Subbab</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.sub_bab?.replace(/_/g, ' ') || '-'}</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -376,6 +438,11 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       </div>
     );
   }
+
+  const textLength = q.question_text.replace(/<[^>]*>/g, '').length;
+  const fontSizeClass = textLength > 500 ? 'text-[14px] md:text-[18px]' :
+    textLength > 250 ? 'text-[16px] md:text-[22px]' :
+      'text-[18px] md:text-[28px]';
 
   return (
     <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16 min-h-screen bg-white relative">
@@ -433,7 +500,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             <div className="h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable p-6 md:p-10 flex flex-col pt-6 md:pt-12 border-b md:border-b-0 border-nike-grey-100 flex-1 min-w-0">
               <RichContent
                 html={q.question_text}
-                className="exam-question-content text-[18px] md:text-[28px] font-bold text-nike-black leading-[1.25] tracking-tight"
+                className={`exam-question-content ${fontSizeClass} font-bold text-nike-black leading-[1.25] tracking-tight`}
               />
             </div>
 

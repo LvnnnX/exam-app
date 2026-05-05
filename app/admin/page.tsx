@@ -157,6 +157,7 @@ export default function AdminPage() {
   const [activeSubBabFilter, setActiveSubBabFilter] = useState<string>('all');
   const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'short_answer'>('all');
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'visible' | 'hidden'>('all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Auth state
@@ -379,8 +380,14 @@ export default function AdminPage() {
           question.sub_babs?.some(c => c.toLowerCase().includes(q));
       });
     }
+
+    // Sort by ID
+    list = [...list].sort((a, b) => {
+      return sortOrder === 'asc' ? a.id - b.id : b.id - a.id;
+    });
+
     return list;
-  }, [activeMapelFilter, activebabFilter, activeSubBabFilter, visibilityFilter, questionTypeFilter, adminQuestions, searchQuery]);
+  }, [activeMapelFilter, activebabFilter, activeSubBabFilter, visibilityFilter, questionTypeFilter, adminQuestions, searchQuery, sortOrder]);
 
   const getCategoryLabel = (category: string) => {
     if (category === 'all') {
@@ -1118,13 +1125,19 @@ export default function AdminPage() {
       {activeTab === 'questions' && (
         <div>
           <div className="mb-5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-            <button
-              onClick={startAddNew}
-              style={{ background: '#34C759' }}
-              className="px-4 sm:px-5 py-2.5 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity shadow-md shadow-green-200 flex items-center justify-center gap-2"
-            >
-              <span className="text-lg leading-none">+</span> Add New Question
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={startAddNew}
+                style={{ background: '#34C759' }}
+                className="px-4 sm:px-5 py-2.5 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity shadow-md shadow-green-200 flex items-center justify-center gap-2"
+              >
+                <span className="text-lg leading-none">+</span> Add New Question
+              </button>
+              <div className="px-4 py-2 bg-slate-100 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block leading-none mb-1">Total Soal</span>
+                <span className="text-sm font-black text-slate-700 leading-none">{filteredQuestions.length}</span>
+              </div>
+            </div>
             <button
               onClick={fetchAdminQuestions}
               className="px-4 sm:px-5 py-2.5 bg-white border-2 border-[#4A90D9]/20 text-[#4A90D9] rounded-xl font-semibold text-sm hover:bg-[#4A90D9]/5 transition-colors"
@@ -1207,23 +1220,48 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="mb-6 flex">
+          <div className="mb-6 flex flex-col sm:flex-row gap-3 items-end">
             <div className="relative w-full max-w-md">
-              <input
-                type="text"
-                placeholder="Search questions by text or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2.5 pl-10 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] transition-colors text-sm"
-              />
-              <svg
-                className="absolute left-3 top-3 h-5 w-5 text-slate-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">
+                Cari Soal {filteredQuestions.length > 0 && <span className="text-[#4A90D9] ml-1">({filteredQuestions.length})</span>}
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search questions by text or category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2.5 pl-10 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] transition-colors text-sm h-11"
+                />
+                <svg
+                  className="absolute left-3 top-3 h-5 w-5 text-slate-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+            <div className="w-full sm:w-auto">
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Urutan</label>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                className={`h-11 px-6 rounded-xl text-sm font-bold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${sortOrder === 'desc'
+                  ? 'bg-nike-black border-nike-black text-white shadow-lg'
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-nike-black'
+                  }`}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+                {sortOrder === 'desc' ? (
+                  <>
+                    <span>⬇️</span> Terbaru (Newer)
+                  </>
+                ) : (
+                  <>
+                    <span>⬆️</span> Terlama (Older)
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
@@ -1246,8 +1284,11 @@ export default function AdminPage() {
 
                 return (
                   <div key={question.id ?? index} className="relative border-2 border-slate-100 rounded-xl p-5 bg-white hover:border-[#4A90D9]/30 hover:shadow-md hover:shadow-blue-50 transition-all">
-                    <div className="font-semibold text-slate-700 mb-2 text-sm leading-relaxed">
-                      Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
+                    <div className="flex justify-between items-start gap-2 mb-2">
+                      <div className="font-semibold text-slate-700 text-sm leading-relaxed">
+                        Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-300 bg-slate-50 px-1.5 py-0.5 rounded">{question.id}</span>
                     </div>
                     <div className="text-xs text-slate-400 mb-1">MAPEL: {question.mapels?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-1">BAB: {question.babs?.join(', ').replaceAll('_', ' ')}</div>
@@ -2274,25 +2315,45 @@ export default function AdminPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setIsTrackingModalOpen(false)}>
           <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-nike-green/10 flex items-center justify-center">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                  </span>
-                </div>
-                <div>
-                  <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Live Progress Tracking</h2>
-                  <>
-                    <span className="text-sm font-black uppercase tracking-widest">
-                      {trackingSession.name}
+            <div className="p-6 border-b bg-gray-50 relative">
+              <div className="flex justify-between items-start w-full">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-nike-green/10 flex items-center justify-center mt-1">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                     </span>
-                  </>
-                  <span className="text-sm font-bold text-gray-400 uppercase tracking-widest"> • {trackingSession.mode}</span>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black uppercase tracking-tight text-gray-900 leading-tight mb-1">
+                      {trackingSession.name}
+                    </h2>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-1">
+                        {trackingSession.mode === 'survival' ? '⚔️ Survival Mode' : '📝 Exam Mode'}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">MAPEL:</span> {trackingSession.mapel?.replaceAll('_', ' ') || '-'}
+                        </div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">BAB:</span> {trackingSession.bab?.replaceAll('_', ' ') || '-'}
+                        </div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">SUBBAB:</span> {trackingSession.sub_bab?.replaceAll('_', ' ') || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end pt-5">
+                  <div className="text-right">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Start Time</p>
+                    <p className="text-xs font-bold text-gray-600">{new Date(trackingSession.start_time).toLocaleTimeString()}</p>
+                  </div>
                 </div>
               </div>
-              <button onClick={() => setIsTrackingModalOpen(false)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
             </div>
 
             {/* Content */}
@@ -2438,26 +2499,41 @@ export default function AdminPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingResult(null)}>
           <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-6 border-b relative bg-gray-50">
-              <button
-                onClick={() => setViewingResult(null)}
-                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all z-10"
-              >
-                ×
-              </button>
-              <div>
-                <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Exam Breakdown</h2>
-                <div className="mt-2 space-y-1">
-                  <div className="flex items-center justify-between gap-4 text-sm font-black uppercase tracking-widest pr-12">
-                    <span className="text-nike-black">{viewingResult.name}</span>
-                    <span className="text-gray-500">
-                      {viewingResult.start_time ? new Date(viewingResult.start_time).toLocaleTimeString() : '-'} - {viewingResult.end_time ? new Date(viewingResult.end_time).toLocaleTimeString() : '-'}
-                    </span>
+            <div className="p-6 border-b bg-gray-50 relative">
+              <div className="flex justify-between items-start w-full">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mt-1">
+                    <span className="text-xl">📜</span>
                   </div>
-                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
-                    <p>{viewingResult.mapel?.replaceAll('_', ' ') || '-'}</p>
-                    <p>{viewingResult.bab?.replaceAll('_', ' ') || '-'}</p>
-                    <p>{viewingResult.sub_bab?.replaceAll('_', ' ') || '-'}</p>
+                  <div>
+                    <h2 className="text-xl font-black uppercase tracking-tight text-gray-900 leading-tight mb-1">
+                      {viewingResult.name}
+                    </h2>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-1">
+                        {viewingResult.mode === 'survival' ? '⚔️ Survival Mode' : '📝 Exam Mode'}
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">MAPEL:</span> {viewingResult.mapel?.replaceAll('_', ' ') || '-'}
+                        </div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">BAB:</span> {viewingResult.bab?.replaceAll('_', ' ') || '-'}
+                        </div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">SUBBAB:</span> {viewingResult.sub_bab?.replaceAll('_', ' ') || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end pt-1">
+                  <div className="text-right">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Time Session</p>
+                    <p className="text-xs font-bold text-gray-600">
+                      {viewingResult.start_time ? new Date(viewingResult.start_time).toLocaleTimeString() : '-'} - {viewingResult.end_time ? new Date(viewingResult.end_time).toLocaleTimeString() : '-'}
+                    </p>
                   </div>
                 </div>
               </div>

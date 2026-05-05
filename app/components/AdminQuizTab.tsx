@@ -1075,8 +1075,21 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Join Code</p>
-              <h1 className="text-4xl md:text-5xl font-black text-indigo-700 tracking-widest font-mono">{activeSession.quiz_code}</h1>
-              <p className="mt-2 text-sm text-gray-600 font-medium capitalize">Topik: {activeSession.bab?.replace(/_/g, ' ')}, {activeSession.sub_bab?.replace(/_/g, ' ')} <span className="mx-2">•</span> {activeSession.question_count} Questions</p>
+              <h1 className="text-4xl md:text-5xl font-black text-indigo-700 tracking-widest font-mono leading-none mb-3">{activeSession.quiz_code}</h1>
+              <div className="flex flex-col gap-1">
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                  <span className="text-gray-300">MAPEL:</span> {activeSession.mapel?.replaceAll('_', ' ') || '-'}
+                </div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                  <span className="text-gray-300">BAB:</span> {activeSession.bab?.replaceAll('_', ' ') || '-'}
+                </div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                  <span className="text-gray-300">SUBBAB:</span> {activeSession.sub_bab?.replaceAll('_', ' ') || '-'}
+                </div>
+                <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1 mt-1">
+                  <span className="text-indigo-200">SOAL:</span> {activeSession.question_count} Questions
+                </div>
+              </div>
             </div>
             <div className="flex flex-col items-end gap-3">
               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${activeSession.status === 'active' ? 'bg-green-100 text-green-700' :
@@ -1086,143 +1099,118 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 }`}>
                 {activeSession.status}
               </span>
-              <div className="flex flex-row items-center gap-4 flex-wrap justify-end">
-                {activeSession.status === 'waiting' && (
-                  <div className="relative flex items-center">
-                    {activeSession.scheduled_at && !editingSchedule ? (
-                      <div className="flex items-center gap-3 bg-[#F0F7FF] border border-[#BFDBFE] px-4 py-2 rounded-full">
-                        <div className="flex flex-col items-end">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Mulai otomatis dalam</span>
-                          <span className="text-sm font-black text-[#4A90D9] font-mono tabular-nums">{scheduleCountdown || '...'}</span>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex gap-2">
+                  {activeSession.status === 'waiting' && (
+                    <>
+                      <button
+                        onClick={() => handleStatusChange('active')}
+                        disabled={players.length === 0}
+                        className={`bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm ${players.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
+                      >
+                        Start Quiz
+                      </button>
+                      <button
+                        onClick={() => setShowCancelConfirm(true)}
+                        className="bg-white border-2 border-red-500 text-red-500 px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shadow-sm"
+                      >
+                        Cancel Quiz
+                      </button>
+                    </>
+                  )}
+                  {(activeSession.status === 'active' || activeSession.status === 'paused') && (
+                    <>
+                      <button
+                        onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')}
+                        className={`${activeSession.status === 'active' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-nike-green hover:bg-green-600'} text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm`}
+                      >
+                        {activeSession.status === 'active' ? 'Pause' : 'Resume'}
+                      </button>
+                      <button onClick={() => setShowEndConfirm(true)} className="bg-nike-red text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm">End Quiz</button>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {activeSession.status === 'waiting' && (
+                    <div className="relative flex items-center">
+                      {activeSession.scheduled_at && !editingSchedule ? (
+                        <div className="flex items-center gap-3 bg-[#F0F7FF] border border-[#BFDBFE] px-4 py-1.5 rounded-full">
+                          <div className="flex flex-col items-end">
+                            <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wider">Mulai otomatis</span>
+                            <span className="text-xs font-black text-[#4A90D9] font-mono tabular-nums leading-none">{scheduleCountdown || '...'}</span>
+                          </div>
+                          <div className="w-px h-5 bg-[#BFDBFE]"></div>
+                          <button
+                            onClick={() => {
+                              setEditingSchedule(true);
+                              const d = new Date(activeSession.scheduled_at!);
+                              setEditScheduleDate(d.toISOString().split('T')[0]);
+                              setEditScheduleTime(d.toTimeString().slice(0, 5));
+                            }}
+                            className="text-[10px] font-bold text-[#4A90D9] hover:text-blue-700 uppercase tracking-wider"
+                          >
+                            ✏️ Edit
+                          </button>
                         </div>
-                        <div className="w-px h-6 bg-[#BFDBFE]"></div>
+                      ) : !editingSchedule && (
                         <button
                           onClick={() => {
                             setEditingSchedule(true);
-                            const d = new Date(activeSession.scheduled_at!);
-                            setEditScheduleDate(d.toISOString().split('T')[0]);
-                            setEditScheduleTime(d.toTimeString().slice(0, 5));
+                            setEditScheduleDate('');
+                            setEditScheduleTime('');
                           }}
-                          className="text-xs font-bold text-[#4A90D9] hover:text-blue-700 uppercase tracking-wider"
+                          className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-700 uppercase tracking-wider transition-colors"
                         >
-                          ✏️ Edit
+                          <span className="text-sm">📅</span> Set Schedule
                         </button>
-                      </div>
-                    ) : !editingSchedule && (
-                      <button
-                        onClick={() => {
-                          setEditingSchedule(true);
-                          setEditScheduleDate('');
-                          setEditScheduleTime('');
-                        }}
-                        className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-700 uppercase tracking-wider transition-colors"
-                      >
-                        <span className="text-sm">📅</span> Set Schedule
-                      </button>
-                    )}
+                      )}
 
-                    {editingSchedule && (
-                      <div className="absolute right-0 top-full mt-2 w-[280px] min-[400px]:w-[320px] max-w-[calc(100vw-3rem)] bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-10 overflow-hidden">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-xs font-bold uppercase text-gray-700">Set Schedule</h4>
-                          <button onClick={() => setEditingSchedule(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <div className="flex-1">
-                              <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Tanggal</label>
-                              <input
-                                type="date"
-                                value={editScheduleDate}
-                                onChange={(e) => {
-                                  setEditScheduleDate(e.target.value);
-                                  if (e.target.value === new Date().toISOString().split('T')[0] && editScheduleTime < new Date().toTimeString().slice(0, 5)) {
-                                    setEditScheduleTime('');
-                                  }
-                                }}
-                                min={new Date().toISOString().split('T')[0]}
-                                max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
-                                className="w-full min-w-0 max-w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
-                              />
+                      {editingSchedule && (
+                        <div className="absolute right-0 top-full mt-2 w-[280px] min-[400px]:w-[320px] max-w-[calc(100vw-3rem)] bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-10 overflow-hidden">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-xs font-bold uppercase text-gray-700">Set Schedule</h4>
+                            <button onClick={() => setEditingSchedule(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <div className="flex-1">
+                                <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Tanggal</label>
+                                <input
+                                  type="date"
+                                  value={editScheduleDate}
+                                  onChange={(e) => {
+                                    setEditScheduleDate(e.target.value);
+                                    if (e.target.value === new Date().toISOString().split('T')[0] && editScheduleTime < new Date().toTimeString().slice(0, 5)) {
+                                      setEditScheduleTime('');
+                                    }
+                                  }}
+                                  min={new Date().toISOString().split('T')[0]}
+                                  max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
+                                  className="w-full min-w-0 max-w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Waktu</label>
+                                <input
+                                  type="time"
+                                  value={editScheduleTime}
+                                  onChange={(e) => setEditScheduleTime(e.target.value)}
+                                  min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
+                                  className="w-full min-w-0 max-w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
+                                />
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Waktu</label>
-                              <input
-                                type="time"
-                                value={editScheduleTime}
-                                onChange={(e) => setEditScheduleTime(e.target.value)}
-                                min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                                className="w-full min-w-0 max-w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
-                              />
+                            <div className="flex gap-2 pt-2 border-t border-gray-100">
+                              <button onClick={handleSaveSchedule} className="flex-1 bg-[#4A90D9] text-white py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-600">Simpan</button>
+                              {activeSession.scheduled_at && (
+                                <button onClick={handleRemoveSchedule} className="flex-1 bg-red-500 text-white py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-red-600">Hapus</button>
+                              )}
                             </div>
                           </div>
-                          <div className="flex gap-2 pt-2 border-t border-gray-100">
-                            <button onClick={handleSaveSchedule} className="flex-1 bg-[#4A90D9] text-white py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-600">Simpan</button>
-                            {activeSession.scheduled_at && (
-                              <button onClick={handleRemoveSchedule} className="flex-1 bg-red-500 text-white py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-red-600">Hapus</button>
-                            )}
-                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-4">
-                  {(activeSession.status === 'active' || activeSession.status === 'paused') && (
-                    <div className="flex flex-col items-end">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Sisa Waktu</span>
-                      <span className={`text-lg font-black tracking-tight ${activeSession.status === 'paused' ? 'text-orange-500' : 'text-indigo-600'}`}>
-                        {(() => {
-                          if (!activeSession.expires_at) return '-';
-                          // When paused, freeze the countdown at the moment of pause
-                          const referenceTime = (activeSession.status === 'paused' && activeSession.paused_at)
-                            ? new Date(activeSession.paused_at).getTime()
-                            : currentTime;
-                          const diff = new Date(activeSession.expires_at).getTime() - referenceTime;
-                          if (diff <= 0) return '00:00:00';
-                          const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
-                          const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-                          const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-                          return `${h}:${m}:${s}`;
-                        })()}
-                      </span>
+                      )}
                     </div>
                   )}
-                </div>
-
-                {/* Buttons column: control row + View Questions below */}
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex gap-2">
-                    {activeSession.status === 'waiting' && (
-                      <>
-                        <button
-                          onClick={() => handleStatusChange('active')}
-                          disabled={players.length === 0}
-                          className={`bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm ${players.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
-                        >
-                          Start Quiz
-                        </button>
-                        <button
-                          onClick={() => setShowCancelConfirm(true)}
-                          className="bg-white border-2 border-red-500 text-red-500 px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shadow-sm"
-                        >
-                          Cancel Quiz
-                        </button>
-                      </>
-                    )}
-                    {(activeSession.status === 'active' || activeSession.status === 'paused') && (
-                      <>
-                        <button
-                          onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')}
-                          className={`${activeSession.status === 'active' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-nike-green hover:bg-green-600'} text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm`}
-                        >
-                          {activeSession.status === 'active' ? 'Pause' : 'Resume'}
-                        </button>
-                        <button onClick={() => setShowEndConfirm(true)} className="bg-nike-red text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm">End Quiz</button>
-                      </>
-                    )}
-                  </div>
                   <button
                     onClick={async () => {
                       setShowViewQuestions(true);
@@ -1399,9 +1387,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
                           <span
                             className="block max-w-[220px] truncate"
-                            title={`${h.bab?.replace(/_/g, ' ')}, ${h.sub_bab?.replace(/_/g, ' ')}`}
+                            title={`${h.mapel?.replace(/_/g, ' ')} - ${h.bab?.replace(/_/g, ' ')} - ${h.sub_bab?.replace(/_/g, ' ')}`}
                           >
-                            {h.bab?.replace(/_/g, ' ')}, {h.sub_bab?.replace(/_/g, ' ')}
+                            {h.mapel?.replace(/_/g, ' ')} - {h.bab?.replace(/_/g, ' ')} - {h.sub_bab?.replace(/_/g, ' ')}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
@@ -1438,19 +1426,32 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)}>
           <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-black text-xl">
-                  {viewingPlayer.name[0].toUpperCase()}
-                </div>
-                <div>
-                  <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Player Performance</h2>
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-                    {viewingPlayer.name} • {activeSession?.bab?.replace(/_/g, ' ')}, {activeSession?.sub_bab?.replace(/_/g, ' ')}
-                  </p>
+            <div className="p-6 border-b bg-gray-50 relative">
+              <div className="flex justify-between items-start w-full">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-black text-xl mt-1">
+                    {viewingPlayer.name[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black uppercase tracking-tight text-gray-900 leading-tight mb-1">
+                      {viewingPlayer.name}
+                    </h2>
+                    <div className="space-y-1">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">MAPEL:</span> {activeSession?.mapel?.replaceAll('_', ' ') || '-'}
+                        </div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">BAB:</span> {activeSession?.bab?.replaceAll('_', ' ') || '-'}
+                        </div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-gray-300">SUBBAB:</span> {activeSession?.sub_bab?.replaceAll('_', ' ') || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <button onClick={() => setViewingPlayer(null)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">×</button>
             </div>
 
             {/* Content */}

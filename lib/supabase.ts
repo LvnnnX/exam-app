@@ -8,6 +8,7 @@ const cleanUrl = (url: string) => {
 
 const supabaseUrl = cleanUrl(process.env.NEXT_PUBLIC_SUPABASE_URL as string);
 const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)?.trim();
+const examSecretKey = (process.env.NEXT_PUBLIC_EXAM_SECRET_KEY as string)?.trim();
 
 const isPlaceholder = !supabaseUrl || !supabaseAnonKey;
 
@@ -19,5 +20,12 @@ if (isPlaceholder) {
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder-misconfigured.supabase.co', 
-  supabaseAnonKey || 'placeholder'
+  supabaseAnonKey || 'placeholder',
+  {
+    global: {
+      headers: {
+        'x-exam-secret': examSecretKey || 'default-secret-key-123'
+      }
+    }
+  }
 );

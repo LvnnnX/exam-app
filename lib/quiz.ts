@@ -266,11 +266,11 @@ export async function fetchQuizByCode(code: string): Promise<KuisLog | null> {
   const normalizedCode = normalizeQuizCode(code);
 
   const { data, error } = await supabase
-    .from('kuis_logs')
+    .from('public_kuis_logs')
     .select(KUIS_SAFE_COLUMNS)
     .eq('quiz_code', normalizedCode)
     .single();
-    
+
   if (error) return null;
   return data;
 }
@@ -305,7 +305,7 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
   }
 
   const { data: player, error: fetchError } = await supabase
-    .from('player')
+    .from('public_players')
     .select('*')
     .eq('id', result.player_id)
     .single();
@@ -314,7 +314,7 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
     return { error: 'Gagal mengambil data pemain.' };
   }
 
-  return player;
+  return { ...player, question_ids: [] } as Player;
 }
 
 export async function getJitQuestion(playerId: string, index: number): Promise<ShuffledQuestion | null> {
@@ -363,10 +363,12 @@ export async function submitSecureAnswer(
 }
 
 export async function finishPlayerQuiz(playerId: string): Promise<void> {
-  await supabase
-    .from('player')
-    .update({ finished_at: new Date().toISOString() })
-    .eq('id', playerId);
+  const { error } = await supabase.rpc('finish_player_quiz_rpc', {
+    p_player_id: playerId
+  });
+  if (error) {
+    console.error('Failed to finish player quiz:', error.message);
+  }
 }
 
 // Admin actions

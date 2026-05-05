@@ -15,6 +15,11 @@ export default function QuestionDisplay({
   selectedAnswer,
   onSelectAnswer,
 }: QuestionDisplayProps) {
+  const textLength = currentQuestion.question_text.replace(/<[^>]*>/g, '').length;
+  const fontSizeClass = textLength > 500 ? 'text-[14px] md:text-[18px]' :
+                        textLength > 250 ? 'text-[16px] md:text-[22px]' :
+                        'text-[18px] md:text-[28px]';
+
   return (
     <div className="mb-0 h-auto md:h-[min(65vh,620px)] md:min-h-[420px] overflow-y-auto md:overflow-hidden border border-nike-grey-200 rounded-[24px] bg-white shadow-sm flex flex-col">
       <div className="flex flex-col md:grid md:h-full md:grid-cols-[70%_1px_1fr] flex-1">
@@ -22,7 +27,7 @@ export default function QuestionDisplay({
         <div className="h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable p-6 md:p-10 flex flex-col pt-6 md:pt-12 border-b md:border-b-0 border-nike-grey-100 flex-1">
           <RichContent
             html={currentQuestion.question_text}
-            className="exam-question-content text-[18px] md:text-[28px] font-bold text-nike-black leading-[1.25] tracking-tight"
+            className={`exam-question-content ${fontSizeClass} font-bold text-nike-black leading-[1.25] tracking-tight`}
           />
         </div>
 

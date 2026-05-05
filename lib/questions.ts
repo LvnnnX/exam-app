@@ -179,7 +179,7 @@ export async function saveVisibilitySettings(settings: VisibilitySettings): Prom
 
 export async function fetchMapels(): Promise<BabInfo[]> {
   const [mapelsResult, visibility] = await Promise.all([
-    supabase.from('questions').select('mapels').eq('is_hidden', false),
+    supabase.from('public_categories').select('mapels').eq('is_hidden', false),
     fetchVisibilitySettings(),
   ]);
 
@@ -207,7 +207,7 @@ export async function fetchMapels(): Promise<BabInfo[]> {
 
 export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
   const [mapelsResult, visibility] = await Promise.all([
-    supabase.from('questions').select('mapels'),
+    supabase.from('public_categories').select('mapels'),
     fetchVisibilitySettings(),
   ]);
 
@@ -234,7 +234,7 @@ export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('mapels');
+  const { data, error } = await supabase.from('public_categories').select('mapels');
 
   if (error) {
     console.error('Failed to fetch all mapels:', error.message);
@@ -256,7 +256,7 @@ export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
-  const baseQuery = supabase.from('questions').select('babs').eq('is_hidden', false);
+  const baseQuery = supabase.from('public_categories').select('babs').eq('is_hidden', false);
   const query = mapel && mapel !== 'Semua Mapel' && mapel !== 'None'
     ? baseQuery.contains('mapels', [mapel])
     : baseQuery;
@@ -289,7 +289,7 @@ export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
 }
 
 export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo[]> {
-  let query = supabase.from('questions').select('babs');
+  let query = supabase.from('public_categories').select('babs');
   
   if (mapel) {
     const mapels = Array.isArray(mapel) ? mapel : [mapel];
@@ -327,7 +327,7 @@ export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo
 }
 
 export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('babs');
+  const { data, error } = await supabase.from('public_categories').select('babs');
 
   if (error) {
     console.error('Failed to fetch all babs:', error.message);
@@ -349,7 +349,7 @@ export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
-  const baseQuery = supabase.from('questions').select('sub_babs').eq('is_hidden', false);
+  const baseQuery = supabase.from('public_categories').select('sub_babs').eq('is_hidden', false);
   const query = bab && bab !== 'Semua BAB' && bab !== 'None'
     ? baseQuery.contains('babs', [bab])
     : baseQuery;
@@ -382,7 +382,7 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
 }
 
 export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBabInfo[]> {
-  let query = supabase.from('questions').select('sub_babs');
+  let query = supabase.from('public_categories').select('sub_babs');
   
   if (bab) {
     const babs = Array.isArray(bab) ? bab : [bab];
@@ -460,7 +460,7 @@ export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInf
 /** Returns ALL sub_babs from the questions table with zero filtering.
  *  Used by the admin Settings page to allow toggling every sub_bab. */
 export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('sub_babs');
+  const { data, error } = await supabase.from('public_categories').select('sub_babs');
 
   if (error) {
     console.error('Failed to fetch all sub_babs (admin):', error.message);
