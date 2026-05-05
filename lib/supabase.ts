@@ -8,24 +8,35 @@ const cleanUrl = (url: string) => {
 
 const supabaseUrl = cleanUrl(process.env.NEXT_PUBLIC_SUPABASE_URL as string);
 const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)?.trim();
-const examSecretKey = (process.env.NEXT_PUBLIC_EXAM_SECRET_KEY as string)?.trim();
+export const EXAM_SECRET_KEY = (process.env.EXAM_SECRET_KEY as string || process.env.NEXT_PUBLIC_EXAM_SECRET_KEY as string)?.trim() || 'default-secret-key-123';
 
 const isPlaceholder = !supabaseUrl || !supabaseAnonKey;
 
 if (isPlaceholder) {
   console.error("❌ SUPABASE CONFIGURATION MISSING! ❌\n" +
-                "You must add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env file.\n" +
-                "Falling back to placeholder URL which will cause 'Failed to fetch' errors in the browser.");
+    "You must add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env file.");
 }
 
+// Public client for browser - NO SECRET HEADERS
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder-misconfigured.supabase.co', 
-  supabaseAnonKey || 'placeholder',
-  {
-    global: {
-      headers: {
-        'x-exam-secret': examSecretKey || 'default-secret-key-123'
+  supabaseUrl || 'https://placeholder-misconfigured.supabase.co',
+  supabaseAnonKey || 'placeholder'
+);
+
+/**
+ * Server-only client that includes the secret key.
+ * Never call this from the client-side.
+ */
+export const getSupabaseServer = () => {
+  return createClient(
+    supabaseUrl,
+    supabaseAnonKey,
+    {
+      global: {
+        headers: {
+          'x-exam-secret': EXAM_SECRET_KEY
+        }
       }
     }
-  }
-);
+  );
+};

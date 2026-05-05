@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, EXAM_SECRET_KEY } from './supabase';
 import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './questions';
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
@@ -92,10 +92,10 @@ function generateQuizCode(length = QUIZ_CODE_LENGTH): string {
 // Admin: Create a new Quiz Live Session
 export async function createQuizSession(
   mapel: string | string[],
-  bab: string | string[], 
-  subBabs: string[], 
-  questionCount: number, 
-  durationMinutes: number, 
+  bab: string | string[],
+  subBabs: string[],
+  questionCount: number,
+  durationMinutes: number,
   scheduledAt?: string,
   percentages?: Record<string, number>
 ): Promise<KuisLog | null> {
@@ -117,7 +117,7 @@ export async function createQuizSession(
       if (filteredMapels.length > 0) {
         q = q.overlaps('mapels', filteredMapels);
       }
-      
+
       const babs = Array.isArray(bab) ? bab : [bab];
       const filteredBabs = babs.filter(b => b !== 'None' && b !== 'Semua BAB');
       if (filteredBabs.length > 0) {
@@ -133,7 +133,7 @@ export async function createQuizSession(
         targetSubBabs = Array.from(allSubs);
       }
     }
-    
+
     if (targetSubBabs.length > 0) {
       activePercentages = {};
       const equal = 100 / targetSubBabs.length;
@@ -147,29 +147,29 @@ export async function createQuizSession(
 
     for (const sub of targetSubBabs) {
       let query = supabase.from('questions').select('id').eq('is_hidden', false);
-      
+
       const mapels = Array.isArray(mapel) ? mapel : [mapel];
       const filteredMapels = mapels.filter(m => m !== 'None' && m !== 'Semua MAPEL');
       if (filteredMapels.length > 0) {
         query = query.overlaps('mapels', filteredMapels);
       }
-      
+
       const babs = Array.isArray(bab) ? bab : [bab];
       const filteredBabs = babs.filter(b => b !== 'None' && b !== 'Semua BAB');
       if (filteredBabs.length > 0) {
         query = query.overlaps('babs', filteredBabs);
       }
-      
+
       query = query.contains('sub_babs', [sub]);
 
       const { data } = await query;
       if (data) {
         const ids = data.map(q => q.id as number);
         ids.forEach(id => pool.add(id));
-        
+
         const pct = activePercentages[sub] || 0;
         const count = Math.round(questionCount * (pct / 100));
-        
+
         // Filter out already selected IDs to avoid duplicates across sub-chapters
         const availableIds = ids.filter(id => !questionIds.includes(id));
         const shuffled = availableIds.sort(() => 0.5 - Math.random()).slice(0, count);
@@ -184,7 +184,7 @@ export async function createQuizSession(
       const fallback = unusedPool.sort(() => 0.5 - Math.random()).slice(0, remainingNeeded);
       questionIds.push(...fallback);
     }
-    
+
     // Slice just in case it exceeded due to rounding
     questionIds = questionIds.slice(0, questionCount);
     // Shuffle final array
@@ -193,24 +193,24 @@ export async function createQuizSession(
   } else {
     // Failsafe: Fetch without percentages or subbabs
     let query = supabase.from('questions').select('id').eq('is_hidden', false);
-    
+
     if (mapel !== 'None' && mapel !== 'Semua MAPEL') {
       query = query.contains('mapels', [mapel]);
     }
     if (bab !== 'None' && bab !== 'Semua BAB') {
       query = query.contains('babs', [bab]);
     }
-    
+
     const { data: qData, error: qErr } = await query;
     if (qErr || !qData) {
       console.error('Error fetching questions for quiz:', qErr);
       return null;
     }
-    
+
     const shuffled = qData.sort(() => 0.5 - Math.random()).slice(0, questionCount);
     questionIds = shuffled.map(q => q.id);
   }
-  
+
   const actualQuestionCount = questionIds.length;
   if (actualQuestionCount === 0) {
     console.error('No questions found for the given criteria.');
@@ -239,7 +239,7 @@ export async function createQuizSession(
     .insert([insertData])
     .select()
     .single();
-    
+
   if (error) {
     console.error('Error creating quiz session:', error);
     return null;
@@ -280,7 +280,7 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
 
   // Ensure we have a valid auth session for RLS
   const { data: { session: currentSession } } = await supabase.auth.getSession();
-  
+
   if (!currentSession) {
     const { error: signInError } = await supabase.auth.signInAnonymously();
     if (signInError) {
@@ -293,7 +293,7 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
     p_quiz_code: normalizedCode,
     p_name: name
   });
-    
+
   if (error) {
     console.error('Join RPC failed:', error.message);
     return { error: error.message };
@@ -317,24 +317,20 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
   return { ...player, question_ids: [] } as Player;
 }
 
+import { getLiveQuizQuestionAction, submitLiveQuizAnswerAction } from '@/app/actions/exam';
+
 export async function getJitQuestion(playerId: string, index: number): Promise<ShuffledQuestion | null> {
-  const { data, error } = await supabase.rpc('get_live_quiz_question', {
-    p_player_id: playerId,
-    p_index: index
-  });
-
-  if (error) {
-    console.error('JIT fetch failed:', error.message);
+  try {
+    const result = await getLiveQuizQuestionAction(playerId, index);
+    if (!result || !result.success) {
+      console.error('JIT fetch logic failed:', result?.error || 'Unknown error');
+      return null;
+    }
+    return shuffleOptions(result.data);
+  } catch (err: any) {
+    console.error('JIT fetch action failed:', err.message);
     return null;
   }
-
-  const result = data as LiveQuizQuestionRpcResult | null;
-  if (!result || !result.success) {
-    console.error('JIT fetch logic failed:', result?.error || 'Unknown error');
-    return null;
-  }
-
-  return shuffleOptions(result.data);
 }
 
 export async function submitSecureAnswer(
@@ -343,23 +339,16 @@ export async function submitSecureAnswer(
   userAnswer: string,
   timeTaken: number
 ): Promise<{ success: boolean; is_correct?: boolean }> {
-  const { data, error } = await supabase.rpc('submit_live_quiz_answer_v2', {
-    p_player_id: playerId,
-    p_question_id: questionId,
-    p_user_answer: userAnswer,
-    p_time_taken: timeTaken
-  });
-
-  if (error) {
-    console.error('Security verification failed:', error.message);
+  try {
+    const result = await submitLiveQuizAnswerAction(playerId, questionId, userAnswer, timeTaken);
+    return {
+      success: result?.success || false,
+      is_correct: result?.is_correct
+    };
+  } catch (err: any) {
+    console.error('Security verification action failed:', err.message);
     return { success: false };
   }
-
-  const result = data as SubmitLiveQuizAnswerRpcResult | null;
-  return { 
-    success: result?.success || false, 
-    is_correct: result?.is_correct 
-  };
 }
 
 export async function finishPlayerQuiz(playerId: string): Promise<void> {
@@ -399,17 +388,17 @@ export async function updateQuizStatus(id: string, status: KuisStatus): Promise<
   } else if (status === 'finished') {
     updates.finished_at = now;
   }
-  
+
   const { error } = await supabase
     .from('kuis_logs')
     .update(updates)
     .eq('id', id);
-    
+
   if (error) {
     console.error('Error updating quiz status:', error);
     return false;
   }
-    
+
   return true;
 }
 
@@ -429,7 +418,7 @@ export async function fetchQuizPlayers(kuisId: string): Promise<Player[]> {
     .eq('kuis_id', kuisId)
     .order('score', { ascending: false })
     .order('total_time', { ascending: true });
-    
+
   if (error) return [];
   return data;
 }
@@ -440,7 +429,7 @@ export async function fetchQuizHistory(): Promise<KuisLog[]> {
     .select('*, player(name, score, total_time)')
     .eq('status', 'finished')
     .order('created_at', { ascending: false });
-    
+
   if (error) return [];
   const rows = (data || []) as QuizHistoryRow[];
 
@@ -475,7 +464,7 @@ export async function fetchActiveSessions(): Promise<KuisLog[]> {
     .select('*, player:player(count)')
     .in('status', ['waiting', 'active', 'paused'])
     .order('created_at', { ascending: false });
-    
+
   if (error) return [];
 
   const now = Date.now();
@@ -484,7 +473,7 @@ export async function fetchActiveSessions(): Promise<KuisLog[]> {
   for (const d of data) {
     const createdAt = new Date(d.created_at);
     const expiresAt = d.expires_at ? new Date(d.expires_at) : new Date(createdAt.getTime() + 2 * 24 * 60 * 60 * 1000);
-    
+
     // Auto-finish expired sessions
     if (d.status === 'active' && expiresAt.getTime() <= now) {
       await updateQuizStatus(d.id, 'finished');
@@ -507,7 +496,7 @@ export async function fetchPlayerAnswers(playerId: string): Promise<KuisResult[]
     .select('*')
     .eq('player_id', playerId)
     .order('answered_at', { ascending: true });
-    
+
   if (error) return [];
   return data;
 }

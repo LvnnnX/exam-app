@@ -101,7 +101,7 @@ function normalizeQuestionType(value: string | null | undefined): QuestionType {
 
 function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
   const hasShortAnswer = raw.short_answer !== null && raw.short_answer !== undefined && String(raw.short_answer).trim() !== '';
-  
+
   return {
     ...raw,
     question_text: ensureHtmlDocument(String(raw.question_text ?? '')),
@@ -298,7 +298,7 @@ export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
 
 export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo[]> {
   let query = supabase.from('public_categories').select('babs');
-  
+
   if (mapel) {
     const mapels = Array.isArray(mapel) ? mapel : [mapel];
     const filteredMapels = mapels.filter(m => m !== 'Semua MAPEL' && m !== 'None');
@@ -399,7 +399,7 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
 
 export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBabInfo[]> {
   let query = supabase.from('public_categories').select('sub_babs');
-  
+
   if (bab) {
     const babs = Array.isArray(bab) ? bab : [bab];
     const filteredBabs = babs.filter(b => b !== 'Semua BAB' && b !== 'None');
@@ -516,7 +516,7 @@ export async function fetchQuestions(mapel?: string, bab?: string, subBab?: stri
   if (bab && bab !== 'Semua BAB' && bab !== 'None') {
     query = query.contains('babs', [bab]);
   }
-  
+
   if (subBab && subBab !== 'Semua Sub-bab') {
     query = query.contains('sub_babs', [subBab]);
   }
@@ -536,30 +536,30 @@ export async function fetchQuestions(mapel?: string, bab?: string, subBab?: stri
   return (data as RawQuestion[]).map(normalizeRawQuestion);
 }
 
+import { startExamSessionAction } from '@/app/actions/exam';
+
 export async function startExamSessionViaRpc(name: string, mapels: string[], babs: string[], subBabs: string[], mode: string, count: number, timeLimitMinutes: number): Promise<{ sessionId: string; total: number; expiresAt: string }> {
-  const { data, error } = await supabase.rpc('start_exam_session', {
-    p_name: name,
-    p_mapels: mapels,
-    p_babs: babs,
-    p_sub_babs: subBabs,
-    p_mode: mode,
-    p_count: count,
-    p_time_limit_minutes: timeLimitMinutes > 0 ? timeLimitMinutes : null,
-    p_user_agent: getUA()
-  }).single();
+  try {
+    const data = await startExamSessionAction(
+      name,
+      mapels,
+      babs,
+      subBabs,
+      mode,
+      count,
+      timeLimitMinutes,
+      getUA()
+    );
 
-  if (error || !data) {
-    console.error('start_exam_session rpc failed:', error?.message);
-    throw new Error(`Failed to start exam session: ${error?.message}`);
+    return {
+      sessionId: data.session_id,
+      total: data.question_count,
+      expiresAt: data.expires_at
+    };
+  } catch (err: any) {
+    console.error('start_exam_session action failed:', err.message);
+    throw new Error(`Failed to start exam session: ${err.message}`);
   }
-
-  const session = data as StartExamSessionRpcRow;
-
-  return {
-    sessionId: session.session_id,
-    total: session.question_count,
-    expiresAt: session.expires_at
-  };
 }
 
 export async function getSessionStateViaRpc(sessionId: string): Promise<SessionStateRpcRow | null> {
@@ -620,7 +620,7 @@ export async function submitSessionExamViaRpc(
     console.error('submit_session_exam rpc failed:', error.message);
     throw new Error(`Failed to submit exam: ${error.message}`);
   }
-  
+
   return data as SubmitSessionExamRpcRow;
 }
 
