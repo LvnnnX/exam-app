@@ -51,5 +51,7 @@ skills-lock.json
 *.txt
 .claude
 *.claude
-.vscode/
+
 supabase/
+*supabase
+*.sql
