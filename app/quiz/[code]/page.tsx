@@ -34,6 +34,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const [waitTimer, setWaitTimer] = useState<string | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerData | null>(null);
   const [pausedAt, setPausedAt] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const selectedAnswerRef = useRef<AnswerData | null>(null);
   useEffect(() => {
     selectedAnswerRef.current = selectedAnswer;
@@ -163,18 +164,21 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const loadQuestion = useCallback(async (index: number) => {
     if (!player) return;
     setLoading(true);
+    setLoadError(null);
     const qData = await getJitQuestion(player.id, index);
     if (qData) {
       setCurrentQuestion(qData);
+    } else {
+      setLoadError("Gagal mengambil soal. Silakan refresh halaman atau hubungi admin.");
     }
     setLoading(false);
   }, [player]);
 
   useEffect(() => {
-    if (session?.status === 'active' && player && !isFinished && !currentQuestion && !loading) {
+    if (session?.status === 'active' && player && !isFinished && !currentQuestion && !loading && !loadError) {
       loadQuestion(currentIndex);
     }
-  }, [session?.status, player, isFinished, currentIndex, currentQuestion, loading, loadQuestion]);
+  }, [session?.status, player, isFinished, currentIndex, currentQuestion, loading, loadError, loadQuestion]);
 
   useEffect(() => {
     if (session?.status === 'active' && player && !isFinished && currentQuestion && startTime === 0) {
@@ -448,9 +452,27 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const q = currentQuestion;
   if (!q) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-white min-h-screen">
-        <div className="w-16 h-16 border-4 border-nike-black border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-nike-grey-500 font-bold uppercase tracking-widest text-sm">Menyiapkan Soal...</p>
+      <div className="flex-1 flex flex-col items-center justify-center bg-white min-h-screen p-6">
+        {loadError ? (
+          <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">⚠️</span>
+            </div>
+            <h2 className="font-display text-[32px] text-nike-black uppercase mb-4">WADUH!</h2>
+            <p className="text-nike-grey-500 font-bold uppercase tracking-widest text-sm mb-8 max-w-xs mx-auto">{loadError}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-8 py-4 bg-nike-black text-white rounded-full font-black text-sm uppercase tracking-widest hover:bg-nike-grey-500 transition-all shadow-xl shadow-nike-black/20"
+            >
+              SEGARKAN HALAMAN
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="w-16 h-16 border-4 border-nike-black border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-nike-grey-500 font-bold uppercase tracking-widest text-sm">Menyiapkan Soal...</p>
+          </>
+        )}
       </div>
     );
   }
