@@ -424,7 +424,7 @@ export async function deleteQuizSession(id: string): Promise<boolean> {
 
 export async function fetchQuizPlayers(kuisId: string): Promise<Player[]> {
   const { data, error } = await supabase
-    .from('player')
+    .from('public_players')
     .select('*')
     .eq('kuis_id', kuisId)
     .order('score', { ascending: false })

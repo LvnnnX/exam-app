@@ -426,7 +426,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
         setScheduleCountdown('Memulai...');
 
         // Check actual player count before starting
-        const { count } = await supabase.from('player').select('*', { count: 'exact', head: true }).eq('kuis_id', activeSession.id);
+        const { count } = await supabase.from('public_players').select('*', { count: 'exact', head: true }).eq('kuis_id', activeSession.id);
         if (count === 0) {
           await deleteQuizSession(activeSession.id);
           setActiveSession(null);
