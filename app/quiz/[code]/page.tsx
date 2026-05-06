@@ -116,6 +116,27 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     };
   }, [quizCode, router]);
 
+  // Layer 1: Visibility Check (Immediately sync when returning to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && (session?.status === 'active' || session?.status === 'paused')) {
+        fetchQuizByCode(quizCode).then(s => { if (s) setSession(s); });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [quizCode, session?.status]);
+
+  // Layer 2: Polling Fallback (Backup sync every 15s in case realtime fails)
+  useEffect(() => {
+    if (session?.status === 'active' || session?.status === 'paused') {
+      const interval = setInterval(() => {
+        fetchQuizByCode(quizCode).then(s => { if (s) setSession(s); });
+      }, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [quizCode, session?.status]);
+
   // Subscription for leaderboard when finished
   useEffect(() => {
     if (isFinished && session) {
