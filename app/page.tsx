@@ -9,10 +9,6 @@ import {
   type BabInfo,
   type SubBabInfo,
   QUESTION_COUNTS,
-  fetchMapels,
-  fetchbabs,
-  fetchSubBabs,
-  fetchSubBabsForMultiple,
   startExamSessionViaRpc,
   getSessionQuestionViaRpc,
   getSessionStateViaRpc,
@@ -22,7 +18,7 @@ import {
 import { QUIZ_CODE_LENGTH, normalizeQuizCode } from '@/lib/quiz';
 import { secureSave, secureLoad, secureClear } from '@/lib/security';
 import { useExamSecurity } from '@/app/hooks/useExamSecurity';
-
+import { getSafeMapels, getSafeBabs, getSafeSubBabsForMultiple } from '@/app/actions/categories';
 type Answer = string | null;
 type GameMode = 'exam' | 'survival';
 
@@ -375,7 +371,7 @@ export default function ExamPage() {
     const loadMapels = async () => {
       try {
         setFetchError(null);
-        const data = await fetchMapels();
+        const data = await getSafeMapels();
         if (data.length === 0) {
           console.warn("No mapels found in Supabase.");
         }
@@ -410,7 +406,7 @@ export default function ExamPage() {
         // Actually, I updated fetchbabs to take a single mapel.
         // I should probably update it to take string[].
 
-        const promises = mapels.map(m => fetchbabs(m));
+        const promises = mapels.map(m => getSafeBabs(m));
         const results = await Promise.all(promises);
         const merged = results.flat();
         const seen = new Set();
@@ -437,7 +433,7 @@ export default function ExamPage() {
           setSubBabs([]);
           return;
         }
-        const data = await fetchSubBabsForMultiple(babs);
+        const data = await getSafeSubBabsForMultiple(babs);
         setAvailableSubBabs(data);
         setSubBabs(prev => prev.filter(v => data.some((u: SubBabInfo) => u.value === v)));
       } catch (err) {
