@@ -21,8 +21,8 @@ export async function getSafeBabs(mapel?: string) {
   return await fetchbabs(mapel);
 }
 
-export async function getSafeSubBabs(mapel?: string, bab?: string) {
-  return await fetchSubBabs(mapel, bab);
+export async function getSafeSubBabs(bab?: string) {
+  return await fetchSubBabs(bab);
 }
 
 export async function getSafeSubBabsForMultiple(babs: string[]) {

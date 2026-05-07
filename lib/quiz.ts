@@ -2,7 +2,7 @@ import { supabase, EXAM_SECRET_KEY } from './supabase';
 import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './questions';
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
-const KUIS_SAFE_COLUMNS = 'id, quiz_code, mapel, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at, scheduled_at';
+const KUIS_SAFE_COLUMNS = 'id, quiz_code, mapel, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at, scheduled_at, quiz_mode';
 export const QUIZ_CODE_LENGTH = 6;
 
 const QUIZ_CODE_ALPHABET = '0123456789';
@@ -28,6 +28,7 @@ export type KuisLog = {
   expires_at?: string;
   paused_at?: string;
   scheduled_at?: string;
+  quiz_mode?: 'strict' | 'standard';
 };
 
 export type Player = {
@@ -97,7 +98,8 @@ export async function createQuizSession(
   questionCount: number,
   durationMinutes: number,
   scheduledAt?: string,
-  percentages?: Record<string, number>
+  percentages?: Record<string, number>,
+  quizMode: 'strict' | 'standard' = 'strict'
 ): Promise<KuisLog | null> {
   const code = generateQuizCode();
   let questionIds: number[] = [];
@@ -229,6 +231,7 @@ export async function createQuizSession(
     duration_minutes: durationMinutes,
     status: 'waiting',
     question_ids: questionIds,
+    quiz_mode: quizMode,
   };
   if (scheduledAt) {
     insertData.scheduled_at = scheduledAt;

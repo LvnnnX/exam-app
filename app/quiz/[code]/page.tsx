@@ -35,6 +35,13 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerData | null>(null);
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Standard mode state
+  const [doubtFlags, setDoubtFlags] = useState<boolean[]>([]);
+  const [localAnswers, setLocalAnswers] = useState<(string | null)[]>([]);
+  const [showNavPopup, setShowNavPopup] = useState(false);
+  const isStandard = session?.quiz_mode === 'standard';
+
   const selectedAnswerRef = useRef<AnswerData | null>(null);
   useEffect(() => {
     selectedAnswerRef.current = selectedAnswer;
@@ -179,6 +186,11 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     setPlayer(result);
     secureSave(`quiz_player_${quizCode}`, result.id);
     secureSave(`quiz_index_${quizCode}`, '0');
+    // Initialize standard mode arrays
+    if (session) {
+      setDoubtFlags(Array(session.question_count).fill(false));
+      setLocalAnswers(Array(session.question_count).fill(null));
+    }
     setLoading(false);
   };
 
@@ -314,6 +326,13 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     const result = await submitSecureAnswer(player.id, currentQuestion.id, answerText, timeTaken, currentIndex);
     const isCorrect = result.success ? result.is_correct : false;
 
+    // Track local answers for Standard mode nav popup
+    if (isStandard) {
+      const updated = [...localAnswers];
+      updated[currentIndex] = answerText;
+      setLocalAnswers(updated);
+    }
+
     if (isCorrect) setScore(s => s + 1);
 
     setSelectedAnswer(null);
@@ -332,6 +351,47 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       // Rule 7: Replace history state
       router.replace(`/quiz/${quizCode}`);
     }
+  };
+
+  // Standard mode: navigate to any question in live quiz
+  const goToQuizQuestion = async (targetIndex: number) => {
+    if (!player || !session || isFinished) return;
+    if (targetIndex < 0 || targetIndex >= (session.question_count || 0)) return;
+    if (targetIndex === currentIndex) {
+      setShowNavPopup(false);
+      return;
+    }
+    setShowNavPopup(false);
+
+    // Save current answer before navigating (if any)
+    if (selectedAnswer && currentQuestion) {
+      const timeTaken = Math.floor((Date.now() - startTime) / 1000);
+      await submitSecureAnswer(player.id, currentQuestion.id, selectedAnswer, timeTaken, currentIndex);
+      const updated = [...localAnswers];
+      updated[currentIndex] = selectedAnswer;
+      setLocalAnswers(updated);
+    }
+
+    setSelectedAnswer(null);
+    setCurrentIndex(targetIndex);
+    setCurrentQuestion(null); // Trigger JIT load
+    secureSave(`quiz_index_${quizCode}`, targetIndex.toString());
+    setStartTime(Date.now());
+  };
+
+  // Standard mode: finish quiz (submit all remaining)
+  const finishStandardQuiz = async () => {
+    if (!player || isFinished) return;
+    // Save current answer if any
+    if (selectedAnswer && currentQuestion) {
+      const timeTaken = Math.floor((Date.now() - startTime) / 1000);
+      await submitSecureAnswer(player.id, currentQuestion.id, selectedAnswer, timeTaken, currentIndex);
+    }
+    await finishPlayerQuiz(player.id);
+    secureRemove(`quiz_index_${quizCode}`);
+    secureRemove(`quiz_player_${quizCode}`);
+    setIsFinished(true);
+    router.replace(`/quiz/${quizCode}`);
   };
 
   if (loading) return <div className="p-8 text-center text-gray-500 font-bold">LOADING...</div>;
@@ -539,6 +599,19 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               </div>
             )}
 
+            {/* Standard Mode: Navigation Grid Button */}
+            {isStandard && (
+              <button
+                onClick={() => setShowNavPopup(true)}
+                className="w-10 h-10 rounded-[12px] bg-nike-grey-100 border border-nike-grey-200 flex items-center justify-center hover:bg-nike-grey-200 transition-colors shadow-sm"
+                title="Navigasi Soal"
+              >
+                <svg className="w-5 h-5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
+
             <div className="sm:text-right">
               {selectedAnswer && selectedAnswer.trim().length > 0 ? (
                 <span className="text-[14px] font-bold text-nike-green uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
@@ -618,20 +691,114 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-nike-grey-200 pt-8 mt-6">
-          <button
-            onClick={() => handleAnswer(selectedAnswer)}
-            disabled={!selectedAnswer || selectedAnswer.trim().length === 0}
-            className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider"
-          >
-            Next Question
-          </button>
-          <button
-            onClick={() => handleAnswer(null)}
-            className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-grey-500 text-[16px] font-medium hover:text-nike-black transition-colors uppercase tracking-wider"
-          >
-            Skip
-          </button>
+          {isStandard ? (
+            /* Standard Mode: Back / Doubt / Next */
+            <>
+              <button
+                onClick={() => goToQuizQuestion(currentIndex - 1)}
+                disabled={currentIndex === 0}
+                className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black text-[16px] font-medium hover:bg-nike-grey-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed uppercase tracking-wider"
+              >
+                ◀ Back
+              </button>
+              <button
+                onClick={() => {
+                  const updated = [...doubtFlags];
+                  updated[currentIndex] = !updated[currentIndex];
+                  setDoubtFlags(updated);
+                }}
+                className={`w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] text-[16px] font-medium transition-all uppercase tracking-wider border-[1.5px] ${
+                  doubtFlags[currentIndex]
+                    ? 'bg-yellow-400 border-yellow-400 text-nike-black shadow-lg shadow-yellow-400/20'
+                    : 'bg-transparent border-nike-grey-300 text-nike-grey-500 hover:border-yellow-400 hover:text-yellow-600'
+                }`}
+              >
+                🤔 Ragu-ragu
+              </button>
+              <button
+                onClick={() => {
+                  if (currentIndex >= (session?.question_count || 0) - 1) {
+                    finishStandardQuiz();
+                  } else {
+                    goToQuizQuestion(currentIndex + 1);
+                  }
+                }}
+                className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors uppercase tracking-wider"
+              >
+                {currentIndex >= (session?.question_count || 0) - 1 ? 'Finish' : 'Next ▶'}
+              </button>
+            </>
+          ) : (
+            /* Strict Mode: original buttons */
+            <>
+              <button
+                onClick={() => handleAnswer(selectedAnswer)}
+                disabled={!selectedAnswer || selectedAnswer.trim().length === 0}
+                className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider"
+              >
+                Next Question
+              </button>
+              <button
+                onClick={() => handleAnswer(null)}
+                className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-grey-500 text-[16px] font-medium hover:text-nike-black transition-colors uppercase tracking-wider"
+              >
+                Skip
+              </button>
+            </>
+          )}
         </div>
+
+        {/* Standard Mode: Navigation Popup */}
+        {isStandard && showNavPopup && (
+          <div className="fixed inset-0 z-[100] bg-nike-white/40 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
+            <div className="bg-white rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] max-w-md w-full border border-nike-grey-200 overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="p-8 pb-4">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-display text-[28px] text-nike-black leading-none uppercase">Navigasi</h3>
+                  <button
+                    onClick={() => setShowNavPopup(false)}
+                    className="w-10 h-10 rounded-full bg-nike-grey-100 flex items-center justify-center hover:bg-nike-grey-200 transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex items-center gap-4 mb-4 text-[10px] font-bold uppercase tracking-widest text-nike-grey-400">
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-nike-black"></span> Terjawab</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-yellow-400"></span> Ragu-ragu</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white border border-nike-grey-300"></span> Kosong</span>
+                </div>
+              </div>
+              <div className="px-8 pb-8 max-h-[60vh] overflow-y-auto">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                  {Array.from({ length: session?.question_count || 0 }, (_, i) => {
+                    const isAnswered = localAnswers[i] !== null && localAnswers[i] !== undefined && String(localAnswers[i]).trim().length > 0;
+                    const isDoubt = doubtFlags[i] || false;
+                    const isCurrent = i === currentIndex;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => goToQuizQuestion(i)}
+                        className={`h-10 rounded-[10px] text-[13px] font-black transition-all border-2 ${
+                          isCurrent ? 'ring-2 ring-[#4A90D9] ring-offset-2' : ''
+                        } ${
+                          isDoubt
+                            ? 'bg-yellow-400 border-yellow-400 text-nike-black'
+                            : isAnswered
+                              ? 'bg-nike-black border-nike-black text-white'
+                              : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black'
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Anti-Cheat: Tab Warning Modal */}

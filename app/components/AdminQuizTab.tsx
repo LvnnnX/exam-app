@@ -86,6 +86,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);
+  const [quizMode, setQuizMode] = useState<'strict' | 'standard'>('strict');
 
   // Schedule state
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
@@ -321,7 +322,8 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
       questionCount,
       durationMinutes,
       scheduledAt,
-      percentagesEnabled ? subBabPercentages : undefined
+      percentagesEnabled ? subBabPercentages : undefined,
+      quizMode
     );
     if (session) {
       setActiveSession(session);
@@ -954,6 +956,39 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 </div>
               );
             })()}
+
+            {/* Quiz Mode */}
+            <div className="p-3 md:p-4 py-3 bg-white border-b border-gray-100">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-md bg-[#F0FFF4] flex items-center justify-center border border-[#C6F6D5]">
+                  <span className="text-sm">🧭</span>
+                </div>
+                <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Mode Navigasi</label>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => setQuizMode('strict')}
+                  className={`h-[40px] md:h-[44px] rounded-[12px] text-[11px] font-black transition-all border-2 flex items-center justify-center gap-1.5 ${quizMode === 'strict'
+                    ? 'bg-nike-black border-transparent text-white shadow-lg shadow-black/10'
+                    : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-nike-black hover:text-nike-black'
+                    }`}
+                >
+                  🔒 STRICT
+                </button>
+                <button
+                  onClick={() => setQuizMode('standard')}
+                  className={`h-[40px] md:h-[44px] rounded-[12px] text-[11px] font-black transition-all border-2 flex items-center justify-center gap-1.5 ${quizMode === 'standard'
+                    ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
+                    : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
+                    }`}
+                >
+                  📋 STANDARD
+                </button>
+              </div>
+              <p className="text-[9px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">
+                {quizMode === 'strict' ? 'Soal harus dikerjakan berurutan, tidak bisa kembali.' : 'Peserta bisa bolak-balik soal dan menandai ragu-ragu.'}
+              </p>
+            </div>
 
             {/* Duration */}
             <div className="p-3 md:p-4 py-3">

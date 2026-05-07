@@ -21,6 +21,7 @@ import { useExamSecurity } from '@/app/hooks/useExamSecurity';
 import { getSafeMapels, getSafeBabs, getSafeSubBabsForMultiple } from '@/app/actions/categories';
 type Answer = string | null;
 type GameMode = 'exam' | 'survival';
+type ExamMode = 'strict' | 'standard';
 
 const PREPARING_STEP = 25;
 
@@ -162,6 +163,8 @@ const STORAGE_KEYS = {
   EXPIRES_AT: 'exam_expires_at',
   TIME_LIMIT: 'exam_time_limit',
   SCORE: 'exam_score',
+  EXAM_MODE: 'exam_exam_mode',
+  DOUBT_FLAGS: 'exam_doubt_flags',
 };
 
 const TIME_LIMIT_OPTIONS = [
@@ -170,9 +173,18 @@ const TIME_LIMIT_OPTIONS = [
   { label: '60 Minutes', value: 60 },
   { label: '90 Minutes', value: 90 },
   { label: '120 Minutes', value: 120 },
+  { label: '150 Minutes', value: 150 },
 ];
 
-
+const HelpTooltip = ({ text }: { text: string }) => (
+  <span className="relative group inline-block ml-1.5 align-middle">
+    <button type="button" className="w-[14px] h-[14px] rounded-full bg-nike-grey-200 text-nike-grey-500 text-[9px] font-bold flex items-center justify-center hover:bg-nike-black hover:text-white transition-colors cursor-help pb-[1px]">?</button>
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 bg-nike-black text-white text-[10px] font-medium leading-relaxed rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center shadow-lg pointer-events-none lowercase first-letter:uppercase tracking-wide">
+      {text}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-nike-black"></div>
+    </div>
+  </span>
+);
 
 export default function ExamPage() {
   const router = useRouter();
@@ -214,6 +226,10 @@ export default function ExamPage() {
   const [isCheckingCode, setIsCheckingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
   const isSurvival = gameMode === 'survival';
+  const [examMode, setExamMode] = useState<ExamMode>('strict');
+  const [doubtFlags, setDoubtFlags] = useState<boolean[]>([]);
+  const [showNavPopup, setShowNavPopup] = useState(false);
+  const isStandard = examMode === 'standard' && !isSurvival;
 
   // ─── Anti-Cheat Security (text selection, right-click, shortcuts) ──
   const examSecurityActive = step >= 3 && step <= 5;
@@ -253,6 +269,8 @@ export default function ExamPage() {
       expiresAt: secureLoad<string>(STORAGE_KEYS.EXPIRES_AT),
       timeLimit: secureLoad<number>(STORAGE_KEYS.TIME_LIMIT) || 0,
       score: secureLoad<number>(STORAGE_KEYS.SCORE) || 0,
+      examMode: secureLoad<ExamMode>(STORAGE_KEYS.EXAM_MODE) || 'strict',
+      doubtFlags: secureLoad<boolean[]>(STORAGE_KEYS.DOUBT_FLAGS) || [],
     };
   };
 
@@ -275,7 +293,9 @@ export default function ExamPage() {
     secureSave(STORAGE_KEYS.SCORE, score);
     secureSave(STORAGE_KEYS.EXPIRES_AT, expiresAt);
     secureSave(STORAGE_KEYS.TIME_LIMIT, timeLimit);
-  }, [isRestored, userName, step, current, answers, sessionId, totalQuestions, mapels, babs, subBabs, startTime, gameMode, lives, score, expiresAt, timeLimit]);
+    secureSave(STORAGE_KEYS.EXAM_MODE, examMode);
+    secureSave(STORAGE_KEYS.DOUBT_FLAGS, doubtFlags);
+  }, [isRestored, userName, step, current, answers, sessionId, totalQuestions, mapels, babs, subBabs, startTime, gameMode, lives, score, expiresAt, timeLimit, examMode, doubtFlags]);
 
   const clearStorage = () => {
     secureClear();
@@ -307,8 +327,10 @@ export default function ExamPage() {
         setBabs(state.bab ? state.bab.split(', ') : (stored.babs || []));
         setSubBabs(state.sub_bab ? state.sub_bab.split(', ') : (stored.subBabs || []));
         setGameMode((state.mode || stored.mode || 'exam') as GameMode);
+        setExamMode(stored.examMode || 'strict');
         setLives(state.lives ?? stored.lives ?? 3);
         setScore(stored.score ?? 0);
+        setDoubtFlags(stored.doubtFlags || Array(state.question_count).fill(false));
         if (stored.startTime) setStartTime(stored.startTime);
 
         // Map user_answers to local state
@@ -459,6 +481,7 @@ export default function ExamPage() {
       setSessionId(newSessionId);
       setTotalQuestions(newTotal);
       setAnswers(Array(newTotal).fill(null));
+      setDoubtFlags(Array(newTotal).fill(false));
       setCurrent(0);
       setExpiresAt(serverExpiresAt);
 
@@ -562,6 +585,17 @@ export default function ExamPage() {
     }
   };
 
+  // Standard mode: navigate to any question
+  const goToQuestion = async (targetIndex: number) => {
+    if (!sessionId || targetIndex < 0 || targetIndex >= total) return;
+    if (targetIndex === current) {
+      setShowNavPopup(false);
+      return;
+    }
+    setShowNavPopup(false);
+    await proceedToNext(targetIndex);
+  };
+
   const nextQuestion = async () => {
     if (feedbackResult) return;
 
@@ -637,10 +671,12 @@ export default function ExamPage() {
     setCurrentQuestion(null);
     setTotalQuestions(0);
     setAnswers([]);
+    setDoubtFlags([]);
     setScore(0);
     setStartTime(null);
     setEndTime(null);
     setGameMode('exam');
+    setExamMode('strict');
     setLives(3);
     setSaved(false);
     setSaveFailed(false);
@@ -813,7 +849,10 @@ export default function ExamPage() {
           <div className="max-w-md w-full space-y-4">
             {/* Game Mode Selector */}
             <div className="space-y-2">
-              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Select Mode</span>
+              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight flex items-center">
+                Select Mode
+                <HelpTooltip text="Pilih mode ujian: Exam (biasa) atau Survival (nyawa terbatas)." />
+              </span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setGameMode('exam')}
@@ -825,7 +864,7 @@ export default function ExamPage() {
                   📝 Exam
                 </button>
                 <button
-                  onClick={() => setGameMode('survival')}
+                  onClick={() => { setGameMode('survival'); setExamMode('strict'); }}
                   className={`flex-1 h-[36px] rounded-[18px] text-[12px] font-bold transition-all uppercase tracking-wider ${gameMode === 'survival'
                     ? 'bg-nike-red text-nike-white'
                     : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-red hover:bg-red-50'
@@ -844,9 +883,45 @@ export default function ExamPage() {
               </div>
             </div>
 
+            {/* Exam Mode Selector (only for exam mode) */}
+            {!isSurvival && (
+              <div className="space-y-1.5">
+                <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight flex items-center">
+                  Navigation Mode
+                  <HelpTooltip text="Strict: Soal berurutan, tidak bisa kembali. Standard: Bebas navigasi dan bisa menandai ragu-ragu." />
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setExamMode('strict')}
+                    className={`flex-1 h-[36px] rounded-[18px] text-[12px] font-bold transition-all uppercase tracking-wider ${examMode === 'strict'
+                      ? 'bg-nike-black text-nike-white'
+                      : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
+                      }`}
+                  >
+                    🔒 Strict
+                  </button>
+                  <button
+                    onClick={() => setExamMode('standard')}
+                    className={`flex-1 h-[36px] rounded-[18px] text-[12px] font-bold transition-all uppercase tracking-wider ${examMode === 'standard'
+                      ? 'bg-[#4A90D9] text-nike-white'
+                      : 'bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black hover:border-[#4A90D9] hover:bg-blue-50'
+                      }`}
+                  >
+                    📋 Standard
+                  </button>
+                </div>
+                <p className="text-[10px] font-medium text-nike-grey-400 uppercase tracking-wider">
+                  {examMode === 'strict' ? 'Sequential only, no going back.' : 'Free navigation, mark as doubtful.'}
+                </p>
+              </div>
+            )}
+
             {/* Name Input */}
             <div className="space-y-1.5">
-              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Your Name</span>
+              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight flex items-center">
+                Your Name
+                <HelpTooltip text="Nama yang akan ditampilkan pada papan skor (leaderboard)." />
+              </span>
               <input
                 type="text"
                 value={userName}
@@ -860,7 +935,10 @@ export default function ExamPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Mapel */}
               <div className="space-y-1.5">
-                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Mapel</span>
+                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60 flex items-center">
+                  Mapel
+                  <HelpTooltip text="Mata pelajaran yang ingin diujikan." />
+                </span>
                 <MultiSelectDropdown
                   label="Mapel"
                   options={availableMapels}
@@ -872,7 +950,10 @@ export default function ExamPage() {
 
               {/* BAB */}
               <div className="space-y-1.5">
-                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">BAB</span>
+                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60 flex items-center">
+                  BAB
+                  <HelpTooltip text="Bab materi yang ingin diujikan." />
+                </span>
                 <MultiSelectDropdown
                   label="BAB"
                   options={availableBabs}
@@ -885,7 +966,10 @@ export default function ExamPage() {
 
               {/* Sub-bab */}
               <div className="space-y-1.5">
-                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Sub-bab</span>
+                <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60 flex items-center">
+                  Sub-bab
+                  <HelpTooltip text="Sub-bab materi yang ingin diujikan." />
+                </span>
                 <MultiSelectDropdown
                   label="Sub-bab"
                   options={availableSubBabs}
@@ -899,7 +983,10 @@ export default function ExamPage() {
 
             {/* Time Limit Selector Buttons */}
             <div className="space-y-1.5">
-              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Time Limit (Global)</span>
+              <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight flex items-center">
+                Time Limit (Global)
+                <HelpTooltip text="Batas waktu maksimal untuk menyelesaikan seluruh soal." />
+              </span>
               <div className="flex flex-wrap gap-1.5">
                 {TIME_LIMIT_OPTIONS.map((opt) => (
                   <button
@@ -919,7 +1006,10 @@ export default function ExamPage() {
             {/* Question Count Selector — hidden in Survival mode */}
             {!isSurvival && (
               <div className="space-y-1.5">
-                <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight">Question Count</span>
+                <span className="block text-[13px] font-medium text-nike-black uppercase tracking-tight flex items-center">
+                  Question Count
+                  <HelpTooltip text="Jumlah soal yang ingin dikerjakan." />
+                </span>
                 <div className="flex flex-wrap gap-1.5">
                   {QUESTION_COUNTS.map((count) => (
                     <button
@@ -1032,6 +1122,14 @@ export default function ExamPage() {
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Mode</p>
                   <p className={`text-[16px] font-bold uppercase ${isSurvival ? 'text-nike-red' : 'text-nike-black'}`}>{isSurvival ? '⚔️ Survival' : '📝 Exam'}</p>
                 </div>
+                {!isSurvival && (
+                  <div>
+                    <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Navigasi</p>
+                    <p className={`text-[16px] font-bold uppercase ${examMode === 'standard' ? 'text-[#4A90D9]' : 'text-nike-black'}`}>
+                      {examMode === 'standard' ? '📋 Standard' : '🔒 Strict'}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Topik</p>
                   <p className="text-[16px] font-bold text-nike-black uppercase">{mapelsLabel} · {babsLabel} · {subBabsLabel}</p>
@@ -1125,6 +1223,19 @@ export default function ExamPage() {
                 </div>
               )}
 
+              {/* Standard Mode: Navigation Grid Button */}
+              {isStandard && (
+                <button
+                  onClick={() => setShowNavPopup(true)}
+                  className="w-10 h-10 rounded-[12px] bg-nike-grey-100 border border-nike-grey-200 flex items-center justify-center hover:bg-nike-grey-200 transition-colors shadow-sm"
+                  title="Navigasi Soal"
+                >
+                  <svg className="w-5 h-5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+              )}
+
               <div className="sm:text-right">
                 {hasAnswerSelected ? (
                   <span className="text-[14px] font-bold text-nike-green uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
@@ -1147,29 +1258,123 @@ export default function ExamPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-nike-grey-200 pt-8">
-            <button
-              onClick={nextQuestion}
-              disabled={!hasAnswerSelected || feedbackResult !== null}
-              className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider"
-            >
-              Next Question
-            </button>
-            {isSurvival ? (
-              <button
-                onClick={() => setShowSurrenderConfirm(true)}
-                className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-red text-[16px] font-medium hover:bg-red-50 border border-nike-red/30 transition-colors uppercase tracking-wider"
-              >
-                🏳️ Surrender
-              </button>
+            {isStandard ? (
+              /* Standard Mode: Back / Doubt / Next */
+              <>
+                <button
+                  onClick={() => goToQuestion(current - 1)}
+                  disabled={current === 0 || isLoading}
+                  className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black text-[16px] font-medium hover:bg-nike-grey-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed uppercase tracking-wider"
+                >
+                  ◀ Back
+                </button>
+                <button
+                  onClick={() => {
+                    const updated = [...doubtFlags];
+                    updated[current] = !updated[current];
+                    setDoubtFlags(updated);
+                  }}
+                  className={`w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] text-[16px] font-medium transition-all uppercase tracking-wider border-[1.5px] ${doubtFlags[current]
+                    ? 'bg-yellow-400 border-yellow-400 text-nike-black shadow-lg shadow-yellow-400/20'
+                    : 'bg-transparent border-nike-grey-300 text-nike-grey-500 hover:border-yellow-400 hover:text-yellow-600'
+                    }`}
+                >
+                  🤔 Ragu-ragu
+                </button>
+                <button
+                  onClick={() => {
+                    if (current >= total - 1) {
+                      endSession();
+                    } else {
+                      goToQuestion(current + 1);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider"
+                >
+                  {current >= total - 1 ? 'Finish' : 'Next ▶'}
+                </button>
+              </>
             ) : (
-              <button
-                onClick={skipQuestion}
-                className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-grey-500 text-[16px] font-medium hover:text-nike-black transition-colors uppercase tracking-wider"
-              >
-                Skip
-              </button>
+              /* Strict Mode: original buttons */
+              <>
+                <button
+                  onClick={nextQuestion}
+                  disabled={!hasAnswerSelected || feedbackResult !== null}
+                  className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider"
+                >
+                  Next Question
+                </button>
+                {isSurvival ? (
+                  <button
+                    onClick={() => setShowSurrenderConfirm(true)}
+                    className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-red text-[16px] font-medium hover:bg-red-50 border border-nike-red/30 transition-colors uppercase tracking-wider"
+                  >
+                    🏳️ Surrender
+                  </button>
+                ) : (
+                  <button
+                    onClick={skipQuestion}
+                    className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-grey-500 text-[16px] font-medium hover:text-nike-black transition-colors uppercase tracking-wider"
+                  >
+                    Skip
+                  </button>
+                )}
+              </>
             )}
           </div>
+
+          {/* Standard Mode: Navigation Popup */}
+          {isStandard && showNavPopup && (
+            <div className="fixed inset-0 z-[100] bg-nike-white/40 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
+              <div className="bg-white rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] max-w-md w-full border border-nike-grey-200 overflow-hidden animate-in zoom-in-95 duration-300">
+                <div className="p-8 pb-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-display text-[28px] text-nike-black leading-none uppercase">Navigasi</h3>
+                    <button
+                      onClick={() => setShowNavPopup(false)}
+                      className="w-10 h-10 rounded-full bg-nike-grey-100 flex items-center justify-center hover:bg-nike-grey-200 transition-colors"
+                    >
+                      <svg className="w-5 h-5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-4 mb-4 text-[10px] font-bold uppercase tracking-widest text-nike-grey-400">
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-nike-black"></span> Terjawab</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-yellow-400"></span> Ragu-ragu</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white border border-nike-grey-300"></span> Kosong</span>
+                  </div>
+                </div>
+                <div className="px-8 pb-8 max-h-[60vh] overflow-y-auto">
+                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                    {Array.from({ length: total }, (_, i) => {
+                      const isAnswered = answers[i] !== null && answers[i] !== undefined && String(answers[i]).trim().length > 0;
+                      const isDoubt = doubtFlags[i] || false;
+                      const isCurrent = i === current;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => goToQuestion(i)}
+                          className={`h-10 rounded-[10px] text-[13px] font-black transition-all border-2 ${isCurrent
+                            ? 'ring-2 ring-[#4A90D9] ring-offset-2'
+                            : ''
+                            } ${isDoubt
+                              ? 'bg-yellow-400 border-yellow-400 text-nike-black'
+                              : isAnswered
+                                ? 'bg-nike-black border-nike-black text-white'
+                                : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black'
+                            }`}
+                        >
+                          {i + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Feedback Popup */}
           {feedbackResult && (
