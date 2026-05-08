@@ -1277,7 +1277,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
+                    {activeSession.quiz_mode !== 'standard' && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (s)</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
@@ -1292,11 +1294,25 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <span className="block max-w-[200px] truncate" title={p.name}>{p.name}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        <span className="font-semibold" title={`Soal saat ini: ${resolveCurrentLabel(p)}`}>{resolveCurrentLabel(p)}</span>
+                      {activeSession.quiz_mode !== 'standard' && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          <span className="font-semibold" title={`Soal saat ini: ${resolveCurrentLabel(p)}`}>{resolveCurrentLabel(p)}</span>
+                        </td>
+                      )}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">
+                        {activeSession.quiz_mode === 'standard' && !p.finished_at ? (
+                          <span className="text-gray-400">? / {activeSession.question_count}</span>
+                        ) : (
+                          `${p.score} / ${activeSession.question_count}`
+                        )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">{p.score} / {activeSession.question_count}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.total_time}s</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {activeSession.quiz_mode === 'standard' && !p.finished_at ? (
+                          <span className="text-gray-400">-- s</span>
+                        ) : (
+                          `${p.total_time}s`
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
                           onClick={() => setViewingPlayer(p)}

@@ -126,23 +126,25 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   // Layer 1: Visibility Check (Immediately sync when returning to tab)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && (session?.status === 'active' || session?.status === 'paused')) {
+      if (document.visibilityState === 'visible' && session && !isFinished) {
         fetchQuizByCode(quizCode).then(s => { if (s) setSession(s); });
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [quizCode, session?.status]);
+  }, [quizCode, session, isFinished]);
 
-  // Layer 2: Polling Fallback (Backup sync every 15s in case realtime fails)
+  // Layer 2: Polling Fallback (Backup sync in case realtime fails)
   useEffect(() => {
-    if (session?.status === 'active' || session?.status === 'paused') {
+    if (session && !isFinished) {
+      // Faster polling (5s) while in waiting room, standard polling (15s) when active
+      const pollInterval = session.status === 'waiting' ? 5000 : 15000;
       const interval = setInterval(() => {
         fetchQuizByCode(quizCode).then(s => { if (s) setSession(s); });
-      }, 15000);
+      }, pollInterval);
       return () => clearInterval(interval);
     }
-  }, [quizCode, session?.status]);
+  }, [quizCode, session, isFinished]);
 
   // Subscription for leaderboard when finished
   useEffect(() => {
@@ -428,8 +430,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   <span className="font-bold text-[18px] sm:text-[20px] leading-tight flex-1">{lb.name}</span>
                 </div>
                 <div className="text-right flex flex-col items-end">
-                  <span className="font-bold text-[16px] uppercase">{lb.score} Benar</span>
-                  <span className={`text-[12px] font-medium uppercase tracking-widest ${lb.id === player?.id ? 'text-nike-grey-300' : 'text-nike-grey-500'}`}>{lb.total_time}s</span>
+                  {isStandard && !lb.finished_at ? (
+                    <span className="font-bold text-[16px] uppercase text-nike-grey-400">? Benar</span>
+                  ) : (
+                    <span className="font-bold text-[16px] uppercase">{lb.score} Benar</span>
+                  )}
+                  {isStandard && !lb.finished_at ? (
+                    <span className={`text-[12px] font-medium uppercase tracking-widest ${lb.id === player?.id ? 'text-nike-grey-400' : 'text-nike-grey-300'}`}>-- s</span>
+                  ) : (
+                    <span className={`text-[12px] font-medium uppercase tracking-widest ${lb.id === player?.id ? 'text-nike-grey-300' : 'text-nike-grey-500'}`}>{lb.total_time}s</span>
+                  )}
                 </div>
               </div>
             ))}
