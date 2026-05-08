@@ -58,6 +58,19 @@ type JoinLiveQuizRpcResult = {
   player_id: string;
 };
 
+export function formatHMS(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  
+  const parts = [];
+  if (h > 0) parts.push(`${h} Jam`);
+  if (m > 0) parts.push(`${m} Menit`);
+  if (s > 0 || (h === 0 && m === 0)) parts.push(`${s} Detik`);
+  
+  return parts.join(' ');
+}
+
 type LiveQuizQuestionRpcResult = {
   success: boolean;
   error?: string;
@@ -435,6 +448,17 @@ export async function fetchQuizPlayers(kuisId: string): Promise<Player[]> {
 
   if (error) return [];
   return data;
+}
+
+export async function fetchPlayerQuestionIds(playerId: string): Promise<number[]> {
+  const { data, error } = await supabase.rpc('get_player_question_ids_admin', {
+    p_player_id: playerId
+  });
+  if (error) {
+    console.error('Error fetching player question ids:', error);
+    return [];
+  }
+  return data as number[];
 }
 
 export async function fetchQuizHistory(): Promise<KuisLog[]> {

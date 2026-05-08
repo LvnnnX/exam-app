@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { secureLoad, secureSave, secureRemove } from '@/lib/security';
-import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, normalizeQuizCode, type KuisLog, type Player } from '@/lib/quiz';
+import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, normalizeQuizCode, formatHMS, type KuisLog, type Player } from '@/lib/quiz';
 import { type ShuffledQuestion } from '@/lib/questions';
 import { useRouter } from 'next/navigation';
 import RichContent from '@/app/components/RichContent';
@@ -40,6 +40,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const [doubtFlags, setDoubtFlags] = useState<boolean[]>([]);
   const [localAnswers, setLocalAnswers] = useState<(string | null)[]>([]);
   const [showNavPopup, setShowNavPopup] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const isStandard = session?.quiz_mode === 'standard';
 
   const selectedAnswerRef = useRef<AnswerData | null>(null);
@@ -105,19 +106,19 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             // Restore standard mode state
             const savedDoubts = secureLoad<string>(`quiz_doubts_${quizCode}`);
             if (savedDoubts) {
-              try { setDoubtFlags(JSON.parse(savedDoubts)); } catch {}
+              try { setDoubtFlags(JSON.parse(savedDoubts)); } catch { }
             } else if (quiz) {
               setDoubtFlags(Array(quiz.question_count).fill(false));
             }
             const savedAnswers = secureLoad<string>(`quiz_answers_${quizCode}`);
             if (savedAnswers) {
-              try { 
+              try {
                 const parsedAnswers = JSON.parse(savedAnswers);
-                setLocalAnswers(parsedAnswers); 
+                setLocalAnswers(parsedAnswers);
                 if (savedIndex && parsedAnswers[parseInt(savedIndex)]) {
                   setSelectedAnswer(parsedAnswers[parseInt(savedIndex)]);
                 }
-              } catch {}
+              } catch { }
             } else if (quiz) {
               setLocalAnswers(Array(quiz.question_count).fill(null));
             }
@@ -435,8 +436,12 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2 flex flex-wrap items-baseline gap-4">
                 <span>Leaderboard.</span>
               </h2>
-              <p className="text-[20px] font-bold text-nike-black uppercase mb-1">{session.mapel} · {session.bab} · {session.sub_bab}</p>
-              <p className="text-[16px] font-medium text-nike-grey-500 uppercase">
+              <div className="flex flex-col gap-1 mb-2">
+                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{session.mapel}</p>
+                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{session.bab}</p>
+                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{session.sub_bab}</p>
+              </div>
+              <p className="text-[16px] font-medium text-nike-grey-500 uppercase mt-4">
                 {player && (
                   <>
                     SKOR KAMU: <span className="font-bold text-nike-black">{score} / {session.question_count}</span>
@@ -445,7 +450,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               </p>
             </div>
             <div>
-              <span className="inline-block px-4 py-2 bg-nike-black text-nike-white text-[12px] font-bold uppercase rounded-[30px]">Live Result</span>
+              <span className="inline-block px-4 py-2 bg-nike-green text-white text-[12px] font-bold uppercase rounded-[30px]">Live Result</span>
             </div>
           </div>
 
@@ -465,7 +470,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   {isStandard && !lb.finished_at ? (
                     <span className={`text-[12px] font-medium uppercase tracking-widest ${lb.id === player?.id ? 'text-nike-grey-400' : 'text-nike-grey-300'}`}>-- s</span>
                   ) : (
-                    <span className={`text-[12px] font-medium uppercase tracking-widest ${lb.id === player?.id ? 'text-nike-grey-300' : 'text-nike-grey-500'}`}>{lb.total_time}s</span>
+                    <span className={`text-[12px] font-medium uppercase tracking-widest ${lb.id === player?.id ? 'text-nike-grey-300' : 'text-nike-grey-500'}`}>{formatHMS(lb.total_time)}</span>
                   )}
                 </div>
               </div>
@@ -578,7 +583,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             </div>
             <h2 className="font-display text-[32px] text-nike-black uppercase mb-4">WADUH!</h2>
             <p className="text-nike-grey-500 font-bold uppercase tracking-widest text-sm mb-8 max-w-xs mx-auto">{loadError}</p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="px-8 py-4 bg-nike-black text-white rounded-full font-black text-sm uppercase tracking-widest hover:bg-nike-grey-500 transition-all shadow-xl shadow-nike-black/20"
             >
@@ -640,12 +645,13 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             {isStandard && (
               <button
                 onClick={() => setShowNavPopup(true)}
-                className="w-10 h-10 rounded-[12px] bg-nike-grey-100 border border-nike-grey-200 flex items-center justify-center hover:bg-nike-grey-200 transition-colors shadow-sm"
-                title="Navigasi Soal"
+                className="h-10 px-3 sm:px-4 rounded-[12px] bg-nike-grey-100 border border-nike-grey-200 flex items-center justify-center gap-2 hover:bg-nike-grey-200 transition-colors shadow-sm"
+                title="Daftar Soal"
               >
-                <svg className="w-5 h-5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-5 h-5 text-nike-black shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
+                <span className="text-xs sm:text-sm font-bold text-nike-black uppercase tracking-wider hidden sm:block">Daftar Soal</span>
               </button>
             )}
 
@@ -702,9 +708,9 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                       <button
                         key={i}
                         onClick={() => setSelectedAnswer(opt.text)}
-                    className={`w-full min-w-0 group flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-[12px] text-left transition-all duration-200 border-[1.5px] ${isSelected
-                            ? 'bg-nike-black border-nike-black text-nike-white'
-                            : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
+                        className={`w-full min-w-0 group flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-[12px] text-left transition-all duration-200 border-[1.5px] ${isSelected
+                          ? 'bg-nike-black border-nike-black text-nike-white'
+                          : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
                           }`}
                       >
                         <div className="flex items-center gap-2.5 w-full min-w-0">
@@ -745,18 +751,17 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   setDoubtFlags(updated);
                   secureSave(`quiz_doubts_${quizCode}`, JSON.stringify(updated));
                 }}
-                className={`w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] text-[16px] font-medium transition-all uppercase tracking-wider border-[1.5px] ${
-                  doubtFlags[currentIndex]
-                    ? 'bg-yellow-400 border-yellow-400 text-nike-black shadow-lg shadow-yellow-400/20'
-                    : 'bg-transparent border-nike-grey-300 text-nike-grey-500 hover:border-yellow-400 hover:text-yellow-600'
-                }`}
+                className={`w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] text-[16px] font-medium transition-all uppercase tracking-wider border-[1.5px] ${doubtFlags[currentIndex]
+                  ? 'bg-yellow-400 border-yellow-400 text-nike-black shadow-lg shadow-yellow-400/20'
+                  : 'bg-transparent border-nike-grey-300 text-nike-grey-500 hover:border-yellow-400 hover:text-yellow-600'
+                  }`}
               >
                 🤔 Ragu-ragu
               </button>
               <button
                 onClick={() => {
                   if (currentIndex >= (session?.question_count || 0) - 1) {
-                    finishStandardQuiz();
+                    setShowSubmitConfirm(true);
                   } else {
                     goToQuizQuestion(currentIndex + 1);
                   }
@@ -792,7 +797,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             <div className="bg-white rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] max-w-md w-full border border-nike-grey-200 overflow-hidden animate-in zoom-in-95 duration-300">
               <div className="p-8 pb-4">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-display text-[28px] text-nike-black leading-none uppercase">Navigasi</h3>
+                  <h3 className="font-bold text-[28px] text-nike-black leading-none uppercase">Daftar Soal</h3>
                   <button
                     onClick={() => setShowNavPopup(false)}
                     className="w-10 h-10 rounded-full bg-nike-grey-100 flex items-center justify-center hover:bg-nike-grey-200 transition-colors"
@@ -808,7 +813,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white border border-nike-grey-300"></span> Kosong</span>
                 </div>
               </div>
-              <div className="px-8 pb-8 max-h-[60vh] overflow-y-auto">
+              <div className="px-8 pt-2 pb-8 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                   {Array.from({ length: session?.question_count || 0 }, (_, i) => {
                     const isAnswered = localAnswers[i] !== null && localAnswers[i] !== undefined && String(localAnswers[i]).trim().length > 0;
@@ -818,15 +823,13 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                       <button
                         key={i}
                         onClick={() => goToQuizQuestion(i)}
-                        className={`h-10 rounded-[10px] text-[13px] font-black transition-all border-2 ${
-                          isCurrent ? 'ring-2 ring-[#4A90D9] ring-offset-2' : ''
-                        } ${
-                          isDoubt
+                        className={`h-10 rounded-[10px] text-[13px] font-black transition-all border-2 ${isCurrent ? 'ring-2 ring-[#4A90D9] ring-offset-2' : ''
+                          } ${isDoubt
                             ? 'bg-yellow-400 border-yellow-400 text-nike-black'
                             : isAnswered
                               ? 'bg-nike-black border-nike-black text-white'
                               : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black'
-                        }`}
+                          }`}
                       >
                         {i + 1}
                       </button>
@@ -838,6 +841,34 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
           </div>
         )}
       </div>
+
+      {showSubmitConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-300">
+            <h3 className="text-xl font-bold text-nike-black mb-2">Selesai Kuis?</h3>
+            <p className="text-nike-grey-500 text-sm mb-6">
+              Pastikan Anda sudah mengecek kembali semua jawaban Anda sebelum menyelesaikan kuis.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSubmitConfirm(false)}
+                className="flex-1 h-12 rounded-[16px] font-bold text-nike-black bg-nike-grey-100 hover:bg-nike-grey-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  setShowSubmitConfirm(false);
+                  finishStandardQuiz();
+                }}
+                className="flex-1 h-12 rounded-[16px] font-bold text-white bg-nike-black hover:bg-nike-grey-500 transition-colors"
+              >
+                Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Anti-Cheat: Tab Warning Modal */}
       <TabWarningModal

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, deleteQuizSession, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
+import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, deleteQuizSession, fetchPlayerQuestionIds, formatHMS, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
 import { fetchQuestionsByIds, fetchSubBabsAdmin, type RawQuestion, type SubBabInfo } from '@/lib/questions';
 import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
@@ -149,8 +149,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
           .channel('quiz_admin')
           .on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'player', filter: `kuis_id=eq.${activeSession.id}` },
+            { event: '*', schema: 'public', table: 'player' },
             (payload) => {
+              // Re-fetch players for this session on any player update (handles UPDATEs missing kuis_id)
               fetchQuizPlayers(activeSession.id).then(setPlayers);
             }
           )
@@ -263,6 +264,15 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   useEffect(() => {
     let channel: any = null;
     if (viewingPlayer) {
+      // Fetch player's specific question_ids if we don't have them yet
+      if (!viewingPlayer.question_ids || viewingPlayer.question_ids.length === 0) {
+        fetchPlayerQuestionIds(viewingPlayer.id).then(qIds => {
+          if (qIds && qIds.length > 0) {
+            setViewingPlayer(prev => prev && prev.id === viewingPlayer.id ? { ...prev, question_ids: qIds } : prev);
+          }
+        });
+      }
+
       setLoadingAnswers(true);
       fetchPlayerAnswers(viewingPlayer.id).then(ans => {
         setPlayerAnswers(ans);
@@ -1201,45 +1211,47 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                       )}
 
                       {editingSchedule && (
-                        <div className="absolute right-0 top-full mt-2 w-[280px] min-[400px]:w-[320px] max-w-[calc(100vw-3rem)] bg-white rounded-xl shadow-xl border border-gray-200 p-4 z-10 overflow-hidden">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-xs font-bold uppercase text-gray-700">Set Schedule</h4>
-                            <button onClick={() => setEditingSchedule(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex flex-col sm:flex-row gap-2">
-                              <div className="flex-1">
-                                <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Tanggal</label>
-                                <input
-                                  type="date"
-                                  value={editScheduleDate}
-                                  onChange={(e) => {
-                                    setEditScheduleDate(e.target.value);
-                                    if (e.target.value === new Date().toISOString().split('T')[0] && editScheduleTime < new Date().toTimeString().slice(0, 5)) {
-                                      setEditScheduleTime('');
-                                    }
-                                  }}
-                                  min={new Date().toISOString().split('T')[0]}
-                                  max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
-                                  className="w-full min-w-0 max-w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
-                                />
-                              </div>
-                              <div className="flex-1">
-                                <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Waktu</label>
-                                <input
-                                  type="time"
-                                  value={editScheduleTime}
-                                  onChange={(e) => setEditScheduleTime(e.target.value)}
-                                  min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                                  className="w-full min-w-0 max-w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-2 h-9 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9]"
-                                />
-                              </div>
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setEditingSchedule(false)}>
+                          <div className="w-full max-w-xs bg-white rounded-2xl shadow-2xl border border-gray-200 p-5" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="text-sm font-bold uppercase text-gray-700">📅 Set Schedule</h4>
+                              <button onClick={() => setEditingSchedule(false)} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors">✕</button>
                             </div>
-                            <div className="flex gap-2 pt-2 border-t border-gray-100">
-                              <button onClick={handleSaveSchedule} className="flex-1 bg-[#4A90D9] text-white py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-600">Simpan</button>
-                              {activeSession.scheduled_at && (
-                                <button onClick={handleRemoveSchedule} className="flex-1 bg-red-500 text-white py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-red-600">Hapus</button>
-                              )}
+                            <div className="space-y-3">
+                              <div className="flex flex-col gap-3">
+                                <div>
+                                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tanggal</label>
+                                  <input
+                                    type="date"
+                                    value={editScheduleDate}
+                                    onChange={(e) => {
+                                      setEditScheduleDate(e.target.value);
+                                      if (e.target.value === new Date().toISOString().split('T')[0] && editScheduleTime < new Date().toTimeString().slice(0, 5)) {
+                                        setEditScheduleTime('');
+                                      }
+                                    }}
+                                    min={new Date().toISOString().split('T')[0]}
+                                    max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
+                                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 h-10 text-sm font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9] focus:ring-2 focus:ring-[#4A90D9]/10"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Waktu</label>
+                                  <input
+                                    type="time"
+                                    value={editScheduleTime}
+                                    onChange={(e) => setEditScheduleTime(e.target.value)}
+                                    min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
+                                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 h-10 text-sm font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9] focus:ring-2 focus:ring-[#4A90D9]/10"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex gap-2 pt-3 border-t border-gray-100">
+                                <button onClick={handleSaveSchedule} className="flex-1 bg-[#4A90D9] text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-blue-600 transition-colors">Simpan</button>
+                                {activeSession.scheduled_at && (
+                                  <button onClick={handleRemoveSchedule} className="flex-1 bg-red-500 text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-600 transition-colors">Hapus</button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1281,7 +1293,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
                     )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (s)</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
@@ -1308,9 +1320,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {activeSession.quiz_mode === 'standard' && !p.finished_at ? (
-                          <span className="text-gray-400">-- s</span>
+                          <span className="text-gray-400">--:--</span>
                         ) : (
-                          `${p.total_time}s`
+                          formatHMS(p.total_time)
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -1514,7 +1526,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 </div>
                 <div className="text-center border-x border-gray-100">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Time Spent</p>
-                  <p className="text-2xl font-black text-gray-900">{viewingPlayer.total_time}s</p>
+                  <p className="text-2xl font-black text-gray-900">{formatHMS(viewingPlayer.total_time)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Status</p>
@@ -1529,11 +1541,13 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               ) : (
                 <div className="space-y-8">
                   {(() => {
-                    const answeredIds = playerAnswers.map(a => a.question_id);
                     const allIds = viewingPlayer.question_ids || activeSession?.question_ids || [];
+                    const answeredIds = playerAnswers.map(a => a.question_id);
+                    
+                    // Display exactly in the order the user received them
                     const orderedIds = [
-                      ...answeredIds,
-                      ...allIds.filter(id => !answeredIds.includes(id))
+                      ...allIds,
+                      ...answeredIds.filter(id => !allIds.includes(id))
                     ];
 
                     return orderedIds.map((qId, idx) => {
@@ -1567,7 +1581,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                                 <div className={`p-4 rounded-xl border-2 ${answer.is_correct ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/30'}`}>
                                   <p className="text-[10px] font-black text-gray-400 uppercase mb-2">User Answer</p>
                                   <RichContent html={answer.user_answer} className={`text-sm font-medium ${answer.is_correct ? 'text-green-800' : 'text-red-800'}`} />
-                                  <p className="text-[9px] text-gray-400 mt-2">Time taken: {answer.time_taken}s</p>
+                                  <p className="text-[9px] text-gray-400 mt-2">Time taken: {formatHMS(answer.time_taken)}</p>
                                 </div>
 
                                 {!answer.is_correct && (

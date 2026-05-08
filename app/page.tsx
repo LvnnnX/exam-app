@@ -229,6 +229,7 @@ export default function ExamPage() {
   const [examMode, setExamMode] = useState<ExamMode>('strict');
   const [doubtFlags, setDoubtFlags] = useState<boolean[]>([]);
   const [showNavPopup, setShowNavPopup] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const isStandard = examMode === 'standard' && !isSurvival;
 
   // ─── Anti-Cheat Security (text selection, right-click, shortcuts) ──
@@ -1132,7 +1133,11 @@ export default function ExamPage() {
                 )}
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Topik</p>
-                  <p className="text-[16px] font-bold text-nike-black uppercase">{mapelsLabel} · {babsLabel} · {subBabsLabel}</p>
+                  <div className="flex flex-col text-[16px] font-bold text-nike-black uppercase">
+                    <span>{mapelsLabel}</span>
+                    <span>{babsLabel}</span>
+                    <span>{subBabsLabel}</span>
+                  </div>
                 </div>
                 <div>
                   <p className="text-nike-grey-500 text-[14px] font-medium uppercase mb-1">Questions</p>
@@ -1210,9 +1215,12 @@ export default function ExamPage() {
               <span className="text-[17px] font-bold text-nike-black uppercase tracking break-words">
                 {userName}
               </span>
-              <span className="text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1">
-                Topik: {mapelsLabel} · {babsLabel} · {subBabsLabel} {isSurvival && '· Survival'} · Soal Nomor {current + 1}
-              </span>
+              <div className="flex flex-col text-[12px] font-medium text-nike-grey-400 uppercase tracking-widest mb-1 mt-1">
+                <span>{mapelsLabel}</span>
+                <span>{babsLabel}</span>
+                <span>{subBabsLabel}</span>
+                <span className="mt-1 text-nike-black font-bold">Soal Nomor {current + 1} {isSurvival && '· Survival'}</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-6">
@@ -1227,12 +1235,13 @@ export default function ExamPage() {
               {isStandard && (
                 <button
                   onClick={() => setShowNavPopup(true)}
-                  className="w-10 h-10 rounded-[12px] bg-nike-grey-100 border border-nike-grey-200 flex items-center justify-center hover:bg-nike-grey-200 transition-colors shadow-sm"
-                  title="Navigasi Soal"
+                  className="h-10 px-3 sm:px-4 rounded-[12px] bg-nike-grey-100 border border-nike-grey-200 flex items-center justify-center gap-2 hover:bg-nike-grey-200 transition-colors shadow-sm"
+                  title="Daftar Soal"
                 >
-                  <svg className="w-5 h-5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-5 h-5 text-nike-black shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
+                  <span className="text-xs sm:text-sm font-bold text-nike-black uppercase tracking-wider hidden sm:block">Daftar Soal</span>
                 </button>
               )}
 
@@ -1284,7 +1293,7 @@ export default function ExamPage() {
                 <button
                   onClick={() => {
                     if (current >= total - 1) {
-                      endSession();
+                      setShowSubmitConfirm(true);
                     } else {
                       goToQuestion(current + 1);
                     }
@@ -1324,13 +1333,42 @@ export default function ExamPage() {
             )}
           </div>
 
+          {/* Submit Confirmation Modal */}
+          {showSubmitConfirm && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="bg-white rounded-[24px] p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-300">
+                <h3 className="text-xl font-bold text-nike-black mb-2">Selesai Ujian?</h3>
+                <p className="text-nike-grey-500 text-sm mb-6">
+                  Pastikan Anda sudah mengecek kembali semua jawaban Anda sebelum menyelesaikan ujian.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowSubmitConfirm(false)}
+                    className="flex-1 h-12 rounded-[16px] font-bold text-nike-black bg-nike-grey-100 hover:bg-nike-grey-200 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowSubmitConfirm(false);
+                      endSession();
+                    }}
+                    className="flex-1 h-12 rounded-[16px] font-bold text-white bg-nike-black hover:bg-nike-grey-500 transition-colors"
+                  >
+                    Selesai
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Standard Mode: Navigation Popup */}
           {isStandard && showNavPopup && (
             <div className="fixed inset-0 z-[100] bg-nike-white/40 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
               <div className="bg-white rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] max-w-md w-full border border-nike-grey-200 overflow-hidden animate-in zoom-in-95 duration-300">
                 <div className="p-8 pb-4">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-display text-[28px] text-nike-black leading-none uppercase">Navigasi</h3>
+                    <h3 className="font-display text-[28px] text-nike-black leading-none uppercase">Daftar Soal</h3>
                     <button
                       onClick={() => setShowNavPopup(false)}
                       className="w-10 h-10 rounded-full bg-nike-grey-100 flex items-center justify-center hover:bg-nike-grey-200 transition-colors"
@@ -1346,7 +1384,7 @@ export default function ExamPage() {
                     <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white border border-nike-grey-300"></span> Kosong</span>
                   </div>
                 </div>
-                <div className="px-8 pb-8 max-h-[60vh] overflow-y-auto">
+                <div className="px-8 pt-2 pb-8 max-h-[60vh] overflow-y-auto">
                   <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                     {Array.from({ length: total }, (_, i) => {
                       const isAnswered = answers[i] !== null && answers[i] !== undefined && String(answers[i]).trim().length > 0;
@@ -1462,7 +1500,11 @@ export default function ExamPage() {
             )
           }
 
-          <p className="text-[14px] font-medium text-nike-grey-300 mb-12 uppercase tracking-widest">{mapelsLabel} · {babsLabel} · {subBabsLabel}</p>
+          <div className="flex flex-col gap-1 mb-12 text-[14px] font-medium text-nike-grey-300 uppercase tracking-widest">
+            <p>{mapelsLabel}</p>
+            <p>{babsLabel}</p>
+            <p>{subBabsLabel}</p>
+          </div>
 
           <div className="h-[24px] mb-8">
             {saving ? (

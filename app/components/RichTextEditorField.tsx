@@ -54,6 +54,30 @@ export default function RichTextEditorField({
   const normalizedValue = useMemo(() => ensureHtmlDocument(value), [value]);
   const isCompact = density === 'compact';
 
+  const uploadImageFile = async (file: File): Promise<string | null> => {
+    try {
+      setIsUploading(true);
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('exam-images')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('exam-images').getPublicUrl(filePath);
+      return data?.publicUrl || null;
+    } catch (err: any) {
+      console.error('Image upload failed:', err);
+      alert('Failed to upload image. Please try again.');
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -98,6 +122,42 @@ export default function RichTextEditorField({
       attributes: {
         class: `tiptap-editor ${isCompact ? 'min-h-[120px] px-3 py-2 text-sm' : 'min-h-[160px] p-4'}`,
       },
+      handlePaste: (view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith('image/')) {
+            event.preventDefault();
+            const file = items[i].getAsFile();
+            if (file) {
+              uploadImageFile(file).then((url) => {
+                if (url && editor) {
+                  editor.chain().focus().setImage({ src: url, alt: file.name || 'pasted-image' }).run();
+                }
+              });
+            }
+            return true;
+          }
+        }
+        return false;
+      },
+      handleDrop: (view, event) => {
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
+
+        const file = files[0];
+        if (file.type.startsWith('image/')) {
+          event.preventDefault();
+          uploadImageFile(file).then((url) => {
+            if (url && editor) {
+              editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+            }
+          });
+          return true;
+        }
+        return false;
+      },
     },
     onUpdate: ({ editor: currentEditor }) => {
       onChange(currentEditor.getHTML());
@@ -119,34 +179,11 @@ export default function RichTextEditorField({
     const file = event.target.files?.[0];
     if (!file || !editor) return;
 
-    try {
-      setIsUploading(true);
-      
-      // Attempt to delete existing if it's an overwrite, but typically these are novel file names
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `images/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('exam-images')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage.from('exam-images').getPublicUrl(filePath);
-
-      if (data?.publicUrl) {
-        editor.chain().focus().setImage({ src: data.publicUrl, alt: file.name }).run();
-      }
-    } catch (err: any) {
-      console.error('Image upload failed:', err);
-      alert('Failed to upload image. Please try again.');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    const url = await uploadImageFile(file);
+    if (url) {
+      editor.chain().focus().setImage({ src: url, alt: file.name }).run();
     }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const insertImage = () => {
