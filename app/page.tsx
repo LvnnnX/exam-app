@@ -174,6 +174,7 @@ const TIME_LIMIT_OPTIONS = [
   { label: '90 Minutes', value: 90 },
   { label: '120 Minutes', value: 120 },
   { label: '150 Minutes', value: 150 },
+  { label: '180 Minutes', value: 180 },
 ];
 
 const HelpTooltip = ({ text }: { text: string }) => (

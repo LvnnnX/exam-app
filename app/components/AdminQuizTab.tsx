@@ -876,8 +876,8 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 </div>
                 <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Jumlah Soal</label>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                {[5, 10, 20, 25, 30, 40].map(n => (
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                {[5, 10, 20, 25, 30, 40, 50, 100].map(n => (
                   <button
                     key={n}
                     onClick={() => setQuestionCount(n)}
@@ -1037,8 +1037,8 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 </div>
                 <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Durasi Waktu</label>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                {[30, 60, 90, 120, 150].map(m => (
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                {[30, 60, 90, 120, 150, 180].map(m => (
                   <button
                     key={m}
                     onClick={() => setDurationMinutes(m)}
