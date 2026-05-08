@@ -102,6 +102,25 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             if (savedIndex) {
               setCurrentIndex(parseInt(savedIndex));
             }
+            // Restore standard mode state
+            const savedDoubts = secureLoad<string>(`quiz_doubts_${quizCode}`);
+            if (savedDoubts) {
+              try { setDoubtFlags(JSON.parse(savedDoubts)); } catch {}
+            } else if (quiz) {
+              setDoubtFlags(Array(quiz.question_count).fill(false));
+            }
+            const savedAnswers = secureLoad<string>(`quiz_answers_${quizCode}`);
+            if (savedAnswers) {
+              try { 
+                const parsedAnswers = JSON.parse(savedAnswers);
+                setLocalAnswers(parsedAnswers); 
+                if (savedIndex && parsedAnswers[parseInt(savedIndex)]) {
+                  setSelectedAnswer(parsedAnswers[parseInt(savedIndex)]);
+                }
+              } catch {}
+            } else if (quiz) {
+              setLocalAnswers(Array(quiz.question_count).fill(null));
+            }
           }
         });
       }
@@ -192,6 +211,8 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     if (session) {
       setDoubtFlags(Array(session.question_count).fill(false));
       setLocalAnswers(Array(session.question_count).fill(null));
+      secureSave(`quiz_doubts_${quizCode}`, JSON.stringify(Array(session.question_count).fill(false)));
+      secureSave(`quiz_answers_${quizCode}`, JSON.stringify(Array(session.question_count).fill(null)));
     }
     setLoading(false);
   };
@@ -235,6 +256,8 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
     await finishPlayerQuiz(player.id);
     secureRemove(`quiz_index_${quizCode}`);
+    secureRemove(`quiz_answers_${quizCode}`);
+    secureRemove(`quiz_doubts_${quizCode}`);
     setIsFinished(true);
   }, [player, session, isFinished, startTime, currentQuestion, quizCode]);
 
@@ -366,15 +389,17 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     setShowNavPopup(false);
 
     // Save current answer before navigating (if any)
+    const updatedAnswers = [...localAnswers];
     if (selectedAnswer && currentQuestion) {
       const timeTaken = Math.floor((Date.now() - startTime) / 1000);
       await submitSecureAnswer(player.id, currentQuestion.id, selectedAnswer, timeTaken, currentIndex);
-      const updated = [...localAnswers];
-      updated[currentIndex] = selectedAnswer;
-      setLocalAnswers(updated);
+      updatedAnswers[currentIndex] = selectedAnswer;
+      setLocalAnswers(updatedAnswers);
+      secureSave(`quiz_answers_${quizCode}`, JSON.stringify(updatedAnswers));
     }
 
-    setSelectedAnswer(null);
+    // Restore the previously saved answer for the target question, if any
+    setSelectedAnswer(updatedAnswers[targetIndex] || null);
     setCurrentIndex(targetIndex);
     setCurrentQuestion(null); // Trigger JIT load
     secureSave(`quiz_index_${quizCode}`, targetIndex.toString());
@@ -392,6 +417,8 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     await finishPlayerQuiz(player.id);
     secureRemove(`quiz_index_${quizCode}`);
     secureRemove(`quiz_player_${quizCode}`);
+    secureRemove(`quiz_answers_${quizCode}`);
+    secureRemove(`quiz_doubts_${quizCode}`);
     setIsFinished(true);
     router.replace(`/quiz/${quizCode}`);
   };
@@ -716,6 +743,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   const updated = [...doubtFlags];
                   updated[currentIndex] = !updated[currentIndex];
                   setDoubtFlags(updated);
+                  secureSave(`quiz_doubts_${quizCode}`, JSON.stringify(updated));
                 }}
                 className={`w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] text-[16px] font-medium transition-all uppercase tracking-wider border-[1.5px] ${
                   doubtFlags[currentIndex]
