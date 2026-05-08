@@ -122,6 +122,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   const [loadingAllAnswers, setLoadingAllAnswers] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [showAllAnswers, setShowAllAnswers] = useState(false);
+  const [serverTimeOffset, setServerTimeOffset] = useState(0); // server - local offset in ms
   const itemsPerPage = 20;
   const historyPerPage = 10;
   const autoFinishRef = useRef(false);
@@ -229,9 +230,11 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
     }
 
     autoFinishRef.current = true;
-    updateQuizStatus(activeSession.id, 'finished').then((ok) => {
-      if (!ok) {
+    updateQuizStatus(activeSession.id, 'finished').then((result) => {
+      if (!result) {
         autoFinishRef.current = false;
+      } else {
+        setActiveSession(result);
       }
     });
   }, [activeSession, players]);
@@ -245,7 +248,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
         const diff = expiresAt - Date.now();
         if (diff <= 0) {
           clearInterval(interval);
-          updateQuizStatus(activeSession.id, 'finished');
+          updateQuizStatus(activeSession.id, 'finished').then((result) => {
+            if (result) setActiveSession(result);
+          });
         }
       }, 5000); // Check every 5 seconds is enough
 
@@ -380,9 +385,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
 
   const handleStatusChange = async (status: KuisStatus) => {
     if (!activeSession) return;
-    const ok = await updateQuizStatus(activeSession.id, status);
-    if (ok) {
-      setActiveSession({ ...activeSession, status });
+    const result = await updateQuizStatus(activeSession.id, status);
+    if (result) {
+      setActiveSession(result);
     } else {
       console.error("Failed to update status for session:", activeSession.id);
       alert("Gagal memperbarui status kuis. Pastikan tabel kuis_logs sudah memiliki kolom 'expires_at' dan 'paused_at' di Supabase.");
@@ -446,9 +451,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
           return;
         }
 
-        const ok = await updateQuizStatus(activeSession.id, 'active');
-        if (ok) {
-          setActiveSession({ ...activeSession, status: 'active', started_at: new Date().toISOString() });
+        const result = await updateQuizStatus(activeSession.id, 'active');
+        if (result) {
+          setActiveSession(result);
         }
         return;
       }
@@ -494,6 +499,30 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   useEffect(() => {
     if (activeSession?.status !== 'active' && activeSession?.status !== 'paused') return;
     const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [activeSession?.status]);
+
+  // Sync with server time every 30 seconds to prevent clock drift
+  useEffect(() => {
+    if (activeSession?.status !== 'active') return;
+
+    const syncServerTime = async () => {
+      try {
+        const before = Date.now();
+        const { data } = await supabase.rpc('get_server_time');
+        const after = Date.now();
+        if (data) {
+          const serverNow = new Date(data).getTime();
+          const localNow = before + (after - before) / 2; // estimate midpoint
+          setServerTimeOffset(serverNow - localNow);
+        }
+      } catch {
+        // Silently ignore sync failures — use local time as fallback
+      }
+    };
+
+    syncServerTime(); // initial sync
+    const interval = setInterval(syncServerTime, 30000); // every 30s
     return () => clearInterval(interval);
   }, [activeSession?.status]);
 
@@ -1136,6 +1165,45 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 </div>
               </div>
             </div>
+
+            {/* Countdown Timer - shown when quiz is active or paused */}
+            {(activeSession.status === 'active' || activeSession.status === 'paused') && activeSession.expires_at && (() => {
+              const expiresAt = new Date(activeSession.expires_at).getTime();
+              const syncedNow = (activeSession.status === 'paused' && activeSession.paused_at)
+                ? new Date(activeSession.paused_at).getTime()
+                : currentTime + serverTimeOffset;
+              const remainingSec = Math.max(0, Math.ceil((expiresAt - syncedNow) / 1000));
+              const h = Math.floor(remainingSec / 3600);
+              const m = Math.floor((remainingSec % 3600) / 60);
+              const s = remainingSec % 60;
+              const isUrgent = remainingSec <= 60;
+              const isExpired = remainingSec <= 0;
+              return (
+                <div className="flex flex-col items-center justify-center">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    {isExpired ? '⏰ Waktu Habis'
+                      : activeSession.status === 'paused' ? '⏸️ Sisa Waktu (Paused)'
+                      : '⏱️ Sisa Waktu'}
+                  </p>
+                  <div className="flex items-baseline gap-1 font-mono">
+                    <div className="flex flex-col items-center">
+                      <span className={`text-3xl md:text-4xl font-black tabular-nums ${isExpired ? 'text-red-500' : 'text-gray-900'}`}>{h.toString().padStart(2, '0')}</span>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Jam</span>
+                    </div>
+                    <span className={`text-3xl md:text-4xl font-black -mt-1 ${isExpired ? 'text-red-300' : 'text-gray-300'}`}>:</span>
+                    <div className="flex flex-col items-center">
+                      <span className={`text-3xl md:text-4xl font-black tabular-nums ${isExpired ? 'text-red-500' : 'text-gray-900'}`}>{m.toString().padStart(2, '0')}</span>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Menit</span>
+                    </div>
+                    <span className={`text-3xl md:text-4xl font-black -mt-1 ${isExpired ? 'text-red-300' : 'text-gray-300'}`}>:</span>
+                    <div className="flex flex-col items-center">
+                      <span className={`text-3xl md:text-4xl font-black tabular-nums ${isExpired ? 'text-red-500' : isUrgent ? 'text-red-500 animate-pulse' : activeSession.status === 'paused' ? 'text-orange-500' : 'text-gray-900'}`}>{s.toString().padStart(2, '0')}</span>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Detik</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="flex flex-col items-end gap-3">
               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${activeSession.status === 'active' ? 'bg-green-100 text-green-700' :
                 activeSession.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :

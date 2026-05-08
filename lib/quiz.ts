@@ -388,9 +388,9 @@ export async function finishPlayerQuiz(playerId: string): Promise<void> {
 }
 
 // Admin actions
-export async function updateQuizStatus(id: string, status: KuisStatus): Promise<boolean> {
+export async function updateQuizStatus(id: string, status: KuisStatus): Promise<KuisLog | null> {
   const { data: current } = await supabase.from('kuis_logs').select('*').eq('id', id).single();
-  if (!current) return false;
+  if (!current) return null;
 
   const updates: QuizStatusUpdates = { status };
   const now = new Date().toISOString();
@@ -416,17 +416,19 @@ export async function updateQuizStatus(id: string, status: KuisStatus): Promise<
     updates.finished_at = now;
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('kuis_logs')
     .update(updates)
-    .eq('id', id);
+    .eq('id', id)
+    .select()
+    .single();
 
   if (error) {
     console.error('Error updating quiz status:', error);
-    return false;
+    return null;
   }
 
-  return true;
+  return updated as KuisLog;
 }
 
 export async function deleteQuizSession(id: string): Promise<boolean> {

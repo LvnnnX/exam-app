@@ -1324,11 +1324,26 @@ export default function AdminPage() {
                         Delete
                       </button>
                     </div>
-                    <span
-                      className={`absolute bottom-3 right-3 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shadow-sm ${question.is_hidden ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-green-100 text-green-700 border border-green-200'}`}
-                    >
-                      {question.is_hidden ? 'HIDDEN' : 'VISIBLE'}
-                    </span>
+                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const newHidden = !question.is_hidden;
+                          await supabase.from('questions').update({ is_hidden: newHidden }).eq('id', question.id);
+                          await fetchAdminQuestions();
+                        }}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${question.is_hidden ? 'bg-red-400' : 'bg-green-400'}`}
+                        title={question.is_hidden ? 'Click to make visible' : 'Click to hide'}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-sm ${question.is_hidden ? 'translate-x-1' : 'translate-x-[18px]'}`} />
+                      </button>
+                      <span
+                        className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shadow-sm ${question.is_hidden ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-green-100 text-green-700 border border-green-200'}`}
+                      >
+                        {question.is_hidden ? 'HIDDEN' : 'VISIBLE'}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
