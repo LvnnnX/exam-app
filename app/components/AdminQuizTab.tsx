@@ -998,8 +998,8 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 </div>
                 <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Durasi Waktu</label>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                {[30, 60, 90, 120].map(m => (
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                {[30, 60, 90, 120, 150].map(m => (
                   <button
                     key={m}
                     onClick={() => setDurationMinutes(m)}
