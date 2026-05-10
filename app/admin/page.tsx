@@ -152,13 +152,15 @@ export default function AdminPage() {
   const [questionLoading, setQuestionLoading] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>([]);
-  const [activeMapelFilter, setActiveMapelFilter] = useState<string>('all');
-  const [activebabFilter, setActivebabFilter] = useState<string>('all');
-  const [activeSubBabFilter, setActiveSubBabFilter] = useState<string>('all');
+  const [activeMapelFilter, setActiveMapelFilter] = useState<string[]>([]);
+  const [activebabFilter, setActivebabFilter] = useState<string[]>([]);
+  const [activeSubBabFilter, setActiveSubBabFilter] = useState<string[]>([]);
   const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'short_answer'>('all');
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'visible' | 'hidden'>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
+  const [batchProcessing, setBatchProcessing] = useState(false);
 
   // Auth state
   const [email, setEmail] = useState('');
@@ -181,9 +183,9 @@ export default function AdminPage() {
   const [allbabs, setAllbabs] = useState<BabInfo[]>([]);
   const [allSubBabsAdmin, setAllSubBabsAdmin] = useState<SubBabInfo[]>([]);
   const [sessionInfo, setSessionInfo] = useState<string | null>(null);
-  const [activeResMapel, setActiveResMapel] = useState<string>('all');
-  const [activeResbab, setActiveResbab] = useState<string>('all');
-  const [activeResSubBab, setActiveResSubBab] = useState<string>('all');
+  const [activeResMapel, setActiveResMapel] = useState<string[]>([]);
+  const [activeResbab, setActiveResbab] = useState<string[]>([]);
+  const [activeResSubBab, setActiveResSubBab] = useState<string[]>([]);
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
   const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
 
@@ -200,6 +202,10 @@ export default function AdminPage() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
+
+  // Delete topic state
+  const [deleteTopicError, setDeleteTopicError] = useState<{ message: string; questionIds: number[] } | null>(null);
+  const [deletingTopic, setDeletingTopic] = useState(false);
 
   // Add-new-category inline state (used in question form)
   const [newMapelInput, setNewMapelInput] = useState('');
@@ -331,37 +337,64 @@ export default function AdminPage() {
 
   const mapelTabs = useMemo(() => {
     const mapels = Array.from(new Set(adminQuestions.flatMap(q => q.mapels || []))).sort();
-    return ['all', ...mapels];
+    return mapels.map(m => ({ label: categorySlugToLabel(m) || m.toUpperCase(), value: m }));
   }, [adminQuestions]);
 
   const babTabs = useMemo(() => {
     let list = adminQuestions;
-    if (activeMapelFilter !== 'all') {
-      list = adminQuestions.filter(q => q.mapels?.includes(activeMapelFilter));
+    if (activeMapelFilter.length > 0) {
+      list = adminQuestions.filter(q => q.mapels?.some(m => activeMapelFilter.includes(m)));
     }
     const babs = Array.from(new Set(list.flatMap(q => q.babs || []))).sort();
-    return ['all', ...babs];
+    return babs.map(b => ({ label: categorySlugToLabel(b) || b.toUpperCase(), value: b }));
   }, [adminQuestions, activeMapelFilter]);
 
   const subBabTabs = useMemo(() => {
     let list = adminQuestions;
-    if (activebabFilter !== 'all') {
-      list = adminQuestions.filter(q => q.babs?.includes(activebabFilter));
+    if (activebabFilter.length > 0) {
+      list = adminQuestions.filter(q => q.babs?.some(b => activebabFilter.includes(b)));
+    } else if (activeMapelFilter.length > 0) {
+      list = adminQuestions.filter(q => q.mapels?.some(m => activeMapelFilter.includes(m)));
     }
     const subBabs = Array.from(new Set(list.flatMap(q => q.sub_babs || []))).sort();
-    return ['all', ...subBabs];
-  }, [adminQuestions, activebabFilter]);
+    return subBabs.map(sb => ({ label: categorySlugToLabel(sb) || sb.toUpperCase(), value: sb }));
+  }, [adminQuestions, activebabFilter, activeMapelFilter]);
+
+  const resMapelTabs = useMemo(() => {
+    const mapels = Array.from(new Set(results.map(r => r.mapel).filter(Boolean))).sort();
+    return mapels.map(m => ({ label: categorySlugToLabel(m!) || m!.toUpperCase(), value: m! }));
+  }, [results]);
+
+  const resBabTabs = useMemo(() => {
+    let list = results;
+    if (activeResMapel.length > 0) {
+      list = results.filter(r => r.mapel && activeResMapel.includes(r.mapel));
+    }
+    const babs = Array.from(new Set(list.map(r => r.bab).filter(Boolean))).sort();
+    return babs.map(b => ({ label: categorySlugToLabel(b!) || b!.toUpperCase(), value: b! }));
+  }, [results, activeResMapel]);
+
+  const resSubBabTabs = useMemo(() => {
+    let list = results;
+    if (activeResbab.length > 0) {
+      list = results.filter(r => r.bab && activeResbab.includes(r.bab));
+    } else if (activeResMapel.length > 0) {
+      list = results.filter(r => r.mapel && activeResMapel.includes(r.mapel));
+    }
+    const subBabs = Array.from(new Set(list.map(r => r.sub_bab).filter(Boolean))).sort();
+    return subBabs.map(sb => ({ label: categorySlugToLabel(sb!) || sb!.toUpperCase(), value: sb! }));
+  }, [results, activeResbab, activeResMapel]);
 
   const filteredQuestions = useMemo(() => {
     let list = adminQuestions;
-    if (activeMapelFilter !== 'all') {
-      list = list.filter(q => q.mapels?.includes(activeMapelFilter));
+    if (activeMapelFilter.length > 0) {
+      list = list.filter(q => q.mapels?.some(m => activeMapelFilter.includes(m)));
     }
-    if (activebabFilter !== 'all') {
-      list = list.filter(q => q.babs?.includes(activebabFilter));
+    if (activebabFilter.length > 0) {
+      list = list.filter(q => q.babs?.some(b => activebabFilter.includes(b)));
     }
-    if (activeSubBabFilter !== 'all') {
-      list = list.filter(q => q.sub_babs?.includes(activeSubBabFilter));
+    if (activeSubBabFilter.length > 0) {
+      list = list.filter(q => q.sub_babs?.some(sb => activeSubBabFilter.includes(sb)));
     }
     if (questionTypeFilter !== 'all') {
       list = list.filter(q => q.question_type === questionTypeFilter);
@@ -375,6 +408,7 @@ export default function AdminPage() {
       list = list.filter(question => {
         const plainText = stripHtml(question.question_text).toLowerCase();
         return plainText.includes(q) ||
+          question.id.toString().includes(q) ||
           question.mapels?.some(c => c.toLowerCase().includes(q)) ||
           question.babs?.some(c => c.toLowerCase().includes(q)) ||
           question.sub_babs?.some(c => c.toLowerCase().includes(q));
@@ -468,7 +502,7 @@ export default function AdminPage() {
     }
   };
 
-  const fetchResults = async (page = 0, mapel = activeResMapel, bab = activeResbab, subBab = activeResSubBab, mode = activeModeFilter) => {
+  const fetchResults = async (page = 0, mapels = activeResMapel, babs = activeResbab, subBabs = activeResSubBab, mode = activeModeFilter) => {
     setLoading(true);
     try {
       // 1. Fetch paginated data for the table
@@ -479,14 +513,14 @@ export default function AdminPage() {
         .from('exam_results')
         .select('*', { count: 'exact' });
 
-      if (mapel !== 'all') {
-        paginatedQuery = paginatedQuery.eq('mapel', mapel);
+      if (mapels.length > 0) {
+        paginatedQuery = paginatedQuery.in('mapel', mapels);
       }
-      if (bab !== 'all') {
-        paginatedQuery = paginatedQuery.eq('bab', bab);
+      if (babs.length > 0) {
+        paginatedQuery = paginatedQuery.in('bab', babs);
       }
-      if (subBab !== 'all') {
-        paginatedQuery = paginatedQuery.eq('sub_bab', subBab);
+      if (subBabs.length > 0) {
+        paginatedQuery = paginatedQuery.in('sub_bab', subBabs);
       }
       if (mode !== 'all') {
         paginatedQuery = paginatedQuery.eq('mode', mode);
@@ -509,14 +543,14 @@ export default function AdminPage() {
         .from('exam_results')
         .select('score, total_questions');
 
-      if (mapel !== 'all') {
-        statsQuery = statsQuery.eq('mapel', mapel);
+      if (mapels.length > 0) {
+        statsQuery = statsQuery.in('mapel', mapels);
       }
-      if (bab !== 'all') {
-        statsQuery = statsQuery.eq('bab', bab);
+      if (babs.length > 0) {
+        statsQuery = statsQuery.in('bab', babs);
       }
-      if (subBab !== 'all') {
-        statsQuery = statsQuery.eq('sub_bab', subBab);
+      if (subBabs.length > 0) {
+        statsQuery = statsQuery.in('sub_bab', subBabs);
       }
       if (mode !== 'all') {
         statsQuery = statsQuery.eq('mode', mode);
@@ -535,23 +569,23 @@ export default function AdminPage() {
     }
   };
 
-  const handleResMapelChange = (mapel: string) => {
-    setActiveResMapel(mapel);
-    setActiveResbab('all');
-    setActiveResSubBab('all');
-    void fetchResults(0, mapel, 'all', 'all', activeModeFilter);
+  const handleResMapelChange = (mapels: string[]) => {
+    setActiveResMapel(mapels);
+    setActiveResbab([]);
+    setActiveResSubBab([]);
+    void fetchResults(0, mapels, [], [], activeModeFilter);
   };
 
-  const handleResbabChange = (bab: string) => {
-    setActiveResbab(bab);
+  const handleResbabChange = (babs: string[]) => {
+    setActiveResbab(babs);
     // When changing BAB, reset sub bab to all to avoid invalid combinations
-    setActiveResSubBab('all');
-    void fetchResults(0, activeResMapel, bab, 'all', activeModeFilter);
+    setActiveResSubBab([]);
+    void fetchResults(0, activeResMapel, babs, [], activeModeFilter);
   };
 
-  const handleResSubBabChange = (subBab: string) => {
-    setActiveResSubBab(subBab);
-    void fetchResults(0, activeResMapel, activeResbab, subBab, activeModeFilter);
+  const handleResSubBabChange = (subBabs: string[]) => {
+    setActiveResSubBab(subBabs);
+    void fetchResults(0, activeResMapel, activeResbab, subBabs, activeModeFilter);
   };
 
   const handleModeFilterChange = (mode: string) => {
@@ -673,6 +707,69 @@ export default function AdminPage() {
       window.alert('Failed to save settings.');
     } finally {
       setSettingsSaving(false);
+    }
+  };
+
+  const handleDeleteTopic = async (type: 'mapels' | 'babs' | 'sub_babs', slug: string) => {
+    const normalizedSlug = normalizeCategorySlug(slug);
+    const typeLabel = type === 'mapels' ? 'Mapel' : type === 'babs' ? 'Bab' : 'Sub-bab';
+
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus ${typeLabel} "${categorySlugToLabel(normalizedSlug) || normalizedSlug}" dari semua soal?`)) {
+      return;
+    }
+
+    setDeletingTopic(true);
+    try {
+      // 1. Fetch all questions that contain this slug
+      const { data: questions, error } = await supabase
+        .from('questions')
+        .select('id, mapels, babs, sub_babs')
+        .contains(type, [normalizedSlug]);
+
+      if (error) throw error;
+      if (!questions || questions.length === 0) {
+        window.alert(`Tidak ada soal yang menggunakan ${typeLabel} "${categorySlugToLabel(normalizedSlug) || normalizedSlug}".`);
+        setDeletingTopic(false);
+        return;
+      }
+
+      // 2. Check for orphaned questions (questions with ONLY this topic)
+      const orphanedIds: number[] = [];
+      for (const q of questions) {
+        const arr = (q[type] as string[]) || [];
+        if (arr.length <= 1) {
+          orphanedIds.push(q.id);
+        }
+      }
+
+      if (orphanedIds.length > 0) {
+        setDeleteTopicError({
+          message: `Tidak dapat menghapus ${typeLabel} "${categorySlugToLabel(normalizedSlug) || normalizedSlug}" karena ${orphanedIds.length} soal hanya memiliki ${typeLabel} ini. Hapus atau edit soal tersebut terlebih dahulu.`,
+          questionIds: orphanedIds,
+        });
+        setDeletingTopic(false);
+        return;
+      }
+
+      // 3. Remove slug from all questions
+      for (const q of questions) {
+        const currentArr = (q[type] as string[]) || [];
+        const updatedArr = currentArr.filter(s => normalizeCategorySlug(s) !== normalizedSlug);
+        await supabase.from('questions').update({ [type]: updatedArr }).eq('id', q.id);
+      }
+
+      // 4. Refresh local data
+      await fetchAdminQuestions();
+      await loadAllMapelsAdmin();
+      await loadAllBabsAdmin();
+      await loadAllSubBabsAdmin();
+
+      window.alert(`${typeLabel} "${categorySlugToLabel(normalizedSlug) || normalizedSlug}" berhasil dihapus dari ${questions.length} soal.`);
+    } catch (err) {
+      console.error('Failed to delete topic:', err);
+      window.alert('Gagal menghapus topik. Silakan coba lagi.');
+    } finally {
+      setDeletingTopic(false);
     }
   };
 
@@ -804,16 +901,16 @@ export default function AdminPage() {
     }
   };
 
-  const handleMapelFilterChange = (mapel: string) => {
-    setActiveMapelFilter(mapel);
-    setActivebabFilter('all');
-    setActiveSubBabFilter('all');
+  const handleMapelFilterChange = (mapels: string[]) => {
+    setActiveMapelFilter(mapels);
+    setActivebabFilter([]);
+    setActiveSubBabFilter([]);
     void fetchAdminQuestions();
   };
 
-  const handleBabFilterChange = (bab: string) => {
-    setActivebabFilter(bab);
-    setActiveSubBabFilter('all');
+  const handleBabFilterChange = (babs: string[]) => {
+    setActivebabFilter(babs);
+    setActiveSubBabFilter([]);
     void fetchAdminQuestions();
   };
 
@@ -964,6 +1061,28 @@ export default function AdminPage() {
       console.error('Error deleting question:', err);
     } finally {
       setDeletingQuestion(null);
+    }
+  };
+
+  const handleBatchVisibilityToggle = async (isHidden: boolean) => {
+    if (selectedQuestionIds.length === 0) return;
+    
+    setBatchProcessing(true);
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .update({ is_hidden: isHidden })
+        .in('id', selectedQuestionIds);
+        
+      if (error) throw error;
+      
+      await fetchAdminQuestions();
+      setSelectedQuestionIds([]); // clear selection after successful operation
+    } catch (err) {
+      console.error('Error batch updating visibility:', err);
+      window.alert('Gagal mengubah visibilitas soal secara massal.');
+    } finally {
+      setBatchProcessing(false);
     }
   };
 
@@ -1146,77 +1265,67 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="mb-5 flex flex-col sm:flex-row gap-4 w-full sm:max-w-6xl">
-            <div className="flex-1">
-              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter Mapel</label>
-              <select
-                value={activeMapelFilter}
-                onChange={(e) => handleMapelFilterChange(e.target.value)}
-                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-              >
-                {mapelTabs.map((category) => (
-                  <option key={category} value={category}>
-                    {getCategoryLabel(category).toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter BAB</label>
-              <select
-                value={activebabFilter}
-                onChange={(e) => handleBabFilterChange(e.target.value)}
-                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-              >
-                {babTabs.map((category) => (
-                  <option key={category} value={category}>
-                    {getCategoryLabel(category).toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Filter Sub-bab</label>
-              <select
-                value={activeSubBabFilter}
-                onChange={(e) => setActiveSubBabFilter(e.target.value)}
-                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-              >
-                {subBabTabs.map((category) => (
-                  <option key={category} value={category}>
-                    {getCategoryLabel(category).toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Jenis Soal</label>
-              <select
-                value={questionTypeFilter}
-                onChange={(e) => setQuestionTypeFilter(e.target.value as 'all' | 'multiple_choice' | 'short_answer')}
-                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-              >
-                <option value="all">Semua Jenis</option>
-                <option value="multiple_choice">Pilihan Ganda</option>
-                <option value="short_answer">Isian Singkat</option>
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Visibility</label>
-              <select
-                value={visibilityFilter}
-                onChange={(e) => setVisibilityFilter(e.target.value as 'all' | 'visible' | 'hidden')}
-                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-              >
-                <option value="all">All</option>
-                <option value="visible">Visible</option>
-                <option value="hidden">Hidden</option>
-              </select>
+          <div className="bg-white shadow sm:rounded-lg border border-gray-200 p-4 mb-5 w-full sm:max-w-6xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">Mapel</span>
+                <MultiSelectDropdown
+                  label="Mapel"
+                  options={mapelTabs}
+                  selectedValues={activeMapelFilter}
+                  onChange={handleMapelFilterChange}
+                  placeholder="Semua Mapel"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">BAB</span>
+                <MultiSelectDropdown
+                  label="Bab"
+                  options={babTabs}
+                  selectedValues={activebabFilter}
+                  onChange={handleBabFilterChange}
+                  placeholder="Semua Bab"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">Sub-bab</span>
+                <MultiSelectDropdown
+                  label="Sub-bab"
+                  options={subBabTabs}
+                  selectedValues={activeSubBabFilter}
+                  onChange={(vals) => {
+                    setActiveSubBabFilter(vals);
+                    void fetchAdminQuestions();
+                  }}
+                  placeholder="Semua Sub-bab"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">Jenis Soal</label>
+                <select
+                  value={questionTypeFilter}
+                  onChange={(e) => setQuestionTypeFilter(e.target.value as 'all' | 'multiple_choice' | 'short_answer')}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+                >
+                  <option value="all">Semua Jenis</option>
+                  <option value="multiple_choice">Pilihan Ganda</option>
+                  <option value="short_answer">Isian Singkat</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">Visibility</label>
+                <select
+                  value={visibilityFilter}
+                  onChange={(e) => setVisibilityFilter(e.target.value as 'all' | 'visible' | 'hidden')}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+                >
+                  <option value="all">All</option>
+                  <option value="visible">Visible</option>
+                  <option value="hidden">Hidden</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -1243,25 +1352,67 @@ export default function AdminPage() {
                 </svg>
               </div>
             </div>
-            <div className="w-full sm:w-auto">
-              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Urutan</label>
-              <button
-                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                className={`h-11 px-6 rounded-xl text-sm font-bold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${sortOrder === 'desc'
-                  ? 'bg-nike-black border-nike-black text-white shadow-lg'
-                  : 'bg-white border-slate-200 text-slate-600 hover:border-nike-black'
-                  }`}
-              >
-                {sortOrder === 'desc' ? (
+            <div className="w-full sm:w-auto flex flex-wrap items-end gap-2">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Urutan</label>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                  className={`h-11 px-6 rounded-xl text-sm font-bold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${sortOrder === 'desc'
+                    ? 'bg-nike-black border-nike-black text-white shadow-lg'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-nike-black'
+                    }`}
+                >
+                  {sortOrder === 'desc' ? (
+                    <>
+                      <span>⬇️</span> Terbaru (Newer)
+                    </>
+                  ) : (
+                    <>
+                      <span>⬆️</span> Terlama (Older)
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Batch Select Controls */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    if (selectedQuestionIds.length === filteredQuestions.length && filteredQuestions.length > 0) {
+                      setSelectedQuestionIds([]);
+                    } else {
+                      setSelectedQuestionIds(filteredQuestions.map(q => q.id));
+                    }
+                  }}
+                  className={`h-11 px-4 rounded-xl text-sm font-bold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${selectedQuestionIds.length > 0 && selectedQuestionIds.length === filteredQuestions.length
+                    ? 'bg-[#4A90D9] border-[#4A90D9] text-white shadow-lg'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-[#4A90D9]'
+                    }`}
+                >
+                  {selectedQuestionIds.length > 0 && selectedQuestionIds.length === filteredQuestions.length ? 'Deselect All' : 'Select All'}
+                </button>
+
+                {selectedQuestionIds.length > 0 && (
                   <>
-                    <span>⬇️</span> Terbaru (Newer)
-                  </>
-                ) : (
-                  <>
-                    <span>⬆️</span> Terlama (Older)
+                    <button
+                      onClick={() => handleBatchVisibilityToggle(true)}
+                      disabled={batchProcessing}
+                      className="h-11 px-4 rounded-xl text-sm font-bold bg-[#FF3B30]/10 text-[#FF3B30] hover:bg-[#FF3B30]/20 transition-all border-2 border-transparent disabled:opacity-50 whitespace-nowrap"
+                      title="Hide Selected"
+                    >
+                      Hide ({selectedQuestionIds.length})
+                    </button>
+                    <button
+                      onClick={() => handleBatchVisibilityToggle(false)}
+                      disabled={batchProcessing}
+                      className="h-11 px-4 rounded-xl text-sm font-bold bg-[#34C759]/10 text-[#34C759] hover:bg-[#34C759]/20 transition-all border-2 border-transparent disabled:opacity-50 whitespace-nowrap"
+                      title="Show Selected"
+                    >
+                      Visible ({selectedQuestionIds.length})
+                    </button>
                   </>
                 )}
-              </button>
+              </div>
             </div>
           </div>
 
@@ -1288,7 +1439,21 @@ export default function AdminPage() {
                       <div className="font-semibold text-slate-700 text-sm leading-relaxed">
                         Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
                       </div>
-                      <span className="text-[10px] font-bold text-slate-300 bg-slate-50 px-1.5 py-0.5 rounded">{question.id}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-300 bg-slate-50 px-1.5 py-0.5 rounded">{question.id}</span>
+                        <input
+                          type="checkbox"
+                          checked={selectedQuestionIds.includes(question.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedQuestionIds([...selectedQuestionIds, question.id]);
+                            } else {
+                              setSelectedQuestionIds(selectedQuestionIds.filter(id => id !== question.id));
+                            }
+                          }}
+                          className="w-5 h-5 rounded border-slate-300 text-[#4A90D9] focus:ring-[#4A90D9] cursor-pointer"
+                        />
+                      </div>
                     </div>
                     <div className="text-xs text-slate-400 mb-1">MAPEL: {question.mapels?.join(', ').replaceAll('_', ' ')}</div>
                     <div className="text-xs text-slate-400 mb-1">BAB: {question.babs?.join(', ').replaceAll('_', ' ')}</div>
@@ -1397,75 +1562,56 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 w-full">
-                {/* Category selection — dropdown */}
-                <div className="flex-1">
-                  <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Filter Mapel</label>
-                  <div className="relative">
-                    <select
-                      value={activeResMapel}
-                      onChange={(e) => handleResMapelChange(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-                    >
-                      {mapelTabs.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {getCategoryLabel(cat).toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
+              <div className="bg-white shadow sm:rounded-lg border border-gray-200 p-4 mb-5 w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* Category selection — dropdown */}
+                  <div className="space-y-1.5">
+                    <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60 ml-1">Mapel</span>
+                    <MultiSelectDropdown
+                      label="Mapel"
+                      options={resMapelTabs}
+                      selectedValues={activeResMapel}
+                      onChange={handleResMapelChange}
+                      placeholder="Semua Mapel"
+                    />
                   </div>
-                </div>
 
-                <div className="flex-1">
-                  <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Filter BAB</label>
-                  <div className="relative">
-                    <select
-                      value={activeResbab}
-                      onChange={(e) => handleResbabChange(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-                    >
-                      {babTabs.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {getCategoryLabel(cat).toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-1.5">
+                    <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60 ml-1">BAB</span>
+                    <MultiSelectDropdown
+                      label="Bab"
+                      options={resBabTabs}
+                      selectedValues={activeResbab}
+                      onChange={handleResbabChange}
+                      placeholder="Semua Bab"
+                    />
                   </div>
-                </div>
 
-                <div className="flex-1">
-                  <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Filter Sub-bab</label>
-                  <div className="relative">
-                    <select
-                      value={activeResSubBab}
-                      onChange={(e) => handleResSubBabChange(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-                    >
-                      {subBabTabs.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {getCategoryLabel(cat).toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-1.5">
+                    <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60 ml-1">Sub-bab</span>
+                    <MultiSelectDropdown
+                      label="Sub-bab"
+                      options={resSubBabTabs}
+                      selectedValues={activeResSubBab}
+                      onChange={handleResSubBabChange}
+                      placeholder="Semua Sub-bab"
+                    />
                   </div>
-                </div>
 
-                <div className="flex-1">
-                  <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Mode Filter</label>
-                  <div className="relative">
-                    <select
-                      value={activeModeFilter}
-                      onChange={(e) => handleModeFilterChange(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-                    >
-                      <option value="all">Semua Mode</option>
-                      <option value="exam">📝 Exam</option>
-                      <option value="survival">⚔️ Survival</option>
-                    </select>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60 ml-1">Mode Filter</label>
+                    <div className="relative">
+                      <select
+                        value={activeModeFilter}
+                        onChange={(e) => handleModeFilterChange(e.target.value)}
+                        className="w-full bg-white border border-gray-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
+                      >
+                        <option value="all">Semua Mode</option>
+                        <option value="exam">📝 Exam</option>
+                        <option value="survival">⚔️ Survival</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1524,7 +1670,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {liveSessions
-                        .filter(s => (activeResMapel === 'all' || s.mapel === activeResMapel) && (activeResbab === 'all' || s.bab === activeResbab) && (activeResSubBab === 'all' || s.sub_bab === activeResSubBab) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
+                        .filter(s => (activeResMapel.length === 0 || (s.mapel && activeResMapel.includes(s.mapel))) && (activeResbab.length === 0 || (s.bab && activeResbab.includes(s.bab))) && (activeResSubBab.length === 0 || (s.sub_bab && activeResSubBab.includes(s.sub_bab))) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
                         .map((session) => {
                           const answeredCount = Object.keys(session.user_answers).length;
                           const progress = Math.round((answeredCount / session.question_count) * 100);
@@ -1784,7 +1930,7 @@ export default function AdminPage() {
                             <p className="text-xs text-gray-500 uppercase tracking-wider">{mapelSlug}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                           <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
                             <button
                               type="button"
@@ -1811,6 +1957,15 @@ export default function AdminPage() {
                               <svg className="w-5 h-5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                             </button>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTopic('mapels', mapelSlug)}
+                            disabled={deletingTopic}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                            title="Hapus Mapel"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
                         </div>
                       </div>
 
@@ -1835,27 +1990,38 @@ export default function AdminPage() {
                                     </svg>
                                     <h4 className="font-semibold text-gray-700 text-sm uppercase">{babLabel}</h4>
                                   </div>
-                                  <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                    <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleVisibilityChange('babs', babSlug, 'hidden')}
+                                        className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                      >
+                                        <svg className="w-3.5 h-3.5 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleVisibilityChange('babs', babSlug, 'admin_only')}
+                                        className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                      >
+                                        <span className="font-bold text-base leading-none text-white pb-0.5">/</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleVisibilityChange('babs', babSlug, 'visible')}
+                                        className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                      >
+                                        <svg className="w-4 h-4 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                      </button>
+                                    </div>
                                     <button
                                       type="button"
-                                      onClick={() => handleVisibilityChange('babs', babSlug, 'hidden')}
-                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                      onClick={() => handleDeleteTopic('babs', babSlug)}
+                                      disabled={deletingTopic}
+                                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                                      title="Hapus Bab"
                                     >
-                                      <svg className="w-3.5 h-3.5 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleVisibilityChange('babs', babSlug, 'admin_only')}
-                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                    >
-                                      <span className="font-bold text-base leading-none text-white pb-0.5">/</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleVisibilityChange('babs', babSlug, 'visible')}
-                                      className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                    >
-                                      <svg className="w-4 h-4 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                     </button>
                                   </div>
                                 </div>
@@ -1871,6 +2037,7 @@ export default function AdminPage() {
                                         return (
                                           <div key={subSlug} className="flex items-center justify-between p-2 hover:bg-gray-50 transition-colors">
                                             <p className="text-xs font-medium text-gray-500 capitalize">{subLabel}</p>
+                                           <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                                             <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
                                               <button
                                                 type="button"
@@ -1894,6 +2061,16 @@ export default function AdminPage() {
                                                 <svg className="w-3.5 h-3.5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                               </button>
                                             </div>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDeleteTopic('sub_babs', subSlug)}
+                                              disabled={deletingTopic}
+                                              className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                                              title="Hapus Sub-bab"
+                                            >
+                                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                           </div>
                                           </div>
                                         );
                                       })
@@ -1923,6 +2100,46 @@ export default function AdminPage() {
                 className="px-6 h-10 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {settingsSaving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Topic Error Modal */}
+      {deleteTopicError && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="p-6 border-b border-red-100 bg-red-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-red-800">Tidak Dapat Menghapus</h3>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-700">{deleteTopicError.message}</p>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">ID Soal yang Terdampak</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {deleteTopicError.questionIds.map(id => (
+                    <span key={id} className="inline-flex items-center px-2.5 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-bold font-mono">
+                      #{id}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t bg-gray-50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteTopicError(null)}
+                className="px-5 h-9 rounded-lg bg-gray-800 text-white text-sm font-bold hover:bg-gray-900 transition-colors"
+              >
+                Tutup
               </button>
             </div>
           </div>

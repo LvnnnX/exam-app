@@ -6,6 +6,7 @@ import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlaye
 import { fetchQuestionsByIds, fetchSubBabsAdmin, type RawQuestion, type SubBabInfo } from '@/lib/questions';
 import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
+import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 
 export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string[], babs: string[], subBabs: { label: string, value: string }[] }) {
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
@@ -110,6 +111,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
 
   const [activeSessions, setActiveSessions] = useState<KuisLog[]>([]);
   const [history, setHistory] = useState<KuisLog[]>([]);
+  const [historyFilterMapels, setHistoryFilterMapels] = useState<string[]>([]);
+  const [historyFilterBabs, setHistoryFilterBabs] = useState<string[]>([]);
+  const [historyFilterSubBabs, setHistoryFilterSubBabs] = useState<string[]>([]);
 
   // Pagination state
   const [activePage, setActivePage] = useState(1);
@@ -1489,67 +1493,135 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
             </div>
           )}
 
-          {activeView === 'history' && (
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topik</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Winner</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top Score</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {history.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">No history found.</td>
-                      </tr>
-                    ) : history.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map(h => (
-                      <tr key={h.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                          <span className="block max-w-[140px] truncate" title={h.quiz_code}>{h.quiz_code}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                          <span
-                            className="block max-w-[220px] truncate"
-                            title={`${h.mapel?.replace(/_/g, ' ')} - ${h.bab?.replace(/_/g, ' ')} - ${h.sub_bab?.replace(/_/g, ' ')}`}
-                          >
-                            {h.mapel?.replace(/_/g, ' ')} - {h.bab?.replace(/_/g, ' ')} - {h.sub_bab?.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">
-                          <span className="block max-w-[180px] truncate" title={h.winner}>{h.winner}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-green">{h.top_score} / {h.question_count}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(h.created_at).toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-gray-100 text-gray-700">{h.status}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button onClick={() => setActiveSession(h)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {activeView === 'history' && (() => {
+            const filteredHistory = history.filter(h => {
+              if (historyFilterMapels.length > 0) {
+                if (!h.mapel) return false;
+                if (h.mapel !== 'Semua MAPEL') {
+                  const hMapels = h.mapel.split(',').map(s => s.trim());
+                  if (!hMapels.some(m => historyFilterMapels.includes(m))) return false;
+                }
+              }
+              if (historyFilterBabs.length > 0) {
+                if (!h.bab) return false;
+                if (h.bab !== 'Semua BAB') {
+                  const hBabs = h.bab.split(',').map(s => s.trim());
+                  if (!hBabs.some(b => historyFilterBabs.includes(b))) return false;
+                }
+              }
+              if (historyFilterSubBabs.length > 0) {
+                if (!h.sub_bab) return false;
+                if (h.sub_bab !== 'Semua Sub-bab') {
+                  const hSubBabs = h.sub_bab.split(',').map(s => s.trim());
+                  if (!hSubBabs.some(sb => historyFilterSubBabs.includes(sb))) return false;
+                }
+              }
+              return true;
+            });
+            
+            const historyMapelOptions = mapels.map(m => ({ label: m.replace(/_/g, ' '), value: m }));
+            const historyBabOptions = babs.map(b => ({ label: b.replace(/_/g, ' '), value: b }));
+            const historySubBabOptions = subBabs;
+
+            return (
+              <div className="space-y-4">
+                <div className="bg-white shadow sm:rounded-lg border border-gray-200 p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Mapel</span>
+                      <MultiSelectDropdown
+                        label="Mapel"
+                        options={historyMapelOptions}
+                        selectedValues={historyFilterMapels}
+                        onChange={setHistoryFilterMapels}
+                        placeholder="Semua Mapel"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Bab</span>
+                      <MultiSelectDropdown
+                        label="Bab"
+                        options={historyBabOptions}
+                        selectedValues={historyFilterBabs}
+                        onChange={setHistoryFilterBabs}
+                        placeholder="Semua Bab"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Sub-bab</span>
+                      <MultiSelectDropdown
+                        label="Sub-bab"
+                        options={historySubBabOptions}
+                        selectedValues={historyFilterSubBabs}
+                        onChange={setHistoryFilterSubBabs}
+                        placeholder="Semua Sub-bab"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topik</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Winner</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top Score</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredHistory.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="px-6 py-8 text-center text-gray-500">No history found.</td>
+                          </tr>
+                        ) : filteredHistory.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map(h => (
+                          <tr key={h.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                              <span className="block max-w-[140px] truncate" title={h.quiz_code}>{h.quiz_code}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                              <span
+                                className="block max-w-[220px] truncate"
+                                title={`${h.mapel?.replace(/_/g, ' ')} - ${h.bab?.replace(/_/g, ' ')} - ${h.sub_bab?.replace(/_/g, ' ')}`}
+                              >
+                                {h.mapel?.replace(/_/g, ' ')} - {h.bab?.replace(/_/g, ' ')} - {h.sub_bab?.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">
+                              <span className="block max-w-[180px] truncate" title={h.winner}>{h.winner}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-green">{h.top_score} / {h.question_count}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(h.created_at).toLocaleString()}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-gray-100 text-gray-700">{h.status}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <button onClick={() => setActiveSession(h)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredHistory.length > historyPerPage && (
+                    <Pagination
+                      totalItems={filteredHistory.length}
+                      itemsPerPage={historyPerPage}
+                      currentPage={historyPage}
+                      onPageChange={setHistoryPage}
+                    />
+                  )}
+                </div>
               </div>
-              {history.length > historyPerPage && (
-                <Pagination
-                  totalItems={history.length}
-                  itemsPerPage={historyPerPage}
-                  currentPage={historyPage}
-                  onPageChange={setHistoryPage}
-                />
-              )}
-            </div>
-          )}
+            );
+          })()}
         </>
       )}
       {/* Player Answers Modal */}
