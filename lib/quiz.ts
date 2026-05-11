@@ -2,7 +2,7 @@ import { supabase, EXAM_SECRET_KEY } from './supabase';
 import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './questions';
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
-const KUIS_SAFE_COLUMNS = 'id, quiz_code, mapel, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at, scheduled_at, quiz_mode';
+const KUIS_SAFE_COLUMNS = 'id, quiz_code, mapel, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at, scheduled_at, quiz_mode, allow_join_mid_game';
 export const QUIZ_CODE_LENGTH = 6;
 
 const QUIZ_CODE_ALPHABET = '0123456789';
@@ -29,6 +29,7 @@ export type KuisLog = {
   paused_at?: string;
   scheduled_at?: string;
   quiz_mode?: 'strict' | 'standard';
+  allow_join_mid_game?: boolean;
 };
 
 export type Player = {
@@ -112,7 +113,8 @@ export async function createQuizSession(
   durationMinutes: number,
   scheduledAt?: string,
   percentages?: Record<string, number>,
-  quizMode: 'strict' | 'standard' = 'strict'
+  quizMode: 'strict' | 'standard' = 'strict',
+  allowJoinMidGame: boolean = true
 ): Promise<KuisLog | null> {
   const code = generateQuizCode();
   let questionIds: number[] = [];
@@ -245,6 +247,7 @@ export async function createQuizSession(
     status: 'waiting',
     question_ids: questionIds,
     quiz_mode: quizMode,
+    allow_join_mid_game: allowJoinMidGame,
   };
   if (scheduledAt) {
     insertData.scheduled_at = scheduledAt;

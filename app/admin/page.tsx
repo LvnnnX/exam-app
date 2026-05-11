@@ -161,6 +161,8 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
   const [batchProcessing, setBatchProcessing] = useState(false);
+  const [batchVisibilityModalOpen, setBatchVisibilityModalOpen] = useState(false);
+  const [batchVisibilityTarget, setBatchVisibilityTarget] = useState(false);
 
   // Auth state
   const [email, setEmail] = useState('');
@@ -1066,7 +1068,7 @@ export default function AdminPage() {
 
   const handleBatchVisibilityToggle = async (isHidden: boolean) => {
     if (selectedQuestionIds.length === 0) return;
-    
+
     setBatchProcessing(true);
     try {
       const { error } = await supabase
@@ -1083,6 +1085,7 @@ export default function AdminPage() {
       window.alert('Gagal mengubah visibilitas soal secara massal.');
     } finally {
       setBatchProcessing(false);
+      setBatchVisibilityModalOpen(false);
     }
   };
 
@@ -1395,7 +1398,10 @@ export default function AdminPage() {
                 {selectedQuestionIds.length > 0 && (
                   <>
                     <button
-                      onClick={() => handleBatchVisibilityToggle(true)}
+                      onClick={() => {
+                        setBatchVisibilityTarget(true);
+                        setBatchVisibilityModalOpen(true);
+                      }}
                       disabled={batchProcessing}
                       className="h-11 px-4 rounded-xl text-sm font-bold bg-[#FF3B30]/10 text-[#FF3B30] hover:bg-[#FF3B30]/20 transition-all border-2 border-transparent disabled:opacity-50 whitespace-nowrap"
                       title="Hide Selected"
@@ -1403,7 +1409,10 @@ export default function AdminPage() {
                       Hide ({selectedQuestionIds.length})
                     </button>
                     <button
-                      onClick={() => handleBatchVisibilityToggle(false)}
+                      onClick={() => {
+                        setBatchVisibilityTarget(false);
+                        setBatchVisibilityModalOpen(true);
+                      }}
                       disabled={batchProcessing}
                       className="h-11 px-4 rounded-xl text-sm font-bold bg-[#34C759]/10 text-[#34C759] hover:bg-[#34C759]/20 transition-all border-2 border-transparent disabled:opacity-50 whitespace-nowrap"
                       title="Show Selected"
@@ -2140,6 +2149,64 @@ export default function AdminPage() {
                 className="px-5 h-9 rounded-lg bg-gray-800 text-white text-sm font-bold hover:bg-gray-900 transition-colors"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Visibility Confirmation Modal */}
+      {batchVisibilityModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className={`p-6 border-b ${batchVisibilityTarget ? 'border-red-100 bg-red-50' : 'border-green-100 bg-green-50'}`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${batchVisibilityTarget ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-500'}`}>
+                  {batchVisibilityTarget ? (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </div>
+                <h3 className={`text-lg font-bold ${batchVisibilityTarget ? 'text-red-800' : 'text-green-800'}`}>
+                  Konfirmasi {batchVisibilityTarget ? 'Sembunyikan' : 'Tampilkan'}
+                </h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Apakah Anda yakin ingin <strong>{batchVisibilityTarget ? 'menyembunyikan (hide)' : 'menampilkan (visible)'}</strong> {selectedQuestionIds.length} soal yang telah dipilih secara bersamaan?
+              </p>
+            </div>
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setBatchVisibilityModalOpen(false)}
+                disabled={batchProcessing}
+                className="px-4 h-10 rounded-xl bg-white border-2 border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBatchVisibilityToggle(batchVisibilityTarget)}
+                disabled={batchProcessing}
+                className={`px-5 h-10 rounded-xl text-white text-sm font-bold transition-all shadow-md disabled:opacity-50 flex items-center gap-2 ${
+                  batchVisibilityTarget ? 'bg-[#FF3B30] hover:bg-red-600 shadow-red-200' : 'bg-[#34C759] hover:bg-green-600 shadow-green-200'
+                }`}
+              >
+                {batchProcessing && (
+                  <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {batchProcessing ? 'Memproses...' : 'Ya, Lanjutkan'}
               </button>
             </div>
           </div>

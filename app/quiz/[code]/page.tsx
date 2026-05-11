@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use, useRef, useCallback } from 'react';
+import React, { useState, useEffect, use, useRef, useCallback, useLayoutEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { secureLoad, secureSave, secureRemove } from '@/lib/security';
 import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, normalizeQuizCode, formatHMS, type KuisLog, type Player } from '@/lib/quiz';
@@ -42,11 +42,98 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const [showNavPopup, setShowNavPopup] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const isStandard = session?.quiz_mode === 'standard';
+  const leaderboardRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const previousLeaderboardRects = useRef<Map<string, DOMRect>>(new Map());
 
   const selectedAnswerRef = useRef<AnswerData | null>(null);
   useEffect(() => {
     selectedAnswerRef.current = selectedAnswer;
   }, [selectedAnswer]);
+
+  useLayoutEffect(() => {
+    const rowElements = leaderboard
+      .map((entry) => leaderboardRowRefs.current[entry.id])
+      .filter((element): element is HTMLDivElement => Boolean(element));
+
+    rowElements.forEach((element) => {
+      element.getAnimations().forEach((animation) => animation.cancel());
+    });
+
+    const nextRects = new Map<string, DOMRect>();
+    leaderboard.forEach((entry) => {
+      const element = leaderboardRowRefs.current[entry.id];
+      if (element) {
+        nextRects.set(entry.id, element.getBoundingClientRect());
+      }
+    });
+
+    const previousRects = previousLeaderboardRects.current;
+
+    leaderboard.forEach((entry, index) => {
+      const element = leaderboardRowRefs.current[entry.id];
+      const nextRect = nextRects.get(entry.id);
+      if (!element || !nextRect) return;
+
+      const previousRect = previousRects.get(entry.id);
+      if (previousRect) {
+        const deltaX = previousRect.left - nextRect.left;
+        const deltaY = previousRect.top - nextRect.top;
+        if (deltaX === 0 && deltaY === 0) {
+          return;
+        }
+
+        const moveDistance = Math.hypot(deltaX, deltaY);
+        const pulseScale = 1.02 + Math.min(0.015, moveDistance / 2400);
+
+        element.animate(
+          [
+            { transform: `translate(${deltaX}px, ${deltaY}px) scale(1)`, boxShadow: '0 0 0 rgba(0, 0, 0, 0)' },
+            { offset: 0.38, transform: `translate(${deltaX * 0.45}px, ${deltaY * 0.45}px) scale(${pulseScale})`, boxShadow: '0 16px 32px rgba(15, 23, 42, 0.16)' },
+            { transform: 'translate(0px, 0px) scale(1)', boxShadow: '0 0 0 rgba(0, 0, 0, 0)' },
+          ],
+          {
+            duration: Math.min(660, Math.max(320, 240 + Math.min(260, Math.abs(deltaY)))),
+            easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+            fill: 'both',
+          }
+        );
+        return;
+      }
+
+      element.animate(
+        [
+          { opacity: 0, transform: 'translateY(14px) scale(0.98)' },
+          { opacity: 1, transform: 'translateY(0) scale(1)' },
+        ],
+        {
+          duration: 320 + index * 30,
+          easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+          fill: 'both',
+          delay: index * 24,
+        }
+      );
+    });
+
+    previousLeaderboardRects.current = nextRects;
+  }, [leaderboard]);
+
+  const getRankBadgeClasses = (rank: number, isCurrentPlayer: boolean) => {
+    if (rank === 1) {
+      return isCurrentPlayer
+        ? 'border-white/30 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
+        : 'border-amber-300 bg-amber-50 text-amber-800 shadow-[0_0_0_1px_rgba(245,158,11,0.10)]';
+    }
+
+    if (rank === 2) {
+      return isCurrentPlayer
+        ? 'border-white/30 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
+        : 'border-slate-300 bg-slate-50 text-slate-700 shadow-[0_0_0_1px_rgba(148,163,184,0.12)]';
+    }
+
+    return isCurrentPlayer
+      ? 'border-white/30 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
+      : 'border-orange-300 bg-orange-50 text-orange-800 shadow-[0_0_0_1px_rgba(251,146,60,0.10)]';
+  };
 
   // ─── Anti-Cheat Security ──────────────────────────────────────────
   const examSecurityActive = session?.status === 'active' && !!player && !isFinished;
@@ -192,8 +279,8 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     if (!name.trim()) return;
     setLoading(true);
 
-    if (session?.status === 'active' || session?.status === 'paused') {
-      alert('Kuis sedang berjalan atau ditunda. Anda tidak dapat bergabung.');
+    if ((session?.status === 'active' || session?.status === 'paused') && session?.allow_join_mid_game === false) {
+      alert('Maaf, kuis ini telah dimulai dan tidak menerima peserta baru.');
       setLoading(false);
       return;
     }
@@ -456,9 +543,24 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
           <div className="space-y-4 mb-12">
             {leaderboard.map((lb, idx) => (
-              <div key={lb.id} className={`p-6 sm:p-8 rounded-[20px] flex justify-between items-center ${lb.id === player?.id ? 'bg-nike-black text-nike-white' : 'bg-nike-grey-100 text-nike-black'}`}>
+              <div
+                key={lb.id}
+                ref={(element) => { leaderboardRowRefs.current[lb.id] = element; }}
+                className={`p-6 sm:p-8 rounded-[20px] flex justify-between items-center transform-gpu will-change-transform ${lb.id === player?.id ? 'bg-nike-black text-nike-white' : 'bg-nike-grey-100 text-nike-black'}`}
+              >
                 <div className="flex items-center gap-4">
-                  <span className={`font-display text-[24px] shrink-0 ${lb.id === player?.id ? 'text-nike-grey-300' : 'text-nike-grey-400'}`}>{(idx + 1).toString().padStart(2, '0')}</span>
+                  {idx < 3 ? (
+                    <div className="relative">
+                      <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[20px] sm:text-[24px] drop-shadow-sm z-10">
+                        {idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉'}
+                      </span>
+                      <span className={`inline-flex min-w-[76px] items-center justify-center gap-0.5 rounded-full border-2 px-3 py-1 font-display text-[16px] sm:text-[18px] leading-none tracking-[0.18em] shrink-0 ${getRankBadgeClasses(idx + 1, lb.id === player?.id)}`}>
+                        <span>{(idx + 1).toString().padStart(2, '0')}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <span className={`font-display text-[24px] shrink-0 ${lb.id === player?.id ? 'text-nike-grey-300' : 'text-nike-grey-400'}`}>{(idx + 1).toString().padStart(2, '0')}</span>
+                  )}
                   <span className="font-bold text-[18px] sm:text-[20px] leading-tight flex-1">{lb.name}</span>
                 </div>
                 <div className="text-right flex flex-col items-end">

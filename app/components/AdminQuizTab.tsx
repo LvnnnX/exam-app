@@ -7,6 +7,7 @@ import { fetchQuestionsByIds, fetchSubBabsAdmin, type RawQuestion, type SubBabIn
 import { normalizeCategorySlug } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
+import LeaderboardViewModal from '@/app/components/LeaderboardViewModal';
 
 export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string[], babs: string[], subBabs: { label: string, value: string }[] }) {
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
@@ -88,7 +89,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   const [durationMinutes, setDurationMinutes] = useState<number>(30);
   const [creating, setCreating] = useState(false);
   const [quizMode, setQuizMode] = useState<'strict' | 'standard'>('strict');
-
+  const [allowJoinMidGame, setAllowJoinMidGame] = useState(true);
   // Schedule state
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
@@ -122,6 +123,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showViewQuestions, setShowViewQuestions] = useState(false);
+  const [showLeaderboardView, setShowLeaderboardView] = useState(false);
   const [allPlayerAnswers, setAllPlayerAnswers] = useState<KuisResult[]>([]);
   const [loadingAllAnswers, setLoadingAllAnswers] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -342,7 +344,8 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
       durationMinutes,
       scheduledAt,
       percentagesEnabled ? subBabPercentages : undefined,
-      quizMode
+      quizMode,
+      allowJoinMidGame
     );
     if (session) {
       setActiveSession(session);
@@ -1033,6 +1036,32 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               </p>
             </div>
 
+            {/* Allow Join Mid Game */}
+            <div className="p-3 md:p-4 py-3 bg-white border-b border-gray-100">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-md bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
+                  <span className="text-sm">🚪</span>
+                </div>
+                <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Masuk Tengah Ujian</label>
+              </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors relative ${allowJoinMidGame ? 'bg-[#34C759]' : 'bg-gray-300'}`}
+                  onClick={() => setAllowJoinMidGame(!allowJoinMidGame)}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 absolute top-1 ${allowJoinMidGame ? 'translate-x-6' : 'translate-x-0'}`} />
+                </div>
+                <span className={`text-[11px] font-bold ${allowJoinMidGame ? 'text-[#34C759]' : 'text-gray-500'}`}>
+                  {allowJoinMidGame ? 'ON (DIIZINKAN)' : 'OFF (DILARANG)'}
+                </span>
+              </div>
+              <p className="text-[9px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">
+                {allowJoinMidGame
+                  ? 'Peserta baru BISA bergabung meskipun kuis sudah dimulai.'
+                  : 'Peserta baru TIDAK BISA bergabung jika kuis sudah dimulai.'}
+              </p>
+            </div>
+
             {/* Duration */}
             <div className="p-3 md:p-4 py-3">
               <div className="flex items-center gap-2 mb-2">
@@ -1187,7 +1216,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
                     {isExpired ? '⏰ Waktu Habis'
                       : activeSession.status === 'paused' ? '⏸️ Sisa Waktu (Paused)'
-                      : '⏱️ Sisa Waktu'}
+                        : '⏱️ Sisa Waktu'}
                   </p>
                   <div className="flex items-baseline gap-1 font-mono">
                     <div className="flex flex-col items-center">
@@ -1344,7 +1373,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                     }}
                     className="px-6 py-2 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
                   >
-                    <span>📋</span> View Questions
+                    <span>📋</span> Questions
                   </button>
                 </div>
               </div>
@@ -1352,8 +1381,17 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
           </div>
 
           <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center gap-4 bg-gray-50">
               <h3 className="font-bold text-gray-900">Players ({players.length})</h3>
+              <button
+                type="button"
+                onClick={() => setShowLeaderboardView(true)}
+                disabled={players.length === 0}
+                className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-amber-700 transition-all hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span>🏁</span>
+                Leaderboard View
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -1518,7 +1556,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               }
               return true;
             });
-            
+
             const historyMapelOptions = mapels.map(m => ({ label: m.replace(/_/g, ' '), value: m }));
             const historyBabOptions = babs.map(b => ({ label: b.replace(/_/g, ' '), value: b }));
             const historySubBabOptions = subBabs;
@@ -1624,6 +1662,16 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
           })()}
         </>
       )}
+
+      <LeaderboardViewModal
+        open={showLeaderboardView && !!activeSession}
+        session={activeSession}
+        players={players}
+        onClose={() => setShowLeaderboardView(false)}
+        currentTime={currentTime}
+        serverTimeOffset={serverTimeOffset}
+      />
+
       {/* Player Answers Modal */}
       {viewingPlayer && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)}>
@@ -1683,7 +1731,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                   {(() => {
                     const allIds = viewingPlayer.question_ids || activeSession?.question_ids || [];
                     const answeredIds = playerAnswers.map(a => a.question_id);
-                    
+
                     // Display exactly in the order the user received them
                     const orderedIds = [
                       ...allIds,
@@ -1766,11 +1814,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowAllAnswers(!showAllAnswers)}
-                  className={`h-10 px-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2 ${
-                    showAllAnswers 
-                      ? 'bg-indigo-600 border-transparent text-white shadow-lg shadow-indigo-200' 
-                      : 'bg-white border-gray-200 text-gray-500 hover:border-indigo-600 hover:text-indigo-600'
-                  }`}
+                  className={`h-10 px-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2 ${showAllAnswers
+                    ? 'bg-indigo-600 border-transparent text-white shadow-lg shadow-indigo-200'
+                    : 'bg-white border-gray-200 text-gray-500 hover:border-indigo-600 hover:text-indigo-600'
+                    }`}
                 >
                   {showAllAnswers ? '👁️ Hide Answers' : '👁️ Show Answers'}
                 </button>
@@ -1790,8 +1837,8 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
 
                     const isShortAnswer = question.question_type === 'short_answer';
                     const correctLabel = question.correct_answer;
-                    const correctOptionText = isShortAnswer 
-                      ? question.short_answer 
+                    const correctOptionText = isShortAnswer
+                      ? question.short_answer
                       : (question as any)[`option_${correctLabel.toLowerCase()}`];
                     const correctAnswers = allPlayerAnswers.filter(a => a.question_id === qId && a.is_correct);
                     const totalAnswers = allPlayerAnswers.filter(a => a.question_id === qId);

@@ -810,10 +810,10 @@ export default function ExamPage() {
         setCodeError('Kode tidak valid');
       } else if (quiz.status === 'finished') {
         setCodeError('Kuis telah berakhir');
-      } else if (quiz.status === 'active' || quiz.status === 'paused') {
-        setCodeError('Kuis sedang berjalan');
+      } else if ((quiz.status === 'active' || quiz.status === 'paused') && quiz.allow_join_mid_game === false) {
+        setCodeError('Kuis sedang berjalan dan tidak menerima peserta baru');
       } else {
-        // Valid waiting session
+        // Valid waiting session or mid-game join allowed
         window.location.href = `/quiz/${quiz.quiz_code}`;
       }
     } catch (err) {

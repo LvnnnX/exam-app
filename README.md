@@ -26,19 +26,25 @@ Platform ujian online modern dengan estetika desain **Nike-Inspired** yang clean
 *   **Lobby System**: Admin membuat sesi kuis dengan kode unik.
 *   **Waiting Room**: UI interaktif yang menampilkan topik kuis (MAPEL - BAB - SUBBAB) dan status admin.
 *   **Scheduled Quiz**: Dukungan penjadwalan kuis dengan **Dark-Themed Countdown Timer**.
+*   **Allow Join Mid-Game**: Opsi untuk mengizinkan atau melarang peserta baru bergabung setelah kuis dimulai.
 *   **Per-User Randomization**: Urutan soal dan opsi jawaban diacak unik per peserta.
 *   **Server-Side Flow Validation**: Validasi urutan soal dan kepemilikan sesi di server untuk mencegah bypass jawaban.
 *   **Live Leaderboard**: Papan skor real-time dengan sinkronisasi Supabase Realtime.
+*   **Top 3 Crowns**: Animasi mahkota (Emas, Perak, Perunggu) untuk peserta peringkat 3 besar saat kuis selesai.
 
 ### 🔐 Fitur Admin (Dashboard)
 *   **Admin Quiz Management**:
     *   **Topic Standardization**: Format topik otomatis `(MAPEL) - (BAB) - (SUBBAB)` di seluruh dashboard & history.
     *   **Live Monitoring**: Pantau progress, skor, dan jawaban peserta secara real-time.
     *   **Session Control**: Start, Pause, Resume, dan End kuis secara instan.
+    *   **Leaderboard View (Horse Race)**: Visualisasi pacuan kuda real-time untuk memantau persaingan peserta secara dinamis dengan baris tetap dan mahkota yang berpindah posisi.
 *   **Manajemen Soal (CRUD)**:
-    *   **Rich Text Editor (TipTap) & LaTeX**: Dukungan KaTeX, tabel, blok kode, dan formatting list yang sudah diperbaiki.
+    *   **Rich Text Editor (TipTap) & LaTeX**: Dukungan KaTeX, tabel, blok kode, dan formatting list.
+    *   **Batch Actions**: Sembunyikan atau tampilkan banyak soal sekaligus dengan fitur multi-select.
+    *   **Exact ID Search**: Cari soal dengan cepat menggunakan ID spesifik.
     *   **Integrasi Gambar**: Upload gambar langsung ke Supabase Storage.
-*   **History & Analytics**: Laporan riwayat kuis dengan paginasi dan filter kategori.
+*   **Topic Management**: Menu pengaturan untuk menghapus Mapel, Bab, dan Subbab dengan validasi keterkaitan soal.
+*   **History & Analytics**: Laporan riwayat kuis dengan paginasi dan filter kategori cerdas (mendukung 'Semua Mapel/Bab').
 
 ---
 
