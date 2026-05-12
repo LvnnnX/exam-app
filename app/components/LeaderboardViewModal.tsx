@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { formatHMS, type KuisLog, type Player } from '@/lib/quiz';
+import { type KuisLog, type Player } from '@/lib/quiz';
+import { HORSE_SKINS, getHorseSkin } from '@/lib/horse-skins';
+import HorseAvatar from '@/app/components/HorseAvatar';
+import CrownIcon from '@/app/components/CrownIcon';
+import confetti from 'canvas-confetti';
 
 type LeaderboardViewModalProps = {
   open: boolean;
@@ -12,33 +16,16 @@ type LeaderboardViewModalProps = {
   serverTimeOffset?: number;
 };
 
-type HorseTheme = {
-  bar: string;
-  ring: string;
-};
-
-const HORSE_THEMES: HorseTheme[] = [
-  { bar: 'from-amber-400 to-orange-500', ring: 'ring-amber-300' },
-  { bar: 'from-slate-500 to-slate-700', ring: 'ring-slate-300' },
-  { bar: 'from-emerald-400 to-lime-500', ring: 'ring-emerald-300' },
-  { bar: 'from-fuchsia-400 to-rose-500', ring: 'ring-fuchsia-300' },
-  { bar: 'from-sky-400 to-blue-500', ring: 'ring-sky-300' },
-  { bar: 'from-orange-400 to-red-500', ring: 'ring-orange-300' },
-];
-
-function hashString(value: string): number {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-  return hash;
-}
-
 export default function LeaderboardViewModal({ open, session, players, onClose, currentTime, serverTimeOffset = 0 }: LeaderboardViewModalProps) {
   const rankBadgeRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const crownRefs = useRef<Record<string, HTMLSpanElement | null>>({});
+  const horseScaleRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const horseGallopRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const previousRanksRef = useRef<Map<string, number>>(new Map());
-  const [internalNow, setInternalNow] = useState(Date.now());
+  const previousScoresRef = useRef<Map<string, number>>(new Map());
+  const gallopingRef = useRef<Set<string>>(new Set());
+  const finishedPlayersRef = useRef<Set<string>>(new Set());
+  const [internalNow, setInternalNow] = useState(() => Date.now());
 
   // Use currentTime if provided (from parent), otherwise fallback to internalNow
   const effectiveNow = currentTime !== undefined ? currentTime : internalNow;
@@ -53,7 +40,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
 
   const timeRemaining = useMemo(() => {
     if (!session || session.status === 'finished' || !session.expires_at) return 0;
-    
+
     const expiresAt = new Date(session.expires_at).getTime();
     const syncedNow = (session.status === 'paused' && session.paused_at)
       ? new Date(session.paused_at).getTime()
@@ -71,16 +58,29 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   }, [timeRemaining]);
 
+  const isStandard = session?.quiz_mode === 'standard';
+
+  // Map players to hide score if in standard mode and not finished
+  const mappedPlayers = useMemo(() => {
+    return players.map(p => {
+      const isFinished = isStandard ? !!p.finished_at : (!!p.finished_at || p.score >= questionCount);
+      return {
+        ...p,
+        score: (isStandard && !isFinished) ? 0 : p.score
+      };
+    });
+  }, [players, isStandard, questionCount]);
+
   // Fixed display order: sort by joined_at so rows never move
   const fixedOrderPlayers = useMemo(() => {
-    return [...players].sort((a, b) => {
+    return [...mappedPlayers].sort((a, b) => {
       return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
     });
-  }, [players]);
+  }, [mappedPlayers]);
 
   // Compute ranks based on score (separate from display order)
   const playerRanks = useMemo(() => {
-    const sorted = [...players].sort((a, b) => {
+    const sorted = [...mappedPlayers].sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (a.total_time !== b.total_time) return a.total_time - b.total_time;
       return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
@@ -88,7 +88,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     const ranks = new Map<string, number>();
     sorted.forEach((p, i) => ranks.set(p.id, i + 1));
     return ranks;
-  }, [players]);
+  }, [mappedPlayers]);
 
   useEffect(() => {
     if (!open) return;
@@ -162,6 +162,123 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     previousRanksRef.current = new Map(playerRanks);
   }, [open, playerRanks, fixedOrderPlayers]);
 
+  // Stable fingerprint of all player scores – changes whenever any score updates
+  const scoreFingerprint = useMemo(() => {
+    return fixedOrderPlayers.map(p => `${p.id}:${p.score}`).join(',');
+  }, [fixedOrderPlayers]);
+
+  // Animate horse when score increases: zoom-in → gallop → zoom-out
+  useEffect(() => {
+    if (!open) {
+      previousScoresRef.current = new Map();
+      gallopingRef.current = new Set();
+      finishedPlayersRef.current = new Set();
+      return;
+    }
+
+    // Initialize finishedPlayersRef on mount if it's empty
+    if (finishedPlayersRef.current.size === 0) {
+      fixedOrderPlayers.forEach(p => {
+        const isFinished = !!p.finished_at || p.score >= questionCount;
+        if (isFinished) finishedPlayersRef.current.add(p.id);
+      });
+    }
+
+    const prevScores = previousScoresRef.current;
+
+    fixedOrderPlayers.forEach((player) => {
+      const prevScore = prevScores.get(player.id);
+      const currentScore = player.score;
+      const isFinished = isStandard ? !!player.finished_at : (!!player.finished_at || player.score >= questionCount);
+
+      // Confetti logic: trigger when a player JUST finished
+      if (isFinished && !finishedPlayersRef.current.has(player.id)) {
+        finishedPlayersRef.current.add(player.id);
+        
+        // Wait a tiny bit for the horse to reach the finish line position if it moved
+        setTimeout(() => {
+          const horseEl = horseScaleRefs.current[player.id];
+          if (horseEl) {
+            const rect = horseEl.getBoundingClientRect();
+            const x = (rect.left + rect.width / 2) / window.innerWidth;
+            const y = (rect.top + rect.height / 2) / window.innerHeight;
+
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { x, y },
+              colors: ['#FFD700', '#FFA500', '#FF4500', '#00FF00', '#0000FF'],
+              zIndex: 10001,
+            });
+          }
+        }, 500);
+      }
+
+      // Only animate if score went UP and we had a previous score
+      if (prevScore !== undefined && currentScore > prevScore) {
+        const scaleEl = horseScaleRefs.current[player.id];
+        const gallopEl = horseGallopRefs.current[player.id];
+        if (!scaleEl || !gallopEl || gallopingRef.current.has(player.id)) return;
+
+        gallopingRef.current.add(player.id);
+
+        // Phase 1: Zoom In (300ms) — on the scale wrapper
+        const zoomIn = scaleEl.animate(
+          [
+            { transform: 'scale(1)' },
+            { transform: 'scale(1.4)' },
+          ],
+          { duration: 300, fill: 'forwards', easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+        );
+
+        zoomIn.onfinish = () => {
+          // Phase 2: Gallop — Web Animations API on the INNER gallopEl
+          // Rapid bounce up/down + slight rotation to simulate running
+          const gallopAnim = gallopEl.animate(
+            [
+              { transform: 'translateY(0px) rotate(0deg)', offset: 0 },
+              { transform: 'translateY(-6px) rotate(-3deg)', offset: 0.15 },
+              { transform: 'translateY(2px) rotate(1.5deg)', offset: 0.3 },
+              { transform: 'translateY(-5px) rotate(-2deg)', offset: 0.45 },
+              { transform: 'translateY(2px) rotate(1.5deg)', offset: 0.6 },
+              { transform: 'translateY(-6px) rotate(-3deg)', offset: 0.75 },
+              { transform: 'translateY(2px) rotate(1deg)', offset: 0.9 },
+              { transform: 'translateY(0px) rotate(0deg)', offset: 1 },
+            ],
+            { duration: 300, iterations: 3, easing: 'linear' }
+          );
+
+          // Phase 3: After gallop finishes, zoom out
+          gallopAnim.onfinish = () => {
+            // Cancel zoomIn fill-forward so it doesn't block zoomOut
+            zoomIn.cancel();
+            scaleEl.style.transform = 'scale(1.4)';
+
+            const zoomOut = scaleEl.animate(
+              [
+                { transform: 'scale(1.4)' },
+                { transform: 'scale(1)' },
+              ],
+              { duration: 400, fill: 'forwards', easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+            );
+
+            zoomOut.onfinish = () => {
+              scaleEl.style.transform = '';
+              zoomOut.cancel();
+              gallopingRef.current.delete(player.id);
+            };
+          };
+        };
+      }
+    });
+
+    // Store current scores
+    const newScores = new Map<string, number>();
+    fixedOrderPlayers.forEach(p => newScores.set(p.id, p.score));
+    previousScoresRef.current = newScores;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, scoreFingerprint]);
+
   if (!open || !session) return null;
 
   return (
@@ -182,16 +299,14 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
 
             {/* Timer Display */}
             {session.status !== 'waiting' && session.status !== 'finished' && (
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 transition-all ${
-                session.status === 'paused' ? 'bg-orange-50 border-orange-200' : 
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 transition-all ${session.status === 'paused' ? 'bg-orange-50 border-orange-200' :
                 timeRemaining < 60000 ? 'bg-red-50 border-red-200 animate-pulse' : 'bg-slate-50 border-slate-200'
-              }`}>
+                }`}>
                 <span className="text-xl">⏱️</span>
                 <div className="flex flex-col">
-                  <span className={`font-mono text-xl font-black tabular-nums leading-none ${
-                    session.status === 'paused' ? 'text-orange-600' :
+                  <span className={`font-mono text-xl font-black tabular-nums leading-none ${session.status === 'paused' ? 'text-orange-600' :
                     timeRemaining < 60000 ? 'text-red-600' : 'text-slate-900'
-                  }`}>
+                    }`}>
                     {timeStr}
                   </span>
                   <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
@@ -234,7 +349,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
                 {fixedOrderPlayers.map((player) => {
                   const rank = playerRanks.get(player.id) ?? 999;
                   const progress = Math.max(0, Math.min(100, (player.score / questionCount) * 100));
-                  const theme = HORSE_THEMES[hashString(player.id) % HORSE_THEMES.length];
+                  const skin = getHorseSkin(player.horse_skin, player.id);
                   const isFinished = !!player.finished_at || player.score >= questionCount;
                   const isTop3 = rank <= 3;
 
@@ -259,47 +374,59 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
                       </td>
 
                       {/* Race Track */}
-                      <td className="px-2 py-1.5">
-                        <div className="relative h-16 w-full overflow-visible rounded-2xl border border-slate-200/60 bg-slate-100/70">
+                      <td className="px-2 py-1.5 overflow-hidden">
+                        <div className="relative h-11 w-full overflow-visible rounded-2xl border border-slate-200/60 bg-slate-100/70">
                           {/* Track stripes */}
                           <div className="absolute inset-0 rounded-2xl opacity-30" style={{ backgroundImage: 'repeating-linear-gradient(90deg, rgba(148,163,184,0.13) 0, rgba(148,163,184,0.13) 1px, transparent 1px, transparent 60px)' }} />
 
+                          {/* Watermark (Name | Score) */}
+                          <div
+                            className={`absolute inset-y-0 flex items-center z-10 pointer-events-none transition-all duration-700 ease-in-out ${progress > 30 ? 'left-4' : 'left-1/2 -translate-x-1/2'
+                              }`}
+                          >
+                            <span className="text-[15px] font-black uppercase tracking-widest text-slate-600/80 drop-shadow-sm truncate max-w-[250px]">
+                              {player.name} <span className="mx-2 opacity-50">|</span> {player.score}
+                            </span>
+                          </div>
+
                           {/* Filled progress */}
                           <div
-                            className={`absolute inset-y-0 left-0 rounded-2xl bg-gradient-to-r ${theme.bar} opacity-20 transition-[width] duration-500 ease-out`}
+                            className={`absolute inset-y-0 left-0 rounded-2xl bg-gradient-to-r ${skin.trackFillClass} opacity-20 transition-[width] duration-500 ease-out z-0`}
                             style={{ width: `${progress}%` }}
                           />
 
-                          {/* Horse + crown + name + score */}
+                          {/* Horse + crown */}
                           <div
-                            className="absolute top-0 bottom-0 flex items-center transition-[left] duration-500 ease-out"
-                            style={{ left: `clamp(8px, calc(${progress}% - 18px), calc(100% - 44px))` }}
+                            className="absolute top-1/2 -translate-y-1/2 flex items-center transition-[left] duration-500 ease-out z-20"
+                            style={{ left: `clamp(4px, calc(${progress}% - 28px), calc(100% - 60px))` }}
                           >
-                            <div className="relative flex flex-col items-center">
+                            <div className="relative flex flex-col items-center justify-center">
                               {/* Crown for top 3 – animated */}
                               {isTop3 && (
-                                <span
+                                <div
                                   ref={(el) => { crownRefs.current[player.id] = el; }}
-                                  className="absolute -top-4 left-1/2 -translate-x-1/2 text-[16px] drop-shadow-md transition-all duration-300"
+                                  className="absolute right-[-28px] top-1/2 -translate-y-1/2 text-[22px] drop-shadow-md transition-all duration-300 z-30"
                                 >
-                                  {rank === 1 ? '👑' : rank === 2 ? '🥈' : '🥉'}
-                                </span>
+                                  <CrownIcon rank={rank as 1 | 2 | 3} />
+                                </div>
                               )}
-                              {/* Horse */}
-                              <span className="text-[24px] leading-none drop-shadow-sm mt-1">🐎</span>
-                              {/* Player name */}
-                              <span className="absolute top-[32px] left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-black uppercase tracking-wider text-slate-700 max-w-[90px] truncate text-center leading-none">
-                                {player.name}
-                              </span>
-                              {/* Score */}
-                              <span className="absolute top-[42px] left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-bold text-slate-400 leading-none">
-                                {player.score}/{questionCount}
-                              </span>
+                              {/* Horse — two nested divs: outer for scale, inner for gallop */}
+                              <div
+                                ref={(el) => { horseScaleRefs.current[player.id] = el; }}
+                                className="relative flex items-center justify-center"
+                              >
+                                <div
+                                  ref={(el) => { horseGallopRefs.current[player.id] = el; }}
+                                  className="relative"
+                                >
+                                  <HorseAvatar colors={skin.horse} size="lg" className="drop-shadow-md" />
+                                </div>
+                              </div>
                             </div>
                           </div>
 
                           {/* Finish line */}
-                          <div className="absolute right-0 top-0 bottom-0 w-[3px] bg-[repeating-linear-gradient(180deg,#1e293b_0,#1e293b_3px,white_3px,white_6px)] rounded-r-2xl opacity-40" />
+                          <div className="absolute right-0 top-0 bottom-0 w-[3px] bg-[repeating-linear-gradient(180deg,#1e293b_0,#1e293b_3px,white_3px,white_6px)] rounded-r-2xl opacity-40 z-10" />
                         </div>
                       </td>
 

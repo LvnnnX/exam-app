@@ -9,6 +9,14 @@ import { useRouter } from 'next/navigation';
 import RichContent from '@/app/components/RichContent';
 import { useExamSecurity } from '@/app/hooks/useExamSecurity';
 import TabWarningModal from '@/app/components/TabWarningModal';
+import LeaderboardViewModal from '@/app/components/LeaderboardViewModal';
+import EditHorseModal from '@/app/components/EditHorseModal';
+import { HORSE_SKINS, getHorseSkin } from '@/lib/horse-skins';
+import HorseAvatar from '@/app/components/HorseAvatar';
+import { updatePlayerHorseSkin } from '@/lib/quiz';
+import { formatCategorySelectionLabel } from '@/lib/categories';
+import CrownIcon from '@/app/components/CrownIcon';
+import confetti from 'canvas-confetti';
 
 type AnswerData = string;
 
@@ -27,6 +35,33 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
+
+  // Trigger confetti when user finishes
+  useEffect(() => {
+    if (isFinished) {
+      const duration = 3 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10001 };
+
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        // since particles fall down, start a bit higher than random
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+      }, 250);
+
+      return () => clearInterval(interval);
+    }
+  }, [isFinished]);
+
   const [startTime, setStartTime] = useState<number>(0);
   const [leaderboard, setLeaderboard] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +76,9 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const [localAnswers, setLocalAnswers] = useState<(string | null)[]>([]);
   const [showNavPopup, setShowNavPopup] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [isEditHorseModalOpen, setIsEditHorseModalOpen] = useState(false);
+  const [showLeaderboardView, setShowLeaderboardView] = useState(false);
+  const [changingHorseSkin, setChangingHorseSkin] = useState(false);
   const isStandard = session?.quiz_mode === 'standard';
   const leaderboardRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const previousLeaderboardRects = useRef<Map<string, DOMRect>>(new Map());
@@ -271,8 +309,31 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   }, [isFinished, session]);
 
   const fetchLeaderboard = async (kuisId: string) => {
-    const { data } = await supabase.from('public_players').select('*').eq('kuis_id', kuisId).order('score', { ascending: false }).order('total_time', { ascending: true });
-    if (data) setLeaderboard(data as Player[]);
+    const { data } = await supabase.from('public_players').select('*').eq('kuis_id', kuisId);
+    if (data) {
+      const isStandard = session?.quiz_mode === 'standard';
+      const qCount = session?.question_count || 1;
+      
+      const playersList = data as Player[];
+      
+      // Override score for standard mode unfinished players to 0 before sorting
+      const mapped = playersList.map(p => {
+        const isFinished = isStandard ? !!p.finished_at : (!!p.finished_at || p.score >= qCount);
+        return {
+          ...p,
+          score: (isStandard && !isFinished) ? 0 : p.score
+        };
+      });
+
+      // Sort: highest score first, then lowest time, then oldest join
+      mapped.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (a.total_time !== b.total_time) return a.total_time - b.total_time;
+        return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
+      });
+
+      setLeaderboard(mapped);
+    }
   };
 
   const handleJoin = async () => {
@@ -304,6 +365,22 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     }
     setLoading(false);
   };
+
+  const handleHorseSkinChange = useCallback(async (horseSkin: string) => {
+    if (!player || !session || session.status !== 'waiting' || changingHorseSkin) return;
+    if (player.horse_skin === horseSkin) return;
+
+    setChangingHorseSkin(true);
+    const result = await updatePlayerHorseSkin(player.id, horseSkin);
+    if ('error' in result) {
+      alert(result.error);
+      setChangingHorseSkin(false);
+      return;
+    }
+
+    setPlayer((prev) => (prev ? { ...prev, horse_skin: result.horse_skin } : prev));
+    setChangingHorseSkin(false);
+  }, [player, session, changingHorseSkin]);
 
   const loadQuestion = useCallback(async (index: number) => {
     if (!player) return;
@@ -524,9 +601,9 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                 <span>Leaderboard.</span>
               </h2>
               <div className="flex flex-col gap-1 mb-2">
-                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{session.mapel}</p>
-                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{session.bab}</p>
-                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{session.sub_bab}</p>
+                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{formatCategorySelectionLabel(session.mapel)}</p>
+                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{formatCategorySelectionLabel(session.bab)}</p>
+                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{formatCategorySelectionLabel(session.sub_bab)}</p>
               </div>
               <p className="text-[16px] font-medium text-nike-grey-500 uppercase mt-4">
                 {player && (
@@ -536,8 +613,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                 )}
               </p>
             </div>
-            <div>
+            <div className="flex flex-col items-start sm:items-end gap-3">
               <span className="inline-block px-4 py-2 bg-nike-green text-white text-[12px] font-bold uppercase rounded-[30px]">Live Result</span>
+              <button
+                type="button"
+                onClick={() => setShowLeaderboardView(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-[30px] border border-slate-200 bg-white text-[11px] font-black uppercase tracking-[0.22em] text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                <span>🏇</span>
+                Leaderboard View
+              </button>
             </div>
           </div>
 
@@ -551,8 +636,8 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                 <div className="flex items-center gap-4">
                   {idx < 3 ? (
                     <div className="relative">
-                      <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[20px] sm:text-[24px] drop-shadow-sm z-10">
-                        {idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉'}
+                      <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[32px] drop-shadow-md z-10 flex items-center justify-center w-12 h-12">
+                        <CrownIcon rank={(idx + 1) as 1 | 2 | 3} />
                       </span>
                       <span className={`inline-flex min-w-[76px] items-center justify-center gap-0.5 rounded-full border-2 px-3 py-1 font-display text-[16px] sm:text-[18px] leading-none tracking-[0.18em] shrink-0 ${getRankBadgeClasses(idx + 1, lb.id === player?.id)}`}>
                         <span>{(idx + 1).toString().padStart(2, '0')}</span>
@@ -587,6 +672,12 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               Kembali ke Beranda
             </button>
           </div>
+          <LeaderboardViewModal
+            open={showLeaderboardView && !!session}
+            session={session}
+            players={leaderboard}
+            onClose={() => setShowLeaderboardView(false)}
+          />
         </div>
       </div>
     );
@@ -601,15 +692,15 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
           <div className="mb-8 flex flex-col gap-3">
             <div>
               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mapel</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.mapel?.replace(/_/g, ' ') || '-'}</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.mapel)}</p>
             </div>
             <div>
               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Bab</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.bab?.replace(/_/g, ' ') || '-'}</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.bab)}</p>
             </div>
             <div>
               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Subbab</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.sub_bab?.replace(/_/g, ' ') || '-'}</p>
+              <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.sub_bab)}</p>
             </div>
           </div>
 
@@ -639,7 +730,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   if (session.status === 'waiting') {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-white">
-        <div className="text-center max-w-sm w-full">
+        <div className="text-center max-w-3xl w-full mx-auto">
           <h2 className="font-display text-[32px] sm:text-[48px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-1">Menunggu Admin</h2>
           <p className="text-[14px] font-black text-nike-black uppercase tracking-[0.3em] mb-10">Ruang Tunggu</p>
 
@@ -654,21 +745,79 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
-            <div>
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mapel</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.mapel?.replace(/_/g, ' ') || '-'}</p>
+          <div className="flex flex-col sm:flex-row gap-6 mt-8">
+
+            {/* Topik Box */}
+            <div className="flex-1 rounded-[28px] border border-slate-200 bg-slate-50/80 p-5 text-left shadow-sm flex flex-col">
+              <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Informasi</p>
+                  <p className="text-[18px] font-black uppercase text-slate-900">Topik Kuis</p>
+                </div>
+              </div>
+              <div className="flex flex-col justify-center gap-4 flex-1 p-2">
+                <div>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mapel</p>
+                  <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.mapel)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Bab</p>
+                  <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.bab)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Subbab</p>
+                  <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.sub_bab)}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Bab</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.bab?.replace(/_/g, ' ') || '-'}</p>
-            </div>
-            <div>
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Subbab</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{session.sub_bab?.replace(/_/g, ' ') || '-'}</p>
+
+            {/* Avatar Box */}
+            <div className="flex-1 rounded-[28px] border border-slate-200 bg-slate-50/80 p-5 text-left shadow-sm flex flex-col">
+              <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Horse Skin</p>
+                  <p className="text-[18px] font-black uppercase text-slate-900">Avatar Kuda</p>
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col justify-center gap-4">
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-[60px] w-[60px] items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-100">
+                      <HorseAvatar colors={getHorseSkin(player?.horse_skin, player?.id).horse} size="md" animate={true} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pemain</p>
+                      <p className="font-display text-[15px] text-slate-800 max-w-[100px] truncate">{player?.name || 'Tamu'}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditHorseModalOpen(true)}
+                    disabled={changingHorseSkin || !player}
+                    className="rounded-xl bg-slate-100 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-colors hover:bg-slate-200 flex-shrink-0"
+                  >
+                    {changingHorseSkin ? 'Wait...' : 'Edit'}
+                  </button>
+                </div>
+
+                <p className="text-center text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  Skin tampil di leaderboard.
+                </p>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Edit Horse Skin Modal */}
+        {player && (
+          <EditHorseModal
+            isOpen={isEditHorseModalOpen}
+            onClose={() => setIsEditHorseModalOpen(false)}
+            onSave={handleHorseSkinChange}
+            currentSkinId={player.horse_skin ?? null}
+          />
+        )}
       </div>
     );
   }
@@ -728,9 +877,9 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               {player.name}
             </span>
             <div className="flex flex-col gap-0.5 mt-2">
-              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{session.mapel}</span>
-              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{session.bab}</span>
-              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{session.sub_bab}</span>
+              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{formatCategorySelectionLabel(session.mapel)}</span>
+              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{formatCategorySelectionLabel(session.bab)}</span>
+              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{formatCategorySelectionLabel(session.sub_bab)}</span>
               <span className="text-[13px] font-black text-nike uppercase tracking-widest mt-1.5">SOAL NOMOR {currentIndex + 1}</span>
             </div>
           </div>

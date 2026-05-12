@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, deleteQuizSession, fetchPlayerQuestionIds, formatHMS, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
 import { fetchQuestionsByIds, fetchSubBabsAdmin, type RawQuestion, type SubBabInfo } from '@/lib/questions';
-import { normalizeCategorySlug } from '@/lib/categories';
+import { formatCategorySelectionLabel } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 import LeaderboardViewModal from '@/app/components/LeaderboardViewModal';
@@ -1185,13 +1185,13 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               <h1 className="text-4xl md:text-5xl font-black text-indigo-700 tracking-widest font-mono leading-none mb-3">{activeSession.quiz_code}</h1>
               <div className="flex flex-col gap-1">
                 <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                  <span className="text-gray-300">MAPEL:</span> {activeSession.mapel?.replaceAll('_', ' ') || '-'}
+                    <span className="text-gray-300">MAPEL:</span> {formatCategorySelectionLabel(activeSession.mapel)}
                 </div>
                 <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                  <span className="text-gray-300">BAB:</span> {activeSession.bab?.replaceAll('_', ' ') || '-'}
+                    <span className="text-gray-300">BAB:</span> {formatCategorySelectionLabel(activeSession.bab)}
                 </div>
                 <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                  <span className="text-gray-300">SUBBAB:</span> {activeSession.sub_bab?.replaceAll('_', ' ') || '-'}
+                    <span className="text-gray-300">SUBBAB:</span> {formatCategorySelectionLabel(activeSession.sub_bab)}
                 </div>
                 <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1 mt-1">
                   <span className="text-indigo-200">SOAL:</span> {activeSession.question_count} Questions

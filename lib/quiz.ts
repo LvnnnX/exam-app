@@ -41,6 +41,7 @@ export type Player = {
   joined_at: string;
   finished_at?: string;
   question_ids?: number[];
+  horse_skin?: string | null;
 };
 
 export type KuisResult = {
@@ -334,6 +335,25 @@ export async function joinLiveQuiz(code: string, name: string): Promise<Player |
   }
 
   return { ...player, question_ids: [] } as Player;
+}
+
+export async function updatePlayerHorseSkin(playerId: string, horseSkin: string): Promise<{ horse_skin: string } | { error: string }> {
+  const { data, error } = await supabase.rpc('set_player_horse_skin', {
+    p_player_id: playerId,
+    p_horse_skin: horseSkin,
+  });
+
+  if (error) {
+    console.error('Update horse skin failed:', error.message);
+    return { error: error.message };
+  }
+
+  const result = data as { success?: boolean; message?: string; horse_skin?: string } | null;
+  if (!result?.success || !result.horse_skin) {
+    return { error: result?.message || 'Gagal mengubah skin kuda.' };
+  }
+
+  return { horse_skin: result.horse_skin };
 }
 
 import { getLiveQuizQuestionAction, submitLiveQuizAnswerAction } from '@/app/actions/exam';

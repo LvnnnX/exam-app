@@ -7,7 +7,7 @@ import RichTextEditorField from '@/app/components/RichTextEditorField';
 import AdminQuizTab from '@/app/components/AdminQuizTab';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin, fetchAllMapelsAdmin, fetchAllSubBabsAdmin, fetchAllBabsAdmin, fetchSubBabsForMultiple, fetchVisibilitySettings, saveVisibilitySettings, type VisibilitySettings, type BabInfo, type SubBabInfo } from '@/lib/questions';
-import { categorySlugToLabel, normalizeCategorySlug } from '@/lib/categories';
+import { categorySlugToLabel, formatCategorySelectionLabel, normalizeCategorySlug } from '@/lib/categories';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
 
@@ -1464,9 +1464,9 @@ export default function AdminPage() {
                         />
                       </div>
                     </div>
-                    <div className="text-xs text-slate-400 mb-1">MAPEL: {question.mapels?.join(', ').replaceAll('_', ' ')}</div>
-                    <div className="text-xs text-slate-400 mb-1">BAB: {question.babs?.join(', ').replaceAll('_', ' ')}</div>
-                    <div className="text-xs text-slate-400 mb-1">Sub-bab: {question.sub_babs?.join(', ').replaceAll('_', ' ')}</div>
+                    <div className="text-xs text-slate-400 mb-1">MAPEL: {formatCategorySelectionLabel(question.mapels?.join(', '))}</div>
+                    <div className="text-xs text-slate-400 mb-1">BAB: {formatCategorySelectionLabel(question.babs?.join(', '))}</div>
+                    <div className="text-xs text-slate-400 mb-1">Sub-bab: {formatCategorySelectionLabel(question.sub_babs?.join(', '))}</div>
                     <div className="text-xs text-slate-400 mb-4">
                       {isShortAnswer ? 'Answer:' : 'Correct:'}{' '}
                       <span className={`font-bold ${isShortAnswer ? 'text-slate-600' : 'text-[#34C759]'}`}>
@@ -1697,9 +1697,9 @@ export default function AdminPage() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 <span
                                   className="block max-w-[220px] truncate capitalize"
-                                  title={`${session.mapel?.replaceAll('_', ' ')} · ${session.bab?.replaceAll('_', ' ')} · ${session.sub_bab?.replaceAll('_', ' ')}`}
+                                  title={`${formatCategorySelectionLabel(session.mapel)} · ${formatCategorySelectionLabel(session.bab)} · ${formatCategorySelectionLabel(session.sub_bab)}`}
                                 >
-                                  {session.mapel?.replaceAll('_', ' ')} · {session.bab?.replaceAll('_', ' ')} · {session.sub_bab?.replaceAll('_', ' ')}
+                                  {formatCategorySelectionLabel(session.mapel)} · {formatCategorySelectionLabel(session.bab)} · {formatCategorySelectionLabel(session.sub_bab)}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
@@ -1785,9 +1785,9 @@ export default function AdminPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <span
                               className="block max-w-[220px] truncate capitalize"
-                              title={`${result.mapel?.replaceAll('_', ' ')} · ${result.bab?.replaceAll('_', ' ')} · ${result.sub_bab?.replaceAll('_', ' ')}`}
+                              title={`${formatCategorySelectionLabel(result.mapel)} · ${formatCategorySelectionLabel(result.bab)} · ${formatCategorySelectionLabel(result.sub_bab)}`}
                             >
-                              {result.mapel?.replaceAll('_', ' ')} · {result.bab?.replaceAll('_', ' ')} · {result.sub_bab?.replaceAll('_', ' ')}
+                              {formatCategorySelectionLabel(result.mapel)} · {formatCategorySelectionLabel(result.bab)} · {formatCategorySelectionLabel(result.sub_bab)}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -2562,21 +2562,21 @@ export default function AdminPage() {
                         <div>
                           <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">Mapel</p>
                           <p className="text-sm font-bold text-gray-900 capitalize">
-                            {selectedQuestion.mapels?.join(', ').replace(/_/g, ' ') || '-'}
+                            {formatCategorySelectionLabel(selectedQuestion.mapels?.join(', '))}
                           </p>
                         </div>
 
                         <div>
                           <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">BAB</p>
                           <p className="text-sm font-bold text-gray-900 capitalize">
-                            {selectedQuestion.babs?.join(', ').replace(/_/g, ' ') || '-'}
+                            {formatCategorySelectionLabel(selectedQuestion.babs?.join(', '))}
                           </p>
                         </div>
 
                         <div>
                           <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">Subbab</p>
                           <p className="text-sm font-bold text-gray-900 capitalize">
-                            {selectedQuestion.sub_babs?.join(', ').replace(/_/g, ' ') || '-'}
+                            {formatCategorySelectionLabel(selectedQuestion.sub_babs?.join(', '))}
                           </p>
                         </div>
                       </div>
@@ -2632,13 +2632,13 @@ export default function AdminPage() {
                       </div>
                       <div className="flex flex-col gap-0.5">
                         <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">MAPEL:</span> {trackingSession.mapel?.replaceAll('_', ' ') || '-'}
+                          <span className="text-gray-300">MAPEL:</span> {formatCategorySelectionLabel(trackingSession.mapel)}
                         </div>
                         <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">BAB:</span> {trackingSession.bab?.replaceAll('_', ' ') || '-'}
+                          <span className="text-gray-300">BAB:</span> {formatCategorySelectionLabel(trackingSession.bab)}
                         </div>
                         <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">SUBBAB:</span> {trackingSession.sub_bab?.replaceAll('_', ' ') || '-'}
+                          <span className="text-gray-300">SUBBAB:</span> {formatCategorySelectionLabel(trackingSession.sub_bab)}
                         </div>
                       </div>
                     </div>
@@ -2813,13 +2813,13 @@ export default function AdminPage() {
                       </div>
                       <div className="flex flex-col gap-0.5">
                         <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">MAPEL:</span> {viewingResult.mapel?.replaceAll('_', ' ') || '-'}
+                          <span className="text-gray-300">MAPEL:</span> {formatCategorySelectionLabel(viewingResult.mapel)}
                         </div>
                         <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">BAB:</span> {viewingResult.bab?.replaceAll('_', ' ') || '-'}
+                          <span className="text-gray-300">BAB:</span> {formatCategorySelectionLabel(viewingResult.bab)}
                         </div>
                         <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">SUBBAB:</span> {viewingResult.sub_bab?.replaceAll('_', ' ') || '-'}
+                          <span className="text-gray-300">SUBBAB:</span> {formatCategorySelectionLabel(viewingResult.sub_bab)}
                         </div>
                       </div>
                     </div>

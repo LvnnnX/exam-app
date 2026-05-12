@@ -143,24 +143,34 @@ export type VisibilitySettings = {
  * Fetches all visibility settings from the app_settings table.
  */
 export async function fetchVisibilitySettings(): Promise<VisibilitySettings> {
-  const { data, error } = await supabase
-    .from('app_settings')
-    .select('hidden_mapels, admin_only_mapels, hidden_babs, admin_only_babs, hidden_sub_babs, admin_only_sub_babs')
-    .eq('id', 1)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('hidden_mapels, admin_only_mapels, hidden_babs, admin_only_babs, hidden_sub_babs, admin_only_sub_babs')
+      .eq('id', 1)
+      .maybeSingle();
 
-  if (error) {
-    console.error('Failed to fetch visibility settings:', error.message);
+    if (error) throw error;
+
+    return {
+      hidden_mapels: (data?.hidden_mapels as string[]) || [],
+      admin_only_mapels: (data?.admin_only_mapels as string[]) || [],
+      hidden_babs: (data?.hidden_babs as string[]) || [],
+      admin_only_babs: (data?.admin_only_babs as string[]) || [],
+      hidden_sub_babs: (data?.hidden_sub_babs as string[]) || [],
+      admin_only_sub_babs: (data?.admin_only_sub_babs as string[]) || [],
+    };
+  } catch (err) {
+    console.warn('Using default visibility settings due to fetch error');
+    return {
+      hidden_mapels: [],
+      admin_only_mapels: [],
+      hidden_babs: [],
+      admin_only_babs: [],
+      hidden_sub_babs: [],
+      admin_only_sub_babs: [],
+    };
   }
-
-  return {
-    hidden_mapels: (data?.hidden_mapels as string[]) || [],
-    admin_only_mapels: (data?.admin_only_mapels as string[]) || [],
-    hidden_babs: (data?.hidden_babs as string[]) || [],
-    admin_only_babs: (data?.admin_only_babs as string[]) || [],
-    hidden_sub_babs: (data?.hidden_sub_babs as string[]) || [],
-    admin_only_sub_babs: (data?.admin_only_sub_babs as string[]) || [],
-  };
 }
 
 /**
@@ -178,36 +188,41 @@ export async function saveVisibilitySettings(settings: VisibilitySettings): Prom
 }
 
 export async function fetchMapels(): Promise<BabInfo[]> {
-  const [mapelsResult, visibility] = await Promise.all([
-    supabase.from('public_categories').select('mapels'),
-    fetchVisibilitySettings(),
-  ]);
+  try {
+    const [mapelsResult, visibility] = await Promise.all([
+      supabase.from('public_categories').select('*'),
+      fetchVisibilitySettings(),
+    ]);
 
-  const { data, error } = mapelsResult;
+    const { data, error } = mapelsResult;
+    if (error) return [];
+    if (!data || data.length === 0) return [];
 
-  if (error) {
-    console.error('Failed to fetch mapels:', error.message);
+    const rawMapels = data.flatMap((q: any) => {
+      const val = q.mapels || [];
+      return Array.isArray(val) ? val : [val];
+    }).filter(Boolean);
+    
+    const seen = new Map<string, string>();
+    for (const raw of rawMapels) {
+      const slug = normalizeCategorySlug(String(raw));
+      if (slug && !seen.has(slug)) {
+        seen.set(slug, String(raw));
+      }
+    }
+
+    return Array.from(seen.entries())
+      .filter(([slug]) => !visibility.hidden_mapels.includes(slug) && !visibility.admin_only_mapels.includes(slug))
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
+  } catch (err) {
     return [];
   }
-
-  const rawMapels = data.flatMap((q) => q.mapels || []).filter(Boolean);
-  const seen = new Map<string, string>();
-  for (const raw of rawMapels) {
-    const slug = normalizeCategorySlug(raw);
-    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
-      seen.set(slug, raw);
-    }
-  }
-
-  return Array.from(seen.entries())
-    .filter(([slug]) => !visibility.hidden_mapels.includes(slug) && !visibility.admin_only_mapels.includes(slug))
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: categorySlugToLabel(slug) }));
 }
 
 export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
   const [mapelsResult, visibility] = await Promise.all([
-    supabase.from('public_categories').select('mapels'),
+    supabase.from('public_categories').select('*'),
     fetchVisibilitySettings(),
   ]);
 
@@ -218,11 +233,15 @@ export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
     return [];
   }
 
-  const rawMapels = data.flatMap((q) => q.mapels || []).filter(Boolean);
+  const rawMapels = data.flatMap((q: any) => {
+    const val = q.mapels || q.mapel || [];
+    return Array.isArray(val) ? val : [val];
+  }).filter(Boolean);
+  
   const seen = new Map<string, string>();
   for (const raw of rawMapels) {
     const slug = normalizeCategorySlug(raw);
-    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+    if (slug && !seen.has(slug)) {
       seen.set(slug, raw);
     }
   }
@@ -234,18 +253,22 @@ export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
-  const { data, error } = await supabase.from('public_categories').select('mapels');
+  const { data, error } = await supabase.from('public_categories').select('*');
 
   if (error) {
     console.error('Failed to fetch all mapels:', error.message);
     return [];
   }
 
-  const rawMapels = data.flatMap((q) => q.mapels || []).filter(Boolean);
+  const rawMapels = data.flatMap((q: any) => {
+    const val = q.mapels || q.mapel || [];
+    return Array.isArray(val) ? val : [val];
+  }).filter(Boolean);
+  
   const seen = new Map<string, string>();
   for (const raw of rawMapels) {
     const slug = normalizeCategorySlug(raw);
-    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
+    if (slug && !seen.has(slug)) {
       seen.set(slug, raw);
     }
   }
@@ -256,10 +279,11 @@ export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
-  const baseQuery = supabase.from('public_categories').select('babs');
-  const query = mapel && mapel !== 'Semua Mapel' && mapel !== 'None'
-    ? baseQuery.contains('mapels', [mapel])
-    : baseQuery;
+  let query = supabase.from('public_categories').select('*');
+  
+  if (mapel && mapel !== 'Semua Mapel' && mapel !== 'None') {
+    query = query.contains('mapels', [mapel]);
+  }
 
   const [babsResult, visibility] = await Promise.all([
     query,
@@ -267,26 +291,18 @@ export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
   ]);
 
   const { data, error } = babsResult;
+  if (error || !data) return [];
 
-  if (error) {
-    console.error('Failed to fetch babs:', error.message);
-    return [];
-  }
+  const rawBabs = data.flatMap((q: any) => {
+    const val = q.babs || [];
+    return Array.isArray(val) ? val : [val];
+  }).filter(Boolean);
 
-  // Defensive: if a parent mapel is provided, check its visibility
-  if (mapel && mapel !== 'Semua Mapel' && mapel !== 'None') {
-    const mapelSlug = normalizeCategorySlug(mapel);
-    if (visibility.hidden_mapels.includes(mapelSlug) || visibility.admin_only_mapels.includes(mapelSlug)) {
-      return [];
-    }
-  }
-
-  const rawBabs = data.flatMap((q) => q.babs || []).filter(Boolean);
   const seen = new Map<string, string>();
   for (const raw of rawBabs) {
-    const slug = normalizeCategorySlug(raw);
-    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
-      seen.set(slug, raw);
+    const slug = normalizeCategorySlug(String(raw));
+    if (slug && !seen.has(slug)) {
+      seen.set(slug, String(raw));
     }
   }
 
@@ -297,7 +313,7 @@ export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
 }
 
 export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo[]> {
-  let query = supabase.from('public_categories').select('babs');
+  let query = supabase.from('public_categories').select('*');
 
   if (mapel) {
     const mapels = Array.isArray(mapel) ? mapel : [mapel];
@@ -313,18 +329,18 @@ export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo
   ]);
 
   const { data, error } = babsResult;
+  if (error || !data) return [];
 
-  if (error) {
-    console.error('Failed to fetch babs admin:', error.message);
-    return [];
-  }
+  const rawBabs = data.flatMap((q: any) => {
+    const val = q.babs || [];
+    return Array.isArray(val) ? val : [val];
+  }).filter(Boolean);
 
-  const rawBabs = data.flatMap((q) => q.babs || []).filter(Boolean);
   const seen = new Map<string, string>();
   for (const raw of rawBabs) {
-    const slug = normalizeCategorySlug(raw);
-    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
-      seen.set(slug, raw);
+    const slug = normalizeCategorySlug(String(raw));
+    if (slug && !seen.has(slug)) {
+      seen.set(slug, String(raw));
     }
   }
 
@@ -335,19 +351,20 @@ export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo
 }
 
 export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
-  const { data, error } = await supabase.from('public_categories').select('babs');
+  const { data, error } = await supabase.from('public_categories').select('*');
 
-  if (error) {
-    console.error('Failed to fetch all babs:', error.message);
-    return [];
-  }
+  if (error || !data) return [];
 
-  const rawBabs = data.flatMap((q) => q.babs || []).filter(Boolean);
+  const rawBabs = data.flatMap((q: any) => {
+    const val = q.babs || [];
+    return Array.isArray(val) ? val : [val];
+  }).filter(Boolean);
+
   const seen = new Map<string, string>();
   for (const raw of rawBabs) {
-    const slug = normalizeCategorySlug(raw);
-    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
-      seen.set(slug, raw);
+    const slug = normalizeCategorySlug(String(raw));
+    if (slug && !seen.has(slug)) {
+      seen.set(slug, String(raw));
     }
   }
 
@@ -357,10 +374,10 @@ export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
-  const baseQuery = supabase.from('public_categories').select('sub_babs');
-  const query = bab && bab !== 'Semua BAB' && bab !== 'None'
-    ? baseQuery.contains('babs', [bab])
-    : baseQuery;
+  let query = supabase.from('public_categories').select('*');
+  if (bab && bab !== 'Semua BAB' && bab !== 'None') {
+    query = query.contains('babs', [bab]);
+  }
 
   const [subBabsResult, visibility] = await Promise.all([
     query,
@@ -368,26 +385,18 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
   ]);
 
   const { data, error } = subBabsResult;
+  if (error || !data) return [];
 
-  if (error) {
-    console.error('Failed to fetch sub babs:', error.message);
-    return [];
-  }
+  const rawSubBabs = data.flatMap((q: any) => {
+    const val = q.sub_babs || [];
+    return Array.isArray(val) ? val : [val];
+  }).filter(Boolean);
 
-  // Defensive: if a parent bab is provided, check its visibility
-  if (bab && bab !== 'Semua BAB' && bab !== 'None') {
-    const babSlug = normalizeCategorySlug(bab);
-    if (visibility.hidden_babs.includes(babSlug) || visibility.admin_only_babs.includes(babSlug)) {
-      return [];
-    }
-  }
-
-  const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
   const seen = new Map<string, string>();
   for (const raw of rawSubBabs) {
-    const slug = normalizeCategorySlug(raw);
-    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
-      seen.set(slug, raw);
+    const slug = normalizeCategorySlug(String(raw));
+    if (slug && !seen.has(slug)) {
+      seen.set(slug, String(raw));
     }
   }
 
@@ -398,7 +407,7 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
 }
 
 export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBabInfo[]> {
-  let query = supabase.from('public_categories').select('sub_babs');
+  let query = supabase.from('public_categories').select('*');
 
   if (bab) {
     const babs = Array.isArray(bab) ? bab : [bab];
@@ -414,18 +423,18 @@ export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBab
   ]);
 
   const { data, error } = subBabsResult;
+  if (error || !data) return [];
 
-  if (error) {
-    console.error('Failed to fetch sub babs admin:', error.message);
-    return [];
-  }
+  const rawSubBabs = data.flatMap((q: any) => {
+    const val = q.sub_babs || [];
+    return Array.isArray(val) ? val : [val];
+  }).filter(Boolean);
 
-  const rawSubBabs = data.flatMap((q) => q.sub_babs || []).filter(Boolean);
   const seen = new Map<string, string>();
   for (const raw of rawSubBabs) {
-    const slug = normalizeCategorySlug(raw);
-    if (isSafeCategorySlug(slug) && !seen.has(slug)) {
-      seen.set(slug, raw);
+    const slug = normalizeCategorySlug(String(raw));
+    if (slug && !seen.has(slug)) {
+      seen.set(slug, String(raw));
     }
   }
 
