@@ -62,7 +62,7 @@ type QuestionDraft = {
   sub_babs: string[];
 };
 
-const AUTH_VERSION = '3'; // Increment this to force all admins to logout
+const AUTH_VERSION = '4'; // Increment this to force all admins to logout
 
 const EMPTY_DRAFT: QuestionDraft = {
   question_text: '<p></p>',
@@ -1075,9 +1075,9 @@ export default function AdminPage() {
         .from('questions')
         .update({ is_hidden: isHidden })
         .in('id', selectedQuestionIds);
-        
+
       if (error) throw error;
-      
+
       await fetchAdminQuestions();
       setSelectedQuestionIds([]); // clear selection after successful operation
     } catch (err) {
@@ -2046,40 +2046,40 @@ export default function AdminPage() {
                                         return (
                                           <div key={subSlug} className="flex items-center justify-between p-2 hover:bg-gray-50 transition-colors">
                                             <p className="text-xs font-medium text-gray-500 capitalize">{subLabel}</p>
-                                           <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                                            <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                                            <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                                              <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleVisibilityChange('sub_babs', subSlug, 'hidden')}
+                                                  className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                                >
+                                                  <svg className="w-3 h-3 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleVisibilityChange('sub_babs', subSlug, 'admin_only')}
+                                                  className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                                >
+                                                  <span className="font-bold text-sm leading-none text-white pb-0.5">/</span>
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleVisibilityChange('sub_babs', subSlug, 'visible')}
+                                                  className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                                >
+                                                  <svg className="w-3.5 h-3.5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                </button>
+                                              </div>
                                               <button
                                                 type="button"
-                                                onClick={() => handleVisibilityChange('sub_babs', subSlug, 'hidden')}
-                                                className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
+                                                onClick={() => handleDeleteTopic('sub_babs', subSlug)}
+                                                disabled={deletingTopic}
+                                                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                                                title="Hapus Sub-bab"
                                               >
-                                                <svg className="w-3 h-3 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleVisibilityChange('sub_babs', subSlug, 'admin_only')}
-                                                className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                              >
-                                                <span className="font-bold text-sm leading-none text-white pb-0.5">/</span>
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleVisibilityChange('sub_babs', subSlug, 'visible')}
-                                                className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                              >
-                                                <svg className="w-3.5 h-3.5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                               </button>
                                             </div>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleDeleteTopic('sub_babs', subSlug)}
-                                              disabled={deletingTopic}
-                                              className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
-                                              title="Hapus Sub-bab"
-                                            >
-                                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
-                                           </div>
                                           </div>
                                         );
                                       })
@@ -2196,9 +2196,8 @@ export default function AdminPage() {
                 type="button"
                 onClick={() => handleBatchVisibilityToggle(batchVisibilityTarget)}
                 disabled={batchProcessing}
-                className={`px-5 h-10 rounded-xl text-white text-sm font-bold transition-all shadow-md disabled:opacity-50 flex items-center gap-2 ${
-                  batchVisibilityTarget ? 'bg-[#FF3B30] hover:bg-red-600 shadow-red-200' : 'bg-[#34C759] hover:bg-green-600 shadow-green-200'
-                }`}
+                className={`px-5 h-10 rounded-xl text-white text-sm font-bold transition-all shadow-md disabled:opacity-50 flex items-center gap-2 ${batchVisibilityTarget ? 'bg-[#FF3B30] hover:bg-red-600 shadow-red-200' : 'bg-[#34C759] hover:bg-green-600 shadow-green-200'
+                  }`}
               >
                 {batchProcessing && (
                   <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
