@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import AdminTabSwitcher from '@/app/components/AdminTabSwitcher';
 import AdminLoginView from '@/app/components/AdminLoginView';
@@ -23,6 +23,14 @@ import { ToastContainer } from '@/app/components/Toast';
 
 
 export default function AdminPage() {
+  return (
+    <Suspense fallback={<AdminAuthLoadingView theme="light" />}>
+      <AdminPageInner />
+    </Suspense>
+  );
+}
+
+function AdminPageInner() {
   const {
     shared,
     auth,
