@@ -146,7 +146,7 @@ function AdminPageInner() {
   }
 
   return (
-    <div data-admin-page className={`relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-full w-screen overflow-hidden md:flex ${theme === 'dark' ? 'bg-dark-900 text-dark-text-primary' : 'bg-white text-[#111111]'}`}>
+    <div data-admin-page className={`relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-screen h-full w-screen overflow-hidden md:flex ${theme === 'dark' ? 'bg-dark-900 text-dark-text-primary' : 'bg-white text-[#111111]'}`}>
       <AdminTabSwitcher
         activeTab={tabs.activeTab}
         onTabChange={handleTabChangeWithUrl}

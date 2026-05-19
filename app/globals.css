@@ -68,6 +68,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html.admin-dark-theme,
+html.admin-dark-theme body,
+html.admin-dark-theme body main {
+  background-color: #000000 !important;
+}
+
+html.admin-dark-theme body {
+  color: #ffffff;
+}
+
 body.admin-route .global-site-header {
   display: none;
 }
