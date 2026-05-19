@@ -23,17 +23,41 @@ html {
   --color-nike-green: #007D48;
   --color-nike-blue: #1151FF;
 
+  /* Dark Theme Colors */
+  --color-dark-900: #000000;
+  --color-dark-850: #0a0a0a;
+  --color-dark-800: #111111;
+  --color-dark-750: #1a1a1a;
+  --color-dark-700: #1e1e1e;
+  --color-dark-600: #2a2a2a;
+  --color-dark-500: #3a3a3a;
+
+  /* Dark Theme Text */
+  --color-dark-text-primary: #ffffff;
+  --color-dark-text-secondary: #e5e5e5;
+  --color-dark-text-tertiary: #a1a1a1;
+  --color-dark-text-muted: #707072;
+
+  /* Dark Theme Borders */
+  --color-dark-border-subtle: #2a2a2a;
+  --color-dark-border-medium: #3a3a3a;
+  --color-dark-border-strong: #4a4a4a;
+  --color-dark-border: #2a2a2a;
+
+  /* Accent Colors (work in both themes) */
+  --color-accent-blue: #0a84ff;
+  --color-accent-green: #30d158;
+  --color-accent-purple: #bf5af2;
+  --color-accent-orange: #ff9f0a;
+  --color-accent-red: #ff453a;
+  --color-accent-teal: #64d2ff;
+
   /* Basic tokens mapped */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* Fallbacks for typography since we don't have Nike fonts */
-  --font-sans: Helvetica, Arial, sans-serif;
-  --font-display: Impact, "Arial Black", sans-serif;
-
-  /* Prefer SF Pro when available, fall back to system UI fonts */
-  --font-sans: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-display: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-inter), "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-display: var(--font-inter), "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 body {
@@ -42,6 +66,10 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body.admin-route .global-site-header {
+  display: none;
 }
 
 .rich-content {
@@ -253,6 +281,16 @@ body {
   display: inline;
 }
 
+/* Dark theme math styles */
+body.admin-dark-theme .tiptap-mathematics-render:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+body.admin-dark-theme .tiptap-mathematics-render[data-type="block-math"] {
+  background: rgba(30, 30, 30, 0.5);
+  border: 1px solid #3a3a3a;
+}
+
 /* Read-only math rendering */
 .rich-content [data-type="inline-math"],
 .rich-content [data-type="block-math"] {
@@ -307,6 +345,19 @@ body {
   pointer-events: none;
 }
 
+/* Dark theme table styles */
+body.admin-dark-theme .tiptap-editor table td,
+body.admin-dark-theme .tiptap-editor table th,
+body.admin-dark-theme .rich-content table td,
+body.admin-dark-theme .rich-content table th {
+  border-color: #3a3a3a;
+}
+
+body.admin-dark-theme .tiptap-editor table th,
+body.admin-dark-theme .rich-content table th {
+  background-color: #1e1e1e;
+}
+
 .tiptap-editor table .column-resize-handle {
   position: absolute;
   right: -2px;
@@ -325,29 +376,151 @@ body {
 }
 
 .toolbar-btn {
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.38rem 0.55rem;
+  min-height: 32px;
+  font-size: 0.78rem;
   line-height: 1;
-  color: #111827;
-  background: #ffffff;
+  color: #334155;
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
 }
 
 .toolbar-btn.compact {
-  padding: 0.25rem 0.5rem;
+  padding: 0.32rem 0.5rem;
+  min-height: 28px;
   font-size: 0.72rem;
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .toolbar-btn:hover {
-  background: #f3f4f6;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
 }
 
 .toolbar-btn.is-active {
-  background: #111827;
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+/* Dark theme toolbar buttons */
+body.admin-dark-theme .toolbar-btn {
+  color: #cbd5e1;
+}
+
+body.admin-dark-theme .toolbar-btn:hover {
+  background: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+body.admin-dark-theme .toolbar-btn.is-active {
+  background: rgba(148, 163, 184, 0.22);
   color: #ffffff;
-  border-color: #111827;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.tiptap-toolbar.tiptap-toolbar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.7) rgba(226, 232, 240, 0.55);
+  scrollbar-gutter: stable;
+}
+
+.tiptap-toolbar.tiptap-toolbar-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.tiptap-toolbar.tiptap-toolbar-scroll::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.55);
+  border-radius: 999px;
+  margin: 0 8px;
+}
+
+.tiptap-toolbar.tiptap-toolbar-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(100, 116, 139, 0.65), rgba(148, 163, 184, 0.8));
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.tiptap-toolbar.tiptap-toolbar-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, rgba(71, 85, 105, 0.85), rgba(100, 116, 139, 0.9));
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  background-clip: padding-box;
+}
+
+body.admin-dark-theme .tiptap-toolbar.tiptap-toolbar-scroll {
+  scrollbar-color: rgba(203, 213, 225, 0.65) rgba(30, 41, 59, 0.75);
+}
+
+body.admin-dark-theme .tiptap-toolbar.tiptap-toolbar-scroll::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.75);
+}
+
+body.admin-dark-theme .tiptap-toolbar.tiptap-toolbar-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.45), rgba(203, 213, 225, 0.7));
+  border: 2px solid rgba(30, 41, 59, 0.75);
+  background-clip: padding-box;
+}
+
+body.admin-dark-theme .tiptap-toolbar.tiptap-toolbar-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, rgba(203, 213, 225, 0.65), rgba(241, 245, 249, 0.8));
+  border: 2px solid rgba(30, 41, 59, 0.75);
+  background-clip: padding-box;
+}
+
+/* Quick Insert Scrollbar Styling */
+.quick-insert-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.7) rgba(226, 232, 240, 0.55);
+  scrollbar-gutter: stable;
+}
+
+.quick-insert-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.quick-insert-scroll::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.55);
+  border-radius: 999px;
+  margin: 8px 0;
+  border: 1px solid rgba(203, 213, 225, 0.4);
+}
+
+.quick-insert-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.65), rgba(148, 163, 184, 0.8));
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.quick-insert-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.85), rgba(100, 116, 139, 0.9));
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  background-clip: padding-box;
+}
+
+body.admin-dark-theme .quick-insert-scroll {
+  scrollbar-color: rgba(203, 213, 225, 0.65) rgba(30, 41, 59, 0.75);
+}
+
+body.admin-dark-theme .quick-insert-scroll::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+body.admin-dark-theme .quick-insert-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.45), rgba(203, 213, 225, 0.7));
+  border: 2px solid rgba(30, 41, 59, 0.75);
+  background-clip: padding-box;
+}
+
+body.admin-dark-theme .quick-insert-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(203, 213, 225, 0.65), rgba(241, 245, 249, 0.8));
+  border: 2px solid rgba(30, 41, 59, 0.75);
+  background-clip: padding-box;
 }
 
 /* ─── Anti-Cheat: Exam Mode Text Selection Blocking ─── */
@@ -368,40 +541,40 @@ body.exam-active textarea {
 /* Mobile title color fix: override gray utility colors for heading/title elements */
 @media (max-width: 767px) {
 
-  html,
-  body,
-  main {
+  html:not(.admin-dark-theme),
+  html:not(.admin-dark-theme) body:not(.admin-dark-theme),
+  html:not(.admin-dark-theme) body:not(.admin-dark-theme) main {
     background-color: #ffffff !important;
     color: #111111 !important;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  .font-display,
-  .mobile-exam-title,
-  .mobile-title-black,
-  [data-mobile-title="true"] {
+  html:not(.admin-dark-theme) h1,
+  html:not(.admin-dark-theme) h2,
+  html:not(.admin-dark-theme) h3,
+  html:not(.admin-dark-theme) h4,
+  html:not(.admin-dark-theme) h5,
+  html:not(.admin-dark-theme) h6,
+  html:not(.admin-dark-theme) .font-display,
+  html:not(.admin-dark-theme) .mobile-exam-title,
+  html:not(.admin-dark-theme) .mobile-title-black,
+  html:not(.admin-dark-theme) [data-mobile-title="true"] {
     color: #000000 !important;
   }
 
-  h1[class*="text-nike-grey"],
-  h2[class*="text-nike-grey"],
-  h3[class*="text-nike-grey"],
-  h4[class*="text-nike-grey"],
-  h5[class*="text-nike-grey"],
-  h6[class*="text-nike-grey"],
-  h1[class*="text-gray-"],
-  h2[class*="text-gray-"],
-  h3[class*="text-gray-"],
-  h4[class*="text-gray-"],
-  h5[class*="text-gray-"],
-  h6[class*="text-gray-"],
-  [data-mobile-title="true"][class*="text-nike-grey"],
-  [data-mobile-title="true"][class*="text-gray-"] {
+  html:not(.admin-dark-theme) h1[class*="text-nike-grey"],
+  html:not(.admin-dark-theme) h2[class*="text-nike-grey"],
+  html:not(.admin-dark-theme) h3[class*="text-nike-grey"],
+  html:not(.admin-dark-theme) h4[class*="text-nike-grey"],
+  html:not(.admin-dark-theme) h5[class*="text-nike-grey"],
+  html:not(.admin-dark-theme) h6[class*="text-nike-grey"],
+  html:not(.admin-dark-theme) h1[class*="text-gray-"],
+  html:not(.admin-dark-theme) h2[class*="text-gray-"],
+  html:not(.admin-dark-theme) h3[class*="text-gray-"],
+  html:not(.admin-dark-theme) h4[class*="text-gray-"],
+  html:not(.admin-dark-theme) h5[class*="text-gray-"],
+  html:not(.admin-dark-theme) h6[class*="text-gray-"],
+  html:not(.admin-dark-theme) [data-mobile-title="true"][class*="text-nike-grey"],
+  html:not(.admin-dark-theme) [data-mobile-title="true"][class*="text-gray-"] {
     color: #000000 !important;
   }
 
@@ -467,4 +640,286 @@ body.exam-active textarea {
   background: rgba(148, 163, 184, 0.35);
   animation: dust-puff 0.35s ease-out infinite;
   pointer-events: none;
+}
+
+/* Border Beam Animation */
+@keyframes border-beam {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+/* ─── Admin Dark Theme ─── */
+html.admin-dark-theme {
+  background-color: #000000 !important;
+  color: #ffffff;
+}
+
+html.admin-dark-theme body {
+  background-color: #000000 !important;
+  color: #ffffff;
+}
+
+body.admin-dark-theme {
+  background-color: #000000 !important;
+  color: #ffffff;
+}
+
+/* The admin page wrapper sits inside <main max-w-[1440px] mx-auto> which can
+   leave white gutters. Force it (and its children that don't set their own bg)
+   to inherit the dark background. */
+body.admin-dark-theme [data-admin-page] {
+  background-color: #000000 !important;
+  color: #ffffff;
+}
+
+/* Defeat layout-level Tailwind utilities (bg-nike-white, bg-white) that win
+   specificity over our class-only rules above. */
+body.admin-dark-theme.bg-nike-white,
+body.admin-dark-theme.bg-white,
+html.admin-dark-theme body.bg-nike-white,
+html.admin-dark-theme body.bg-white {
+  background-color: #000000 !important;
+}
+
+/* ─── iOS-Style Utilities ─── */
+
+/* iOS Shadow Utilities - Light Theme */
+.shadow-ios-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-ios-md {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-ios-lg {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16), 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.shadow-ios-xl {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.20), 0 8px 16px rgba(0, 0, 0, 0.16);
+}
+
+/* iOS Shadow Utilities - Dark Theme */
+body.admin-dark-theme .shadow-ios-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+body.admin-dark-theme .shadow-ios-md {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+body.admin-dark-theme .shadow-ios-lg {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+body.admin-dark-theme .shadow-ios-xl {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 8px 16px rgba(0, 0, 0, 0.6);
+}
+
+/* Spring Animation Utilities */
+.transition-spring {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-duration: 400ms;
+}
+
+.transition-spring-fast {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-duration: 250ms;
+}
+
+/* Glassmorphism Utilities */
+.glass-light {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-dark {
+  background: rgba(17, 17, 17, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Result Details Modal Scrollbar Styling */
+.result-details-scroll-light {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.7) rgba(226, 232, 240, 0.55);
+  scrollbar-gutter: stable;
+}
+
+.result-details-scroll-light::-webkit-scrollbar {
+  width: 8px;
+}
+
+.result-details-scroll-light::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.55);
+  border-radius: 999px;
+  margin: 8px 0;
+  border: 1px solid rgba(203, 213, 225, 0.4);
+}
+
+.result-details-scroll-light::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.65), rgba(148, 163, 184, 0.8));
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.result-details-scroll-light::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.85), rgba(100, 116, 139, 0.9));
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  background-clip: padding-box;
+}
+
+.result-details-scroll-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90, 90, 90, 0.8) rgba(26, 26, 26, 0.9);
+  scrollbar-gutter: stable;
+}
+
+.result-details-scroll-dark::-webkit-scrollbar {
+  width: 8px;
+}
+
+.result-details-scroll-dark::-webkit-scrollbar-track {
+  background: rgba(26, 26, 26, 0.9);
+  border-radius: 999px;
+  margin: 8px 0;
+  border: 1px solid rgba(42, 42, 42, 0.8);
+}
+
+.result-details-scroll-dark::-webkit-scrollbar-thumb {
+  background: rgba(90, 90, 90, 0.8);
+  border: 2px solid rgba(26, 26, 26, 0.9);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.result-details-scroll-dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.9);
+  border: 2px solid rgba(26, 26, 26, 0.9);
+  background-clip: padding-box;
+}
+
+/* Results Table Scrollbar Styling */
+.results-table-scroll-light {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.7) rgba(226, 232, 240, 0.55);
+  scrollbar-gutter: stable;
+}
+
+.results-table-scroll-light::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.results-table-scroll-light::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.55);
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.4);
+}
+
+.results-table-scroll-light::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.65), rgba(148, 163, 184, 0.8));
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.results-table-scroll-light::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.85), rgba(100, 116, 139, 0.9));
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  background-clip: padding-box;
+}
+
+.results-table-scroll-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90, 90, 90, 0.8) rgba(26, 26, 26, 0.9);
+  scrollbar-gutter: stable;
+}
+
+.results-table-scroll-dark::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.results-table-scroll-dark::-webkit-scrollbar-track {
+  background: rgba(26, 26, 26, 0.9);
+  border-radius: 999px;
+  border: 1px solid rgba(42, 42, 42, 0.8);
+}
+
+.results-table-scroll-dark::-webkit-scrollbar-thumb {
+  background: rgba(90, 90, 90, 0.8);
+  border: 2px solid rgba(26, 26, 26, 0.9);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.results-table-scroll-dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.9);
+  border: 2px solid rgba(26, 26, 26, 0.9);
+  background-clip: padding-box;
+}
+/* Remedial Modal Scrollbar Styling */
+.remedial-modal-scroll-light {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.8) rgba(249, 250, 251, 0.6);
+  scrollbar-gutter: stable;
+}
+
+.remedial-modal-scroll-light::-webkit-scrollbar {
+  width: 8px;
+}
+
+.remedial-modal-scroll-light::-webkit-scrollbar-track {
+  background: rgba(249, 250, 251, 0.6);
+  border-radius: 999px;
+  margin: 8px 0;
+  border: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.remedial-modal-scroll-light::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(156, 163, 175, 0.7), rgba(107, 114, 128, 0.85));
+  border: 2px solid rgba(249, 250, 251, 0.6);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.remedial-modal-scroll-light::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(107, 114, 128, 0.9), rgba(75, 85, 99, 1));
+  border: 2px solid rgba(249, 250, 251, 0.6);
+  background-clip: padding-box;
+}
+
+.remedial-modal-scroll-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 144, 217, 0.6) rgba(26, 26, 26, 0.95);
+  scrollbar-gutter: stable;
+}
+
+.remedial-modal-scroll-dark::-webkit-scrollbar {
+  width: 8px;
+}
+
+.remedial-modal-scroll-dark::-webkit-scrollbar-track {
+  background: rgba(26, 26, 26, 0.95);
+  border-radius: 999px;
+  margin: 8px 0;
+  border: 1px solid rgba(42, 42, 42, 0.9);
+}
+
+.remedial-modal-scroll-dark::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(74, 144, 217, 0.5), rgba(74, 144, 217, 0.7));
+  border: 2px solid rgba(26, 26, 26, 0.95);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.remedial-modal-scroll-dark::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(74, 144, 217, 0.8), rgba(74, 144, 217, 0.95));
+  border: 2px solid rgba(26, 26, 26, 0.95);
+  background-clip: padding-box;
 }

@@ -1,2937 +1,427 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from 'react';
-import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
-import RichContent from '@/app/components/RichContent';
-import RichTextEditorField from '@/app/components/RichTextEditorField';
-import AdminQuizTab from '@/app/components/AdminQuizTab';
-import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
-import { type RawQuestion, fetchQuestions, fetchQuestionsByIds, fetchMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin, fetchAllMapelsAdmin, fetchAllSubBabsAdmin, fetchAllBabsAdmin, fetchSubBabsForMultiple, fetchVisibilitySettings, saveVisibilitySettings, type VisibilitySettings, type BabInfo, type SubBabInfo } from '@/lib/questions';
-import { categorySlugToLabel, formatCategorySelectionLabel, normalizeCategorySlug } from '@/lib/categories';
-import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
-import { supabase } from '@/lib/supabase';
+import React, { useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import AdminTabSwitcher from '@/app/components/AdminTabSwitcher';
+import AdminLoginView from '@/app/components/AdminLoginView';
+import AdminAuthLoadingView from '@/app/components/AdminAuthLoadingView';
+import SettingsTabPanel from '@/app/components/admin/SettingsTabPanel';
+import QuestionsTabPanel from '@/app/components/admin/QuestionsTabPanel';
+import ResultsTabPanel from '@/app/components/admin/ResultsTabPanel';
+import AdminPrimaryModals from '@/app/components/admin/AdminPrimaryModals';
+import AdminUtilityModals from '@/app/components/admin/AdminUtilityModals';
+import AdminQuizTabPanel from '@/app/components/admin/AdminQuizTabPanel';
+import AccessTabPanel from '@/app/components/admin/AccessTabPanel';
+import AnalyticsTabPanel from '@/app/components/admin/AnalyticsTabPanel';
+import useAdminPageController from '@/app/hooks/useAdminPageController';
+import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
+import { createQuizSessionAction } from '@/app/actions/admin/quiz';
+import { hasPermission } from '@/lib/admin-permissions';
+import { getOptionText, getCorrectOptionText } from '@/app/hooks/adminOptionText';
+import { useAdminTheme } from '@/app/hooks/useAdminTheme';
+import { ToastContainer } from '@/app/components/Toast';
 
-type ExamResult = {
-  id: number;
-  name: string;
-  score: number;
-  total_questions: number;
-  mapel: string;
-  bab: string;
-  sub_bab: string;
-  taken_at: string;
-  user_answers: {
-    question_id: number;
-    user_answer: string;
-    is_correct: boolean;
-  }[];
-  start_time?: string;
-  end_time?: string;
-  duration_seconds?: number;
-  mode?: string;
-};
-
-type LiveSession = {
-  session_id: string;
-  name: string;
-  mapel: string;
-  bab: string;
-  sub_bab: string;
-  mode: string;
-  question_count: number;
-  question_ids: number[];
-  current_index: number;
-  user_answers: Record<string, string>;
-  lives: number;
-  start_time: string;
-};
-
-type QuestionDraft = {
-  question_text: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
-  option_e: string;
-  correct_answer: string;
-  question_type: 'multiple_choice' | 'short_answer';
-  short_answer: string;
-  is_hidden: boolean;
-  mapels: string[];
-  babs: string[];
-  sub_babs: string[];
-};
-
-const AUTH_VERSION = '4'; // Increment this to force all admins to logout
-
-const EMPTY_DRAFT: QuestionDraft = {
-  question_text: '<p></p>',
-  option_a: '<p></p>',
-  option_b: '<p></p>',
-  option_c: '<p></p>',
-  option_d: '<p></p>',
-  option_e: '<p></p>',
-  correct_answer: 'A',
-  question_type: 'multiple_choice',
-  short_answer: '',
-  is_hidden: false,
-  mapels: [],
-  babs: [],
-  sub_babs: [],
-};
-
-const SANITIZE_OPTIONS: DomPurifyConfig = {
-  USE_PROFILES: { html: true },
-  FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
-  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
-  ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'data-language', 'data-type', 'data-latex'],
-};
-
-function sanitizeRichHtml(value: string): string {
-  return String(DOMPurify.sanitize(ensureHtmlDocument(value), SANITIZE_OPTIONS));
-}
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const {
+    shared,
+    auth,
+    tabs,
+    results,
+    analytics,
+    categories,
+    questions,
+    settings,
+    questionDerived,
+    settingsDerived,
+  } = useAdminPageController();
 
-  const [activeTab, setActiveTab] = useState<'questions' | 'results' | 'settings' | 'quiz'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('admin_active_tab');
-      if (saved && ['questions', 'results', 'settings', 'quiz'].includes(saved)) return saved as any;
+  const { theme, toggleTheme } = useAdminTheme();
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Initialize from URL on mount only
+  useEffect(() => {
+    if (auth.isAuthenticated !== true) return;
+
+    const urlTab = searchParams.get('tab');
+    if (urlTab && ['questions', 'quiz', 'results', 'analytics', 'settings', 'access'].includes(urlTab)) {
+      tabs.handleTabChange(urlTab as any);
     }
-    return 'questions';
-  });
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    if (auth.isAuthenticated !== true) return;
+
+    const handlePopState = () => {
+      const urlTab = new URL(window.location.href).searchParams.get('tab');
+      if (urlTab && ['questions', 'quiz', 'results', 'analytics', 'settings', 'access'].includes(urlTab)) {
+        tabs.handleTabChange(urlTab as any);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [auth.isAuthenticated, tabs]);
+
+  // Wrapper for tab change that also updates URL
+  const handleTabChangeWithUrl = useCallback((tab: string) => {
+    tabs.handleTabChange(tab as any);
+
+    // Update URL and remove code parameter (code is specific to Quiz tab sessions)
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('tab', tab);
+    newUrl.searchParams.delete('code');
+    window.history.replaceState({}, '', newUrl.toString());
+  }, [tabs]);
+
+  // Navigate to Quiz tab with code parameter
+  const handleNavigateToQuizWithCode = useCallback((code: string) => {
+    tabs.handleTabChange('quiz');
+
+    // Update URL with both tab and code parameters
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('tab', 'quiz');
+    newUrl.searchParams.set('code', code);
+    window.history.replaceState({}, '', newUrl.toString());
+  }, [tabs]);
 
   useEffect(() => {
-    localStorage.setItem('admin_active_tab', activeTab);
-
-    // Trigger initial fetch for specific tabs
-    if (activeTab === 'results') {
-      void fetchResults();
-      void loadVisibilitySettings();
-    } else if (activeTab === 'settings') {
-      void loadAllBabsAdmin();
-      void loadAllSubBabsAdmin();
-      void loadVisibilitySettings();
-    } else if (activeTab === 'quiz') {
-      void loadAllMapelsAdmin();
-      void loadAllBabsAdmin();
-      void loadAllSubBabsAdmin();
-      void loadVisibilitySettings();
+    const isModalOpen = Boolean(questions.selectedQuestion || questions.isAdding || questions.isEditing);
+    if (isModalOpen) {
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
     } else {
-      void fetchAdminQuestions();
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
     }
-  }, [activeTab]);
-
-  useEffect(() => {
-    // Auth Check
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const savedVersion = localStorage.getItem('admin_auth_version');
-
-      if (session && savedVersion === AUTH_VERSION) {
-        setIsAuthenticated(true);
-      } else {
-        // If they have a session but wrong/missing version, log them out
-        await supabase.auth.signOut();
-        localStorage.removeItem('admin_auth_version');
-        setIsAuthenticated(false);
-      }
-    };
-    void checkSession();
-  }, []);
-
-  const [selectedQuestion, setSelectedQuestion] = useState<RawQuestion | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const [formData, setFormData] = useState<QuestionDraft>(EMPTY_DRAFT);
-
-  const [results, setResults] = useState<ExamResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [questionLoading, setQuestionLoading] = useState(false);
-  const [savingQuestion, setSavingQuestion] = useState(false);
-  const [adminQuestions, setAdminQuestions] = useState<RawQuestion[]>([]);
-  const [activeMapelFilter, setActiveMapelFilter] = useState<string[]>([]);
-  const [activebabFilter, setActivebabFilter] = useState<string[]>([]);
-  const [activeSubBabFilter, setActiveSubBabFilter] = useState<string[]>([]);
-  const [questionTypeFilter, setQuestionTypeFilter] = useState<'all' | 'multiple_choice' | 'short_answer'>('all');
-  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'visible' | 'hidden'>('all');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
-  const [batchProcessing, setBatchProcessing] = useState(false);
-  const [batchVisibilityModalOpen, setBatchVisibilityModalOpen] = useState(false);
-  const [batchVisibilityTarget, setBatchVisibilityTarget] = useState(false);
-
-  // Auth state
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-
-  // Pagination and detailed view state
-  const [resultPage, setResultPage] = useState(0);
-  const [totalResults, setTotalResults] = useState(0);
-  const ITEMS_PER_PAGE = 20;
-
-  // New state for aggregate statistics across all records
-  const [statsData, setStatsData] = useState<{ score: number; total_questions: number }[]>([]);
-
-  const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
-  const [detailQuestions, setDetailQuestions] = useState<RawQuestion[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [allMapels, setAllMapels] = useState<BabInfo[]>([]);
-  const [allbabs, setAllbabs] = useState<BabInfo[]>([]);
-  const [allSubBabsAdmin, setAllSubBabsAdmin] = useState<SubBabInfo[]>([]);
-  const [sessionInfo, setSessionInfo] = useState<string | null>(null);
-  const [activeResMapel, setActiveResMapel] = useState<string[]>([]);
-  const [activeResbab, setActiveResbab] = useState<string[]>([]);
-  const [activeResSubBab, setActiveResSubBab] = useState<string[]>([]);
-  const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
-  const [activeModeFilter, setActiveModeFilter] = useState<string>('all');
-
-  // Settings state
-  const [visibilitySettings, setVisibilitySettings] = useState<VisibilitySettings>({
-    hidden_mapels: [],
-    admin_only_mapels: [],
-    hidden_babs: [],
-    admin_only_babs: [],
-    hidden_sub_babs: [],
-    admin_only_sub_babs: []
-  });
-  const [expandedBabs, setExpandedBabs] = useState<string[]>([]);
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [settingsSaving, setSettingsSaving] = useState(false);
-  const [settingsDirty, setSettingsDirty] = useState(false);
-
-  // Delete topic state
-  const [deleteTopicError, setDeleteTopicError] = useState<{ message: string; questionIds: number[] } | null>(null);
-  const [deletingTopic, setDeletingTopic] = useState(false);
-
-  // Add-new-category inline state (used in question form)
-  const [newMapelInput, setNewMapelInput] = useState('');
-  const [newSubBabInput, setNewSubBabInput] = useState('');
-  const [newbabInput, setNewbabInput] = useState('');
-  const [addingCategory, setAddingCategory] = useState(false);
-
-  // Live Tracking state
-  const [isLiveMode, setIsLiveMode] = useState(false);
-  const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
-  const [liveLoading, setLiveLoading] = useState(false);
-  const [trackingSession, setTrackingSession] = useState<LiveSession | null>(null);
-  const [currentTrackedQuestion, setCurrentTrackedQuestion] = useState<RawQuestion | null>(null);
-  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
-
-  // Check for existing session on mount
-  useEffect(() => {
-    async function checkSession() {
-      const { data: { session }, error } = await supabase.auth.getSession();
-
-      if (error || !session) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // Check auth version to force logout of old sessions
-      const localAuthVersion = localStorage.getItem('admin_auth_version');
-
-      if (localAuthVersion === AUTH_VERSION) {
-        setIsAuthenticated(true);
-        setSessionInfo(session.user.id);
-        void fetchAdminQuestions();
-        void loadAllMapelsAdmin();
-        void loadAllBabsAdmin();
-        void loadAllSubBabsAdmin();
-        void loadVisibilitySettings();
-      } else {
-        // If they have a session but wrong/missing version, log them out
-        await supabase.auth.signOut();
-        localStorage.removeItem('admin_auth_version');
-        setIsAuthenticated(false);
-      }
-    }
-    void checkSession();
-
-    // Restore active tab
-    const savedTab = localStorage.getItem('admin_active_tab') as any;
-    if (savedTab && ['questions', 'results', 'settings', 'quiz'].includes(savedTab)) {
-      setActiveTab(savedTab);
-      // Trigger initial fetch for that tab
-      if (savedTab === 'results') {
-        void fetchResults();
-        void loadVisibilitySettings();
-      } else if (savedTab === 'settings' || savedTab === 'quiz') {
-        void loadAllMapelsAdmin();
-        void loadAllBabsAdmin();
-        void loadAllSubBabsAdmin();
-        void loadVisibilitySettings();
-      } else {
-        void fetchAdminQuestions();
-      }
-    }
-  }, []);
-
-  // Live User Polling: Refresh data every 2 minutes when in Live Mode
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-
-    if (isAuthenticated && isLiveMode) {
-      interval = setInterval(() => {
-        void fetchLiveSessions();
-      }, 120000); // 2 minutes
-    }
-
     return () => {
-      if (interval) clearInterval(interval);
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
     };
-  }, [isAuthenticated, isLiveMode]);
+  }, [questions.selectedQuestion, questions.isAdding, questions.isEditing]);
 
-  // Filter babs based on selected mapels in Form
-  useEffect(() => {
-    if (!isAuthenticated || (!isAdding && !isEditing)) return;
-
-    const syncBabs = async () => {
-      if (formData.mapels.length === 0) {
-        setAllbabs([]);
-        return;
-      }
-
-      const promises = formData.mapels.map(m => fetchBabsAdmin(m));
-      const results = await Promise.all(promises);
-      const merged = results.flat();
-      const unique = merged.filter((v, i, a) => a.findIndex(t => t.value === v.value) === i);
-      setAllbabs(unique);
-    };
-    void syncBabs();
-  }, [formData.mapels, isAdding, isEditing, isAuthenticated]);
-
-  // Filter sub_babs based on selected babs in Form
-  useEffect(() => {
-    if (!isAuthenticated || (!isAdding && !isEditing)) return;
-
-    const syncSubBabs = async () => {
-      if (formData.babs.length === 0) {
-        setAllSubBabsAdmin([]);
-        return;
-      }
-
-      // Use the admin version which includes admin_only sub-babs
-      const filtered = await fetchSubBabsAdmin(formData.babs);
-      setAllSubBabsAdmin(filtered);
-    };
-
-    void syncSubBabs();
-  }, [formData.babs, isAdding, isEditing, isAuthenticated]);
-
-  // Filtered lists for the "Add/Edit Question" form based on visibility settings
-  const filteredMapelsForForm = useMemo(() => {
-    return allMapels.filter(m => !visibilitySettings.hidden_mapels.includes(normalizeCategorySlug(m.value)));
-  }, [allMapels, visibilitySettings.hidden_mapels]);
-
-  const filteredBabsForForm = useMemo(() => {
-    return allbabs.filter(b => !visibilitySettings.hidden_babs.includes(normalizeCategorySlug(b.value)));
-  }, [allbabs, visibilitySettings.hidden_babs]);
-
-  const filteredSubBabsForForm = useMemo(() => {
-    return allSubBabsAdmin.filter(s => !visibilitySettings.hidden_sub_babs.includes(normalizeCategorySlug(s.value)));
-  }, [allSubBabsAdmin, visibilitySettings.hidden_sub_babs]);
-
-  const mapelTabs = useMemo(() => {
-    const mapels = Array.from(new Set(adminQuestions.flatMap(q => q.mapels || []))).sort();
-    return mapels.map(m => ({ label: categorySlugToLabel(m) || m.toUpperCase(), value: m }));
-  }, [adminQuestions]);
-
-  const babTabs = useMemo(() => {
-    let list = adminQuestions;
-    if (activeMapelFilter.length > 0) {
-      list = adminQuestions.filter(q => q.mapels?.some(m => activeMapelFilter.includes(m)));
-    }
-    const babs = Array.from(new Set(list.flatMap(q => q.babs || []))).sort();
-    return babs.map(b => ({ label: categorySlugToLabel(b) || b.toUpperCase(), value: b }));
-  }, [adminQuestions, activeMapelFilter]);
-
-  const subBabTabs = useMemo(() => {
-    let list = adminQuestions;
-    if (activebabFilter.length > 0) {
-      list = adminQuestions.filter(q => q.babs?.some(b => activebabFilter.includes(b)));
-    } else if (activeMapelFilter.length > 0) {
-      list = adminQuestions.filter(q => q.mapels?.some(m => activeMapelFilter.includes(m)));
-    }
-    const subBabs = Array.from(new Set(list.flatMap(q => q.sub_babs || []))).sort();
-    return subBabs.map(sb => ({ label: categorySlugToLabel(sb) || sb.toUpperCase(), value: sb }));
-  }, [adminQuestions, activebabFilter, activeMapelFilter]);
-
-  const resMapelTabs = useMemo(() => {
-    const mapels = Array.from(new Set(results.map(r => r.mapel).filter(Boolean))).sort();
-    return mapels.map(m => ({ label: categorySlugToLabel(m!) || m!.toUpperCase(), value: m! }));
-  }, [results]);
-
-  const resBabTabs = useMemo(() => {
-    let list = results;
-    if (activeResMapel.length > 0) {
-      list = results.filter(r => r.mapel && activeResMapel.includes(r.mapel));
-    }
-    const babs = Array.from(new Set(list.map(r => r.bab).filter(Boolean))).sort();
-    return babs.map(b => ({ label: categorySlugToLabel(b!) || b!.toUpperCase(), value: b! }));
-  }, [results, activeResMapel]);
-
-  const resSubBabTabs = useMemo(() => {
-    let list = results;
-    if (activeResbab.length > 0) {
-      list = results.filter(r => r.bab && activeResbab.includes(r.bab));
-    } else if (activeResMapel.length > 0) {
-      list = results.filter(r => r.mapel && activeResMapel.includes(r.mapel));
-    }
-    const subBabs = Array.from(new Set(list.map(r => r.sub_bab).filter(Boolean))).sort();
-    return subBabs.map(sb => ({ label: categorySlugToLabel(sb!) || sb!.toUpperCase(), value: sb! }));
-  }, [results, activeResbab, activeResMapel]);
-
-  const filteredQuestions = useMemo(() => {
-    let list = adminQuestions;
-    if (activeMapelFilter.length > 0) {
-      list = list.filter(q => q.mapels?.some(m => activeMapelFilter.includes(m)));
-    }
-    if (activebabFilter.length > 0) {
-      list = list.filter(q => q.babs?.some(b => activebabFilter.includes(b)));
-    }
-    if (activeSubBabFilter.length > 0) {
-      list = list.filter(q => q.sub_babs?.some(sb => activeSubBabFilter.includes(sb)));
-    }
-    if (questionTypeFilter !== 'all') {
-      list = list.filter(q => q.question_type === questionTypeFilter);
-    }
-    if (visibilityFilter !== 'all') {
-      const shouldBeHidden = visibilityFilter === 'hidden';
-      list = list.filter(q => Boolean(q.is_hidden) === shouldBeHidden);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(question => {
-        const plainText = stripHtml(question.question_text).toLowerCase();
-        return plainText.includes(q) ||
-          question.id.toString().includes(q) ||
-          question.mapels?.some(c => c.toLowerCase().includes(q)) ||
-          question.babs?.some(c => c.toLowerCase().includes(q)) ||
-          question.sub_babs?.some(c => c.toLowerCase().includes(q));
-      });
-    }
-
-    // Sort by ID
-    list = [...list].sort((a, b) => {
-      return sortOrder === 'asc' ? a.id - b.id : b.id - a.id;
-    });
-
-    return list;
-  }, [activeMapelFilter, activebabFilter, activeSubBabFilter, visibilityFilter, questionTypeFilter, adminQuestions, searchQuery, sortOrder]);
-
-  const getCategoryLabel = (category: string) => {
-    if (category === 'all') {
-      return 'Semua';
-    }
-
-    return categorySlugToLabel(category) || category;
-  };
-
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
-    setIsAuthenticated(false);
-    setSessionInfo(null);
-    localStorage.removeItem('admin_auth_version');
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      if (data.session) {
-        localStorage.setItem('admin_auth_version', AUTH_VERSION);
-        setIsAuthenticated(true);
-        setSessionInfo(data.session.user.id);
-        void fetchAdminQuestions();
-        void loadAllMapelsAdmin();
-        void loadAllBabsAdmin();
-        void loadAllSubBabsAdmin();
-        void loadVisibilitySettings();
-      }
-    } catch (err: any) {
-      setAuthError(err.message || 'Login failed');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-
-
-  const loadAllMapelsAdmin = async () => {
-    try {
-      const hbs = await fetchAllMapelsAdmin();
-      setAllMapels(hbs);
-    } catch (err) {
-      console.error('Failed to load Admin Mapels list:', err);
-    }
-  };
-
-  const loadAllBabsAdmin = async () => {
-    try {
-      const hbs = await fetchAllBabsAdmin();
-      setAllbabs(hbs);
-    } catch (err) {
-      console.error('Failed to load Admin BABs list:', err);
-    }
-  };
-
-  const loadAllSubBabsAdmin = async () => {
-    try {
-      const sbs = await fetchAllSubBabsAdmin();
-      setAllSubBabsAdmin(sbs);
-    } catch (err) {
-      console.error('Failed to load admin sub_bab list:', err);
-    }
-  };
-
-  const fetchResults = async (page = 0, mapels = activeResMapel, babs = activeResbab, subBabs = activeResSubBab, mode = activeModeFilter) => {
-    setLoading(true);
-    try {
-      // 1. Fetch paginated data for the table
-      const from = page * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-
-      let paginatedQuery = supabase
-        .from('exam_results')
-        .select('*', { count: 'exact' });
-
-      if (mapels.length > 0) {
-        paginatedQuery = paginatedQuery.in('mapel', mapels);
-      }
-      if (babs.length > 0) {
-        paginatedQuery = paginatedQuery.in('bab', babs);
-      }
-      if (subBabs.length > 0) {
-        paginatedQuery = paginatedQuery.in('sub_bab', subBabs);
-      }
-      if (mode !== 'all') {
-        paginatedQuery = paginatedQuery.eq('mode', mode);
-      }
-
-      const { data, error, count } = await paginatedQuery
-        .order('taken_at', { ascending: false })
-        .range(from, to);
-
-      if (error) {
-        throw error;
-      }
-
-      setResults(data || []);
-      setTotalResults(count || 0);
-      setResultPage(page);
-
-      // 2. Fetch aggregate data for all matching records (Minimal columns for performance)
-      let statsQuery = supabase
-        .from('exam_results')
-        .select('score, total_questions');
-
-      if (mapels.length > 0) {
-        statsQuery = statsQuery.in('mapel', mapels);
-      }
-      if (babs.length > 0) {
-        statsQuery = statsQuery.in('bab', babs);
-      }
-      if (subBabs.length > 0) {
-        statsQuery = statsQuery.in('sub_bab', subBabs);
-      }
-      if (mode !== 'all') {
-        statsQuery = statsQuery.eq('mode', mode);
-      }
-
-      const { data: statRows, error: statError } = await statsQuery;
-      if (statError) {
-        throw statError;
-      }
-
-      setStatsData(statRows || []);
-    } catch (err) {
-      console.error('Error fetching results:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResMapelChange = (mapels: string[]) => {
-    setActiveResMapel(mapels);
-    setActiveResbab([]);
-    setActiveResSubBab([]);
-    void fetchResults(0, mapels, [], [], activeModeFilter);
-  };
-
-  const handleResbabChange = (babs: string[]) => {
-    setActiveResbab(babs);
-    // When changing BAB, reset sub bab to all to avoid invalid combinations
-    setActiveResSubBab([]);
-    void fetchResults(0, activeResMapel, babs, [], activeModeFilter);
-  };
-
-  const handleResSubBabChange = (subBabs: string[]) => {
-    setActiveResSubBab(subBabs);
-    void fetchResults(0, activeResMapel, activeResbab, subBabs, activeModeFilter);
-  };
-
-  const handleModeFilterChange = (mode: string) => {
-    setActiveModeFilter(mode);
-    void fetchResults(0, activeResMapel, activeResbab, activeResSubBab, mode);
-  };
-
-  const handleFetchResultDetail = async (result: ExamResult) => {
-    setViewingResult(result);
-    setDetailLoading(true);
-    setDetailQuestions([]);
-
-    try {
-      // Extract unique question IDs from the user answers
-      const questionIds = result.user_answers.map((a) => a.question_id);
-      if (questionIds.length > 0) {
-        const questions = await fetchQuestionsByIds(questionIds);
-        setDetailQuestions(questions);
-      }
-    } catch (err) {
-      console.error('Error fetching result details:', err);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const fetchLiveSessions = async () => {
-    setLiveLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('exam_logs')
-        .select('*')
-        .eq('is_finished', false)
-        .gt('expires_at', new Date().toISOString())
-        .order('start_time', { ascending: false });
-
-      if (error) throw error;
-      setLiveSessions(data || []);
-    } catch (err) {
-      console.error('Error fetching live sessions:', err);
-    } finally {
-      setLiveLoading(false);
-    }
-  };
-
-  const handleFetchLiveDetail = async (session: LiveSession) => {
-    setTrackingSession(session);
-    setIsTrackingModalOpen(true);
-    setDetailLoading(true);
-
-    try {
-      // Logic for "Currently Answering":
-      // In Survival, question_ids is populated lazily.
-      // The "active" question is the latest one in question_ids that isn't answered,
-      // OR if all in question_ids are answered, it's the one at current_index + 1 (which might not exist yet).
-
-      const lastQuestionIdx = session.question_ids.length - 1;
-      const isLastAnswered = session.user_answers[lastQuestionIdx.toString()] !== undefined;
-
-      let currentIdxToFetch = -1;
-      if (lastQuestionIdx >= 0 && !isLastAnswered) {
-        // User has fetched a question but not answered it yet
-        currentIdxToFetch = lastQuestionIdx;
-      } else if (session.current_index + 1 < session.question_count) {
-        // User has answered everything they fetched, or hasn't started
-        currentIdxToFetch = session.current_index + 1;
-      }
-
-      const currentQuestionId = currentIdxToFetch >= 0 ? session.question_ids[currentIdxToFetch] : null;
-
-      if (currentQuestionId) {
-        const [question] = await fetchQuestionsByIds([currentQuestionId]);
-        setCurrentTrackedQuestion(question || null);
-      } else {
-        setCurrentTrackedQuestion(null);
-      }
-
-      // History = questions that have an entry in user_answers
-      const answeredIndices = Object.keys(session.user_answers).map(Number).sort((a, b) => a - b);
-      const answeredIds = answeredIndices.map(idx => session.question_ids[idx]).filter(Boolean);
-
-      if (answeredIds.length > 0) {
-        const questions = await fetchQuestionsByIds(answeredIds);
-        // Map back to maintain order if fetch returns different order
-        const orderedQuestions = answeredIds.map(id => questions.find(q => q.id === id)).filter(Boolean) as RawQuestion[];
-        setDetailQuestions(orderedQuestions);
-      } else {
-        setDetailQuestions([]);
-      }
-    } catch (err) {
-      console.error('Failed to fetch live tracking details:', err);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-
-  const loadVisibilitySettings = async () => {
-    setSettingsLoading(true);
-    try {
-      const vs = await fetchVisibilitySettings();
-      setVisibilitySettings(vs);
-      setSettingsDirty(false);
-    } catch (err) {
-      console.error('Failed to load visibility settings:', err);
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    setSettingsSaving(true);
-    try {
-      await saveVisibilitySettings(visibilitySettings);
-      setSettingsDirty(false);
-      window.alert('Settings saved. Changes will appear to users on next page load.');
-    } catch (err) {
-      console.error('Failed to save settings:', err);
-      window.alert('Failed to save settings.');
-    } finally {
-      setSettingsSaving(false);
-    }
-  };
-
-  const handleDeleteTopic = async (type: 'mapels' | 'babs' | 'sub_babs', slug: string) => {
-    const normalizedSlug = normalizeCategorySlug(slug);
-    const typeLabel = type === 'mapels' ? 'Mapel' : type === 'babs' ? 'Bab' : 'Sub-bab';
-
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus ${typeLabel} "${categorySlugToLabel(normalizedSlug) || normalizedSlug}" dari semua soal?`)) {
-      return;
-    }
-
-    setDeletingTopic(true);
-    try {
-      // 1. Fetch all questions that contain this slug
-      const { data: questions, error } = await supabase
-        .from('questions')
-        .select('id, mapels, babs, sub_babs')
-        .contains(type, [normalizedSlug]);
-
-      if (error) throw error;
-      if (!questions || questions.length === 0) {
-        window.alert(`Tidak ada soal yang menggunakan ${typeLabel} "${categorySlugToLabel(normalizedSlug) || normalizedSlug}".`);
-        setDeletingTopic(false);
-        return;
-      }
-
-      // 2. Check for orphaned questions (questions with ONLY this topic)
-      const orphanedIds: number[] = [];
-      for (const q of questions) {
-        const arr = (q[type] as string[]) || [];
-        if (arr.length <= 1) {
-          orphanedIds.push(q.id);
-        }
-      }
-
-      if (orphanedIds.length > 0) {
-        setDeleteTopicError({
-          message: `Tidak dapat menghapus ${typeLabel} "${categorySlugToLabel(normalizedSlug) || normalizedSlug}" karena ${orphanedIds.length} soal hanya memiliki ${typeLabel} ini. Hapus atau edit soal tersebut terlebih dahulu.`,
-          questionIds: orphanedIds,
-        });
-        setDeletingTopic(false);
-        return;
-      }
-
-      // 3. Remove slug from all questions
-      for (const q of questions) {
-        const currentArr = (q[type] as string[]) || [];
-        const updatedArr = currentArr.filter(s => normalizeCategorySlug(s) !== normalizedSlug);
-        await supabase.from('questions').update({ [type]: updatedArr }).eq('id', q.id);
-      }
-
-      // 4. Refresh local data
-      await fetchAdminQuestions();
-      await loadAllMapelsAdmin();
-      await loadAllBabsAdmin();
-      await loadAllSubBabsAdmin();
-
-      window.alert(`${typeLabel} "${categorySlugToLabel(normalizedSlug) || normalizedSlug}" berhasil dihapus dari ${questions.length} soal.`);
-    } catch (err) {
-      console.error('Failed to delete topic:', err);
-      window.alert('Gagal menghapus topik. Silakan coba lagi.');
-    } finally {
-      setDeletingTopic(false);
-    }
-  };
-
-  const handleVisibilityChange = (type: 'mapels' | 'babs' | 'sub_babs', slug: string, state: 'visible' | 'admin_only' | 'hidden') => {
-    setVisibilitySettings(prev => {
-      const next = { ...prev };
-      const normalized = normalizeCategorySlug(slug);
-
-      if (type === 'mapels') {
-        next.hidden_mapels = next.hidden_mapels.filter(s => s !== normalized);
-        next.admin_only_mapels = next.admin_only_mapels.filter(s => s !== normalized);
-        if (state === 'hidden') next.hidden_mapels.push(normalized);
-        else if (state === 'admin_only') next.admin_only_mapels.push(normalized);
-      } else if (type === 'babs') {
-        next.hidden_babs = next.hidden_babs.filter(s => s !== normalized);
-        next.admin_only_babs = next.admin_only_babs.filter(s => s !== normalized);
-        if (state === 'hidden') next.hidden_babs.push(normalized);
-        else if (state === 'admin_only') next.admin_only_babs.push(normalized);
-      } else {
-        next.hidden_sub_babs = next.hidden_sub_babs.filter(s => s !== normalized);
-        next.admin_only_sub_babs = next.admin_only_sub_babs.filter(s => s !== normalized);
-        if (state === 'hidden') next.hidden_sub_babs.push(normalized);
-        else if (state === 'admin_only') next.admin_only_sub_babs.push(normalized);
-      }
-
-      setSettingsDirty(true);
-      return next;
-    });
-  };
-
-  const babSubBabMap = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    allbabs.forEach(b => map.set(normalizeCategorySlug(b.value), new Set()));
-
-    adminQuestions.forEach(q => {
-      const qBabs = q.babs || [];
-      const qSubBabs = q.sub_babs || [];
-
-      qBabs.forEach(b => {
-        const nb = normalizeCategorySlug(b);
-        if (!map.has(nb)) map.set(nb, new Set());
-        qSubBabs.forEach(sb => {
-          map.get(nb)!.add(normalizeCategorySlug(sb));
-        });
-      });
-    });
-    return map;
-  }, [adminQuestions, allbabs]);
-
-  /**
-   * Creates a new bab slug on-the-fly and adds it to the current question draft.
-   */
-  const handleAddNewMapel = async () => {
-    const slug = normalizeCategorySlug(newMapelInput);
-    if (!slug) return;
-
-    setAddingCategory(true);
-    try {
-      if (!formData.mapels.includes(slug)) {
-        handleInputChange('mapels', [...formData.mapels, slug]);
-      }
-
-      if (!allMapels.some(c => c.value === slug)) {
-        const label = categorySlugToLabel(slug);
-        setAllMapels(prev => [...prev, { value: slug, label }]);
-      }
-
-      setNewMapelInput('');
-    } finally {
-      setAddingCategory(false);
-    }
-  };
-
-  const handleAddNewbab = async () => {
-    const slug = normalizeCategorySlug(newbabInput);
-    if (!slug) return;
-
-    setAddingCategory(true);
-    try {
-      if (!formData.babs.includes(slug)) {
-        handleInputChange('babs', [...formData.babs, slug]);
-      }
-
-      if (!allbabs.some(c => c.value === slug)) {
-        const label = categorySlugToLabel(slug);
-        setAllbabs(prev => [...prev, { value: slug, label }]);
-      }
-
-      setNewbabInput('');
-    } finally {
-      setAddingCategory(false);
-    }
-  };
-
-  /**
-   * Creates a new sub_bab slug on-the-fly and adds it to the current question draft.
-   */
-  const handleAddNewSubBab = async () => {
-    const slug = normalizeCategorySlug(newSubBabInput);
-    if (!slug) return;
-
-    setAddingCategory(true);
-    try {
-      if (!formData.sub_babs.includes(slug)) {
-        handleInputChange('sub_babs', [...formData.sub_babs, slug]);
-      }
-
-      if (!allSubBabsAdmin.some(c => c.value === slug)) {
-        const label = categorySlugToLabel(slug);
-        setAllSubBabsAdmin(prev => [...prev, { value: slug, label }]);
-      }
-
-      setNewSubBabInput('');
-    } finally {
-      setAddingCategory(false);
-    }
-  };
-
-  const fetchAdminQuestions = async () => {
-    setQuestionLoading(true);
-    try {
-      const questionRows = await fetchQuestions();
-      setAdminQuestions(questionRows);
-    } catch (err) {
-      console.error('Error fetching questions:', err);
-      // Removed fallback pool. Error state can just be empty or handled visually.
-    } finally {
-      setQuestionLoading(false);
-    }
-  };
-
-  const handleMapelFilterChange = (mapels: string[]) => {
-    setActiveMapelFilter(mapels);
-    setActivebabFilter([]);
-    setActiveSubBabFilter([]);
-    void fetchAdminQuestions();
-  };
-
-  const handleBabFilterChange = (babs: string[]) => {
-    setActivebabFilter(babs);
-    setActiveSubBabFilter([]);
-    void fetchAdminQuestions();
-  };
-
-  const handleTabChange = (tab: 'questions' | 'results' | 'settings' | 'quiz') => {
-    setActiveTab(tab);
-    localStorage.setItem('admin_active_tab', tab);
-
-    if (!isAuthenticated) {
-      return;
-    }
-
-    if (tab === 'results') {
-      void fetchResults();
-      void loadVisibilitySettings();
-      return;
-    }
-
-    if (tab === 'settings') {
-      void loadAllMapelsAdmin();
-      void loadAllBabsAdmin();
-      void loadAllSubBabsAdmin();
-      void loadVisibilitySettings();
-      return;
-    }
-
-    void fetchAdminQuestions();
-  };
-
-  const closeModal = () => {
-    setSelectedQuestion(null);
-    setIsEditing(false);
-    setIsAdding(false);
-    setFormData(EMPTY_DRAFT);
-    void loadAllSubBabsAdmin();
-  };
-
-  const handleInputChange = (field: keyof QuestionDraft, value: string | string[] | boolean) => {
-    setFormData((previous) => ({ ...previous, [field]: value }));
-  };
-
-  const buildQuestionPayload = () => {
-    const questionType = formData.question_type || 'multiple_choice';
-    const normalizedShortAnswer = stripHtml(String(formData.short_answer ?? '')).trim();
-    const payload: Omit<RawQuestion, 'id'> = {
-      question_text: sanitizeRichHtml(formData.question_text),
-      option_a: sanitizeRichHtml(formData.option_a),
-      option_b: sanitizeRichHtml(formData.option_b),
-      option_c: sanitizeRichHtml(formData.option_c),
-      option_d: sanitizeRichHtml(formData.option_d),
-      option_e: sanitizeRichHtml(formData.option_e),
-      correct_answer: questionType === 'short_answer' ? 'A' : formData.correct_answer.toUpperCase(),
-      question_type: questionType,
-      short_answer: questionType === 'short_answer' ? normalizedShortAnswer : '',
-      is_hidden: formData.is_hidden,
-      mapels: formData.mapels,
-      babs: formData.babs,
-      sub_babs: formData.sub_babs,
-    };
-
-    const hasMedia = (html: string) => /<(img|iframe)[^>]*>/i.test(html);
-
-    const missingQuestion = stripHtml(payload.question_text).length === 0 && !hasMedia(payload.question_text);
-    if (missingQuestion) {
-      throw new Error('Please fill in the question text before saving.');
-    }
-
-    if (questionType === 'multiple_choice') {
-      const missingOptions = [
-        payload.option_a,
-        payload.option_b,
-        payload.option_c,
-        payload.option_d,
-        payload.option_e,
-      ].some((entry) => stripHtml(entry).length === 0 && !hasMedia(entry));
-
-      if (missingOptions) {
-        throw new Error('Please fill in all answer options before saving.');
-      }
-    } else if (!normalizedShortAnswer) {
-      throw new Error('Please provide the short answer before saving.');
-    }
-
-    if (payload.mapels.length === 0 || payload.babs.length === 0) {
-      throw new Error('Please select at least one MAPEL and BAB for the question.');
-    }
-
-    return payload;
-  };
-
-  const handleSave = async () => {
-    setSavingQuestion(true);
-
-    try {
-      const payload = buildQuestionPayload();
-
-      if (isAdding) {
-        const { error } = await supabase.from('questions').insert([payload]);
-        if (error) {
-          console.error("Supabase Insert Error:", error);
-          throw new Error(`Database Error: ${error.message} (Code: ${error.code})`);
-        }
-      } else if (isEditing && selectedQuestion?.id) {
-        const { error } = await supabase
-          .from('questions')
-          .update(payload)
-          .eq('id', selectedQuestion.id);
-
-        if (error) {
-          console.error("Supabase Update Error:", error);
-          throw new Error(`Database Error: ${error.message} (Code: ${error.code})`);
-        }
-      }
-
-      await fetchAdminQuestions();
-      await loadAllBabsAdmin();
-      await loadAllSubBabsAdmin();
-      closeModal();
-    } catch (err) {
-      console.error('Error saving question:', err);
-      const message = err instanceof Error ? err.message : 'Failed to save question.';
-      window.alert(message);
-    } finally {
-      setSavingQuestion(false);
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!deletingQuestion?.id) {
-      setDeletingQuestion(null);
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('questions')
-        .delete()
-        .eq('id', deletingQuestion.id);
-
-      if (error) {
-        throw error;
-      }
-
-      await fetchAdminQuestions();
-      if (selectedQuestion?.id === deletingQuestion.id) {
-        closeModal();
-      }
-    } catch (err) {
-      console.error('Error deleting question:', err);
-    } finally {
-      setDeletingQuestion(null);
-    }
-  };
-
-  const handleBatchVisibilityToggle = async (isHidden: boolean) => {
-    if (selectedQuestionIds.length === 0) return;
-
-    setBatchProcessing(true);
-    try {
-      const { error } = await supabase
-        .from('questions')
-        .update({ is_hidden: isHidden })
-        .in('id', selectedQuestionIds);
-
-      if (error) throw error;
-
-      await fetchAdminQuestions();
-      setSelectedQuestionIds([]); // clear selection after successful operation
-    } catch (err) {
-      console.error('Error batch updating visibility:', err);
-      window.alert('Gagal mengubah visibilitas soal secara massal.');
-    } finally {
-      setBatchProcessing(false);
-      setBatchVisibilityModalOpen(false);
-    }
-  };
-
-  const startAddNew = () => {
-    setFormData(EMPTY_DRAFT);
-    setIsAdding(true);
-    setIsEditing(false);
-    setSelectedQuestion(null);
-  };
-
-  const startEdit = (question: RawQuestion) => {
-    setFormData({
-      question_text: ensureHtmlDocument(question.question_text),
-      option_a: ensureHtmlDocument(question.option_a),
-      option_b: ensureHtmlDocument(question.option_b),
-      option_c: ensureHtmlDocument(question.option_c),
-      option_d: ensureHtmlDocument(question.option_d),
-      option_e: ensureHtmlDocument(question.option_e),
-      correct_answer: question.correct_answer,
-      question_type: question.question_type === 'short_answer' ? 'short_answer' : 'multiple_choice',
-      short_answer: question.short_answer || '',
-      is_hidden: Boolean(question.is_hidden),
-      mapels: question.mapels || [],
-      babs: question.babs || [],
-      sub_babs: question.sub_babs || [],
-    });
-    setIsEditing(true);
-    setIsAdding(false);
-    setSelectedQuestion(question);
-  };
-
-  if (isAuthenticated === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-100 border-t-[#4A90D9] rounded-full animate-spin"></div>
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Verifying Admin Session...</p>
-        </div>
-      </div>
-    );
+  if (auth.isAuthenticated === null) {
+    return <AdminAuthLoadingView theme={theme} />;
   }
 
-  if (isAuthenticated === false) {
+  const adminProfile = auth.adminProfile;
+  const canAccessManage = Boolean(adminProfile && hasPermission(adminProfile, 'access:manage'));
+  const canCreateQuestion = Boolean(adminProfile && hasPermission(adminProfile, 'question:create'));
+  const canUpdateAnyQuestion = Boolean(adminProfile && hasPermission(adminProfile, 'question:update:any'));
+  const canUpdateOwnQuestion = Boolean(adminProfile && hasPermission(adminProfile, 'question:update:own'));
+  const canDeleteAnyQuestion = Boolean(adminProfile && hasPermission(adminProfile, 'question:delete:any'));
+  const canDeleteOwnQuestion = Boolean(adminProfile && hasPermission(adminProfile, 'question:delete:own'));
+  const canDeleteTopic = Boolean(adminProfile && hasPermission(adminProfile, 'topic:delete'));
+  const canSaveSettings = Boolean(adminProfile && hasPermission(adminProfile, 'settings:update'));
+  const canEditQuestion = (question: { created_by?: string | null }) => {
+    const ownsQuestion = Boolean(adminProfile?.userId && question.created_by === adminProfile.userId);
+    return canUpdateAnyQuestion || (ownsQuestion && canUpdateOwnQuestion);
+  };
+
+  if (auth.isAuthenticated === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="max-w-md w-full">
-          <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-xl shadow-slate-200/50 border-2 border-slate-100 text-center">
-            <div className="w-20 h-20 bg-[#FF9500]/10 text-[#FF9500] rounded-[24px] flex items-center justify-center mx-auto mb-8 text-3xl shadow-inner">
-              🔒
-            </div>
-
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">Admin Login</h1>
-            <p className="text-slate-400 text-sm mb-10 font-medium tracking-tight">Enter your credentials to access the panel.</p>
-
-            <form onSubmit={handleLogin} className="space-y-4 text-left">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Email Address</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#4A90D9]/10 focus:border-[#4A90D9] transition-all placeholder:text-slate-300"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-medium text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#4A90D9]/10 focus:border-[#4A90D9] transition-all placeholder:text-slate-300"
-                  required
-                />
-              </div>
-
-              {authError && (
-                <div className="p-4 bg-red-50 border-2 border-red-100 rounded-2xl text-red-600 text-xs font-bold animate-shake">
-                  ⚠️ {authError}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={authLoading}
-                style={{ background: '#4A90D9' }}
-                className="w-full py-4 mt-4 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-200 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {authLoading ? 'Verifying...' : 'Sign In to Dashboard'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => window.location.href = '/'}
-                className="w-full py-4 bg-white border-2 border-slate-100 text-slate-400 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-colors mt-2"
-              >
-                Return to Home
-              </button>
-            </form>
-          </div>
-
-          <p className="text-center mt-8 text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em]">
-            OSN SMANDAPURA • SECURE ADMIN ACCESS
-          </p>
-        </div>
-      </div>
+      <AdminLoginView
+        email={auth.email}
+        password={auth.password}
+        authError={auth.authError}
+        authLoading={auth.authLoading}
+        onEmailChange={auth.setEmail}
+        onPasswordChange={auth.setPassword}
+        onSubmit={auth.handleLogin}
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-white p-6 md:p-8">
-      <header className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800">Admin Panel</h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">Manage questions, results, and live quizzes</p>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 sm:px-5 sm:py-2.5 bg-white border-2 border-slate-200 text-slate-500 rounded-xl font-semibold text-xs sm:text-sm hover:border-[#FF3B30] hover:text-[#FF3B30] transition-all"
-        >
-          Logout
-        </button>
-      </header>
+    <div data-admin-page className={`relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-full w-screen overflow-hidden md:flex ${theme === 'dark' ? 'bg-dark-900 text-dark-text-primary' : 'bg-white text-[#111111]'}`}>
+      <AdminTabSwitcher
+        activeTab={tabs.activeTab}
+        onTabChange={handleTabChangeWithUrl}
+        onLogout={auth.handleLogout}
+        adminEmail={auth.adminEmail}
+        adminRole={adminProfile?.role}
+        canAccessManage={canAccessManage}
+        canViewSettings={canSaveSettings || canDeleteTopic}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onAddQuestion={canCreateQuestion ? () => {
+          handleTabChangeWithUrl('questions');
+          questions.startAddNew();
+        } : undefined}
+        onCreateQuiz={() => {
+          handleTabChangeWithUrl('quiz');
+        }}
+      />
 
-      <div className="grid grid-cols-2 sm:flex gap-2 mb-6 md:mb-8 border-b border-slate-100 pb-4">
-        <button
-          onClick={() => handleTabChange('questions')}
-          style={activeTab === 'questions' ? { background: '#4A90D9' } : {}}
-          className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'questions' ? 'text-white shadow-md shadow-blue-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#4A90D9] hover:text-[#4A90D9]'}`}
-        >
-          📝 Questions
-        </button>
-        <button
-          onClick={() => handleTabChange('results')}
-          style={activeTab === 'results' ? { background: '#FF9500' } : {}}
-          className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'results' ? 'text-white shadow-md shadow-orange-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#FF9500] hover:text-[#FF9500]'}`}
-        >
-          📊 Results
-        </button>
-        <button
-          onClick={() => handleTabChange('quiz')}
-          style={activeTab === 'quiz' ? { background: '#34C759' } : {}}
-          className={`px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'quiz' ? 'text-white shadow-md shadow-green-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-[#34C759] hover:text-[#34C759]'}`}
-        >
-          🎮 Quiz
-        </button>
-        <button
-          onClick={() => handleTabChange('settings')}
-          style={activeTab === 'settings' ? { background: '#64748B' } : {}}
-          className={`sm:ml-auto px-3 sm:px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all text-center ${activeTab === 'settings' ? 'text-white shadow-md shadow-slate-200' : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-400 hover:text-slate-600'}`}
-        >
-          ⚙️ Settings
-        </button>
-      </div>
-
-      {activeTab === 'questions' && (
-        <div>
-          <div className="mb-5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={startAddNew}
-                style={{ background: '#34C759' }}
-                className="px-4 sm:px-5 py-2.5 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity shadow-md shadow-green-200 flex items-center justify-center gap-2"
-              >
-                <span className="text-lg leading-none">+</span> Add New Question
-              </button>
-              <div className="px-4 py-2 bg-slate-100 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block leading-none mb-1">Total Soal</span>
-                <span className="text-sm font-black text-slate-700 leading-none">{filteredQuestions.length}</span>
-              </div>
-            </div>
-            <button
-              onClick={fetchAdminQuestions}
-              className="px-4 sm:px-5 py-2.5 bg-white border-2 border-[#4A90D9]/20 text-[#4A90D9] rounded-xl font-semibold text-sm hover:bg-[#4A90D9]/5 transition-colors"
-            >
-              ↻ Refresh
-            </button>
-          </div>
-
-          <div className="bg-white shadow sm:rounded-lg border border-gray-200 p-4 mb-5 w-full sm:max-w-6xl">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="space-y-1.5">
-                <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">Mapel</span>
-                <MultiSelectDropdown
-                  label="Mapel"
-                  options={mapelTabs}
-                  selectedValues={activeMapelFilter}
-                  onChange={handleMapelFilterChange}
-                  placeholder="Semua Mapel"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">BAB</span>
-                <MultiSelectDropdown
-                  label="Bab"
-                  options={babTabs}
-                  selectedValues={activebabFilter}
-                  onChange={handleBabFilterChange}
-                  placeholder="Semua Bab"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">Sub-bab</span>
-                <MultiSelectDropdown
-                  label="Sub-bab"
-                  options={subBabTabs}
-                  selectedValues={activeSubBabFilter}
-                  onChange={(vals) => {
-                    setActiveSubBabFilter(vals);
-                    void fetchAdminQuestions();
-                  }}
-                  placeholder="Semua Sub-bab"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">Jenis Soal</label>
-                <select
-                  value={questionTypeFilter}
-                  onChange={(e) => setQuestionTypeFilter(e.target.value as 'all' | 'multiple_choice' | 'short_answer')}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-                >
-                  <option value="all">Semua Jenis</option>
-                  <option value="multiple_choice">Pilihan Ganda</option>
-                  <option value="short_answer">Isian Singkat</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60">Visibility</label>
-                <select
-                  value={visibilityFilter}
-                  onChange={(e) => setVisibilityFilter(e.target.value as 'all' | 'visible' | 'hidden')}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] appearance-none cursor-pointer transition-colors"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-                >
-                  <option value="all">All</option>
-                  <option value="visible">Visible</option>
-                  <option value="hidden">Hidden</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-6 flex flex-col sm:flex-row gap-3 items-end">
-            <div className="relative w-full max-w-md">
-              <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">
-                Cari Soal {filteredQuestions.length > 0 && <span className="text-[#4A90D9] ml-1">({filteredQuestions.length})</span>}
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search questions by text or category..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2.5 pl-10 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4A90D9]/20 focus:border-[#4A90D9] transition-colors text-sm h-11"
-                />
-                <svg
-                  className="absolute left-3 top-3 h-5 w-5 text-slate-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-            <div className="w-full sm:w-auto flex flex-wrap items-end gap-2">
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 tracking-widest mb-2 ml-1">Urutan</label>
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                  className={`h-11 px-6 rounded-xl text-sm font-bold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${sortOrder === 'desc'
-                    ? 'bg-nike-black border-nike-black text-white shadow-lg'
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-nike-black'
-                    }`}
-                >
-                  {sortOrder === 'desc' ? (
-                    <>
-                      <span>⬇️</span> Terbaru (Newer)
-                    </>
-                  ) : (
-                    <>
-                      <span>⬆️</span> Terlama (Older)
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Batch Select Controls */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => {
-                    if (selectedQuestionIds.length === filteredQuestions.length && filteredQuestions.length > 0) {
-                      setSelectedQuestionIds([]);
-                    } else {
-                      setSelectedQuestionIds(filteredQuestions.map(q => q.id));
-                    }
-                  }}
-                  className={`h-11 px-4 rounded-xl text-sm font-bold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${selectedQuestionIds.length > 0 && selectedQuestionIds.length === filteredQuestions.length
-                    ? 'bg-[#4A90D9] border-[#4A90D9] text-white shadow-lg'
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-[#4A90D9]'
-                    }`}
-                >
-                  {selectedQuestionIds.length > 0 && selectedQuestionIds.length === filteredQuestions.length ? 'Deselect All' : 'Select All'}
-                </button>
-
-                {selectedQuestionIds.length > 0 && (
-                  <>
-                    <button
-                      onClick={() => {
-                        setBatchVisibilityTarget(true);
-                        setBatchVisibilityModalOpen(true);
-                      }}
-                      disabled={batchProcessing}
-                      className="h-11 px-4 rounded-xl text-sm font-bold bg-[#FF3B30]/10 text-[#FF3B30] hover:bg-[#FF3B30]/20 transition-all border-2 border-transparent disabled:opacity-50 whitespace-nowrap"
-                      title="Hide Selected"
-                    >
-                      Hide ({selectedQuestionIds.length})
-                    </button>
-                    <button
-                      onClick={() => {
-                        setBatchVisibilityTarget(false);
-                        setBatchVisibilityModalOpen(true);
-                      }}
-                      disabled={batchProcessing}
-                      className="h-11 px-4 rounded-xl text-sm font-bold bg-[#34C759]/10 text-[#34C759] hover:bg-[#34C759]/20 transition-all border-2 border-transparent disabled:opacity-50 whitespace-nowrap"
-                      title="Show Selected"
-                    >
-                      Visible ({selectedQuestionIds.length})
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {questionLoading ? (
-            <div className="bg-white rounded-xl p-8 text-slate-400 text-center border-2 border-slate-100">Loading questions...</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredQuestions.length === 0 && (
-                <div className="col-span-full bg-white rounded-xl p-8 border-2 border-dashed border-slate-200 text-slate-400 text-center">
-                  No questions found for the selected topics.
-                </div>
-              )}
-
-              {filteredQuestions.map((question, index) => {
-                const previewText = stripHtml(question.question_text);
-                const isShortAnswer = question.question_type === 'short_answer';
-                const shortAnswerPreview = question.short_answer?.length > 36
-                  ? `${question.short_answer.slice(0, 36)}...`
-                  : question.short_answer || '-';
-
-                return (
-                  <div key={question.id ?? index} className="relative border-2 border-slate-100 rounded-xl p-5 bg-white hover:border-[#4A90D9]/30 hover:shadow-md hover:shadow-blue-50 transition-all">
-                    <div className="flex justify-between items-start gap-2 mb-2">
-                      <div className="font-semibold text-slate-700 text-sm leading-relaxed">
-                        Q{index + 1}: {previewText.slice(0, 72)}{previewText.length > 72 ? '...' : ''}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-300 bg-slate-50 px-1.5 py-0.5 rounded">{question.id}</span>
-                        <input
-                          type="checkbox"
-                          checked={selectedQuestionIds.includes(question.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedQuestionIds([...selectedQuestionIds, question.id]);
-                            } else {
-                              setSelectedQuestionIds(selectedQuestionIds.filter(id => id !== question.id));
-                            }
-                          }}
-                          className="w-5 h-5 rounded border-slate-300 text-[#4A90D9] focus:ring-[#4A90D9] cursor-pointer"
-                        />
-                      </div>
-                    </div>
-                    <div className="text-xs text-slate-400 mb-1">MAPEL: {formatCategorySelectionLabel(question.mapels?.join(', '))}</div>
-                    <div className="text-xs text-slate-400 mb-1">BAB: {formatCategorySelectionLabel(question.babs?.join(', '))}</div>
-                    <div className="text-xs text-slate-400 mb-1">Sub-bab: {formatCategorySelectionLabel(question.sub_babs?.join(', '))}</div>
-                    <div className="text-xs text-slate-400 mb-4">
-                      {isShortAnswer ? 'Answer:' : 'Correct:'}{' '}
-                      <span className={`font-bold ${isShortAnswer ? 'text-slate-600' : 'text-[#34C759]'}`}>
-                        {isShortAnswer ? shortAnswerPreview : question.correct_answer}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedQuestion(question);
-                          setIsEditing(false);
-                          setIsAdding(false);
-                        }}
-                        className="px-3 py-1.5 bg-[#4A90D9]/10 text-[#4A90D9] rounded-lg text-xs font-semibold hover:bg-[#4A90D9]/20 transition-colors"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => startEdit(question)}
-                        className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-xs font-semibold hover:bg-[#FF9500]/20 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeletingQuestion(question)}
-                        className="px-3 py-1.5 bg-[#FF3B30]/10 text-[#FF3B30] rounded-lg text-xs font-semibold hover:bg-[#FF3B30]/20 transition-colors cursor-pointer"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const newHidden = !question.is_hidden;
-                          await supabase.from('questions').update({ is_hidden: newHidden }).eq('id', question.id);
-                          await fetchAdminQuestions();
-                        }}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${question.is_hidden ? 'bg-red-400' : 'bg-green-400'}`}
-                        title={question.is_hidden ? 'Click to make visible' : 'Click to hide'}
-                      >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-sm ${question.is_hidden ? 'translate-x-1' : 'translate-x-[18px]'}`} />
-                      </button>
-                      <span
-                        className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full shadow-sm ${question.is_hidden ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-green-100 text-green-700 border border-green-200'}`}
-                      >
-                        {question.is_hidden ? 'HIDDEN' : 'VISIBLE'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'results' && (
-        <div>
-          <div className="mb-6 flex flex-col gap-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-700">Exam Results</h2>
-              <button
-                onClick={() => isLiveMode ? fetchLiveSessions() : fetchResults(0)}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-[#FF9500]/20 text-[#FF9500] rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#FF9500]/5 transition-colors"
-              >
-                ↻ Refresh
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              {/* Row 1: View Mode */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => {
-                    setIsLiveMode(true);
-                    void fetchLiveSessions();
-                  }}
-                  style={isLiveMode ? { background: '#34C759' } : {}}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all flex items-center gap-2 ${isLiveMode
-                    ? 'text-white border-transparent shadow-md shadow-green-200'
-                    : 'bg-white border-slate-200 text-slate-500 hover:border-[#34C759] hover:text-[#34C759]'
-                    }`}
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                  Live User
-                </button>
-                <button
-                  onClick={() => setIsLiveMode(false)}
-                  style={!isLiveMode ? { background: '#FF9500' } : {}}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all flex items-center gap-2 ${!isLiveMode
-                    ? 'text-white border-transparent shadow-md shadow-orange-200'
-                    : 'bg-white border-slate-200 text-slate-500 hover:border-[#FF9500] hover:text-[#FF9500]'
-                    }`}
-                >
-                  📜 History
-                </button>
-              </div>
-
-              <div className="bg-white shadow sm:rounded-lg border border-gray-200 p-4 mb-5 w-full">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  {/* Category selection — dropdown */}
-                  <div className="space-y-1.5">
-                    <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60 ml-1">Mapel</span>
-                    <MultiSelectDropdown
-                      label="Mapel"
-                      options={resMapelTabs}
-                      selectedValues={activeResMapel}
-                      onChange={handleResMapelChange}
-                      placeholder="Semua Mapel"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60 ml-1">BAB</span>
-                    <MultiSelectDropdown
-                      label="Bab"
-                      options={resBabTabs}
-                      selectedValues={activeResbab}
-                      onChange={handleResbabChange}
-                      placeholder="Semua Bab"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60 ml-1">Sub-bab</span>
-                    <MultiSelectDropdown
-                      label="Sub-bab"
-                      options={resSubBabTabs}
-                      selectedValues={activeResSubBab}
-                      onChange={handleResSubBabChange}
-                      placeholder="Semua Sub-bab"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-black text-slate-700 uppercase tracking-widest opacity-60 ml-1">Mode Filter</label>
-                    <div className="relative">
-                      <select
-                        value={activeModeFilter}
-                        onChange={(e) => handleModeFilterChange(e.target.value)}
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 h-11 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] appearance-none cursor-pointer pr-8 transition-colors"
-                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/xml' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em' }}
-                      >
-                        <option value="all">Semua Mode</option>
-                        <option value="exam">📝 Exam</option>
-                        <option value="survival">⚔️ Survival</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {!isLiveMode && statsData.length > 0 && (
-            <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#FF9500]/30 transition-colors">
-                <div className="text-2xl font-bold" style={{ color: '#FF9500' }}>{statsData.length}</div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Attempts</div>
-              </div>
-              <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#34C759]/30 transition-colors">
-                <div className="text-2xl font-bold" style={{ color: '#34C759' }}>
-                  {Math.round(statsData.reduce((sum, row) => sum + row.score, 0) / statsData.length * 10) / 10}
-                </div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Average Score</div>
-              </div>
-              <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#4A90D9]/30 transition-colors">
-                <div className="text-2xl font-bold" style={{ color: '#4A90D9' }}>
-                  {statsData.reduce((sum, row) => sum + row.total_questions, 0)}
-                </div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Questions Answered</div>
-              </div>
-              <div className="bg-white rounded-xl p-5 border-2 border-slate-100 hover:border-[#AF52DE]/30 transition-colors">
-                <div className="text-2xl font-bold" style={{ color: '#AF52DE' }}>
-                  {statsData.length > 0 ? Math.round(statsData.filter((row) => (row.score / row.total_questions) >= 0.7).length / statsData.length * 100) : 0}%
-                </div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pass Rate (70%+)</div>
-              </div>
-            </div>
-          )}
-
-          {isLiveMode ? (
-            liveLoading ? (
-              <p className="text-slate-400 text-center py-8">Fetching active sessions...</p>
-            ) : liveSessions.length === 0 ? (
-              <div className="bg-white rounded-xl p-8 text-center border-2 border-dashed border-slate-200">
-                <p className="text-slate-400">No active users found. Real-time tracking is empty.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden border-2 border-slate-100">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-100">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">User Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Mode</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Topik</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Answered</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Lives</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Progress</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started At</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {liveSessions
-                        .filter(s => (activeResMapel.length === 0 || (s.mapel && activeResMapel.includes(s.mapel))) && (activeResbab.length === 0 || (s.bab && activeResbab.includes(s.bab))) && (activeResSubBab.length === 0 || (s.sub_bab && activeResSubBab.includes(s.sub_bab))) && (activeModeFilter === 'all' || s.mode === activeModeFilter))
-                        .map((session) => {
-                          const answeredCount = Object.keys(session.user_answers).length;
-                          const progress = Math.round((answeredCount / session.question_count) * 100);
-
-                          return (
-                            <tr key={session.session_id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                <span className="block max-w-[180px] truncate" title={session.name}>{session.name}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${session.mode === 'survival' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                  {session.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span
-                                  className="block max-w-[220px] truncate capitalize"
-                                  title={`${formatCategorySelectionLabel(session.mapel)} · ${formatCategorySelectionLabel(session.bab)} · ${formatCategorySelectionLabel(session.sub_bab)}`}
-                                >
-                                  {formatCategorySelectionLabel(session.mapel)} · {formatCategorySelectionLabel(session.bab)} · {formatCategorySelectionLabel(session.sub_bab)}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
-                                {session.mode === 'survival' ? answeredCount : `${answeredCount} / ${session.question_count}`}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {session.mode === 'survival' ? (
-                                  <div className="flex gap-0.5">
-                                    {Array.from({ length: Number(session.lives || 0) }).map((_, i) => (
-                                      <span key={i} className="text-red-500">❤️</span>
-                                    ))}
-                                    {Array.from({ length: Math.max(0, 3 - Number(session.lives || 0)) }).map((_, i) => (
-                                      <span key={i} className="text-gray-300">🖤</span>
-                                    ))}
-                                  </div>
-                                ) : '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {session.mode === 'survival' ? (
-                                  <span className="text-green-600 font-bold uppercase text-[10px] tracking-wider animate-pulse">On Going</span>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-24 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                                      <div className="bg-indigo-600 h-full transition-all" style={{ width: `${progress}%` }}></div>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-gray-500">{progress}%</span>
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                                {new Date(session.start_time).toLocaleTimeString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button
-                                  onClick={() => handleFetchLiveDetail(session)}
-                                  className="text-[#4A90D9] hover:text-blue-800 bg-[#4A90D9]/10 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                                >
-                                  Track Live Progress
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )
-          ) : (
-            loading ? (
-              <p className="text-slate-400 text-center py-8">Loading results...</p>
-            ) : results.length === 0 ? (
-              <div className="bg-white rounded-xl p-8 text-center border-2 border-dashed border-slate-200">
-                <p className="text-slate-400">No exam results yet. Users need to complete the exam first.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden border-2 border-slate-100">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-100">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Mode</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Topik</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Score</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Percentage</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Duration</th>
-                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {results.map((result) => (
-                        <tr key={result.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">
-                            <span className="block max-w-[180px] truncate" title={result.name}>{result.name}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${result.mode === 'survival' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' : 'bg-[#4A90D9]/10 text-[#4A90D9]'}`}>
-                              {result.mode === 'survival' ? '⚔️ Survival' : '📝 Exam'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span
-                              className="block max-w-[220px] truncate capitalize"
-                              title={`${formatCategorySelectionLabel(result.mapel)} · ${formatCategorySelectionLabel(result.bab)} · ${formatCategorySelectionLabel(result.sub_bab)}`}
-                            >
-                              {formatCategorySelectionLabel(result.mapel)} · {formatCategorySelectionLabel(result.bab)} · {formatCategorySelectionLabel(result.sub_bab)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {result.score} / {result.total_questions}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <span className={`px-2 py-1 rounded ${(result.score / result.total_questions) >= 0.7 ? 'bg-green-100 text-green-800' :
-                              (result.score / result.total_questions) >= 0.5 ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                              {Math.round((result.score / result.total_questions) * 100)}%
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(result.taken_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {result.duration_seconds != null ? `${Math.floor(result.duration_seconds / 60)}m ${result.duration_seconds % 60}s` : '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={() => handleFetchResultDetail(result)}
-                              className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
-                            >
-                              View Details
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination Controls */}
-                {totalResults > ITEMS_PER_PAGE && (() => {
-                  const totalPages = Math.ceil(totalResults / ITEMS_PER_PAGE);
-                  return (
-                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                      <div className="flex-1 flex justify-between sm:hidden">
-                        <button
-                          onClick={() => fetchResults(resultPage - 1)}
-                          disabled={resultPage === 0}
-                          className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          onClick={() => fetchResults(resultPage + 1)}
-                          disabled={resultPage + 1 >= totalPages}
-                          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                        >
-                          Next
-                        </button>
-                      </div>
-                      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-sm text-gray-700">
-                            Showing <span className="font-medium">{resultPage * ITEMS_PER_PAGE + 1}</span> to <span className="font-medium">{Math.min((resultPage + 1) * ITEMS_PER_PAGE, totalResults)}</span> of{' '}
-                            <span className="font-medium">{totalResults}</span> results
-                          </p>
-                        </div>
-                        <div>
-                          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                            <button
-                              onClick={() => fetchResults(resultPage - 1)}
-                              disabled={resultPage === 0}
-                              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                            >
-                              <span className="sr-only">Previous</span>
-                              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </button>
-                            {[...Array(totalPages)].map((_, i) => (
-                              <button
-                                key={i}
-                                onClick={() => fetchResults(i)}
-                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${resultPage === i
-                                  ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                  }`}
-                              >
-                                {i + 1}
-                              </button>
-                            ))}
-                            <button
-                              onClick={() => fetchResults(resultPage + 1)}
-                              disabled={resultPage + 1 >= totalPages}
-                              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                            >
-                              <span className="sr-only">Next</span>
-                              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </button>
-                          </nav>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )
-          )}
-
-
-        </div>
-      )}
-
-      {activeTab === 'settings' && (
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b">
-              <h2 className="text-lg font-bold text-gray-900">Visibility Settings</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Configure visibility for Bab and Sub-bab. "Hidden" removes it completely. "Only Admin" allows admins to select it but hides it from users.
-              </p>
-            </div>
-
-            {settingsLoading ? (
-              <div className="p-6 text-gray-400 text-sm animate-pulse">Loading settings...</div>
-            ) : (
-              <div className="p-6 space-y-4">
-                {allMapels.length === 0 && (
-                  <p className="text-sm text-gray-400 italic">No Mapel found. Add questions first.</p>
-                )}
-                {allMapels.map(mapel => {
-                  const mapelSlug = normalizeCategorySlug(mapel.value);
-                  const isMapelExpanded = expandedBabs.includes(mapelSlug);
-                  const mapelState = visibilitySettings.hidden_mapels.includes(mapelSlug)
-                    ? 'hidden'
-                    : visibilitySettings.admin_only_mapels.includes(mapelSlug)
-                      ? 'admin_only'
-                      : 'visible';
-
-                  return (
-                    <div key={mapelSlug} className="border border-gray-200 rounded-xl overflow-hidden">
-                      {/* Mapel Row */}
-                      <div
-                        className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${isMapelExpanded ? 'bg-indigo-50/50' : 'bg-gray-50 hover:bg-gray-100'}`}
-                        onClick={() => setExpandedBabs(prev => isMapelExpanded ? prev.filter(b => b !== mapelSlug) : [...prev, mapelSlug])}
-                      >
-                        <div className="flex items-center gap-3">
-                          <svg className={`w-5 h-5 text-gray-400 transition-transform ${isMapelExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                          <div>
-                            <h3 className="font-bold text-gray-800 uppercase tracking-tight">{mapel.label}</h3>
-                            <p className="text-xs text-gray-500 uppercase tracking-wider">{mapelSlug}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                          <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => handleVisibilityChange('mapels', mapelSlug, 'hidden')}
-                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${mapelState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                              title="Hidden"
-                            >
-                              <svg className="w-4 h-4 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleVisibilityChange('mapels', mapelSlug, 'admin_only')}
-                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${mapelState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                              title="Admin Only"
-                            >
-                              <span className="font-bold text-lg leading-none text-white pb-0.5">/</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleVisibilityChange('mapels', mapelSlug, 'visible')}
-                              className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all ${mapelState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                              title="Visible"
-                            >
-                              <svg className="w-5 h-5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTopic('mapels', mapelSlug)}
-                            disabled={deletingTopic}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
-                            title="Hapus Mapel"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          </button>
-                        </div>
-                      </div>
-
-                      {isMapelExpanded && (
-                        <div className="divide-y divide-gray-100 bg-white border-t border-gray-100">
-                          {Array.from(babSubBabMap.entries()).map(([babSlug, subBabsSet]) => {
-                            // Note: This shows ALL Babs under EVERY Mapel for now because we don't have a Mapel->Bab map easily.
-                            // However, we can filter based on if this Bab has been used with this Mapel in any question.
-                            const babLabel = allbabs.find(b => normalizeCategorySlug(b.value) === babSlug)?.label || babSlug;
-                            const isBabExpanded = expandedBabs.includes(`${mapelSlug}:${babSlug}`);
-                            const babState = visibilitySettings.hidden_babs.includes(babSlug) ? 'hidden' : visibilitySettings.admin_only_babs.includes(babSlug) ? 'admin_only' : 'visible';
-
-                            return (
-                              <div key={babSlug} className="pl-6">
-                                <div
-                                  className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${isBabExpanded ? 'bg-slate-50' : 'hover:bg-gray-50'}`}
-                                  onClick={() => setExpandedBabs(prev => isBabExpanded ? prev.filter(b => b !== `${mapelSlug}:${babSlug}`) : [...prev, `${mapelSlug}:${babSlug}`])}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${isBabExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                    <h4 className="font-semibold text-gray-700 text-sm uppercase">{babLabel}</h4>
-                                  </div>
-                                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                    <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleVisibilityChange('babs', babSlug, 'hidden')}
-                                        className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                      >
-                                        <svg className="w-3.5 h-3.5 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleVisibilityChange('babs', babSlug, 'admin_only')}
-                                        className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                      >
-                                        <span className="font-bold text-base leading-none text-white pb-0.5">/</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleVisibilityChange('babs', babSlug, 'visible')}
-                                        className={`w-8 h-7 flex items-center justify-center rounded-lg transition-all ${babState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                      >
-                                        <svg className="w-4 h-4 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                      </button>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteTopic('babs', babSlug)}
-                                      disabled={deletingTopic}
-                                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
-                                      title="Hapus Bab"
-                                    >
-                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {isBabExpanded && (
-                                  <div className="divide-y divide-gray-50 bg-white border-t border-gray-50 pl-6">
-                                    {subBabsSet.size === 0 ? (
-                                      <div className="p-3 text-xs text-gray-400 italic">No sub-babs.</div>
-                                    ) : (
-                                      Array.from(subBabsSet).sort().map(subSlug => {
-                                        const subLabel = allSubBabsAdmin.find(s => normalizeCategorySlug(s.value) === subSlug)?.label || subSlug;
-                                        const subState = visibilitySettings.hidden_sub_babs.includes(subSlug) ? 'hidden' : visibilitySettings.admin_only_sub_babs.includes(subSlug) ? 'admin_only' : 'visible';
-                                        return (
-                                          <div key={subSlug} className="flex items-center justify-between p-2 hover:bg-gray-50 transition-colors">
-                                            <p className="text-xs font-medium text-gray-500 capitalize">{subLabel}</p>
-                                            <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                                              <div className="flex bg-[#e8e8e8] p-1 rounded-xl items-center cursor-default" onClick={e => e.stopPropagation()}>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleVisibilityChange('sub_babs', subSlug, 'hidden')}
-                                                  className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'hidden' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                                >
-                                                  <svg className="w-3 h-3 text-[#e75d5b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleVisibilityChange('sub_babs', subSlug, 'admin_only')}
-                                                  className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'admin_only' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                                >
-                                                  <span className="font-bold text-sm leading-none text-white pb-0.5">/</span>
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleVisibilityChange('sub_babs', subSlug, 'visible')}
-                                                  className={`w-7 h-6 flex items-center justify-center rounded-lg transition-all ${subState === 'visible' ? 'bg-[#3a3a3a]' : 'hover:bg-[#2a2a2a] opacity-50 hover:opacity-100'}`}
-                                                >
-                                                  <svg className="w-3.5 h-3.5 text-[#5fbc70]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                                </button>
-                                              </div>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleDeleteTopic('sub_babs', subSlug)}
-                                                disabled={deletingTopic}
-                                                className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
-                                                title="Hapus Sub-bab"
-                                              >
-                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                              </button>
-                                            </div>
-                                          </div>
-                                        );
-                                      })
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+      <main className="h-full min-w-0 flex-1 overflow-hidden px-2 pt-14 pb-3 md:ml-[228px] md:px-4 md:py-4 md:pt-4">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="min-h-0 flex-1 overflow-hidden pr-1">
+            {tabs.activeTab === 'questions' && (
+              <div className="h-full min-h-0">
+                <QuestionsTabPanel
+                filteredQuestions={questionDerived.filteredQuestions}
+                questionLoading={questions.questionLoading}
+                mapelTabs={questionDerived.mapelTabs}
+                babTabs={questionDerived.babTabs}
+                subBabTabs={questionDerived.subBabTabs}
+                activeMapelFilter={questions.activeMapelFilter}
+                activebabFilter={questions.activebabFilter}
+                activeSubBabFilter={questions.activeSubBabFilter}
+                questionTypeFilter={questions.questionTypeFilter}
+                visibilityFilter={questions.visibilityFilter}
+                searchQuery={questions.searchQuery}
+                sortOrder={questions.sortOrder}
+                selectedQuestionIds={questions.selectedQuestionIds}
+                batchProcessing={questions.batchProcessing}
+                formatCategorySelectionLabel={shared.formatCategorySelectionLabel}
+                paginationMeta={questions.paginationMeta}
+                mapelCounts={questions.mapelCounts}
+                fetchQuestionsPaginated={questions.fetchQuestionsPaginated}
+                fetchMapelCounts={questions.fetchMapelCounts}
+                theme={theme}
+                onStartAddNew={questions.startAddNew}
+                showToast={questions.showToast}
+                canCreateQuestion={canCreateQuestion}
+                canUpdateAnyQuestion={canUpdateAnyQuestion}
+                canUpdateOwnQuestion={canUpdateOwnQuestion}
+                canDeleteAnyQuestion={canDeleteAnyQuestion}
+                canDeleteOwnQuestion={canDeleteOwnQuestion}
+                currentAdminUserId={adminProfile?.userId}
+                currentAdminUsername={adminProfile?.username}
+                onRefreshQuestions={() => void questions.fetchAdminQuestions()}
+                onMapelFilterChange={questions.handleMapelFilterChange}
+                onBabFilterChange={questions.handleBabFilterChange}
+                onSubBabFilterChange={(vals) => {
+                  questions.setActiveSubBabFilter(vals);
+                  void questions.fetchAdminQuestions();
+                }}
+                onQuestionTypeFilterChange={questions.setQuestionTypeFilter}
+                onVisibilityFilterChange={questions.setVisibilityFilter}
+                onSearchQueryChange={questions.setSearchQuery}
+                onToggleSortOrder={() => questions.setSortOrder(questions.sortOrder === 'desc' ? 'asc' : 'desc')}
+                onToggleSelectAll={(questionIds) => {
+                  const selectedAccessibleCount = questions.selectedQuestionIds.filter((id) => questionIds.includes(id)).length;
+                  if (selectedAccessibleCount === questionIds.length && questionIds.length > 0) {
+                    questions.setSelectedQuestionIds(questions.selectedQuestionIds.filter((id) => !questionIds.includes(id)));
+                  } else {
+                    questions.setSelectedQuestionIds(Array.from(new Set([...questions.selectedQuestionIds, ...questionIds])));
+                  }
+                }}
+                onToggleQuestionSelect={(questionId, checked) => {
+                  if (checked) {
+                    questions.setSelectedQuestionIds([...questions.selectedQuestionIds, questionId]);
+                  } else {
+                    questions.setSelectedQuestionIds(questions.selectedQuestionIds.filter(id => id !== questionId));
+                  }
+                }}
+                onOpenBatchHideConfirm={() => {
+                  const editableIds = questionDerived.filteredQuestions.filter(canEditQuestion).map((question) => question.id);
+                  questions.setSelectedQuestionIds(questions.selectedQuestionIds.filter((id) => editableIds.includes(id)));
+                  questions.setBatchVisibilityTarget(true);
+                  questions.setBatchVisibilityModalOpen(true);
+                }}
+                onOpenBatchVisibleConfirm={() => {
+                  const editableIds = questionDerived.filteredQuestions.filter(canEditQuestion).map((question) => question.id);
+                  questions.setSelectedQuestionIds(questions.selectedQuestionIds.filter((id) => editableIds.includes(id)));
+                  questions.setBatchVisibilityTarget(false);
+                  questions.setBatchVisibilityModalOpen(true);
+                }}
+                onViewQuestion={questions.onViewQuestion}
+                onEditQuestion={questions.startEdit}
+                onDeleteQuestion={questions.setDeletingQuestion}
+                onToggleQuestionVisibility={questions.onToggleQuestionVisibility}
+              />
               </div>
             )}
 
-            <div className="p-6 border-t bg-gray-50 flex justify-between items-center">
-              {settingsDirty && (
-                <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">● Unsaved changes</span>
-              )}
-              {!settingsDirty && <span />}
-              <button
-                type="button"
-                onClick={handleSaveSettings}
-                disabled={settingsSaving || !settingsDirty}
-                className="px-6 h-10 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {settingsSaving ? 'Saving...' : 'Save Settings'}
-              </button>
-            </div>
+            {tabs.activeTab === 'results' && (
+              <div className="h-full min-h-0">
+              <ResultsTabPanel
+                isLiveMode={results.isLiveMode}
+                loading={results.loading}
+                liveLoading={results.liveLoading}
+                resMapelTabs={questionDerived.mapelTabs}
+                resBabTabs={questionDerived.resBabTabs}
+                resSubBabTabs={questionDerived.resSubBabTabs}
+                activeResMapel={results.activeResMapel}
+                activeResbab={results.activeResbab}
+                activeResSubBab={results.activeResSubBab}
+                activeModeFilter={results.activeModeFilter}
+                statsData={results.statsData}
+                results={results.results}
+                liveSessions={results.liveSessions}
+                totalResults={results.totalResults}
+                itemsPerPage={results.itemsPerPage}
+                resultPage={results.resultPage}
+                paginationMeta={results.paginationMeta}
+                liveSessionPage={results.liveSessionPage}
+                liveSessionItemsPerPage={results.liveSessionItemsPerPage}
+                liveSessionPaginationMeta={results.liveSessionPaginationMeta}
+                formatCategorySelectionLabel={shared.formatCategorySelectionLabel}
+                theme={theme}
+                onRefresh={() => { void (results.isLiveMode ? results.fetchLiveSessions() : results.fetchResults(1)); }}
+                onEnableLiveMode={() => {
+                  results.setIsLiveMode(true);
+                  void results.fetchLiveSessions();
+                }}
+                onEnableHistoryMode={() => results.setIsLiveMode(false)}
+                onResMapelChange={results.handleResMapelChange}
+                onResbabChange={results.handleResbabChange}
+                onResSubBabChange={results.handleResSubBabChange}
+                onModeFilterChange={results.handleModeFilterChange}
+                onTrackLiveProgress={results.handleFetchLiveDetail}
+                onViewDetails={results.handleFetchResultDetail}
+                onPageChange={(page) => {
+                  void results.fetchResults(page);
+                }}
+                onItemsPerPageChange={results.handleItemsPerPageChange}
+                onLiveSessionPageChange={results.handleLiveSessionPageChange}
+                onLiveSessionItemsPerPageChange={results.handleLiveSessionItemsPerPageChange}
+              />
+              </div>
+            )}
+
+            {tabs.activeTab === 'analytics' && (
+              <div className="h-full min-h-0">
+                <AnalyticsTabPanel
+                  analyticsData={analytics.analyticsData}
+                  analyticsLoading={analytics.analyticsLoading}
+                  analyticsError={analytics.analyticsError}
+                  analyticsSource={analytics.analyticsSource}
+                  dateRange={analytics.dateRange}
+                  activeParticipantKey={analytics.activeParticipantKey}
+                  activeQuizSessionKeys={analytics.activeQuizSessionKeys}
+                  formatCategorySelectionLabel={shared.formatCategorySelectionLabel}
+                  theme={theme}
+                  onRefresh={() => void analytics.fetchAnalytics(results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
+                  onSourceChange={(source) => analytics.changeAnalyticsSource(source, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
+                  onDateRangeChange={(range) => analytics.changeDateRange(range, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
+                  onParticipantChange={(participantKey) => analytics.changeParticipant(participantKey, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
+                  onQuizSessionsChange={(sessionKeys) => analytics.changeQuizSessions(sessionKeys, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
+                  onNavigateToQuiz={handleNavigateToQuizWithCode}
+                  onCreateRemedialQuiz={async (questionIds) => {
+                    const token = await getAdminAccessToken();
+                    const session = await createQuizSessionAction(token, {
+                      mapel: results.activeResMapel.length > 0 ? results.activeResMapel : 'Semua MAPEL',
+                      bab: results.activeResbab.length > 0 ? results.activeResbab : 'Semua BAB',
+                      subBabs: results.activeResSubBab,
+                      questionCount: questionIds.length,
+                      durationMinutes: 30,
+                      quizMode: 'standard',
+                      allowJoinMidGame: true,
+                      selectedQuestionIds: questionIds,
+                    });
+                    if (!session) throw new Error('Failed to create remedial quiz.');
+                    return { quiz_code: session.quiz_code, question_count: questionIds.length };
+                  }}
+                />
+              </div>
+            )}
+
+            {tabs.activeTab === 'settings' && (canSaveSettings || canDeleteTopic) && (
+              <div className="h-full overflow-y-auto pr-1">
+              <SettingsTabPanel
+                settingsLoading={settings.settingsLoading}
+                allMapels={categories.allMapels}
+                allBabs={categories.allbabs}
+                allSubBabsAdmin={categories.allSubBabsAdmin}
+                expandedBabs={settings.expandedBabs}
+                visibilitySettings={settings.visibilitySettings}
+                deletingTopic={settings.deletingTopic}
+                mapelBabSubBabMap={settingsDerived.mapelBabSubBabMap}
+                settingsDirty={settings.settingsDirty}
+                settingsSaving={settings.settingsSaving}
+                theme={theme}
+                onToggleExpanded={settings.toggleExpandedBab}
+                onVisibilityChange={settings.handleVisibilityChange}
+                canDeleteTopic={canDeleteTopic}
+                canSaveSettings={canSaveSettings}
+                onDeleteTopic={settings.handleDeleteTopic}
+                onSaveSettings={settings.handleSaveSettings}
+              />
+              </div>
+            )}
+
+            {tabs.activeTab === 'quiz' && (
+              <div className="h-full min-h-0">
+              <AdminQuizTabPanel
+                allMapels={categories.allMapels}
+                allBabs={categories.allbabs}
+                allSubBabsAdmin={categories.allSubBabsAdmin}
+                visibilitySettings={settings.visibilitySettings}
+                theme={theme}
+              />
+              </div>
+            )}
+
+            {tabs.activeTab === 'access' && canAccessManage && (
+              <div className="h-full min-h-0">
+                <AccessTabPanel theme={theme} />
+              </div>
+            )}
           </div>
+
+          <AdminUtilityModals
+            deleteTopicError={settings.deleteTopicError}
+            batchVisibilityModalOpen={questions.batchVisibilityModalOpen}
+            batchVisibilityTarget={questions.batchVisibilityTarget}
+            selectedQuestionCount={questions.selectedQuestionIds.length}
+            batchProcessing={questions.batchProcessing}
+            deletingQuestion={questions.deletingQuestion}
+            deletingQuestionPreview={questions.deletingQuestion ? shared.stripHtml(questions.deletingQuestion.question_text).slice(0, 80) : ''}
+            onCloseDeleteTopicError={settings.closeDeleteTopicError}
+            onCancelBatchVisibility={() => questions.setBatchVisibilityModalOpen(false)}
+            onConfirmBatchVisibility={() => void questions.handleBatchVisibilityToggle(questions.batchVisibilityTarget)}
+            onCancelDeleteQuestion={() => questions.setDeletingQuestion(null)}
+            onConfirmDeleteQuestion={questions.confirmDelete}
+            theme={theme}
+          />
+
+          <AdminPrimaryModals
+            selectedQuestion={questions.selectedQuestion}
+            isAdding={questions.isAdding}
+            isEditing={questions.isEditing}
+            savingQuestion={questions.savingQuestion}
+            formData={questions.formData}
+            filteredMapelsForForm={questionDerived.filteredMapelsForForm}
+            filteredBabsForForm={questionDerived.filteredBabsForForm}
+            filteredSubBabsForForm={questionDerived.filteredSubBabsForForm}
+            newMapelInput={questions.newMapelInput}
+            newbabInput={questions.newbabInput}
+            newSubBabInput={questions.newSubBabInput}
+            addingCategory={questions.addingCategory}
+            trackingSession={results.trackingSession}
+            currentTrackedQuestion={results.currentTrackedQuestion}
+            isTrackingModalOpen={results.isTrackingModalOpen}
+            viewingResult={results.viewingResult}
+            detailLoading={results.detailLoading}
+            detailQuestions={results.detailQuestions}
+            onCloseQuestionModal={questions.closeModal}
+            onSaveQuestion={() => void questions.handleSave()}
+            handleInputChange={questions.handleInputChange}
+            setNewMapelInput={questions.setNewMapelInput}
+            setNewbabInput={questions.setNewbabInput}
+            setNewSubBabInput={questions.setNewSubBabInput}
+            onAddNewMapel={() => void questions.handleAddNewMapel()}
+            onAddNewbab={() => void questions.handleAddNewbab()}
+            onAddNewSubBab={() => void questions.handleAddNewSubBab()}
+            getOptionText={getOptionText}
+            getCorrectOptionText={getCorrectOptionText}
+            onCloseTrackingModal={() => results.setIsTrackingModalOpen(false)}
+            onCloseResultDetailsModal={() => results.setViewingResult(null)}
+            theme={theme}
+          />
+
+          <ToastContainer toasts={questions.toasts} onDismiss={questions.dismissToast} theme={theme} />
+          <ToastContainer toasts={settings.toasts} onDismiss={settings.dismissToast} theme={theme} />
         </div>
-      )}
-
-      {/* Delete Topic Error Modal */}
-      {deleteTopicError && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className="p-6 border-b border-red-100 bg-red-50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-bold text-red-800">Tidak Dapat Menghapus</h3>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-700">{deleteTopicError.message}</p>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">ID Soal yang Terdampak</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {deleteTopicError.questionIds.map(id => (
-                    <span key={id} className="inline-flex items-center px-2.5 py-1 rounded-lg bg-red-100 text-red-700 text-xs font-bold font-mono">
-                      #{id}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="p-4 border-t bg-gray-50 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setDeleteTopicError(null)}
-                className="px-5 h-9 rounded-lg bg-gray-800 text-white text-sm font-bold hover:bg-gray-900 transition-colors"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Batch Visibility Confirmation Modal */}
-      {batchVisibilityModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className={`p-6 border-b ${batchVisibilityTarget ? 'border-red-100 bg-red-50' : 'border-green-100 bg-green-50'}`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${batchVisibilityTarget ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-500'}`}>
-                  {batchVisibilityTarget ? (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </div>
-                <h3 className={`text-lg font-bold ${batchVisibilityTarget ? 'text-red-800' : 'text-green-800'}`}>
-                  Konfirmasi {batchVisibilityTarget ? 'Sembunyikan' : 'Tampilkan'}
-                </h3>
-              </div>
-            </div>
-            <div className="p-6">
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Apakah Anda yakin ingin <strong>{batchVisibilityTarget ? 'menyembunyikan (hide)' : 'menampilkan (visible)'}</strong> {selectedQuestionIds.length} soal yang telah dipilih secara bersamaan?
-              </p>
-            </div>
-            <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setBatchVisibilityModalOpen(false)}
-                disabled={batchProcessing}
-                className="px-4 h-10 rounded-xl bg-white border-2 border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => handleBatchVisibilityToggle(batchVisibilityTarget)}
-                disabled={batchProcessing}
-                className={`px-5 h-10 rounded-xl text-white text-sm font-bold transition-all shadow-md disabled:opacity-50 flex items-center gap-2 ${batchVisibilityTarget ? 'bg-[#FF3B30] hover:bg-red-600 shadow-red-200' : 'bg-[#34C759] hover:bg-green-600 shadow-green-200'
-                  }`}
-              >
-                {batchProcessing && (
-                  <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                {batchProcessing ? 'Memproses...' : 'Ya, Lanjutkan'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {(selectedQuestion || isAdding || isEditing) && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[9999]">
-          <div
-            className="bg-white rounded-[20px] shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="p-4 sm:p-6 border-b flex justify-between items-center bg-white sticky top-0 z-10">
-              <div className="flex items-center gap-4">
-                <h2 className="text-xl font-bold">
-                  {isAdding ? 'Add New Question' : isEditing ? 'Edit Question' : 'Question Details'}
-                </h2>
-                {selectedQuestion && !isAdding && !isEditing && (
-                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
-                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
-                      ID: {selectedQuestion.id}
-                    </span>
-                    <span className={`px-2.5 py-1 rounded-full ${selectedQuestion.is_hidden ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                      {selectedQuestion.is_hidden ? 'HIDDEN' : 'VISIBLE'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={closeModal}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-xl"
-                title="Close"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50/30">
-              {(isAdding || isEditing) ? (
-                <div className="space-y-6">
-                  <RichTextEditorField
-                    label="Question Text"
-                    value={formData.question_text}
-                    onChange={(value) => handleInputChange('question_text', value)}
-                    density="compact"
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">Jenis Pertanyaan</label>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleInputChange('question_type', 'multiple_choice')}
-                          className={`px-4 h-10 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${formData.question_type === 'multiple_choice'
-                            ? 'bg-nike-black text-white'
-                            : 'bg-white border border-gray-200 text-gray-500 hover:border-nike-black hover:text-nike-black'
-                            }`}
-                        >
-                          Pilihan Ganda
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleInputChange('question_type', 'short_answer')}
-                          className={`px-4 h-10 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${formData.question_type === 'short_answer'
-                            ? 'bg-nike-black text-white'
-                            : 'bg-white border border-gray-200 text-gray-500 hover:border-nike-black hover:text-nike-black'
-                            }`}
-                        >
-                          Isian Singkat
-                        </button>
-                      </div>
-                    </div>
-
-                    {formData.question_type === 'short_answer' && (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">Jawaban Singkat</label>
-                        <input
-                          type="text"
-                          value={formData.short_answer}
-                          onChange={(event) => handleInputChange('short_answer', event.target.value)}
-                          placeholder="Jawaban teks atau angka"
-                          className="w-full px-4 h-11 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-nike-black/10 focus:border-nike-black text-sm font-medium"
-                        />
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">Hanya teks atau angka.</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {formData.question_type === 'multiple_choice' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <RichTextEditorField
-                        label="Option A"
-                        value={formData.option_a}
-                        onChange={(value) => handleInputChange('option_a', value)}
-                        density="compact"
-                      />
-                      <RichTextEditorField
-                        label="Option B"
-                        value={formData.option_b}
-                        onChange={(value) => handleInputChange('option_b', value)}
-                        density="compact"
-                      />
-                      <RichTextEditorField
-                        label="Option C"
-                        value={formData.option_c}
-                        onChange={(value) => handleInputChange('option_c', value)}
-                        density="compact"
-                      />
-                      <RichTextEditorField
-                        label="Option D"
-                        value={formData.option_d}
-                        onChange={(value) => handleInputChange('option_d', value)}
-                        density="compact"
-                      />
-                      <RichTextEditorField
-                        label="Option E"
-                        value={formData.option_e}
-                        onChange={(value) => handleInputChange('option_e', value)}
-                        density="compact"
-                      />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:col-span-2">
-                      {/* Mapel (Multi Select) */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">
-                          Mapel
-                          <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
-                        </label>
-                        <MultiSelectDropdown
-                          label="Mapel"
-                          options={filteredMapelsForForm}
-                          selectedValues={formData.mapels}
-                          onChange={(vals) => handleInputChange('mapels', vals)}
-                          placeholder="Pilih Mapel..."
-                          hideSelectAll={true}
-                        />
-
-                        {/* Add New Mapel inline */}
-                        <div className="flex gap-2 pt-1">
-                          <input
-                            type="text"
-                            value={newMapelInput}
-                            onChange={(e) => setNewMapelInput(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewMapel(); } }}
-                            placeholder="Add new mapel..."
-                            className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => void handleAddNewMapel()}
-                            disabled={addingCategory || !newMapelInput.trim()}
-                            className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
-                          >
-                            + New
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Bab (Multi Select) */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">
-                          Bab
-                          <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
-                        </label>
-                        {formData.mapels.length === 0 ? (
-                          <div className="w-full bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 py-8 text-xs text-gray-400 italic text-center">
-                            Pilih Mapel dulu untuk melihat Bab
-                          </div>
-                        ) : (
-                          <>
-                            <MultiSelectDropdown
-                              label="Bab"
-                              options={filteredBabsForForm}
-                              selectedValues={formData.babs}
-                              onChange={(vals) => handleInputChange('babs', vals)}
-                              placeholder="Pilih Bab..."
-                              hideSelectAll={true}
-                            />
-
-                            {/* Add New Bab inline */}
-                            <div className="flex gap-2 pt-1">
-                              <input
-                                type="text"
-                                value={newbabInput}
-                                onChange={(e) => setNewbabInput(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewbab(); } }}
-                                placeholder="Add new bab..."
-                                className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => void handleAddNewbab()}
-                                disabled={addingCategory || !newbabInput.trim()}
-                                className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
-                              >
-                                + New
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Sub-bab (Multi Select) */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-tight">
-                          Sub-bab
-                          <span className="ml-2 text-[10px] font-normal text-gray-400 capitalize">(Multi-select)</span>
-                        </label>
-                        {formData.babs.length === 0 ? (
-                          <div className="w-full bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 py-8 text-xs text-gray-400 italic text-center">
-                            Pilih Bab dulu untuk melihat Subbab
-                          </div>
-                        ) : (
-                          <>
-                            <MultiSelectDropdown
-                              label="Sub-bab"
-                              options={filteredSubBabsForForm}
-                              selectedValues={formData.sub_babs}
-                              onChange={(vals) => handleInputChange('sub_babs', vals)}
-                              placeholder="Optional..."
-                              hideSelectAll={true}
-                            />
-
-                            {/* Add New Sub-bab inline - only if Bab is selected */}
-                            <div className="flex gap-2 pt-1">
-                              <input
-                                type="text"
-                                value={newSubBabInput}
-                                onChange={(e) => setNewSubBabInput(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewSubBab(); } }}
-                                placeholder="Add new sub-bab..."
-                                className="flex-1 px-3 h-8 border border-gray-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-green-500"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => void handleAddNewSubBab()}
-                                disabled={addingCategory || !newSubBabInput.trim()}
-                                className="px-3 h-8 rounded-lg bg-green-50 text-green-700 text-[10px] font-bold uppercase hover:bg-green-100 transition-colors disabled:opacity-50"
-                              >
-                                + New
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {formData.question_type === 'multiple_choice' && (
-                      <div className="space-y-1">
-                        <label className="block text-sm font-medium text-gray-700">Correct Answer</label>
-                        <select
-                          value={formData.correct_answer}
-                          onChange={(event) => handleInputChange('correct_answer', event.target.value)}
-                          className="w-full px-4 h-[48px] border-2 border-gray-200 rounded-lg focus:outline-none focus:border-nike-black transition-all font-medium appearance-none bg-white"
-                        >
-                          <option value="A">Option A</option>
-                          <option value="B">Option B</option>
-                          <option value="C">Option C</option>
-                          <option value="D">Option D</option>
-                          <option value="E">Option E</option>
-                        </select>
-                      </div>
-                    )}
-
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">Is Hidden</label>
-                      <label
-                        className={`flex items-center justify-between w-full h-[48px] px-4 border-2 rounded-lg cursor-pointer transition-all ${formData.is_hidden ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}
-                      >
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={formData.is_hidden}
-                          onChange={(event) => handleInputChange('is_hidden', event.target.checked)}
-                        />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${formData.is_hidden ? 'text-red-600' : 'text-gray-500'}`}>
-                          {formData.is_hidden ? 'Hidden' : 'Visible'}
-                        </span>
-                        <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_hidden ? 'bg-red-500' : 'bg-gray-300'}`}>
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_hidden ? 'translate-x-6' : 'translate-x-1'}`}
-                          />
-                        </span>
-                      </label>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-widest">
-                        Hidden questions will be skipped for users.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                selectedQuestion && (
-                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6">
-                    <div className="space-y-4">
-                      <div className="p-4 sm:p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Question Prompt</p>
-                        <RichContent html={selectedQuestion.question_text} className="text-base text-gray-900" />
-                      </div>
-
-                      {selectedQuestion.question_type === 'short_answer' ? (
-                        <div className="p-4 sm:p-5 bg-white rounded-2xl border border-gray-100">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Correct Answer</p>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {selectedQuestion.short_answer || '-'}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
-                            <div
-                              key={label}
-                              className={`p-3 rounded-xl border-2 transition-all ${selectedQuestion.correct_answer?.toLowerCase() === label
-                                ? 'border-green-500 bg-green-50'
-                                : 'border-gray-100 bg-white'
-                                }`}
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-bold uppercase text-gray-400 text-[11px]">Option {label}</span>
-                                {selectedQuestion.correct_answer?.toLowerCase() === label && (
-                                  <span className="bg-green-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">Correct</span>
-                                )}
-                              </div>
-                              <RichContent
-                                html={(selectedQuestion as any)[`option_${label}`]}
-                                className="text-gray-900 text-sm font-medium"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="p-4 bg-white rounded-2xl border border-gray-100">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Summary</p>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-widest">
-                            {selectedQuestion.question_type === 'short_answer' ? 'Isian Singkat' : 'Pilihan Ganda'}
-                          </span>
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${selectedQuestion.is_hidden ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                            {selectedQuestion.is_hidden ? 'Hidden' : 'Visible'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-4 bg-white rounded-2xl border border-gray-100 space-y-4">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Topik</p>
-
-                        <div>
-                          <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">Mapel</p>
-                          <p className="text-sm font-bold text-gray-900 capitalize">
-                            {formatCategorySelectionLabel(selectedQuestion.mapels?.join(', '))}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">BAB</p>
-                          <p className="text-sm font-bold text-gray-900 capitalize">
-                            {formatCategorySelectionLabel(selectedQuestion.babs?.join(', '))}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-[10px] font-bold text-[#4A90D9] uppercase tracking-widest mb-1">Subbab</p>
-                          <p className="text-sm font-bold text-gray-900 capitalize">
-                            {formatCategorySelectionLabel(selectedQuestion.sub_babs?.join(', '))}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 sm:p-6 border-t bg-white flex flex-col sm:flex-row justify-end gap-3 sticky bottom-0 z-10">
-              <button
-                onClick={closeModal}
-                className="w-full sm:w-auto px-8 h-[48px] rounded-[24px] border border-gray-300 text-gray-700 font-bold uppercase text-xs tracking-widest hover:bg-gray-50 transition-colors"
-              >
-                {isAdding || isEditing ? 'Cancel' : 'Close Details'}
-              </button>
-              {(isAdding || isEditing) && (
-                <button
-                  onClick={handleSave}
-                  disabled={savingQuestion}
-                  className="w-full sm:w-auto px-10 h-[48px] rounded-[24px] bg-nike-black text-nike-white font-bold uppercase text-xs tracking-widest hover:bg-nike-grey-500 transition-colors disabled:opacity-50"
-                >
-                  {savingQuestion ? 'Syncing...' : (isAdding ? 'Create Question' : 'Save Changes')}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Track Live Progress Modal */}
-      {isTrackingModalOpen && trackingSession && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setIsTrackingModalOpen(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="p-6 border-b bg-gray-50 relative">
-              <div className="flex justify-between items-start w-full">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-nike-green/10 flex items-center justify-center mt-1">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                    </span>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black uppercase tracking-tight text-gray-900 leading-tight mb-1">
-                      {trackingSession.name}
-                    </h2>
-                    <div className="space-y-1">
-                      <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-1">
-                        {trackingSession.mode === 'survival' ? '⚔️ Survival Mode' : '📝 Exam Mode'}
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">MAPEL:</span> {formatCategorySelectionLabel(trackingSession.mapel)}
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">BAB:</span> {formatCategorySelectionLabel(trackingSession.bab)}
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">SUBBAB:</span> {formatCategorySelectionLabel(trackingSession.sub_bab)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end pt-5">
-                  <div className="text-right">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Start Time</p>
-                    <p className="text-xs font-bold text-gray-600">{new Date(trackingSession.start_time).toLocaleTimeString()}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-8 bg-white">
-              <div className="mb-10">
-                <h3 className="text-xs font-black text-nike-green uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-nike-green animate-pulse"></span>
-                  Currently Answering
-                </h3>
-                {detailLoading ? (
-                  <div className="animate-pulse space-y-4">
-                    <div className="h-20 bg-gray-100 rounded-2xl w-full"></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="h-12 bg-gray-100 rounded-xl"></div>
-                      <div className="h-12 bg-gray-100 rounded-xl"></div>
-                    </div>
-                  </div>
-                ) : currentTrackedQuestion ? (
-                  <div className="space-y-6">
-                    <div className="p-6 bg-nike-grey-100 rounded-2xl border border-gray-200">
-                      <RichContent html={currentTrackedQuestion.question_text} className="text-xl font-bold text-gray-900 leading-tight" />
-                    </div>
-                    {currentTrackedQuestion.question_type === 'short_answer' ? (
-                      <div className="p-4 rounded-2xl border border-gray-200 bg-white">
-                        <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Correct Answer</p>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {currentTrackedQuestion.short_answer || '-'}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {(['a', 'b', 'c', 'd', 'e'] as const).map((label) => (
-                          <div key={label} className={`p-4 rounded-xl border-2 transition-all ${currentTrackedQuestion.correct_answer.toLowerCase() === label ? 'border-nike-green bg-green-50' : 'border-gray-100 bg-white'}`}>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-[10px] font-black uppercase text-gray-400">Option {label}</span>
-                              {currentTrackedQuestion.correct_answer.toLowerCase() === label && <span className="text-[10px] font-black uppercase text-nike-green">Correct Answer</span>}
-                            </div>
-                            <RichContent html={(currentTrackedQuestion as any)[`option_${label}`]} className="text-sm font-medium text-gray-800" />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-10 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                    <p className="text-gray-400 font-bold uppercase text-sm tracking-widest">Awaiting Question Synchronisation...</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Progress Stats */}
-              <div className="grid grid-cols-3 gap-6 py-8 border-y border-gray-100">
-                <div className="text-center">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Index</p>
-                  <p className="text-2xl font-black text-gray-900">
-                    {Math.min((trackingSession.current_index || 0) + 1, trackingSession.question_count || 1)}
-                    <span className="text-sm text-gray-300"> / {trackingSession.question_count}</span>
-                  </p>
-                </div>
-                <div className="text-center border-x border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Answered</p>
-                  <p className="text-2xl font-black text-gray-900">{Object.keys(trackingSession.user_answers).length}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Status</p>
-                  <p className="text-2xl font-black text-nike-green animate-pulse">ACTIVE</p>
-                </div>
-              </div>
-
-              {/* Session History */}
-              <div className="mt-10 space-y-8">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-gray-300"></span>
-                  Session History
-                </h3>
-
-                {detailLoading ? (
-                  <div className="text-center py-10 text-gray-400 font-bold uppercase text-xs tracking-widest">Loading history...</div>
-                ) : detailQuestions.length === 0 ? (
-                  <div className="text-center py-10 text-gray-300 font-bold uppercase text-[10px] tracking-widest border border-dashed rounded-2xl">No history yet</div>
-                ) : (
-                  <div className="space-y-6">
-                    {trackingSession.question_ids.slice(0, trackingSession.current_index + 1).map((qId, idx) => {
-                      const question = detailQuestions.find(q => q.id === qId);
-                      const userAnswerText = trackingSession.user_answers[idx.toString()];
-
-                      if (!question) return null;
-
-                      const isShortAnswer = question.question_type === 'short_answer';
-                      const correctText = isShortAnswer
-                        ? question.short_answer
-                        : (question as any)[`option_${question.correct_answer.toLowerCase()}`];
-                      const isCorrect = stripHtml(userAnswerText || '').trim().toLowerCase() === stripHtml(correctText || '').trim().toLowerCase();
-                      const isSkipped = userAnswerText === 'skipped' || !userAnswerText;
-
-                      return (
-                        <div key={`${qId}-${idx}`} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
-                          <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
-                            <span className="text-[10px] font-black text-gray-400 uppercase">Question {idx + 1}</span>
-                            {!isSkipped && (
-                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {isCorrect ? 'Correct' : 'Incorrect'}
-                              </span>
-                            )}
-                            {isSkipped && <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Skipped</span>}
-                          </div>
-                          <div className="p-5 space-y-4">
-                            <RichContent html={question.question_text} className="text-sm font-bold text-gray-900" />
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className={`p-3 rounded-xl border-2 ${isCorrect ? 'border-green-100 bg-green-50/30' : isSkipped ? 'border-gray-100 bg-white' : 'border-red-100 bg-red-50/30'}`}>
-                                <p className="text-[9px] font-black text-gray-400 uppercase mb-1">User Answer</p>
-                                <RichContent html={userAnswerText || 'No answer recorded'} className={`text-sm font-medium ${isCorrect ? 'text-green-800' : isSkipped ? 'text-gray-400 italic' : 'text-red-800'}`} />
-                              </div>
-
-                              {!isCorrect && !isSkipped && (
-                                <div className="p-3 rounded-xl border-2 border-nike-green/20 bg-green-50/50">
-                                  <p className="text-[9px] font-black text-nike-green uppercase mb-1">
-                                    Correct Answer{isShortAnswer ? '' : ` (${question.correct_answer})`}
-                                  </p>
-                                  <RichContent html={correctText} className="text-sm font-medium text-nike-green" />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 bg-gray-50 border-t flex justify-end">
-              <button onClick={() => setIsTrackingModalOpen(false)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Close Monitoring</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Result Details Modal */}
-      {viewingResult && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingResult(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="p-6 border-b bg-gray-50 relative">
-              <div className="flex justify-between items-start w-full">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mt-1">
-                    <span className="text-xl">📜</span>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black uppercase tracking-tight text-gray-900 leading-tight mb-1">
-                      {viewingResult.name}
-                    </h2>
-                    <div className="space-y-1">
-                      <div className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-1">
-                        {viewingResult.mode === 'survival' ? '⚔️ Survival Mode' : '📝 Exam Mode'}
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">MAPEL:</span> {formatCategorySelectionLabel(viewingResult.mapel)}
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">BAB:</span> {formatCategorySelectionLabel(viewingResult.bab)}
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">SUBBAB:</span> {formatCategorySelectionLabel(viewingResult.sub_bab)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end pt-1">
-                  <div className="text-right">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Time Session</p>
-                    <p className="text-xs font-bold text-gray-600">
-                      {viewingResult.start_time ? new Date(viewingResult.start_time).toLocaleTimeString() : '-'} - {viewingResult.end_time ? new Date(viewingResult.end_time).toLocaleTimeString() : '-'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-8 bg-white">
-              {detailLoading ? (
-                <div className="text-center py-20 text-gray-400 font-bold uppercase text-xs tracking-widest animate-pulse">Loading result history...</div>
-              ) : (
-                <div className="space-y-8">
-                  {viewingResult.user_answers.map((answer, idx) => {
-                    const question = detailQuestions.find(q => q.id === answer.question_id);
-                    if (!question) return null;
-
-                    const isShortAnswer = question.question_type === 'short_answer';
-                    const correctText = isShortAnswer
-                      ? question.short_answer
-                      : (question as any)[`option_${question.correct_answer.toLowerCase()}`];
-
-                    return (
-                      <div key={idx} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
-                        <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
-                          <span className="text-[10px] font-black uppercase">Question {idx + 1}</span>
-                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${answer.is_correct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {answer.is_correct ? 'Correct' : 'Incorrect'}
-                          </span>
-                        </div>
-                        <div className="p-5 space-y-4">
-                          <RichContent html={question.question_text} className="text-sm font-bold text-gray-900" />
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className={`p-3 rounded-xl border-2 ${answer.is_correct ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/30'}`}>
-                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">User Answer</p>
-                              <RichContent html={answer.user_answer} className={`text-sm font-medium ${answer.is_correct ? 'text-green-800' : 'text-red-800'}`} />
-                            </div>
-
-                            {!answer.is_correct && (
-                              <div className="p-3 rounded-xl border-2 border-nike-green/20 bg-green-50/50">
-                                <p className="text-[9px] font-black text-nike-green uppercase mb-1">
-                                  Correct Answer{isShortAnswer ? '' : ` (${question.correct_answer})`}
-                                </p>
-                                <RichContent html={correctText} className="text-sm font-medium text-nike-green" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
-              <div className="text-sm font-black uppercase tracking-tight text-gray-900">
-                Final Score: <span className={viewingResult.score / viewingResult.total_questions >= 0.7 ? 'text-nike-green' : 'text-nike-red'}>{viewingResult.score} / {viewingResult.total_questions}</span>
-              </div>
-              <button onClick={() => setViewingResult(null)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Close Details</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Delete Confirmation Modal */}
-      {deletingQuestion && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Question?</h3>
-            <p className="text-sm text-gray-600 mb-1">This action cannot be undone.</p>
-            <p className="text-sm text-gray-500 mb-6 truncate">
-              &ldquo;{stripHtml(deletingQuestion.question_text).slice(0, 80)}&rdquo;
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setDeletingQuestion(null)}
-                className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDelete}
-                className="px-5 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'quiz' && (
-        <AdminQuizTab
-          mapels={allMapels.filter(m => !visibilitySettings.hidden_mapels.includes(normalizeCategorySlug(m.value))).map(m => m.value)}
-          babs={allbabs.filter(b => !visibilitySettings.hidden_babs.includes(normalizeCategorySlug(b.value))).map(hb => hb.value)}
-          subBabs={allSubBabsAdmin.filter(c => !visibilitySettings.hidden_sub_babs.includes(normalizeCategorySlug(c.value)))}
-        />
-      )}
+      </main>
     </div>
   );
 }
+

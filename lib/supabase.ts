@@ -8,7 +8,13 @@ const cleanUrl = (url: string) => {
 
 const supabaseUrl = cleanUrl(process.env.NEXT_PUBLIC_SUPABASE_URL as string);
 const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)?.trim();
-export const EXAM_SECRET_KEY = (process.env.EXAM_SECRET_KEY as string || process.env.NEXT_PUBLIC_EXAM_SECRET_KEY as string)?.trim() || 'default-secret-key-123';
+export function getExamSecretKey(): string {
+  const secret = process.env.EXAM_SECRET_KEY?.trim();
+  if (!secret) {
+    throw new Error('EXAM_SECRET_KEY is required for server Supabase actions');
+  }
+  return secret;
+}
 
 const isPlaceholder = !supabaseUrl || !supabaseAnonKey;
 
@@ -34,7 +40,7 @@ export const getSupabaseServer = () => {
     {
       global: {
         headers: {
-          'x-exam-secret': EXAM_SECRET_KEY
+          'x-exam-secret': getExamSecretKey()
         }
       }
     }

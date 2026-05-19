@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import hljs from 'highlight.js';
 import katex from 'katex';
@@ -35,23 +35,15 @@ const SANITIZE_OPTIONS: DomPurifyConfig = {
 };
 
 function RichContent({ html, className = '' }: RichContentProps) {
-  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const safeHtml = useMemo(() => {
-    if (!mounted) {
-      return '';
-    }
     const normalized = ensureHtmlDocument(html);
     return String(DOMPurify.sanitize(normalized, SANITIZE_OPTIONS));
-  }, [html, mounted]);
+  }, [html]);
 
   useEffect(() => {
-    if (!mounted || !containerRef.current) {
+    if (!containerRef.current) {
       return;
     }
 
@@ -95,7 +87,7 @@ function RichContent({ html, className = '' }: RichContentProps) {
         }
       }
     });
-  }, [safeHtml, mounted]);
+  }, [safeHtml]);
 
   return (
     <div

@@ -1,19 +1,23 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
 import { supabase } from '@/lib/supabase';
-import { createQuizSession, updateQuizStatus, updateQuizSchedule, fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, deleteQuizSession, fetchPlayerQuestionIds, formatHMS, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
+import { fetchQuizPlayers, fetchQuizHistory, fetchActiveSessions, fetchPlayerAnswers, fetchPlayerQuestionIds, formatHMS, invalidateQuizHistoryCache, type KuisLog, type Player, type KuisStatus, type KuisResult } from '@/lib/quiz';
+import { createQuizSessionAction, deleteQuizSessionAction, updateQuizScheduleAction, updateQuizStatusAction } from '@/app/actions/admin/quiz';
 import { fetchQuestionsByIds, fetchSubBabsAdmin, type RawQuestion, type SubBabInfo } from '@/lib/questions';
 import { formatCategorySelectionLabel } from '@/lib/categories';
 import RichContent from '@/app/components/RichContent';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 import LeaderboardViewModal from '@/app/components/LeaderboardViewModal';
+import { ToastContainer, type ToastMessage } from '@/app/components/Toast';
 
-export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string[], babs: string[], subBabs: { label: string, value: string }[] }) {
+export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: { mapels: string[], babs: string[], subBabs: { label: string, value: string }[], theme?: 'light' | 'dark' }) {
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
-      if (saved === 'create' || saved === 'manage' || saved === 'history') return saved as any;
+      if (saved === 'create' || saved === 'manage' || saved === 'history') return saved;
     }
     return 'create';
   });
@@ -35,22 +39,44 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   const [displaySubBabs, setDisplaySubBabs] = useState<SubBabInfo[]>(subBabs);
   const [loadingBabs, setLoadingBabs] = useState(false);
   const [loadingSubBabs, setLoadingSubBabs] = useState(false);
+  const [createErrorModal, setCreateErrorModal] = useState<{
+    availableCount: number;
+    requestedCount: number;
+    mapels: string[];
+    babs: string[];
+    subBabs: string[];
+  } | null>(null);
+
+  // Toast state
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = useCallback((message: string, type: ToastMessage['type'] = 'error') => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   // Sync props initially or when they change
   useEffect(() => {
-    if (selectedMapels.length === 0) {
-      setDisplayBabs(babs);
-    }
-    if (selectedBabs.length === 0) {
-      setDisplaySubBabs(subBabs);
-    }
+    const syncDefaults = async () => {
+      if (selectedMapels.length === 0) {
+        setDisplayBabs([]);
+      }
+      if (selectedBabs.length === 0) {
+        setDisplaySubBabs([]);
+      }
+    };
+    void syncDefaults();
   }, [babs, subBabs, selectedMapels, selectedBabs]);
 
   // Dynamic bab loading based on selectedMapels
   useEffect(() => {
     const loadBabs = async () => {
       if (selectedMapels.length === 0) {
-        setDisplayBabs(babs);
+        setDisplayBabs([]);
         return;
       }
 
@@ -70,7 +96,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   useEffect(() => {
     const loadFiltered = async () => {
       if (selectedBabs.length === 0) {
-        setDisplaySubBabs(subBabs);
+        setDisplaySubBabs([]);
         return;
       }
 
@@ -109,6 +135,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   const [playerAnswers, setPlayerAnswers] = useState<KuisResult[]>([]);
   const [sessionQuestions, setSessionQuestions] = useState<RawQuestion[]>([]);
   const [loadingAnswers, setLoadingAnswers] = useState(false);
+  const [expandedPlayerQuestions, setExpandedPlayerQuestions] = useState<Set<number>>(new Set());
 
   const [activeSessions, setActiveSessions] = useState<KuisLog[]>([]);
   const [history, setHistory] = useState<KuisLog[]>([]);
@@ -126,40 +153,214 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   const [showLeaderboardView, setShowLeaderboardView] = useState(false);
   const [allPlayerAnswers, setAllPlayerAnswers] = useState<KuisResult[]>([]);
   const [loadingAllAnswers, setLoadingAllAnswers] = useState(false);
-  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [currentTime, setCurrentTime] = useState(0);
   const [showAllAnswers, setShowAllAnswers] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [serverTimeOffset, setServerTimeOffset] = useState(0); // server - local offset in ms
-  const itemsPerPage = 20;
-  const historyPerPage = 10;
+  const [manageItemsPerPage, setManageItemsPerPage] = useState(10);
+  const [historyItemsPerPage, setHistoryItemsPerPage] = useState(10);
+  const [playersItemsPerPage, setPlayersItemsPerPage] = useState(10);
+  const pageSizeOptions = [5, 10, 25, 50, 100];
   const autoFinishRef = useRef(false);
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const playerAnswersChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const hasInitializedFromUrl = useRef(false);
+  const trackedPlayerIdsRef = useRef<Set<string>>(new Set());
+
+  // Handle URL query parameters for quiz highlighting
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    setActivePage(1);
-    setHistoryPage(1);
-    setPlayersPage(1);
+    if (activeSession) {
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+  }, [activeSession]);
+
+  // Sync URL parameters to state (URL → State)
+  useEffect(() => {
+    const code = searchParams.get('code');
+
+    if (code) {
+      // Mark that we've seen a code in URL
+      hasInitializedFromUrl.current = true;
+
+      // Switch to manage view only if this is a new session being loaded
+      // Don't force view change if user is already viewing this session
+      if ((!activeSession || activeSession.quiz_code !== code) && activeView !== 'manage') {
+        setActiveView('manage');
+      }
+
+      // Find and set the quiz session with this code if not already set
+      if (!activeSession || activeSession.quiz_code !== code) {
+        // Check in active sessions first
+        const session = activeSessions.find(s => s.quiz_code === code);
+        if (session) {
+          setActiveSession(session);
+          return;
+        }
+
+        // If not found in active sessions, check history
+        const historySession = history.find(h => h.quiz_code === code);
+        if (historySession) {
+          setActiveSession(historySession);
+        }
+      }
+    } else {
+      // No code in URL, clear active session
+      if (activeSession) {
+        setActiveSession(null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, activeSessions, history, activeView]);
+
+  // Sync state to URL parameters (State → URL)
+  useEffect(() => {
+    const currentCode = searchParams.get('code');
+    const newCode = activeSession?.quiz_code;
+
+    // Only ADD code to URL when activeSession is set
+    // Never automatically remove code - that's handled by close button
+    if (newCode && currentCode !== newCode) {
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('code', newCode);
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [activeSession, searchParams]);
+
+  const nowDateInput = new Date(currentTime).toISOString().split('T')[0];
+  const nowTimeInput = new Date(currentTime).toTimeString().slice(0, 5);
+  const maxDateInput = new Date(currentTime + 2 * 86400000).toISOString().split('T')[0];
+  const getQuestionOptionText = useCallback((question: RawQuestion, label: string): string => {
+    const normalized = label.toLowerCase();
+    if (normalized === 'a') return question.option_a;
+    if (normalized === 'b') return question.option_b;
+    if (normalized === 'c') return question.option_c;
+    if (normalized === 'd') return question.option_d;
+    if (normalized === 'e') return question.option_e;
+    return '';
+  }, []);
+
+  const updateQuizStatus = useCallback(async (id: string, status: KuisStatus) => {
+    const token = await getAdminAccessToken();
+    const result = await updateQuizStatusAction(token, id, status);
+    if (status === 'finished') {
+      invalidateQuizHistoryCache();
+    }
+    return result;
+  }, []);
+
+  const updateQuizSchedule = useCallback(async (id: string, scheduledAt: string | null) => {
+    const token = await getAdminAccessToken();
+    return updateQuizScheduleAction(token, id, scheduledAt);
+  }, []);
+
+  const deleteQuizSession = useCallback(async (id: string) => {
+    const token = await getAdminAccessToken();
+    const result = await deleteQuizSessionAction(token, id);
+    invalidateQuizHistoryCache();
+    return result;
+  }, []);
+
+  const handleCloseSession = useCallback(() => {
+    // Remove code from URL
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('code');
+    window.history.replaceState({}, '', newUrl.toString());
+
+    // Clear active session
+    setActiveSession(null);
+  }, []);
+
+  const createQuizSession = useCallback(async (
+    mapel: string | string[],
+    bab: string | string[],
+    subBabs: string[],
+    questionCountArg: number,
+    durationMinutesArg: number,
+    scheduledAt?: string,
+    percentages?: Record<string, number>,
+    quizModeArg?: 'strict' | 'standard',
+    allowJoinMidGameArg?: boolean,
+  ) => {
+    const token = await getAdminAccessToken();
+    return createQuizSessionAction(token, {
+      mapel,
+      bab,
+      subBabs,
+      questionCount: questionCountArg,
+      durationMinutes: durationMinutesArg,
+      scheduledAt,
+      percentages,
+      quizMode: quizModeArg,
+      allowJoinMidGame: allowJoinMidGameArg,
+    });
+  }, []);
+
+  useEffect(() => {
+    const syncNow = async () => {
+      setCurrentTime(Date.now());
+    };
+    void syncNow();
+  }, []);
+
+  useEffect(() => {
+    const resetPagination = async () => {
+      setActivePage(1);
+      setHistoryPage(1);
+      setPlayersPage(1);
+    };
+    void resetPagination();
   }, [activeView, activeSession]);
+
 
   useEffect(() => {
     autoFinishRef.current = false;
   }, [activeSession?.id]);
 
   useEffect(() => {
-    let channel: any = null;
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     if (activeSession) {
-      // Fetch initial players
       fetchQuizPlayers(activeSession.id).then(setPlayers);
 
-      // Subscribe to players/logs only if not finished
       if (activeSession.status !== 'finished') {
-        channel = supabase
-          .channel('quiz_admin')
+        const debouncedFetchPlayers = () => {
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            fetchQuizPlayers(activeSession.id).then(setPlayers);
+          }, 400);
+        };
+
+        realtimeChannelRef.current = supabase
+          .channel(`quiz_admin_${activeSession.id}`)
           .on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'player' },
+            { event: '*', schema: 'public', table: 'player', filter: `kuis_id=eq.${activeSession.id}` },
+            () => {
+              debouncedFetchPlayers();
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'kuis_results' },
             (payload) => {
-              // Re-fetch players for this session on any player update (handles UPDATEs missing kuis_id)
-              fetchQuizPlayers(activeSession.id).then(setPlayers);
+              const playerId = (payload.new as { player_id?: string })?.player_id;
+              if (playerId && trackedPlayerIdsRef.current.has(playerId)) {
+                setPlayerProgress((prev) => ({
+                  ...prev,
+                  [playerId]: (prev[playerId] || 0) + 1,
+                }));
+              }
             }
           )
           .on(
@@ -172,7 +373,6 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
           .subscribe();
       }
     } else {
-      // List View Logic
       if (activeView === 'history') {
         fetchQuizHistory().then(setHistory);
       } else if (activeView === 'manage') {
@@ -181,23 +381,36 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
     }
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
     };
   }, [activeView, activeSession]);
 
+  const playerIdsKey = useMemo(
+    () => players.map((p) => p.id).sort().join(','),
+    [players]
+  );
+
   useEffect(() => {
-    if (!activeSession) {
-      setPlayerProgress({});
-      return;
-    }
+    trackedPlayerIdsRef.current = new Set(players.map((p) => p.id));
+  }, [playerIdsKey, players]);
 
-    const playerIds = players.map((p) => p.id);
-    if (playerIds.length === 0) {
-      setPlayerProgress({});
-      return;
-    }
-
+  useEffect(() => {
     const loadProgress = async () => {
+      if (!activeSession) {
+        setPlayerProgress({});
+        return;
+      }
+
+      const playerIds = playerIdsKey ? playerIdsKey.split(',') : [];
+      if (playerIds.length === 0) {
+        setPlayerProgress({});
+        return;
+      }
+
       const { data, error } = await supabase
         .from('kuis_results')
         .select('player_id')
@@ -218,7 +431,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
     };
 
     void loadProgress();
-  }, [activeSession, players]);
+  }, [activeSession, playerIdsKey]);
 
   useEffect(() => {
     if (!activeSession || activeSession.status !== 'active') {
@@ -243,7 +456,60 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
         setActiveSession(result);
       }
     });
-  }, [activeSession, players]);
+  }, [activeSession, players, updateQuizStatus]);
+
+  // Safety-net poll for the session details modal: keeps players + session
+  // data fresh in case any realtime event is missed. Pauses when tab hidden.
+  useEffect(() => {
+    if (!activeSession) return;
+    if (activeSession.status === 'finished') return;
+
+    const sessionId = activeSession.id;
+    let cancelled = false;
+
+    const refresh = async () => {
+      if (cancelled) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+
+      const [latestPlayers, latestSessions] = await Promise.all([
+        fetchQuizPlayers(sessionId),
+        fetchActiveSessions(),
+      ]);
+
+      if (cancelled) return;
+
+      setPlayers(latestPlayers);
+      const updated = latestSessions.find((s) => s.id === sessionId);
+      if (updated) {
+        setActiveSession((prev) => {
+          if (!prev || prev.id !== sessionId) return prev;
+          if (
+            prev.status === updated.status
+            && prev.started_at === updated.started_at
+            && prev.scheduled_at === updated.scheduled_at
+            && prev.duration_minutes === updated.duration_minutes
+            && prev.player_count === updated.player_count
+          ) {
+            return prev;
+          }
+          return updated;
+        });
+      }
+    };
+
+    const interval = setInterval(refresh, 5000);
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [activeSession?.id, activeSession?.status]);
 
   // Auto-finish timer
   useEffect(() => {
@@ -262,72 +528,117 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
 
       return () => clearInterval(interval);
     }
+  }, [activeSession, updateQuizStatus]);
+
+  useEffect(() => {
+    const syncSessionQuestions = async () => {
+      if (activeSession) {
+        const questions = await fetchQuestionsByIds(activeSession.question_ids || []);
+        setSessionQuestions(questions);
+      } else {
+        setSessionQuestions([]);
+      }
+    };
+
+    void syncSessionQuestions();
   }, [activeSession]);
 
   useEffect(() => {
-    if (activeSession) {
-      fetchQuestionsByIds(activeSession.question_ids || []).then(setSessionQuestions);
-    } else {
-      setSessionQuestions([]);
+    if (playerAnswersChannelRef.current) {
+      supabase.removeChannel(playerAnswersChannelRef.current);
+      playerAnswersChannelRef.current = null;
     }
-  }, [activeSession]);
 
-  useEffect(() => {
-    let channel: any = null;
-    if (viewingPlayer) {
-      // Fetch player's specific question_ids if we don't have them yet
-      if (!viewingPlayer.question_ids || viewingPlayer.question_ids.length === 0) {
-        fetchPlayerQuestionIds(viewingPlayer.id).then(qIds => {
+    const syncViewingPlayer = async () => {
+      if (viewingPlayer) {
+        if (!viewingPlayer.question_ids || viewingPlayer.question_ids.length === 0) {
+          const qIds = await fetchPlayerQuestionIds(viewingPlayer.id);
           if (qIds && qIds.length > 0) {
             setViewingPlayer(prev => prev && prev.id === viewingPlayer.id ? { ...prev, question_ids: qIds } : prev);
           }
-        });
-      }
+        }
 
-      setLoadingAnswers(true);
-      fetchPlayerAnswers(viewingPlayer.id).then(ans => {
+        setLoadingAnswers(true);
+        const ans = await fetchPlayerAnswers(viewingPlayer.id);
         setPlayerAnswers(ans);
         setLoadingAnswers(false);
-      });
 
-      // Subscribe to live answers if session is not finished
-      if (activeSession?.status !== 'finished') {
-        channel = supabase.channel(`player_answers_${viewingPlayer.id}`)
-          .on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'kuis_results', filter: `player_id=eq.${viewingPlayer.id}` },
-            () => {
-              fetchPlayerAnswers(viewingPlayer.id).then(setPlayerAnswers);
-            }
-          )
-          .subscribe();
+        if (activeSession?.status !== 'finished') {
+          // Append a unique suffix so React StrictMode / fast re-renders don't
+          // hand us back a cached channel that's already subscribed (which
+          // makes `.on()` throw "cannot add postgres_changes callbacks after
+          // subscribe()").
+          const channelName = `player_answers_${viewingPlayer.id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const channel = supabase.channel(channelName)
+            .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'kuis_results', filter: `player_id=eq.${viewingPlayer.id}` },
+              () => {
+                fetchPlayerAnswers(viewingPlayer.id).then(setPlayerAnswers);
+              }
+            )
+            .subscribe();
+          playerAnswersChannelRef.current = channel;
+        }
+      } else {
+        setPlayerAnswers([]);
       }
-    } else {
-      setPlayerAnswers([]);
-    }
+    };
+
+    void syncViewingPlayer();
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      if (playerAnswersChannelRef.current) {
+        supabase.removeChannel(playerAnswersChannelRef.current);
+        playerAnswersChannelRef.current = null;
+      }
     };
   }, [viewingPlayer, activeSession]);
 
   const handleCreate = async () => {
+    if (selectedMapels.length === 0 || selectedBabs.length === 0 || selectedSubBabs.length === 0) {
+      showToast('Pilih MAPEL, BAB, dan Sub-bab terlebih dahulu.', 'error');
+      return;
+    }
+
+    const { count: availableCount, error: countError } = await supabase
+      .from('questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_hidden', false)
+      .overlaps('mapels', selectedMapels)
+      .overlaps('babs', selectedBabs)
+      .overlaps('sub_babs', selectedSubBabs);
+
+    if (countError) {
+      showToast('Gagal memeriksa jumlah soal tersedia.', 'error');
+      return;
+    }
+
+    if ((availableCount || 0) < questionCount) {
+      setCreateErrorModal({
+        availableCount: availableCount || 0,
+        requestedCount: questionCount,
+        mapels: selectedMapels,
+        babs: selectedBabs,
+        subBabs: selectedSubBabs,
+      });
+      return;
+    }
+
     setCreating(true);
     let scheduledAt: string | undefined;
     if (scheduleEnabled && scheduleDate && scheduleTime) {
       const target = new Date(`${scheduleDate}T${scheduleTime}:00`);
-      if (target.getTime() <= Date.now()) {
+      if (target.getTime() <= currentTime) {
         alert('Waktu schedule tidak boleh di masa lalu.');
         setCreating(false);
         return;
       }
       scheduledAt = target.toISOString();
     }
-    const effectiveSubBabs = selectedSubBabs.length > 0 ? selectedSubBabs : displaySubBabs.map(sb => sb.value);
-    let subBabsToPass = selectedSubBabs;
+    const effectiveSubBabs = selectedSubBabs;
 
-    if (percentagesEnabled && effectiveSubBabs.length > 0) {
-      subBabsToPass = effectiveSubBabs;
+    if (percentagesEnabled) {
       const totalPct = effectiveSubBabs.reduce((acc, val) => acc + (subBabPercentages[val] || 0), 0);
       if (totalPct !== 100) {
         alert('Total persentase soal harus 100%. Saat ini: ' + totalPct + '%');
@@ -337,9 +648,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
     }
 
     const session = await createQuizSession(
-      selectedMapels.length === 0 ? 'Semua MAPEL' : selectedMapels,
-      selectedBabs.length === 0 ? 'Semua BAB' : selectedBabs,
-      subBabsToPass,
+      selectedMapels,
+      selectedBabs,
+      selectedSubBabs,
       questionCount,
       durationMinutes,
       scheduledAt,
@@ -355,7 +666,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
       setScheduleDate('');
       setScheduleTime('');
     } else {
-      alert("Failed to create session.");
+      showToast("Tidak ada soal tersedia. Silakan tambahkan soal terlebih dahulu.", "error");
     }
     setCreating(false);
   };
@@ -373,20 +684,46 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
     return `#${current}`;
   };
 
-  const handleRefresh = () => {
-    if (activeSession) {
-      fetchQuizPlayers(activeSession.id).then(setPlayers);
-      fetchQuestionsByIds(activeSession.question_ids || []).then(setSessionQuestions);
-      return;
-    }
+  const handleRefresh = async () => {
+    if (refreshing) return;
 
-    if (activeView === 'history') {
-      fetchQuizHistory().then(setHistory);
-      return;
-    }
+    setRefreshing(true);
+    invalidateQuizHistoryCache();
 
-    if (activeView === 'manage') {
-      fetchActiveSessions().then(setActiveSessions);
+    try {
+      if (activeSession) {
+        const [sessions, latestHistory, latestPlayers] = await Promise.all([
+          fetchActiveSessions(),
+          fetchQuizHistory({ force: true }),
+          fetchQuizPlayers(activeSession.id),
+        ]);
+
+        const latestSession = sessions.find((session) => session.id === activeSession.id)
+          ?? latestHistory.find((session) => session.id === activeSession.id)
+          ?? activeSession;
+
+        setActiveSessions(sessions);
+        setHistory(latestHistory);
+        setActiveSession(latestSession);
+        setPlayers(latestPlayers);
+
+        const latestQuestions = await fetchQuestionsByIds(latestSession.question_ids || []);
+        setSessionQuestions(latestQuestions);
+        return;
+      }
+
+      if (activeView === 'history') {
+        const latestHistory = await fetchQuizHistory({ force: true });
+        setHistory(latestHistory);
+        return;
+      }
+
+      if (activeView === 'manage') {
+        const latestSessions = await fetchActiveSessions();
+        setActiveSessions(latestSessions);
+      }
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -408,7 +745,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
       return;
     }
     const target = new Date(`${editScheduleDate}T${editScheduleTime}:00`);
-    if (target.getTime() <= Date.now()) {
+    if (target.getTime() <= currentTime) {
       alert('Waktu schedule tidak boleh di masa lalu.');
       return;
     }
@@ -436,24 +773,26 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
   // Auto-start polling for scheduled quizzes
   useEffect(() => {
     if (!activeSession || activeSession.status !== 'waiting' || !activeSession.scheduled_at) {
-      setScheduleCountdown(null);
+      const resetScheduleCountdown = async () => {
+        setScheduleCountdown(null);
+      };
+      void resetScheduleCountdown();
       return;
     }
 
     const targetTime = new Date(activeSession.scheduled_at).getTime();
 
     const tick = async () => {
-      const now = Date.now();
+      const now = currentTime;
       const diff = targetTime - now;
 
       if (diff <= 0) {
         setScheduleCountdown('Memulai...');
 
-        // Check actual player count before starting
         const { count } = await supabase.from('public_players').select('*', { count: 'exact', head: true }).eq('kuis_id', activeSession.id);
         if (count === 0) {
           await deleteQuizSession(activeSession.id);
-          setActiveSession(null);
+          handleCloseSession();
           setActiveView('manage');
           return;
         }
@@ -468,38 +807,40 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
       const hours = Math.floor(diff / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
       const seconds = Math.floor((diff % 60000) / 1000);
-      setScheduleCountdown(
-        hours > 0 ? `${hours}j ${minutes}m ${seconds}d` : `${minutes}m ${seconds}d`
-      );
+      setScheduleCountdown(hours > 0 ? `${hours}j ${minutes}m ${seconds}d` : `${minutes}m ${seconds}d`);
     };
 
     void tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [activeSession?.id, activeSession?.status, activeSession?.scheduled_at]);
+  }, [activeSession, activeSession?.id, activeSession?.status, activeSession?.scheduled_at, currentTime, deleteQuizSession, updateQuizStatus]);
 
-  // Also poll active sessions list for any scheduled quiz that should auto-start
+  // Refresh active sessions list when admin returns to the manage view.
+  // Auto-start of scheduled quizzes is handled server-side by pg_cron;
+  // we only need to keep the displayed list in sync.
   useEffect(() => {
     if (activeView !== 'manage' || activeSession) return;
 
-    const checkScheduled = async () => {
+    let cancelled = false;
+
+    const refresh = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       const sessions = await fetchActiveSessions();
+      if (cancelled) return;
       setActiveSessions(sessions);
-      const now = Date.now();
-      for (const s of sessions) {
-        if (s.status === 'waiting' && s.scheduled_at && new Date(s.scheduled_at).getTime() <= now) {
-          if (s.player_count === 0) {
-            await deleteQuizSession(s.id);
-          } else {
-            await updateQuizStatus(s.id, 'active');
-          }
-        }
-      }
     };
 
-    void checkScheduled();
-    const interval = setInterval(checkScheduled, 10000); // every 10s
-    return () => clearInterval(interval);
+    void refresh();
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [activeView, activeSession]);
 
   // Tick current time for active sessions (also during paused to handle re-mounts)
@@ -514,6 +855,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
     if (activeSession?.status !== 'active') return;
 
     const syncServerTime = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const before = Date.now();
         const { data } = await supabase.rpc('get_server_time');
@@ -530,130 +872,120 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
 
     syncServerTime(); // initial sync
     const interval = setInterval(syncServerTime, 30000); // every 30s
-    return () => clearInterval(interval);
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) void syncServerTime();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [activeSession?.status]);
 
   return (
-    <div>
-      <div className="mb-6 flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-700">Quiz Management</h2>
-          <div className="flex gap-2">
-            {(activeView !== 'create' || activeSession) && (
-              <button
-                onClick={handleRefresh}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-[#34C759]/20 text-[#34C759] rounded-xl font-semibold text-xs sm:text-sm hover:bg-[#34C759]/5 transition-colors"
-              >
-                ↻ Refresh
-              </button>
-            )}
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className={`mb-4 shrink-0 rounded-3xl px-5 py-4 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-[220px] flex-1">
+            <h2 className={`text-[20px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Quiz</h2>
+            <p className={`mt-0.5 text-[12px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+              {activeSession ? 'Pantau sesi quiz, pemain, dan leaderboard secara live.' : activeView === 'history' ? 'Review riwayat quiz yang sudah selesai.' : activeView === 'manage' ? 'Kelola sesi quiz aktif, waiting, dan paused.' : 'Buat sesi quiz live dari topik pilihan.'}
+            </p>
           </div>
+          {(activeView !== 'create' || activeSession) && (
+            <button
+              type="button"
+              onClick={() => void handleRefresh()}
+              disabled={refreshing}
+              className={`h-9 rounded-full px-4 text-[12px] font-medium transition-spring-fast active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+          )}
         </div>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className={`inline-flex h-9 rounded-full p-0.5 ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
             <button
-              onClick={() => {
-                setActiveSession(null);
-                setActiveView('create');
-              }}
-              style={activeView === 'create' ? { background: '#4A90D9' } : {}}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'create'
-                ? 'text-white border-transparent shadow-md shadow-blue-200'
-                : 'bg-white border-slate-200 text-slate-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
-                }`}
+              type="button"
+              onClick={() => setActiveView('create')}
+              className={`rounded-full px-4 text-[12px] font-medium transition-spring-fast ${activeView === 'create' ? (theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-white text-gray-900 shadow-ios-sm') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}
             >
-              ✨ Create
+              Create
             </button>
             <button
-              onClick={() => { setActiveSession(null); setActiveView('manage'); }}
-              style={activeView === 'manage' ? { background: '#34C759' } : {}}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'manage'
-                ? 'text-white border-transparent shadow-md shadow-green-200'
-                : 'bg-white border-slate-200 text-slate-500 hover:border-[#34C759] hover:text-[#34C759]'
-                }`}
+              type="button"
+              onClick={() => setActiveView('manage')}
+              className={`rounded-full px-4 text-[12px] font-medium transition-spring-fast ${activeView === 'manage' ? (theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-white text-gray-900 shadow-ios-sm') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}
             >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              Active Sessions
+              Manage
             </button>
             <button
-              onClick={() => {
-                setActiveSession(null);
-                setActiveView('history');
-              }}
-              style={activeView === 'history' ? { background: '#64748B' } : {}}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all flex items-center gap-2 ${activeView === 'history'
-                ? 'text-white border-transparent shadow-md shadow-slate-200'
-                : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-600'
-                }`}
+              type="button"
+              onClick={() => setActiveView('history')}
+              className={`rounded-full px-4 text-[12px] font-medium transition-spring-fast ${activeView === 'history' ? (theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-white text-gray-900 shadow-ios-sm') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}
             >
-              📜 History
+              History
             </button>
           </div>
         </div>
       </div>
 
-      {activeView === 'create' && !activeSession && (
-        <div className="max-w-2xl mx-auto px-3 md:px-0 py-4 md:py-6">
-          {/* Header Card */}
-          <div className="bg-white rounded-[20px] p-3 md:p-4 mb-3 border border-nike-grey-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 rounded-[14px] bg-[#F0F7FF] flex items-center justify-center shadow-inner">
-                <span className="text-xl animate-bounce">🎯</span>
+      {activeView === 'create' && (
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="mx-auto max-w-2xl px-3 py-3 md:px-0 md:py-4">
+          {/* Header Card - Compact */}
+          <div className={`mb-3 rounded-[20px] border p-4 shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`flex h-9 w-9 items-center justify-center rounded-2xl ${theme === 'dark' ? 'bg-accent-blue/15' : 'bg-blue-50'}`}>
+                <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-accent-blue' : 'text-blue-600'}`}>Q</span>
               </div>
               <div>
-                <h3 className="text-md md:text-lg font-black text-nike-black uppercase tracking-tight leading-tight">Buat Kuis Baru</h3>
-                <p className="text-[10px] font-medium text-nike-grey-400 uppercase tracking-[0.2em] mt-0.5">Sesi kuis Live</p>
+                <h3 className={`text-sm font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Buat kuis baru</h3>
+                <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Sesi kuis live dari topik pilihan.</p>
               </div>
             </div>
           </div>
 
           {/* Form Card */}
-          <div className="bg-white rounded-[20px] shadow-[0_16px_40px_rgba(0,0,0,0.05)] border border-nike-grey-100 overflow-hidden">
+          <div className={`overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
             {/* MAPEL & BAB & Sub-bab */}
-            <div className="p-3 md:p-4 pb-3 flex flex-col md:flex-row gap-3">
+            <div className="p-3 md:p-4 flex flex-col md:flex-row gap-3">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-md bg-[#F0F7FF] flex items-center justify-center border border-[#BEE3F8]">
-                    <span className="text-sm">📌</span>
-                  </div>
-                  <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">MAPEL</label>
-                </div>
+                <label className={`mb-1.5 block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mapel</label>
                 <div className="relative">
                   <div
                     onClick={() => setIsMapelOpen(!isMapelOpen)}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-3 min-h-[38px] md:min-h-[42px] py-1.5 flex items-center justify-between cursor-pointer focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                    className={`w-full border rounded-xl px-3 min-h-[36px] py-1.5 flex items-center justify-between cursor-pointer transition-spring-fast ${theme === 'dark' ? 'bg-dark-750 border-dark-border hover:border-accent-blue/50' : 'bg-gray-50 border-gray-200 hover:border-blue-400'}`}
                   >
                     <div className="flex flex-wrap gap-1">
                       {selectedMapels.length === 0 ? (
-                        <span className="text-[12px] font-bold text-nike-black uppercase">✨ Semua MAPEL</span>
+                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>None Selected</span>
                       ) : (
                         selectedMapels.map(m => (
-                          <span key={m} className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1">
-                            {m.replace(/_/g, ' ')}
+                          <span key={m} className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 ${theme === 'dark' ? 'bg-accent-blue/20 text-accent-blue' : 'bg-blue-100 text-blue-700'}`}>
+                            {m}
                             <button onClick={(e) => {
                               e.stopPropagation();
                               const next = selectedMapels.filter(v => v !== m);
                               setSelectedMapels(next);
                               setSelectedBabs([]);
                               setSelectedSubBabs([]);
-                            }} className="hover:text-blue-900">&times;</button>
+                            }} className={theme === 'dark' ? 'hover:text-accent-blue/80' : 'hover:text-blue-900'}>&times;</button>
                           </span>
                         ))
                       )}
                     </div>
-                    <svg className={`w-3.5 h-3.5 text-nike-grey-400 transition-transform ${isMapelOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                    <svg className={`w-3 h-3 transition-transform ${isMapelOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
 
                   {isMapelOpen && (
-                    <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[300px] overflow-y-auto">
+                    <div className={`absolute z-20 w-full mt-1.5 border rounded-xl max-h-[280px] overflow-y-auto shadow-lg ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-200'}`}>
                       <div
-                        className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                        className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border hover:bg-dark-750' : 'border-gray-100 hover:bg-gray-50'}`}
                         onClick={() => {
                           setSelectedMapels([]);
                           setSelectedBabs([]);
@@ -661,17 +993,17 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                           setIsMapelOpen(false);
                         }}
                       >
-                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedMapels.length === 0 ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedMapels.length === 0 ? (theme === 'dark' ? 'bg-accent-blue border-accent-blue' : 'bg-blue-500 border-blue-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
                           {selectedMapels.length === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                         </div>
-                        <span className="text-[12px] font-bold text-gray-700 uppercase">✨ Semua MAPEL</span>
+                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>None Selected</span>
                       </div>
                       {mapels.map(m => {
                         const isSelected = selectedMapels.includes(m);
                         return (
                           <div
                             key={m}
-                            className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                            className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border-subtle hover:bg-dark-750' : 'border-gray-50 hover:bg-gray-50'}`}
                             onClick={() => {
                               const next = isSelected ? selectedMapels.filter(v => v !== m) : [...selectedMapels, m];
                               setSelectedMapels(next);
@@ -679,10 +1011,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                               setSelectedSubBabs([]);
                             }}
                           >
-                            <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                            <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? (theme === 'dark' ? 'bg-accent-blue border-accent-blue' : 'bg-blue-500 border-blue-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
                               {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                             </div>
-                            <span className="text-[12px] font-bold text-gray-700 uppercase">{m.replace(/_/g, ' ')}</span>
+                            <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{m}</span>
                           </div>
                         );
                       })}
@@ -692,78 +1024,78 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               </div>
 
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-md bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
-                    <span className="text-sm">📚</span>
-                  </div>
-                  <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">BAB</label>
-                </div>
+                <label className={`mb-1.5 block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Bab</label>
                 <div className="relative">
                   <div
-                    onClick={() => setIsBabOpen(!isBabOpen)}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-3 min-h-[38px] md:min-h-[42px] py-1.5 flex items-center justify-between cursor-pointer focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                    onClick={() => {
+                      if (selectedMapels.length === 0) return;
+                      setIsBabOpen(!isBabOpen);
+                    }}
+                    className={`w-full border rounded-xl px-3 min-h-[36px] py-1.5 flex items-center justify-between transition-spring-fast ${selectedMapels.length === 0 ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${theme === 'dark' ? 'bg-dark-750 border-dark-border hover:border-accent-blue/50' : 'bg-gray-50 border-gray-200 hover:border-blue-400'}`}
                   >
                     <div className="flex flex-wrap gap-1">
                       {selectedBabs.length === 0 ? (
-                        <span className="text-[12px] font-bold text-nike-black uppercase">✨ Semua BAB</span>
+                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>None Selected</span>
                       ) : (
                         selectedBabs.map(b => (
-                          <span key={b} className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1">
-                            {b.replace(/_/g, ' ')}
+                          <span key={b} className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 ${theme === 'dark' ? 'bg-accent-red/20 text-accent-red' : 'bg-red-100 text-red-700'}`}>
+                            {b}
                             <button onClick={(e) => {
                               e.stopPropagation();
                               const next = selectedBabs.filter(v => v !== b);
                               setSelectedBabs(next);
                               setSelectedSubBabs([]);
-                            }} className="hover:text-red-900">&times;</button>
+                            }} className={theme === 'dark' ? 'hover:text-accent-red/80' : 'hover:text-red-900'}>&times;</button>
                           </span>
                         ))
                       )}
                     </div>
-                    <svg className={`w-3.5 h-3.5 text-nike-grey-400 transition-transform ${isBabOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                    <svg className={`w-3 h-3 transition-transform ${isBabOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
 
                   {isBabOpen && (
-                    <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[300px] overflow-y-auto">
+                    <div className={`absolute z-20 w-full mt-1.5 border rounded-xl max-h-[280px] overflow-y-auto shadow-lg ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-200'}`}>
                       <div
-                        className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                        className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border hover:bg-dark-750' : 'border-gray-100 hover:bg-gray-50'}`}
                         onClick={() => {
                           setSelectedBabs([]);
                           setSelectedSubBabs([]);
                           setIsBabOpen(false);
                         }}
                       >
-                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedBabs.length === 0 ? 'bg-red-500 border-red-500' : 'border-gray-300'}`}>
+                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedBabs.length === 0 ? (theme === 'dark' ? 'bg-accent-red border-accent-red' : 'bg-red-500 border-red-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
                           {selectedBabs.length === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                         </div>
-                        <span className="text-[12px] font-bold text-gray-700 uppercase">✨ Semua BAB</span>
+                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>None Selected</span>
                       </div>
-                      {loadingBabs ? (
-                        <div className="p-3 text-center text-[12px] text-gray-500 italic">Loading BAB...</div>
+                      {selectedMapels.length === 0 ? (
+                        <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Pilih MAPEL terlebih dahulu</div>
+                      ) : loadingBabs ? (
+                        <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>Loading BAB...</div>
                       ) : displayBabs.length > 0 ? (
                         displayBabs.map(b => {
                           const isSelected = selectedBabs.includes(b);
                           return (
                             <div
                               key={b}
-                              className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                              className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border-subtle hover:bg-dark-750' : 'border-gray-50 hover:bg-gray-50'}`}
                               onClick={() => {
                                 const next = isSelected ? selectedBabs.filter(v => v !== b) : [...selectedBabs, b];
                                 setSelectedBabs(next);
                                 setSelectedSubBabs([]);
                               }}
                             >
-                              <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-red-500 border-red-500' : 'border-gray-300'}`}>
+                              <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? (theme === 'dark' ? 'bg-accent-red border-accent-red' : 'bg-red-500 border-red-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
                                 {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                               </div>
-                              <span className="text-[12px] font-bold text-gray-700 uppercase">{b.replace(/_/g, ' ')}</span>
+                              <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{b}</span>
                             </div>
                           );
                         })
                       ) : (
-                        <div className="p-3 text-center text-[12px] text-gray-400 italic">No BAB found</div>
+                        <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>No BAB found</div>
                       )}
                     </div>
                   )}
@@ -771,25 +1103,23 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               </div>
 
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-md bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
-                    <span className="text-sm">📖</span>
-                  </div>
-                  <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Sub-bab</label>
-                </div>
+                <label className={`mb-1.5 block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Sub-bab</label>
                 <div className="relative">
                   <div
-                    onClick={() => setIsSubBabOpen(!isSubBabOpen)}
-                    className="w-full bg-[#F8FAFC] border-2 border-[#E2E8F0] rounded-[12px] px-3 min-h-[38px] md:min-h-[42px] py-1.5 flex items-center justify-between cursor-pointer focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                    onClick={() => {
+                      if (selectedBabs.length === 0) return;
+                      setIsSubBabOpen(!isSubBabOpen);
+                    }}
+                    className={`w-full border rounded-xl px-3 min-h-[36px] py-1.5 flex items-center justify-between transition-spring-fast ${selectedBabs.length === 0 ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${theme === 'dark' ? 'bg-dark-750 border-dark-border hover:border-accent-blue/50' : 'bg-gray-50 border-gray-200 hover:border-blue-400'}`}
                   >
                     <div className="flex flex-wrap gap-1">
                       {selectedSubBabs.length === 0 ? (
-                        <span className="text-[12px] font-bold text-nike-black uppercase">✨ Semua Sub-bab</span>
+                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>None Selected</span>
                       ) : (
                         selectedSubBabs.map(v => {
                           const label = displaySubBabs.find(d => d.value === v)?.label || v;
                           return (
-                            <span key={v} className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1">
+                            <span key={v} className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 ${theme === 'dark' ? 'bg-accent-purple/20 text-accent-purple' : 'bg-indigo-100 text-indigo-700'}`}>
                               {label}
                               <button onClick={(e) => {
                                 e.stopPropagation();
@@ -798,42 +1128,44 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                                 const newPct = { ...subBabPercentages };
                                 delete newPct[v];
                                 setSubBabPercentages(newPct);
-                              }} className="hover:text-indigo-900">&times;</button>
+                              }} className={theme === 'dark' ? 'hover:text-accent-purple/80' : 'hover:text-indigo-900'}>&times;</button>
                             </span>
                           );
                         })
                       )}
                     </div>
-                    <svg className={`w-3.5 h-3.5 text-nike-grey-400 transition-transform ${isSubBabOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                    <svg className={`w-3 h-3 transition-transform ${isSubBabOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
 
                   {isSubBabOpen && (
-                    <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[300px] overflow-y-auto">
+                    <div className={`absolute z-10 w-full mt-1.5 border rounded-xl max-h-[280px] overflow-y-auto shadow-lg ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-200'}`}>
                       <div
-                        className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                        className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border hover:bg-dark-750' : 'border-gray-100 hover:bg-gray-50'}`}
                         onClick={() => {
                           setSelectedSubBabs([]);
                           setSubBabPercentages({});
                           setIsSubBabOpen(false);
                         }}
                       >
-                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedSubBabs.length === 0 ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                        <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedSubBabs.length === 0 ? (theme === 'dark' ? 'bg-accent-purple border-accent-purple' : 'bg-indigo-500 border-indigo-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
                           {selectedSubBabs.length === 0 && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                         </div>
-                        <span className="text-[12px] font-bold text-gray-700 uppercase">✨ Semua Sub-bab</span>
+                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>None Selected</span>
                       </div>
 
-                      {loadingSubBabs ? (
-                        <div className="p-3 text-center text-[12px] text-gray-500">Loading...</div>
-                      ) : (
+                      {selectedBabs.length === 0 ? (
+                        <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Pilih BAB terlebih dahulu</div>
+                      ) : loadingSubBabs ? (
+                        <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>Loading...</div>
+                      ) : displaySubBabs.length > 0 ? (
                         displaySubBabs.map(sb => {
                           const isSelected = selectedSubBabs.includes(sb.value);
                           return (
                             <div
                               key={sb.value}
-                              className="p-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
+                              className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border-subtle hover:bg-dark-750' : 'border-gray-50 hover:bg-gray-50'}`}
                               onClick={() => {
                                 let next: string[];
                                 if (isSelected) {
@@ -861,13 +1193,15 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                                 }
                               }}
                             >
-                              <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300'}`}>
+                              <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? (theme === 'dark' ? 'bg-accent-purple border-accent-purple' : 'bg-indigo-500 border-indigo-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
                                 {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                               </div>
-                              <span className="text-[12px] font-bold text-gray-700 uppercase">{sb.label}</span>
+                              <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{sb.label}</span>
                             </div>
                           );
                         })
+                      ) : (
+                        <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>No Sub-bab found</div>
                       )}
                     </div>
                   )}
@@ -875,27 +1209,36 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               </div>
             </div>
 
-            {/* Question Count */}
-            <div className="p-3 md:p-4 py-3 bg-[#FAFBFF]">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-md bg-[#F0FFF4] flex items-center justify-center border border-[#C6F6D5]">
-                  <span className="text-sm">✏️</span>
-                </div>
-                <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Jumlah Soal</label>
-              </div>
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                {[5, 10, 20, 25, 30, 40, 50, 100].map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setQuestionCount(n)}
-                    className={`flex-1 h-[36px] md:h-[40px] rounded-[12px] text-[12px] font-black transition-all border-2 ${questionCount === n
-                      ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
-                      : 'bg-white border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
-                      }`}
+            {/* Question Count & Duration - Side by Side */}
+            <div className={`p-3 md:p-4 border-t ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-100'}`}>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Question Count Dropdown */}
+                <div>
+                  <label className={`mb-1.5 block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Jumlah soal</label>
+                  <select
+                    value={questionCount}
+                    onChange={(e) => setQuestionCount(parseInt(e.target.value))}
+                    className={`w-full h-[36px] rounded-xl px-3 text-[11px] font-bold border transition-spring-fast focus:outline-none ${theme === 'dark' ? 'bg-dark-750 border-dark-border text-dark-text-primary focus:border-accent-blue' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-400'}`}
                   >
-                    {n}
-                  </button>
-                ))}
+                    {[5, 10, 20, 25, 30, 40, 50, 100].map(n => (
+                      <option key={n} value={n}>{n} soal</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Duration Dropdown */}
+                <div>
+                  <label className={`mb-1.5 block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Durasi waktu</label>
+                  <select
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(parseInt(e.target.value))}
+                    className={`w-full h-[36px] rounded-xl px-3 text-[11px] font-bold border transition-spring-fast focus:outline-none ${theme === 'dark' ? 'bg-dark-750 border-dark-border text-dark-text-primary focus:border-accent-green' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-green-400'}`}
+                  >
+                    {[30, 60, 90, 120, 150, 180].map(m => (
+                      <option key={m} value={m}>{m} menit</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -905,13 +1248,13 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               if (effectiveSubBabs.length === 0) return null;
 
               return (
-                <div className="p-3 md:p-4 py-3 bg-white border-b border-gray-100">
+                <div className={`p-3 md:p-4 py-3 border-b ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-100'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-[#FFF0F6] flex items-center justify-center border border-[#FED7E2]">
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center border ${theme === 'dark' ? 'bg-accent-purple/20 border-accent-purple/30' : 'bg-[#FFF0F6] border-[#FED7E2]'}`}>
                         <span className="text-sm">📊</span>
                       </div>
-                      <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Persentase Soal</label>
+                      <label className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Persentase soal</label>
                     </div>
                     <button
                       onClick={() => {
@@ -931,7 +1274,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                           setSubBabPercentages(newPct);
                         }
                       }}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#4A90D9] focus:ring-offset-2 ${percentagesEnabled ? 'bg-[#4A90D9]' : 'bg-gray-200'
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${percentagesEnabled ? (theme === 'dark' ? 'bg-accent-blue focus:ring-accent-blue' : 'bg-[#4A90D9] focus:ring-[#4A90D9]') : (theme === 'dark' ? 'bg-dark-700' : 'bg-gray-200')
                         }`}
                       role="switch"
                       aria-checked={percentagesEnabled}
@@ -944,12 +1287,12 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                     </button>
                   </div>
                   {percentagesEnabled && (
-                    <div className="space-y-2.5 mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <div className={`space-y-2.5 mt-3 p-3 rounded-xl border ${theme === 'dark' ? 'bg-dark-750 border-dark-border' : 'bg-gray-50 border-gray-100'}`}>
                       {effectiveSubBabs.map(sub => {
                         const label = displaySubBabs.find(d => d.value === sub)?.label || sub;
                         return (
                           <div key={sub} className="flex items-center justify-between gap-3">
-                            <span className="text-[10px] font-bold text-gray-700 uppercase flex-1 truncate">{label}</span>
+                            <span className={`flex-1 truncate text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{label}</span>
                             <div className="flex items-center gap-1.5">
                               <input
                                 type="number"
@@ -960,14 +1303,14 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                                   const val = parseInt(e.target.value) || 0;
                                   setSubBabPercentages(prev => ({ ...prev, [sub]: val }));
                                 }}
-                                className="w-14 h-7 text-center text-[11px] font-bold text-gray-700 bg-white border border-gray-300 rounded focus:outline-none focus:border-[#4A90D9]"
+                                className={`w-14 h-7 text-center text-[11px] font-bold border rounded focus:outline-none ${theme === 'dark' ? 'bg-dark-800 border-dark-border text-dark-text-primary focus:border-accent-blue' : 'bg-white border-gray-300 text-gray-700 focus:border-[#4A90D9]'}`}
                               />
-                              <span className="text-[10px] font-bold text-gray-500">%</span>
+                              <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>%</span>
                             </div>
                           </div>
                         );
                       })}
-                      <div className="pt-1.5 mt-1.5 border-t border-gray-200 flex justify-between items-center">
+                      <div className={`pt-1.5 mt-1.5 border-t flex justify-between items-center ${theme === 'dark' ? 'border-dark-border' : 'border-gray-200'}`}>
                         <button
                           onClick={() => {
                             const newPct = { ...subBabPercentages };
@@ -982,7 +1325,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                             }
                             setSubBabPercentages(newPct);
                           }}
-                          className="text-[10px] font-black text-indigo-500 uppercase hover:text-indigo-700 transition-colors flex items-center gap-1"
+                          className={`flex items-center gap-1 text-[11px] font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'text-accent-purple hover:text-accent-purple/80' : 'text-indigo-500 hover:text-indigo-700'}`}
                         >
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -990,8 +1333,8 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                           Reset
                         </button>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-gray-500 uppercase">Total:</span>
-                          <span className={`text-[10px] font-black uppercase ${effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? 'text-green-500' : 'text-red-500'
+                          <span className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Total</span>
+                          <span className={`text-[11px] font-semibold tabular-nums ${effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? (theme === 'dark' ? 'text-accent-green' : 'text-green-500') : (theme === 'dark' ? 'text-accent-red' : 'text-red-500')
                             }`}>
                             {effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0)}%
                           </span>
@@ -1004,101 +1347,62 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
             })()}
 
             {/* Quiz Mode */}
-            <div className="p-3 md:p-4 py-3 bg-white border-b border-gray-100">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-md bg-[#F0FFF4] flex items-center justify-center border border-[#C6F6D5]">
-                  <span className="text-sm">🧭</span>
-                </div>
-                <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Mode Navigasi</label>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
+            <div className={`p-3 md:p-4 border-b ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-100'}`}>
+              <label className={`mb-2 block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mode navigasi</label>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setQuizMode('strict')}
-                  className={`h-[40px] md:h-[44px] rounded-[12px] text-[11px] font-black transition-all border-2 flex items-center justify-center gap-1.5 ${quizMode === 'strict'
-                    ? 'bg-nike-black border-transparent text-white shadow-lg shadow-black/10'
-                    : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-nike-black hover:text-nike-black'
+                  className={`h-[34px] rounded-xl text-[11px] font-bold transition-spring-fast border flex items-center justify-center gap-1.5 ${quizMode === 'strict'
+                    ? (theme === 'dark' ? 'bg-dark-text-primary border-transparent text-dark-900' : 'bg-gray-900 border-transparent text-white')
+                    : (theme === 'dark' ? 'bg-dark-750 border-dark-border text-dark-text-secondary hover:border-dark-text-primary' : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-400')
                     }`}
                 >
                   🔒 STRICT
                 </button>
                 <button
                   onClick={() => setQuizMode('standard')}
-                  className={`h-[40px] md:h-[44px] rounded-[12px] text-[11px] font-black transition-all border-2 flex items-center justify-center gap-1.5 ${quizMode === 'standard'
-                    ? 'bg-[#4A90D9] border-transparent text-white shadow-lg shadow-[#4A90D9]/20'
-                    : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#4A90D9] hover:text-[#4A90D9]'
+                  className={`h-[34px] rounded-xl text-[11px] font-bold transition-spring-fast border flex items-center justify-center gap-1.5 ${quizMode === 'standard'
+                    ? (theme === 'dark' ? 'bg-accent-blue border-transparent text-white' : 'bg-blue-600 border-transparent text-white')
+                    : (theme === 'dark' ? 'bg-dark-750 border-dark-border text-dark-text-secondary hover:border-accent-blue' : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-blue-400')
                     }`}
                 >
                   📋 STANDARD
                 </button>
               </div>
-              <p className="text-[9px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">
+              <p className={`text-[9px] font-medium mt-1.5 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
                 {quizMode === 'strict' ? 'Soal harus dikerjakan berurutan, tidak bisa kembali.' : 'Peserta bisa bolak-balik soal dan menandai ragu-ragu.'}
               </p>
             </div>
 
             {/* Allow Join Mid Game */}
-            <div className="p-3 md:p-4 py-3 bg-white border-b border-gray-100">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-md bg-[#FFF5F5] flex items-center justify-center border border-[#FED7D7]">
-                  <span className="text-sm">🚪</span>
-                </div>
-                <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Masuk Tengah Ujian</label>
-              </div>
+            <div className={`p-3 md:p-4 py-3 border-b ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-100'}`}>
+              <label className={`mb-2 block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Masuk tengah ujian</label>
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors relative ${allowJoinMidGame ? 'bg-[#34C759]' : 'bg-gray-300'}`}
+                  className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-spring-fast relative ${allowJoinMidGame ? (theme === 'dark' ? 'bg-accent-green' : 'bg-green-500') : (theme === 'dark' ? 'bg-dark-700' : 'bg-gray-300')}`}
                   onClick={() => setAllowJoinMidGame(!allowJoinMidGame)}
                 >
                   <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 absolute top-1 ${allowJoinMidGame ? 'translate-x-6' : 'translate-x-0'}`} />
                 </div>
-                <span className={`text-[11px] font-bold ${allowJoinMidGame ? 'text-[#34C759]' : 'text-gray-500'}`}>
-                  {allowJoinMidGame ? 'ON (DIIZINKAN)' : 'OFF (DILARANG)'}
+                <span className={`text-[11px] font-bold ${allowJoinMidGame ? (theme === 'dark' ? 'text-accent-green' : 'text-green-500') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>
+                  {allowJoinMidGame ? 'Diizinkan' : 'Dilarang'}
                 </span>
               </div>
-              <p className="text-[9px] font-bold text-gray-400 mt-1.5 uppercase tracking-wider">
+              <p className={`text-[9px] font-medium mt-1.5 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
                 {allowJoinMidGame
-                  ? 'Peserta baru BISA bergabung meskipun kuis sudah dimulai.'
-                  : 'Peserta baru TIDAK BISA bergabung jika kuis sudah dimulai.'}
+                  ? 'Peserta baru bisa bergabung meskipun kuis sudah dimulai.'
+                  : 'Peserta baru tidak bisa bergabung jika kuis sudah dimulai.'}
               </p>
             </div>
 
-            {/* Duration */}
-            <div className="p-3 md:p-4 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-md bg-[#EBF8FF] flex items-center justify-center border border-[#BEE3F8]">
-                  <span className="text-sm">⏱️</span>
-                </div>
-                <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Durasi Waktu</label>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                {[30, 60, 90, 120, 150, 180].map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setDurationMinutes(m)}
-                    className={`h-[36px] md:h-[40px] rounded-[12px] text-[12px] font-black transition-all border-2 ${durationMinutes === m
-                      ? 'bg-[#34C759] border-transparent text-white shadow-lg shadow-[#34C759]/20'
-                      : 'bg-[#F8FAFC] border-[#E2E8F0] text-nike-grey-500 hover:border-[#34C759] hover:text-[#34C759]'
-                      }`}
-                  >
-                    {m} MIN
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Schedule */}
-            <div className="p-3 md:p-4 py-3 bg-[#FAFBFF]">
+            <div className={`p-3 md:p-4 ${theme === 'dark' ? 'bg-dark-750' : 'bg-gray-50'}`}>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-[#FFF8E1] flex items-center justify-center border border-[#FFE082]">
-                    <span className="text-sm">📅</span>
-                  </div>
-                  <label className="text-[10px] font-black text-nike-black uppercase tracking-[0.2em]">Schedule Quiz</label>
-                </div>
+                <label className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Schedule quiz</label>
                 <button
                   type="button"
                   onClick={() => setScheduleEnabled(!scheduleEnabled)}
-                  className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none ${scheduleEnabled ? 'bg-[#4A90D9]' : 'bg-gray-300'
+                  className={`relative inline-flex h-6 w-10 items-center rounded-full transition-spring-fast focus:outline-none ${scheduleEnabled ? (theme === 'dark' ? 'bg-accent-blue' : 'bg-blue-600') : (theme === 'dark' ? 'bg-dark-700' : 'bg-gray-300')
                     }`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${scheduleEnabled ? 'translate-x-5' : 'translate-x-1'
@@ -1108,96 +1412,113 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               {scheduleEnabled && (
                 <div className="flex flex-col sm:flex-row gap-2 mt-2">
                   <div className="flex-1">
-                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 block">Tanggal</label>
+                    <label className={`mb-1 block text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Tanggal</label>
                     <input
                       type="date"
                       value={scheduleDate}
                       onChange={(e) => {
                         setScheduleDate(e.target.value);
-                        if (e.target.value === new Date().toISOString().split('T')[0] && scheduleTime < new Date().toTimeString().slice(0, 5)) {
+                        if (e.target.value === nowDateInput && scheduleTime < nowTimeInput) {
                           setScheduleTime('');
                         }
                       }}
-                      min={new Date().toISOString().split('T')[0]}
-                      max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
-                      className="w-full min-w-0 max-w-full bg-white border-2 border-[#E2E8F0] rounded-[10px] px-3 h-[38px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                      min={nowDateInput}
+                      max={maxDateInput}
+                      className={`w-full min-w-0 max-w-full border rounded-xl px-3 h-[36px] text-[11px] font-bold focus:outline-none transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 border-dark-border text-dark-text-primary focus:border-accent-blue' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`}
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 block">Waktu</label>
+                    <label className={`mb-1 block text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Waktu</label>
                     <input
                       type="time"
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
-                      min={scheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                      className="w-full min-w-0 max-w-full bg-white border-2 border-[#E2E8F0] rounded-[10px] px-3 h-[38px] text-[12px] font-bold text-nike-black focus:outline-none focus:border-[#4A90D9] focus:ring-4 focus:ring-[#4A90D9]/10 transition-all"
+                      min={scheduleDate === nowDateInput ? nowTimeInput : undefined}
+                      className={`w-full min-w-0 max-w-full border rounded-xl px-3 h-[36px] text-[11px] font-bold focus:outline-none transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 border-dark-border text-dark-text-primary focus:border-accent-blue' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`}
                     />
                   </div>
                 </div>
               )}
               {scheduleEnabled && scheduleDate && scheduleTime && (
-                <p className="text-[10px] font-semibold text-[#4A90D9] mt-1.5 flex items-center gap-1">
+                <p className={`text-[10px] font-medium mt-1.5 flex items-center gap-1 ${theme === 'dark' ? 'text-accent-blue' : 'text-blue-600'}`}>
                   ⏰ Mulai otomatis: {new Date(`${scheduleDate}T${scheduleTime}:00`).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
                 </p>
               )}
             </div>
 
             {/* Submit */}
-            <div className="p-3 md:p-4 bg-[#F8FAFC]">
+            <div className={`p-3 md:p-4 ${theme === 'dark' ? 'bg-dark-750' : 'bg-gray-50'}`}>
               <button
                 onClick={handleCreate}
-                disabled={creating || displaySubBabs.length === 0}
-                className={`w-full h-[46px] md:h-[50px] rounded-[14px] text-white font-black text-[13px] tracking-[0.2em] transition-all shadow-lg active:scale-[0.98] disabled:opacity-80 ${creating || displaySubBabs.length === 0 ? 'bg-slate-300' : 'bg-nike-black hover:bg-nike-grey-500 shadow-nike-black/10'
+                disabled={creating || selectedMapels.length === 0 || selectedBabs.length === 0 || selectedSubBabs.length === 0}
+                className={`w-full h-[44px] rounded-2xl text-white font-bold text-[12px] transition-spring-fast active:scale-[0.98] disabled:opacity-80 ${creating || selectedMapels.length === 0 || selectedBabs.length === 0 || selectedSubBabs.length === 0 ? (theme === 'dark' ? 'bg-dark-700' : 'bg-gray-300') : (theme === 'dark' ? 'bg-accent-green hover:bg-accent-green/90' : 'bg-green-600 hover:bg-green-700')
                   }`}
               >
                 {creating ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    CREATING...
+                    <span className="w-4 h-4 border border-white/30 border-t-white rounded-full animate-spin" />
+                    Creating...
                   </span>
-                ) : displaySubBabs.length === 0 ? (
+                ) : selectedMapels.length === 0 ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span>❌</span> TIADAK ADA SOAL
+                    <span>❌</span> Pilih MAPEL dulu
+                  </span>
+                ) : selectedBabs.length === 0 ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span>❌</span> Pilih BAB dulu
+                  </span>
+                ) : selectedSubBabs.length === 0 ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span>❌</span> Pilih Sub-bab dulu
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    <span>🚀</span> BUAT KUIS
+                    <span>🚀</span> Buat Kuis
                   </span>
                 )}
               </button>
             </div>
           </div>
         </div>
+        </div>
       )}
 
-      {activeSession ? (
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setActiveSession(null)} className="flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-600 transition-colors shadow-sm">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <h2 className="text-xl font-bold text-gray-900">Session Details</h2>
-          </div>
+      {activeSession && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={handleCloseSession}>
+          <div className={`rounded-[28px] shadow-ios-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+            <div className={`shrink-0 flex items-center justify-between px-7 py-4 border-b ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+              <h2 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Session Details</h2>
+              <button onClick={handleCloseSession} className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="px-7 py-7 space-y-7">
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Join Code</p>
-              <h1 className="text-4xl md:text-5xl font-black text-indigo-700 tracking-widest font-mono leading-none mb-3">{activeSession.quiz_code}</h1>
-              <div className="flex flex-col gap-1">
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                    <span className="text-gray-300">MAPEL:</span> {formatCategorySelectionLabel(activeSession.mapel)}
-                </div>
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                    <span className="text-gray-300">BAB:</span> {formatCategorySelectionLabel(activeSession.bab)}
-                </div>
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                    <span className="text-gray-300">SUBBAB:</span> {formatCategorySelectionLabel(activeSession.sub_bab)}
-                </div>
-                <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1 mt-1">
-                  <span className="text-indigo-200">SOAL:</span> {activeSession.question_count} Questions
-                </div>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+            <div className="space-y-4">
+              <div>
+                <p className={`text-[11px] font-medium tracking-tight mb-1.5 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Join code</p>
+                <h1 className={`text-5xl md:text-6xl font-semibold tracking-tight font-mono leading-none ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>{activeSession.quiz_code}</h1>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>{formatCategorySelectionLabel(activeSession.mapel)}</span>
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>{formatCategorySelectionLabel(activeSession.bab)}</span>
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>{formatCategorySelectionLabel(activeSession.sub_bab)}</span>
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-accent-purple/10 text-accent-purple' : 'bg-indigo-50 text-indigo-700'}`}>{activeSession.question_count} questions</span>
               </div>
             </div>
+
+            <div className="flex flex-col items-start md:items-end gap-2">
+              <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${activeSession.status === 'active' ? (theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700') :
+                activeSession.status === 'waiting' ? (theme === 'dark' ? 'bg-accent-orange/15 text-accent-orange' : 'bg-amber-50 text-amber-700') :
+                activeSession.status === 'paused' ? (theme === 'dark' ? 'bg-accent-orange/15 text-accent-orange' : 'bg-orange-50 text-orange-700') :
+                (theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600')
+              }`}>
+                {activeSession.status}
+              </span>
+            </div>
+          </div>
 
             {/* Countdown Timer - shown when quiz is active or paused */}
             {(activeSession.status === 'active' || activeSession.status === 'paused') && activeSession.expires_at && (() => {
@@ -1211,236 +1532,231 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               const s = remainingSec % 60;
               const isUrgent = remainingSec <= 60;
               const isExpired = remainingSec <= 0;
+              const timerColor = isExpired ? (theme === 'dark' ? 'text-accent-red' : 'text-red-500')
+                : isUrgent ? (theme === 'dark' ? 'text-accent-red' : 'text-red-500')
+                : activeSession.status === 'paused' ? (theme === 'dark' ? 'text-accent-orange' : 'text-orange-500')
+                : (theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900');
               return (
-                <div className="flex flex-col items-center justify-center">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
-                    {isExpired ? '⏰ Waktu Habis'
-                      : activeSession.status === 'paused' ? '⏸️ Sisa Waktu (Paused)'
-                        : '⏱️ Sisa Waktu'}
-                  </p>
-                  <div className="flex items-baseline gap-1 font-mono">
-                    <div className="flex flex-col items-center">
-                      <span className={`text-3xl md:text-4xl font-black tabular-nums ${isExpired ? 'text-red-500' : 'text-gray-900'}`}>{h.toString().padStart(2, '0')}</span>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase">Jam</span>
-                    </div>
-                    <span className={`text-3xl md:text-4xl font-black -mt-1 ${isExpired ? 'text-red-300' : 'text-gray-300'}`}>:</span>
-                    <div className="flex flex-col items-center">
-                      <span className={`text-3xl md:text-4xl font-black tabular-nums ${isExpired ? 'text-red-500' : 'text-gray-900'}`}>{m.toString().padStart(2, '0')}</span>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase">Menit</span>
-                    </div>
-                    <span className={`text-3xl md:text-4xl font-black -mt-1 ${isExpired ? 'text-red-300' : 'text-gray-300'}`}>:</span>
-                    <div className="flex flex-col items-center">
-                      <span className={`text-3xl md:text-4xl font-black tabular-nums ${isExpired ? 'text-red-500' : isUrgent ? 'text-red-500 animate-pulse' : activeSession.status === 'paused' ? 'text-orange-500' : 'text-gray-900'}`}>{s.toString().padStart(2, '0')}</span>
-                      <span className="text-[9px] font-bold text-gray-400 uppercase">Detik</span>
-                    </div>
+                <div className={`flex items-center justify-between rounded-2xl px-5 py-4 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+                  <div className="flex flex-col">
+                    <span className={`text-[11px] font-medium tracking-tight ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                      {isExpired ? 'Waktu habis' : activeSession.status === 'paused' ? 'Sisa waktu (paused)' : 'Sisa waktu'}
+                    </span>
+                    <span className={`text-3xl font-semibold tabular-nums tracking-tight font-mono leading-tight ${timerColor} ${isUrgent && !isExpired ? 'animate-pulse' : ''}`}>
+                      {h > 0 ? `${h.toString().padStart(2, '0')}:` : ''}{m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
+                    </span>
                   </div>
+                  <div className={`w-2 h-2 rounded-full ${isExpired ? 'bg-red-500' : activeSession.status === 'paused' ? (theme === 'dark' ? 'bg-accent-orange' : 'bg-orange-500') : (theme === 'dark' ? 'bg-accent-green animate-pulse' : 'bg-green-500 animate-pulse')}`} />
                 </div>
               );
             })()}
-            <div className="flex flex-col items-end gap-3">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${activeSession.status === 'active' ? 'bg-green-100 text-green-700' :
-                activeSession.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
-                  activeSession.status === 'paused' ? 'bg-orange-100 text-orange-700' :
-                    'bg-gray-100 text-gray-700'
-                }`}>
-                {activeSession.status}
-              </span>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex gap-2">
-                  {activeSession.status === 'waiting' && (
-                    <>
-                      <button
-                        onClick={() => handleStatusChange('active')}
-                        disabled={players.length === 0}
-                        className={`bg-nike-green text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm ${players.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
-                      >
-                        Start Quiz
-                      </button>
-                      <button
-                        onClick={() => setShowCancelConfirm(true)}
-                        className="bg-white border-2 border-red-500 text-red-500 px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-50 transition-colors shadow-sm"
-                      >
-                        Cancel Quiz
-                      </button>
-                    </>
+            <div className="flex flex-wrap items-center gap-2">
+              {activeSession.status === 'waiting' && (
+                <>
+                  <button
+                    onClick={() => handleStatusChange('active')}
+                    disabled={players.length === 0}
+                    className={`px-4 h-9 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${players.length === 0 ? 'opacity-40 cursor-not-allowed' : ''} ${theme === 'dark' ? 'bg-accent-green text-white hover:bg-accent-green/90' : 'bg-green-500 text-white hover:bg-green-600'}`}
+                  >
+                    Start
+                  </button>
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className={`px-4 h-9 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red hover:bg-accent-red/25' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+              {(activeSession.status === 'active' || activeSession.status === 'paused') && (
+                <>
+                  <button
+                    onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')}
+                    className={`px-4 h-9 rounded-full text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${activeSession.status === 'active' ? (theme === 'dark' ? 'bg-accent-orange hover:bg-accent-orange/90' : 'bg-orange-500 hover:bg-orange-600') : (theme === 'dark' ? 'bg-accent-green hover:bg-accent-green/90' : 'bg-green-500 hover:bg-green-600')}`}
+                  >
+                    {activeSession.status === 'active' ? 'Pause' : 'Resume'}
+                  </button>
+                  <button
+                    onClick={() => setShowEndConfirm(true)}
+                    className={`px-4 h-9 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red hover:bg-accent-red/25' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                  >
+                    End
+                  </button>
+                </>
+              )}
+
+              <button
+                onClick={async () => {
+                  setShowViewQuestions(true);
+                  setLoadingAllAnswers(true);
+                  const allAnswers: KuisResult[] = [];
+                  for (const p of players) {
+                    const ans = await fetchPlayerAnswers(p.id);
+                    allAnswers.push(...ans);
+                  }
+                  setAllPlayerAnswers(allAnswers);
+                  setLoadingAllAnswers(false);
+                }}
+                className={`px-4 h-9 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+              >
+                Questions
+              </button>
+
+              {activeSession.status === 'waiting' && (
+                <div className="relative flex items-center">
+                  {activeSession.scheduled_at && !editingSchedule ? (
+                    <button
+                      onClick={() => {
+                        setEditingSchedule(true);
+                        const d = new Date(activeSession.scheduled_at!);
+                        setEditScheduleDate(d.toISOString().split('T')[0]);
+                        setEditScheduleTime(d.toTimeString().slice(0, 5));
+                      }}
+                      className={`flex items-center gap-2 px-3.5 h-9 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                    >
+                      <span className={`text-[10px] font-medium ${theme === 'dark' ? 'text-accent-blue/70' : 'text-blue-500/80'}`}>Auto-start</span>
+                      <span className="font-mono tabular-nums font-semibold">{scheduleCountdown || '...'}</span>
+                    </button>
+                  ) : !editingSchedule && (
+                    <button
+                      onClick={() => {
+                        setEditingSchedule(true);
+                        setEditScheduleDate('');
+                        setEditScheduleTime('');
+                      }}
+                      className={`px-4 h-9 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+                    >
+                      Set schedule
+                    </button>
                   )}
-                  {(activeSession.status === 'active' || activeSession.status === 'paused') && (
-                    <>
-                      <button
-                        onClick={() => handleStatusChange(activeSession.status === 'active' ? 'paused' : 'active')}
-                        className={`${activeSession.status === 'active' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-nike-green hover:bg-green-600'} text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-colors shadow-sm`}
-                      >
-                        {activeSession.status === 'active' ? 'Pause' : 'Resume'}
-                      </button>
-                      <button onClick={() => setShowEndConfirm(true)} className="bg-nike-red text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-red-600 transition-colors shadow-sm">End Quiz</button>
-                    </>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {activeSession.status === 'waiting' && (
-                    <div className="relative flex items-center">
-                      {activeSession.scheduled_at && !editingSchedule ? (
-                        <div className="flex items-center gap-3 bg-[#F0F7FF] border border-[#BFDBFE] px-4 py-1.5 rounded-full">
-                          <div className="flex flex-col items-end">
-                            <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wider">Mulai otomatis</span>
-                            <span className="text-xs font-black text-[#4A90D9] font-mono tabular-nums leading-none">{scheduleCountdown || '...'}</span>
-                          </div>
-                          <div className="w-px h-5 bg-[#BFDBFE]"></div>
-                          <button
-                            onClick={() => {
-                              setEditingSchedule(true);
-                              const d = new Date(activeSession.scheduled_at!);
-                              setEditScheduleDate(d.toISOString().split('T')[0]);
-                              setEditScheduleTime(d.toTimeString().slice(0, 5));
-                            }}
-                            className="text-[10px] font-bold text-[#4A90D9] hover:text-blue-700 uppercase tracking-wider"
-                          >
-                            ✏️ Edit
+
+                  {editingSchedule && (
+                    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl" onClick={() => setEditingSchedule(false)}>
+                      <div className={`w-full max-w-xs rounded-[24px] shadow-ios-xl p-5 ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-5">
+                          <h4 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Set schedule</h4>
+                          <button onClick={() => setEditingSchedule(false)} className={`w-7 h-7 rounded-full flex items-center justify-center transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}>
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
                         </div>
-                      ) : !editingSchedule && (
-                        <button
-                          onClick={() => {
-                            setEditingSchedule(true);
-                            setEditScheduleDate('');
-                            setEditScheduleTime('');
-                          }}
-                          className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-700 uppercase tracking-wider transition-colors"
-                        >
-                          <span className="text-sm">📅</span> Set Schedule
-                        </button>
-                      )}
-
-                      {editingSchedule && (
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setEditingSchedule(false)}>
-                          <div className="w-full max-w-xs bg-white rounded-2xl shadow-2xl border border-gray-200 p-5" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-between mb-4">
-                              <h4 className="text-sm font-bold uppercase text-gray-700">📅 Set Schedule</h4>
-                              <button onClick={() => setEditingSchedule(false)} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors">✕</button>
-                            </div>
-                            <div className="space-y-3">
-                              <div className="flex flex-col gap-3">
-                                <div>
-                                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tanggal</label>
-                                  <input
-                                    type="date"
-                                    value={editScheduleDate}
-                                    onChange={(e) => {
-                                      setEditScheduleDate(e.target.value);
-                                      if (e.target.value === new Date().toISOString().split('T')[0] && editScheduleTime < new Date().toTimeString().slice(0, 5)) {
-                                        setEditScheduleTime('');
-                                      }
-                                    }}
-                                    min={new Date().toISOString().split('T')[0]}
-                                    max={new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]}
-                                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 h-10 text-sm font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9] focus:ring-2 focus:ring-[#4A90D9]/10"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Waktu</label>
-                                  <input
-                                    type="time"
-                                    value={editScheduleTime}
-                                    onChange={(e) => setEditScheduleTime(e.target.value)}
-                                    min={editScheduleDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
-                                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 h-10 text-sm font-bold text-gray-700 focus:outline-none focus:border-[#4A90D9] focus:ring-2 focus:ring-[#4A90D9]/10"
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex gap-2 pt-3 border-t border-gray-100">
-                                <button onClick={handleSaveSchedule} className="flex-1 bg-[#4A90D9] text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-blue-600 transition-colors">Simpan</button>
-                                {activeSession.scheduled_at && (
-                                  <button onClick={handleRemoveSchedule} className="flex-1 bg-red-500 text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-600 transition-colors">Hapus</button>
-                                )}
-                              </div>
-                            </div>
+                        <div className="space-y-3">
+                          <div>
+                            <label className={`text-[11px] font-medium block mb-1.5 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Tanggal</label>
+                            <input
+                              type="date"
+                              value={editScheduleDate}
+                              onChange={(e) => {
+                                setEditScheduleDate(e.target.value);
+                                if (e.target.value === nowDateInput && editScheduleTime < nowTimeInput) {
+                                  setEditScheduleTime('');
+                                }
+                              }}
+                              min={nowDateInput}
+                              max={maxDateInput}
+                              className={`w-full rounded-xl px-3 h-10 text-[13px] font-medium focus:outline-none transition-spring-fast ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary focus:bg-white/10' : 'bg-black/5 text-gray-900 focus:bg-black/10'}`}
+                            />
+                          </div>
+                          <div>
+                            <label className={`text-[11px] font-medium block mb-1.5 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Waktu</label>
+                            <input
+                              type="time"
+                              value={editScheduleTime}
+                              onChange={(e) => setEditScheduleTime(e.target.value)}
+                              min={editScheduleDate === nowDateInput ? nowTimeInput : undefined}
+                              className={`w-full rounded-xl px-3 h-10 text-[13px] font-medium focus:outline-none transition-spring-fast ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary focus:bg-white/10' : 'bg-black/5 text-gray-900 focus:bg-black/10'}`}
+                            />
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <button onClick={handleSaveSchedule} className={`flex-1 h-10 rounded-xl text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-blue hover:bg-accent-blue/90' : 'bg-blue-500 hover:bg-blue-600'}`}>Simpan</button>
+                            {activeSession.scheduled_at && (
+                              <button onClick={handleRemoveSchedule} className={`flex-1 h-10 rounded-xl text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red hover:bg-accent-red/25' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>Hapus</button>
+                            )}
                           </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                   )}
-                  <button
-                    onClick={async () => {
-                      setShowViewQuestions(true);
-                      setLoadingAllAnswers(true);
-                      const allAnswers: KuisResult[] = [];
-                      for (const p of players) {
-                        const ans = await fetchPlayerAnswers(p.id);
-                        allAnswers.push(...ans);
-                      }
-                      setAllPlayerAnswers(allAnswers);
-                      setLoadingAllAnswers(false);
-                    }}
-                    className="px-6 py-2 bg-indigo-50 border-2 border-indigo-200 text-indigo-700 rounded-full text-sm font-bold uppercase tracking-wider hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span>📋</span> Questions
-                  </button>
                 </div>
+              )}
+            </div>
+
+          <div className="flex min-h-0 flex-col overflow-hidden">
+            <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div className="flex items-baseline gap-2">
+                <h3 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Players</h3>
+                <span className={`text-[12px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>{players.length}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={playersItemsPerPage}
+                  onChange={(e) => {
+                    setPlayersItemsPerPage(Number(e.target.value));
+                    setPlayersPage(1);
+                  }}
+                  className={`h-8 rounded-full px-3 text-[12px] font-medium focus:outline-none transition-spring-fast ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>{size} / page</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowLeaderboardView(true)}
+                  disabled={players.length === 0}
+                  className={`inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'bg-accent-orange/10 text-accent-orange hover:bg-accent-orange/20' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
+                >
+                  Leaderboard
+                </button>
               </div>
             </div>
-          </div>
-
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center gap-4 bg-gray-50">
-              <h3 className="font-bold text-gray-900">Players ({players.length})</h3>
-              <button
-                type="button"
-                onClick={() => setShowLeaderboardView(true)}
-                disabled={players.length === 0}
-                className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-amber-700 transition-all hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span>🏁</span>
-                Leaderboard View
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className={`min-h-0 flex-1 overflow-auto rounded-2xl ${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-black/[0.015]'}`}>
+              <table className="min-w-full">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className={`px-5 py-3 text-left text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>#</th>
+                    <th className={`px-5 py-3 text-left text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Name</th>
                     {activeSession.quiz_mode !== 'standard' && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
+                      <th className={`px-5 py-3 text-left text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Current</th>
                     )}
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    <th className={`px-5 py-3 text-left text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Score</th>
+                    <th className={`px-5 py-3 text-left text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Waktu</th>
+                    <th className={`px-5 py-3 text-right text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}></th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody>
                   {players.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Waiting for players to join...</td></tr>
-                  ) : players.slice((playersPage - 1) * itemsPerPage, playersPage * itemsPerPage).map((p, i) => (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">{((playersPage - 1) * itemsPerPage) + i + 1}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <span className="block max-w-[200px] truncate" title={p.name}>{p.name}</span>
+                    <tr><td colSpan={6} className={`px-5 py-12 text-center text-[13px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Waiting for players to join...</td></tr>
+                  ) : players.slice((playersPage - 1) * playersItemsPerPage, playersPage * playersItemsPerPage).map((p, i) => (
+                    <tr key={p.id} className={`transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'}`}>
+                      <td className={`px-5 py-3 whitespace-nowrap text-[13px] tabular-nums ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>{((playersPage - 1) * playersItemsPerPage) + i + 1}</td>
+                      <td className={`px-5 py-3 whitespace-nowrap text-[13px] font-medium ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                        <span className="block max-w-[220px] truncate" title={p.name}>{p.name}</span>
                       </td>
                       {activeSession.quiz_mode !== 'standard' && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          <span className="font-semibold" title={`Soal saat ini: ${resolveCurrentLabel(p)}`}>{resolveCurrentLabel(p)}</span>
+                        <td className={`px-5 py-3 whitespace-nowrap text-[13px] ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
+                          <span title={`Soal saat ini: ${resolveCurrentLabel(p)}`}>{resolveCurrentLabel(p)}</span>
                         </td>
                       )}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600">
+                      <td className={`px-5 py-3 whitespace-nowrap text-[13px] font-semibold tabular-nums ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
                         {activeSession.quiz_mode === 'standard' && !p.finished_at ? (
-                          <span className="text-gray-400">? / {activeSession.question_count}</span>
+                          <span className={theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}>?<span className={theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}>/{activeSession.question_count}</span></span>
                         ) : (
-                          `${p.score} / ${activeSession.question_count}`
+                          <span>{p.score}<span className={`font-normal ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>/{activeSession.question_count}</span></span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className={`px-5 py-3 whitespace-nowrap text-[13px] tabular-nums font-mono ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
                         {activeSession.quiz_mode === 'standard' && !p.finished_at ? (
-                          <span className="text-gray-400">--:--</span>
+                          <span className={theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}>--:--</span>
                         ) : (
                           formatHMS(p.total_time)
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-5 py-3 whitespace-nowrap text-right">
                         <button
                           onClick={() => setViewingPlayer(p)}
-                          className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded"
+                          className={`px-3 h-7 rounded-full text-[11px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
                         >
-                          View Answers
+                          View answers
                         </button>
                       </td>
                     </tr>
@@ -1448,59 +1764,90 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 </tbody>
               </table>
             </div>
-            {players.length > itemsPerPage && (
+            {players.length > playersItemsPerPage && (
               <Pagination
                 totalItems={players.length}
-                itemsPerPage={itemsPerPage}
+                itemsPerPage={playersItemsPerPage}
                 currentPage={playersPage}
                 onPageChange={setPlayersPage}
+                theme={theme}
               />
             )}
           </div>
         </div>
-      ) : (
-        <>
+      </div>
+    </div>
+  </div>
+  )}
+  <div className="min-h-0 flex-1 overflow-hidden">
           {activeView === 'manage' && (
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+            <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
+              <div className={`shrink-0 border-b px-4 py-3 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.02]' : 'border-[#e5e5e5] bg-[#f8f8f8]'}`}>
+                <h3 className={`text-sm font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Active sessions ({activeSessions.length})</h3>
+              </div>
+              {activeSessions.length > 0 && (
+                <div className={`mx-3 mt-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 sm:mx-6 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.03]' : 'border-[#E5E5E5] bg-black/[0.02]'}`}>
+                  <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                    Showing {activeSessions.length === 0 ? 0 : ((activePage - 1) * manageItemsPerPage) + 1}-{Math.min(activePage * manageItemsPerPage, activeSessions.length)} of {activeSessions.length}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={manageItemsPerPage}
+                      onChange={(event) => {
+                        setManageItemsPerPage(Number(event.target.value));
+                        setActivePage(1);
+                      }}
+                      className={`h-8 rounded-full border px-3 text-[11px] font-semibold focus:outline-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-[#CACACB] bg-white text-[#111111] focus:border-[#111111]'}`}
+                    >
+                      {[5, 10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} / page</option>)}
+                    </select>
+                    <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750' : 'border-[#CACACB] bg-white'}`}>
+                      <button type="button" onClick={() => setActivePage(Math.max(1, activePage - 1))} disabled={activePage === 1} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Prev</button>
+                      <span className={`flex items-center border-x px-3 text-[11px] font-semibold ${theme === 'dark' ? 'border-dark-border-medium text-dark-text-tertiary' : 'border-[#E5E5E5] text-[#707072]'}`}>{activePage}/{Math.ceil(activeSessions.length / manageItemsPerPage)}</span>
+                      <button type="button" onClick={() => setActivePage(Math.min(Math.ceil(activeSessions.length / manageItemsPerPage), activePage + 1))} disabled={activePage === Math.ceil(activeSessions.length / manageItemsPerPage)} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Next</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="min-h-0 flex-1 overflow-auto">
+                <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-dark-border-subtle' : 'divide-[#f0f0f0]'}`}>
+                  <thead className={theme === 'dark' ? 'bg-white/[0.02]' : 'bg-[#f8f8f8]'}>
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Questions</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires In</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                      <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Join code</th>
+                      <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Status</th>
+                      <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Players</th>
+                      <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Questions</th>
+                      <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Duration</th>
+                      <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Expires in</th>
+                      <th className={`px-4 py-3 text-right text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Action</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-dark-border-subtle bg-dark-800' : 'divide-[#f0f0f0] bg-white'}`}>
                     {activeSessions.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500">No active sessions found.</td>
+                        <td colSpan={7} className={`px-4 py-10 text-center text-sm font-medium sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>No active sessions found.</td>
                       </tr>
-                    ) : activeSessions.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage).map(s => (
-                      <tr key={s.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-700 font-mono">
+                    ) : activeSessions.slice((activePage - 1) * manageItemsPerPage, activePage * manageItemsPerPage).map(s => (
+                      <tr key={s.id} className={theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'}>
+                        <td className={`whitespace-nowrap px-4 py-3 font-mono text-sm font-semibold sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-accent-purple' : 'text-indigo-700'}`}>
                           <span className="block max-w-[140px] truncate" title={s.quiz_code}>{s.quiz_code}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${s.status === 'active' ? 'bg-green-100 text-green-700' : s.status === 'paused' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4">
+                          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${s.status === 'active' ? (theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-100 text-green-700') : s.status === 'paused' ? (theme === 'dark' ? 'bg-accent-orange/15 text-accent-orange' : 'bg-orange-100 text-orange-700') : (theme === 'dark' ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-100 text-yellow-700')}`}>{s.status}</span>
                           {s.status === 'waiting' && s.scheduled_at && (
-                            <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600" title={new Date(s.scheduled_at).toLocaleString('id-ID')}>
-                              📅 {new Date(s.scheduled_at).toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            <span className={`ml-2 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${theme === 'dark' ? 'bg-accent-blue/15 text-accent-blue' : 'bg-blue-50 text-blue-600'}`} title={new Date(s.scheduled_at).toLocaleString('id-ID')}>
+                              {new Date(s.scheduled_at).toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">{s.player_count || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.question_count}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.duration_minutes} min</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <td className={`whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{s.player_count || 0}</td>
+                        <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>{s.question_count}</td>
+                        <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>{s.duration_minutes} min</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4">
                           {s.expires_at ? (
-                            <span className={`${s.status === 'active' || s.status === 'paused' ? 'text-indigo-600' : 'text-red-500'} font-bold`}>
+                            <span className={`font-semibold tabular-nums ${s.status === 'active' || s.status === 'paused' ? (theme === 'dark' ? 'text-accent-purple' : 'text-indigo-600') : (theme === 'dark' ? 'text-accent-red' : 'text-red-500')}`}>
                               {(() => {
-                                const referenceTime = (s.status === 'paused' && s.paused_at) ? new Date(s.paused_at).getTime() : Date.now();
+                                const referenceTime = (s.status === 'paused' && s.paused_at) ? new Date(s.paused_at).getTime() : currentTime;
                                 const diff = new Date(s.expires_at).getTime() - referenceTime;
                                 if (diff <= 0) return 'Expired';
                                 const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -1509,25 +1856,17 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                               })()}
                             </span>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className={theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}>-</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button onClick={() => setActiveSession(s)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View Detail</button>
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium sm:px-6 sm:py-4">
+                          <button onClick={() => setActiveSession(s)} className={`h-8 rounded-full px-3.5 text-[11px] font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'bg-accent-purple/15 text-accent-purple hover:bg-accent-purple/25' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}>View detail</button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              {activeSessions.length > itemsPerPage && (
-                <Pagination
-                  totalItems={activeSessions.length}
-                  itemsPerPage={itemsPerPage}
-                  currentPage={activePage}
-                  onPageChange={setActivePage}
-                />
-              )}
             </div>
           )}
 
@@ -1557,73 +1896,127 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
               return true;
             });
 
+            const splitCategory = (value?: string | null) => String(value || '').split(',').map(s => s.trim()).filter(Boolean);
+            const historyForSelectedMapels = historyFilterMapels.length > 0
+              ? history.filter(h => h.mapel === 'Semua MAPEL' || splitCategory(h.mapel).some(m => historyFilterMapels.includes(m)))
+              : [];
+            const historyForSelectedBabs = historyFilterBabs.length > 0
+              ? historyForSelectedMapels.filter(h => h.bab === 'Semua BAB' || splitCategory(h.bab).some(b => historyFilterBabs.includes(b)))
+              : [];
             const historyMapelOptions = mapels.map(m => ({ label: m.replace(/_/g, ' '), value: m }));
-            const historyBabOptions = babs.map(b => ({ label: b.replace(/_/g, ' '), value: b }));
-            const historySubBabOptions = subBabs;
+            const historyBabOptions = historyFilterMapels.length === 0 ? [] : Array.from(new Set(historyForSelectedMapels.flatMap(h => splitCategory(h.bab)).filter(b => b !== 'Semua BAB')))
+              .sort()
+              .map(b => ({ label: b.replace(/_/g, ' '), value: b }));
+            const historySubBabOptions = historyFilterBabs.length === 0 ? [] : Array.from(new Set(historyForSelectedBabs.flatMap(h => splitCategory(h.sub_bab)).filter(sb => sb !== 'Semua Sub-bab')))
+              .sort()
+              .map(sb => ({ label: sb.replace(/_/g, ' '), value: sb }));
 
             return (
-              <div className="space-y-4">
-                <div className="bg-white shadow sm:rounded-lg border border-gray-200 p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+                <div className={`shrink-0 rounded-[24px] border p-5 shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
+                  <div className="mb-3">
+                    <h3 className={`text-sm font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Quiz history</h3>
+                    <p className={`mt-0.5 text-xs font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>Filter by topic to inspect completed sessions.</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div className="space-y-1.5">
-                      <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Mapel</span>
+                      <span className={`block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mapel</span>
                       <MultiSelectDropdown
                         label="Mapel"
                         options={historyMapelOptions}
                         selectedValues={historyFilterMapels}
-                        onChange={setHistoryFilterMapels}
-                        placeholder="Semua Mapel"
+                        onChange={(values) => {
+                          setHistoryFilterMapels(values);
+                          setHistoryFilterBabs([]);
+                          setHistoryFilterSubBabs([]);
+                          setHistoryPage(1);
+                        }}
+                        placeholder="None Selected"
+                        theme={theme}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Bab</span>
+                      <span className={`block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Bab</span>
                       <MultiSelectDropdown
                         label="Bab"
                         options={historyBabOptions}
                         selectedValues={historyFilterBabs}
-                        onChange={setHistoryFilterBabs}
-                        placeholder="Semua Bab"
+                        onChange={(values) => {
+                          setHistoryFilterBabs(values);
+                          setHistoryFilterSubBabs([]);
+                          setHistoryPage(1);
+                        }}
+                        placeholder={historyFilterMapels.length === 0 ? 'Pilih Mapel dulu' : 'None Selected'}
+                        theme={theme}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <span className="block text-[11px] font-black text-nike-black uppercase tracking-widest opacity-60">Sub-bab</span>
+                      <span className={`block text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Sub-bab</span>
                       <MultiSelectDropdown
                         label="Sub-bab"
                         options={historySubBabOptions}
                         selectedValues={historyFilterSubBabs}
-                        onChange={setHistoryFilterSubBabs}
-                        placeholder="Semua Sub-bab"
+                        onChange={(values) => {
+                          setHistoryFilterSubBabs(values);
+                          setHistoryPage(1);
+                        }}
+                        placeholder={historyFilterBabs.length === 0 ? 'Pilih Bab dulu' : 'None Selected'}
+                        theme={theme}
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
+                  {filteredHistory.length > 0 && (
+                    <div className={`mx-3 mt-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 sm:mx-6 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.03]' : 'border-[#E5E5E5] bg-black/[0.02]'}`}>
+                      <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                        Showing {filteredHistory.length === 0 ? 0 : ((historyPage - 1) * historyItemsPerPage) + 1}-{Math.min(historyPage * historyItemsPerPage, filteredHistory.length)} of {filteredHistory.length}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={historyItemsPerPage}
+                          onChange={(event) => {
+                            setHistoryItemsPerPage(Number(event.target.value));
+                            setHistoryPage(1);
+                          }}
+                          className={`h-8 rounded-full border px-3 text-[11px] font-semibold focus:outline-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-[#CACACB] bg-white text-[#111111] focus:border-[#111111]'}`}
+                        >
+                          {[5, 10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} / page</option>)}
+                        </select>
+                        <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750' : 'border-[#CACACB] bg-white'}`}>
+                          <button type="button" onClick={() => setHistoryPage(Math.max(1, historyPage - 1))} disabled={historyPage === 1} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Prev</button>
+                          <span className={`flex items-center border-x px-3 text-[11px] font-semibold ${theme === 'dark' ? 'border-dark-border-medium text-dark-text-tertiary' : 'border-[#E5E5E5] text-[#707072]'}`}>{historyPage}/{Math.ceil(filteredHistory.length / historyItemsPerPage)}</span>
+                          <button type="button" onClick={() => setHistoryPage(Math.min(Math.ceil(filteredHistory.length / historyItemsPerPage), historyPage + 1))} disabled={historyPage === Math.ceil(filteredHistory.length / historyItemsPerPage)} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Next</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="min-h-0 flex-1 overflow-auto">
+                    <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-dark-border-subtle' : 'divide-[#f0f0f0]'}`}>
+                      <thead className={theme === 'dark' ? 'bg-white/[0.02]' : 'bg-[#f8f8f8]'}>
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Code</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topik</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Players</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Winner</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top Score</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                          <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Join code</th>
+                          <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Topik</th>
+                          <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Players</th>
+                          <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Winner</th>
+                          <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Top score</th>
+                          <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Date</th>
+                          <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Status</th>
+                          <th className={`px-4 py-3 text-right text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Action</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className={`divide-y ${theme === 'dark' ? 'divide-dark-border-subtle bg-dark-800' : 'divide-[#f0f0f0] bg-white'}`}>
                         {filteredHistory.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="px-6 py-8 text-center text-gray-500">No history found.</td>
+                            <td colSpan={8} className={`px-4 py-10 text-center text-sm font-medium sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>No history found.</td>
                           </tr>
-                        ) : filteredHistory.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage).map(h => (
-                          <tr key={h.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                        ) : filteredHistory.slice((historyPage - 1) * historyItemsPerPage, historyPage * historyItemsPerPage).map(h => (
+                          <tr key={h.id} className={theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'}>
+                            <td className={`whitespace-nowrap px-4 py-3 font-mono text-sm sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
                               <span className="block max-w-[140px] truncate" title={h.quiz_code}>{h.quiz_code}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                            <td className={`whitespace-nowrap px-4 py-3 text-sm capitalize sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>
                               <span
                                 className="block max-w-[220px] truncate"
                                 title={`${h.mapel?.replace(/_/g, ' ')} - ${h.bab?.replace(/_/g, ' ')} - ${h.sub_bab?.replace(/_/g, ' ')}`}
@@ -1631,37 +2024,28 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                                 {h.mapel?.replace(/_/g, ' ')} - {h.bab?.replace(/_/g, ' ')} - {h.sub_bab?.replace(/_/g, ' ')}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">{h.player_count}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-black">
+                            <td className={`whitespace-nowrap px-4 py-3 text-sm font-medium tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>{h.player_count}</td>
+                            <td className={`whitespace-nowrap px-4 py-3 text-sm font-semibold sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
                               <span className="block max-w-[180px] truncate" title={h.winner}>{h.winner}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-nike-green">{h.top_score} / {h.question_count}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(h.created_at).toLocaleString()}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-gray-100 text-gray-700">{h.status}</span>
+                            <td className={`whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-accent-green' : 'text-green-600'}`}>{h.top_score} / {h.question_count}</td>
+                            <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>{new Date(h.created_at).toLocaleString()}</td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4">
+                              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${theme === 'dark' ? 'bg-white/[0.05] text-dark-text-secondary' : 'bg-black/[0.04] text-gray-700'}`}>{h.status}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button onClick={() => setActiveSession(h)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View</button>
+                            <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium sm:px-6 sm:py-4">
+                              <button onClick={() => setActiveSession(h)} className={`h-8 rounded-full px-3.5 text-[11px] font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'bg-accent-purple/15 text-accent-purple hover:bg-accent-purple/25' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}>View</button>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  {filteredHistory.length > historyPerPage && (
-                    <Pagination
-                      totalItems={filteredHistory.length}
-                      itemsPerPage={historyPerPage}
-                      currentPage={historyPage}
-                      onPageChange={setHistoryPage}
-                    />
-                  )}
                 </div>
               </div>
             );
           })()}
-        </>
-      )}
+        </div>
 
       <LeaderboardViewModal
         open={showLeaderboardView && !!activeSession}
@@ -1674,126 +2058,191 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
 
       {/* Player Answers Modal */}
       {viewingPlayer && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)}>
+          <div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-6 border-b bg-gray-50 relative">
-              <div className="flex justify-between items-start w-full">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-black text-xl mt-1">
-                    {viewingPlayer.name[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black uppercase tracking-tight text-gray-900 leading-tight mb-1">
-                      {viewingPlayer.name}
-                    </h2>
-                    <div className="space-y-1">
-                      <div className="flex flex-col gap-0.5">
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">MAPEL:</span> {activeSession?.mapel?.replaceAll('_', ' ') || '-'}
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">BAB:</span> {activeSession?.bab?.replaceAll('_', ' ') || '-'}
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                          <span className="text-gray-300">SUBBAB:</span> {activeSession?.sub_bab?.replaceAll('_', ' ') || '-'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            <div className={`shrink-0 flex items-start justify-between gap-3 px-4 py-3 border-b sm:gap-4 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+              <div className="flex flex-col gap-2 min-w-0">
+                <h2 className={`text-[15px] font-semibold tracking-tight truncate ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                  {viewingPlayer.name}
+                </h2>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${viewingPlayer.finished_at ? (theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700') : (theme === 'dark' ? 'bg-accent-orange/15 text-accent-orange' : 'bg-orange-50 text-orange-700')}`}>
+                    {viewingPlayer.finished_at ? 'Finished' : 'Playing'}
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`} title={formatCategorySelectionLabel(activeSession?.mapel)}>
+                    {formatCategorySelectionLabel(activeSession?.mapel)}
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`} title={formatCategorySelectionLabel(activeSession?.bab)}>
+                    {formatCategorySelectionLabel(activeSession?.bab)}
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`} title={formatCategorySelectionLabel(activeSession?.sub_bab)}>
+                    {formatCategorySelectionLabel(activeSession?.sub_bab)}
+                  </span>
                 </div>
               </div>
+              <button
+                onClick={() => setViewingPlayer(null)}
+                className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 shrink-0 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-8 bg-white">
-              <div className="grid grid-cols-3 gap-6 mb-10 pb-10 border-b border-gray-100">
-                <div className="text-center">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Score</p>
-                  <p className="text-2xl font-black text-indigo-600">{viewingPlayer.score} / {activeSession?.question_count}</p>
-                </div>
-                <div className="text-center border-x border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Time Spent</p>
-                  <p className="text-2xl font-black text-gray-900">{formatHMS(viewingPlayer.total_time)}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Status</p>
-                  <p className={`text-sm font-black uppercase ${viewingPlayer.finished_at ? 'text-green-600' : 'text-orange-500 animate-pulse'}`}>
-                    {viewingPlayer.finished_at ? 'FINISHED' : 'PLAYING'}
-                  </p>
-                </div>
-              </div>
-
+            <div className={`flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
               {loadingAnswers ? (
-                <div className="text-center py-20 text-gray-400 font-bold uppercase text-xs tracking-widest animate-pulse">Loading answers...</div>
+                <div className={`text-center py-20 text-[12px] font-medium animate-pulse ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>
+                  Loading answers...
+                </div>
               ) : (
-                <div className="space-y-8">
-                  {(() => {
-                    const allIds = viewingPlayer.question_ids || activeSession?.question_ids || [];
-                    const answeredIds = playerAnswers.map(a => a.question_id);
+                <div className="space-y-6">
+                  {/* Summary */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+                        <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                          {activeSession?.question_count || 0}
+                        </p>
+                        <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                          Total
+                        </p>
+                      </div>
+                      <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50'}`}>
+                        <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-accent-green' : 'text-green-700'}`}>
+                          {viewingPlayer.score}
+                        </p>
+                        <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-accent-green/80' : 'text-green-600'}`}>
+                          Correct
+                        </p>
+                      </div>
+                      <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-red/10' : 'bg-red-50'}`}>
+                        <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-accent-red' : 'text-red-700'}`}>
+                          {(activeSession?.question_count || 0) - viewingPlayer.score}
+                        </p>
+                        <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-accent-red/80' : 'text-red-600'}`}>
+                          Incorrect
+                        </p>
+                      </div>
+                      <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-blue/10' : 'bg-blue-50'}`}>
+                        <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-accent-blue' : 'text-blue-700'}`}>
+                          {activeSession?.question_count ? Math.round((viewingPlayer.score / activeSession.question_count) * 100) : 0}%
+                        </p>
+                        <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-accent-blue/80' : 'text-blue-600'}`}>
+                          Score
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`flex items-center justify-between rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+                      <span className={`text-[12px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                        Time spent
+                      </span>
+                      <span className={`text-[13px] font-semibold tabular-nums font-mono ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                        {formatHMS(viewingPlayer.total_time)}
+                      </span>
+                    </div>
+                  </div>
 
-                    // Display exactly in the order the user received them
-                    const orderedIds = [
-                      ...allIds,
-                      ...answeredIds.filter(id => !allIds.includes(id))
-                    ];
+                  {/* Questions Accordion */}
+                  <div className="space-y-2">
+                    {(() => {
+                      const allIds = viewingPlayer.question_ids || activeSession?.question_ids || [];
+                      const answeredIds = playerAnswers.map(a => a.question_id);
+                      const orderedIds = [...allIds, ...answeredIds.filter(id => !allIds.includes(id))];
 
-                    return orderedIds.map((qId, idx) => {
-                      const question = sessionQuestions.find(q => q.id === qId);
-                      const answer = playerAnswers.find(a => a.question_id === qId);
+                      const toggleQuestion = (questionId: number) => {
+                        setExpandedPlayerQuestions(prev => {
+                          const newSet = new Set(prev);
+                          if (newSet.has(questionId)) {
+                            newSet.delete(questionId);
+                          } else {
+                            newSet.add(questionId);
+                          }
+                          return newSet;
+                        });
+                      };
 
-                      if (!question) return null;
+                      return orderedIds.map((qId, idx) => {
+                        const question = sessionQuestions.find(q => q.id === qId);
+                        const answer = playerAnswers.find(a => a.question_id === qId);
+                        if (!question) return null;
 
-                      const isShortAnswer = question.question_type === 'short_answer';
-                      const correctText = isShortAnswer
-                        ? question.short_answer
-                        : (question as any)[`option_${question.correct_answer.toLowerCase()}`];
+                        const isExpanded = expandedPlayerQuestions.has(qId);
+                        const isShortAnswer = question.question_type === 'short_answer';
+                        const correctText = isShortAnswer ? question.short_answer : getQuestionOptionText(question, question.correct_answer);
 
-                      return (
-                        <div key={`${qId}-${idx}`} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
-                          <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Question {idx + 1}</span>
-                            {answer ? (
-                              <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${answer.is_correct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {answer.is_correct ? 'Correct' : 'Incorrect'}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-black uppercase px-3 py-1 rounded-full bg-gray-100 text-gray-400">Not Answered Yet</span>
-                            )}
-                          </div>
-                          <div className="p-6 space-y-4">
-                            <RichContent html={question.question_text} className="text-[16px] font-bold text-gray-900 leading-tight" />
+                        return (
+                          <div key={`${qId}-${idx}`} className={`rounded-2xl overflow-hidden transition-spring-fast ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+                            <button
+                              onClick={() => toggleQuestion(qId)}
+                              className={`w-full px-4 py-3 flex items-center justify-between gap-3 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.02]' : 'hover:bg-black/[0.02]'}`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className={`text-[12px] font-semibold tabular-nums shrink-0 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>
+                                  Q{idx + 1}
+                                </span>
+                                {answer ? (
+                                  <span className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${answer.is_correct ? (theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700') : (theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700')}`}>
+                                    <span className="text-[14px] leading-none">{answer.is_correct ? '✓' : '✗'}</span>
+                                    {answer.is_correct ? 'Correct' : 'Incorrect'}
+                                  </span>
+                                ) : (
+                                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary' : 'bg-black/5 text-gray-400'}`}>
+                                    Not answered
+                                  </span>
+                                )}
+                              </div>
+                              <svg
+                                className={`w-4 h-4 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
 
-                            {answer && (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className={`p-4 rounded-xl border-2 ${answer.is_correct ? 'border-green-100 bg-green-50/30' : 'border-red-100 bg-red-50/30'}`}>
-                                  <p className="text-[10px] font-black text-gray-400 uppercase mb-2">User Answer</p>
-                                  <RichContent html={answer.user_answer} className={`text-sm font-medium ${answer.is_correct ? 'text-green-800' : 'text-red-800'}`} />
-                                  <p className="text-[9px] text-gray-400 mt-2">Time taken: {formatHMS(answer.time_taken)}</p>
+                            {isExpanded && (
+                              <div className={`px-4 pb-4 space-y-4 border-t ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+                                <div className="pt-4">
+                                  <p className={`text-[11px] font-medium mb-2 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                                    Question
+                                  </p>
+                                  <RichContent html={question.question_text} className={`text-[13px] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`} />
                                 </div>
 
-                                {!answer.is_correct && (
-                                  <div className="p-4 rounded-xl border-2 border-green-100 bg-green-50/20">
-                                    <p className="text-[10px] font-black text-green-600 uppercase mb-2">
-                                      Correct Answer{isShortAnswer ? '' : ` (${question.correct_answer})`}
-                                    </p>
-                                    <RichContent html={correctText} className="text-sm font-medium text-green-800" />
+                                {answer && (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div className={`rounded-2xl px-4 py-3 ${answer.is_correct ? (theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50') : (theme === 'dark' ? 'bg-accent-red/10' : 'bg-red-50')}`}>
+                                      <p className={`text-[11px] font-medium mb-1.5 ${answer.is_correct ? (theme === 'dark' ? 'text-accent-green/80' : 'text-green-600') : (theme === 'dark' ? 'text-accent-red/80' : 'text-red-600')}`}>
+                                        User answer
+                                      </p>
+                                      <RichContent html={answer.user_answer} className={`text-[13px] font-medium ${answer.is_correct ? (theme === 'dark' ? 'text-accent-green' : 'text-green-800') : (theme === 'dark' ? 'text-accent-red' : 'text-red-800')}`} />
+                                      <p className={`text-[11px] font-mono tabular-nums mt-2 ${answer.is_correct ? (theme === 'dark' ? 'text-accent-green/70' : 'text-green-600/80') : (theme === 'dark' ? 'text-accent-red/70' : 'text-red-600/80')}`}>
+                                        {formatHMS(answer.time_taken)}
+                                      </p>
+                                    </div>
+
+                                    {!answer.is_correct && (
+                                      <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50'}`}>
+                                        <p className={`text-[11px] font-medium mb-1.5 ${theme === 'dark' ? 'text-accent-green/80' : 'text-green-600'}`}>
+                                          Correct answer{isShortAnswer ? '' : ` (${question.correct_answer})`}
+                                        </p>
+                                        <RichContent html={correctText} className={`text-[13px] font-medium ${theme === 'dark' ? 'text-accent-green' : 'text-green-800'}`} />
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
                             )}
                           </div>
-                        </div>
-                      );
-                    });
-                  })()}
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
               )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-6 bg-gray-50 border-t flex justify-end">
-              <button onClick={() => setViewingPlayer(null)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Close Breakdown</button>
             </div>
           </div>
         </div>
@@ -1801,36 +2250,48 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
 
       {/* View Questions Modal */}
       {showViewQuestions && activeSession && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[10000]">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowViewQuestions(false)}>
+          <div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-6 border-b flex justify-between items-center bg-gray-50">
-              <div>
-                <h2 className="text-xl font-black uppercase tracking-tight text-gray-900">Question Analytics</h2>
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">
-                  {activeSession.question_count} Soal • {players.length} Pemain
-                </p>
+            <div className={`shrink-0 flex items-start justify-between gap-3 px-4 py-3 border-b sm:gap-4 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+              <div className="flex flex-col gap-2 min-w-0">
+                <h2 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                  Question analytics
+                </h2>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tabular-nums ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
+                    {activeSession.question_count} questions
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tabular-nums ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
+                    {players.length} players
+                  </span>
+                  <button
+                    onClick={() => setShowAllAnswers(!showAllAnswers)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-spring-fast active:scale-95 ${showAllAnswers
+                      ? (theme === 'dark' ? 'bg-accent-purple/15 text-accent-purple' : 'bg-indigo-50 text-indigo-700')
+                      : (theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10')
+                      }`}
+                  >
+                    {showAllAnswers ? 'Hide answers' : 'Show answers'}
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowAllAnswers(!showAllAnswers)}
-                  className={`h-10 px-4 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border-2 ${showAllAnswers
-                    ? 'bg-indigo-600 border-transparent text-white shadow-lg shadow-indigo-200'
-                    : 'bg-white border-gray-200 text-gray-500 hover:border-indigo-600 hover:text-indigo-600'
-                    }`}
-                >
-                  {showAllAnswers ? '👁️ Hide Answers' : '👁️ Show Answers'}
-                </button>
-                <button onClick={() => setShowViewQuestions(false)} className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-all">✕</button>
-              </div>
+              <button
+                onClick={() => setShowViewQuestions(false)}
+                className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 shrink-0 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-white">
+            <div className={`flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
               {loadingAllAnswers ? (
-                <div className="text-center py-20 text-gray-400 font-bold uppercase text-xs tracking-widest animate-pulse">Loading question data...</div>
+                <div className={`text-center py-20 text-[12px] font-medium animate-pulse ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>
+                  Loading question data…
+                </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-2">
                   {(activeSession.question_ids || []).map((qId, idx) => {
                     const question = sessionQuestions.find(q => q.id === qId);
                     if (!question) return null;
@@ -1839,52 +2300,88 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                     const correctLabel = question.correct_answer;
                     const correctOptionText = isShortAnswer
                       ? question.short_answer
-                      : (question as any)[`option_${correctLabel.toLowerCase()}`];
+                      : getQuestionOptionText(question, correctLabel);
                     const correctAnswers = allPlayerAnswers.filter(a => a.question_id === qId && a.is_correct);
                     const totalAnswers = allPlayerAnswers.filter(a => a.question_id === qId);
                     const correctPlayerNames = correctAnswers.map(a => {
                       const player = players.find(p => p.id === a.player_id);
                       return player?.name || 'Unknown';
                     });
+                    const isAllCorrect = correctAnswers.length > 0 && correctAnswers.length === totalAnswers.length;
+                    const isAllWrong = totalAnswers.length > 0 && correctAnswers.length === 0;
+                    const statusBg = isAllCorrect ? (theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700')
+                      : isAllWrong ? (theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700')
+                      : (theme === 'dark' ? 'bg-accent-orange/15 text-accent-orange' : 'bg-orange-50 text-orange-700');
 
                     return (
-                      <div key={qId} className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
-                        <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Soal {idx + 1}</span>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${correctAnswers.length === 0 ? 'bg-red-100 text-red-600' : correctAnswers.length === totalAnswers.length ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                              {correctAnswers.length}/{totalAnswers.length} Benar
-                            </span>
-                          </div>
+                      <div key={qId} className={`rounded-2xl overflow-hidden ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+                        <div className={`flex items-center justify-between gap-3 px-4 py-3`}>
+                          <span className={`text-[12px] font-semibold tabular-nums ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Q{idx + 1}</span>
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight tabular-nums ${statusBg}`}>
+                            {correctAnswers.length}/{totalAnswers.length} benar
+                          </span>
                         </div>
-                        <div className="p-5 space-y-4">
-                          <RichContent html={question.question_text} className="text-[15px] font-bold text-gray-900 leading-relaxed" />
+                        <div className={`px-4 pb-4 space-y-3 border-t ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+                          <div className="pt-3">
+                            <p className={`text-[11px] font-medium mb-2 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                              Question
+                            </p>
+                            <RichContent html={question.question_text} className={`text-[13px] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`} />
+                          </div>
 
                           {/* Correct Answer */}
                           {showAllAnswers && (
-                            <div className="p-4 rounded-xl border-2 border-green-100 bg-green-50/30">
-                              <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-2">Jawaban Benar</p>
-                              <RichContent html={correctOptionText} className="text-sm font-medium text-green-800" />
+                            <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50'}`}>
+                              <p className={`text-[11px] font-medium mb-1.5 ${theme === 'dark' ? 'text-accent-green/80' : 'text-green-600'}`}>Jawaban benar</p>
+                              <RichContent html={correctOptionText} className={`text-[13px] font-medium ${theme === 'dark' ? 'text-accent-green' : 'text-green-800'}`} />
                             </div>
                           )}
 
                           {/* Who answered correctly */}
-                          <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50">
-                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">
-                              Pemain yang Benar ({correctAnswers.length})
+                          <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.025]' : 'bg-black/[0.02]'}`}>
+                            <p className={`text-[11px] font-medium mb-2 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                              Pemain benar · {correctAnswers.length}
                             </p>
                             {correctPlayerNames.length === 0 ? (
-                              <p className="text-xs text-gray-400 italic">Belum ada yang menjawab benar</p>
+                              <p className={`text-[12px] italic ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Belum ada</p>
                             ) : (
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex flex-wrap gap-1.5">
                                 {correctPlayerNames.map((name, i) => (
-                                  <span key={i} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                                  <span key={i} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700'}`}>
                                     {name}
                                   </span>
                                 ))}
                               </div>
                             )}
                           </div>
+
+                          {/* Who answered incorrectly */}
+                          {(() => {
+                            const incorrectAnswers = allPlayerAnswers.filter(a => a.question_id === qId && !a.is_correct);
+                            const incorrectPlayerNames = incorrectAnswers.map(a => {
+                              const player = players.find(p => p.id === a.player_id);
+                              return player?.name || 'Unknown';
+                            });
+
+                            return (
+                              <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.025]' : 'bg-black/[0.02]'}`}>
+                                <p className={`text-[11px] font-medium mb-2 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                                  Pemain salah · {incorrectAnswers.length}
+                                </p>
+                                {incorrectPlayerNames.length === 0 ? (
+                                  <p className={`text-[12px] italic ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Belum ada</p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {incorrectPlayerNames.map((name, i) => (
+                                      <span key={i} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700'}`}>
+                                        {name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -1892,39 +2389,36 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
                 </div>
               )}
             </div>
-
-            {/* Footer */}
-            <div className="p-6 bg-gray-50 border-t flex justify-end">
-              <button onClick={() => setShowViewQuestions(false)} className="px-10 h-12 rounded-full bg-nike-black text-white font-black uppercase text-[10px] tracking-widest hover:bg-nike-grey-500 transition-all shadow-lg shadow-nike-black/20">Tutup</button>
-            </div>
           </div>
         </div>
       )}
 
       {/* End Quiz Confirmation Modal */}
       {showEndConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]" onClick={() => setShowEndConfirm(false)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center" onClick={e => e.stopPropagation()}>
-            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-              ⚠️
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowEndConfirm(false)}>
+          <div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-500'}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
             </div>
-            <h3 className="text-lg font-black text-gray-900 mb-2">Akhiri Quiz?</h3>
-            <p className="text-sm text-gray-500 mb-6 font-medium">Apakah anda yakin menyelesaikan quiz sekarang?</p>
-            <div className="flex gap-3">
+            <h3 className={`text-[15px] font-semibold tracking-tight mb-1.5 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Akhiri quiz?</h3>
+            <p className={`text-[13px] leading-relaxed mb-5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Apakah anda yakin menyelesaikan quiz sekarang?</p>
+            <div className="flex gap-2">
               <button
                 onClick={() => setShowEndConfirm(false)}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                className={`flex-1 h-9 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
               >
-                Tidak
+                Batal
               </button>
               <button
                 onClick={() => {
                   setShowEndConfirm(false);
                   handleStatusChange('finished');
                 }}
-                className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-md shadow-red-500/20"
+                className={`flex-1 h-9 rounded-full text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red hover:bg-accent-red/90' : 'bg-red-500 hover:bg-red-600'}`}
               >
-                Ya
+                Akhiri
               </button>
             </div>
           </div>
@@ -1933,68 +2427,113 @@ export default function AdminQuizTab({ mapels, babs, subBabs }: { mapels: string
 
       {/* Cancel Quiz Confirmation Modal */}
       {showCancelConfirm && activeSession && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]" onClick={() => setShowCancelConfirm(false)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center" onClick={e => e.stopPropagation()}>
-            <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-              🗑️
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowCancelConfirm(false)}>
+          <div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-500'}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </div>
-            <h3 className="text-lg font-black text-gray-900 mb-2">Batalkan Quiz?</h3>
-            <p className="text-sm text-gray-500 mb-6 font-medium">Apakah anda yakin ingin membatalkan kuis ini? Semua data pemain dan jawaban akan dihapus secara permanen.</p>
-            <div className="flex gap-3">
+            <h3 className={`text-[15px] font-semibold tracking-tight mb-1.5 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Batalkan quiz?</h3>
+            <p className={`text-[13px] leading-relaxed mb-5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Semua data pemain dan jawaban akan dihapus secara permanen.</p>
+            <div className="flex gap-2">
               <button
                 onClick={() => setShowCancelConfirm(false)}
-                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                className={`flex-1 h-9 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
               >
-                Tidak
+                Batal
               </button>
               <button
                 onClick={async () => {
                   setShowCancelConfirm(false);
                   const ok = await deleteQuizSession(activeSession.id);
                   if (ok) {
-                    setActiveSession(null);
+                    handleCloseSession();
                     setActiveView('manage');
                   } else {
                     alert('Gagal membatalkan kuis.');
                   }
                 }}
-                className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-md shadow-red-500/20"
+                className={`flex-1 h-9 rounded-full text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red hover:bg-accent-red/90' : 'bg-red-500 hover:bg-red-600'}`}
               >
-                Ya, Batalkan
+                Ya, batalkan
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {createErrorModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 backdrop-blur-2xl px-4">
+          <div className={`w-full max-w-md rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary' : 'bg-white text-gray-900'}`}>
+            <div className="mb-4 flex items-center gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-600'}`}>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-semibold tracking-tight">Kuis tidak bisa dibuat</h3>
+                <p className={`text-[12px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Jumlah soal tidak mencukupi</p>
+              </div>
+            </div>
+
+            <div className={`mb-4 rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+              <div className="mb-1.5 flex justify-between items-center gap-4">
+                <span className={`text-[12px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Soal tersedia</span>
+                <span className={`text-[13px] font-semibold tabular-nums ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>{createErrorModal.availableCount}</span>
+              </div>
+              <div className="flex justify-between items-center gap-4">
+                <span className={`text-[12px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Soal diminta</span>
+                <span className={`text-[13px] font-semibold tabular-nums ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>{createErrorModal.requestedCount}</span>
+              </div>
+            </div>
+
+            <p className={`mb-4 text-[12px] leading-relaxed ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
+              Filter saat ini hanya menemukan {createErrorModal.availableCount} soal. Tambah soal pada topik ini, kurangi jumlah soal, atau pilih topik lain.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setCreateErrorModal(null)}
+              className={`w-full h-9 rounded-full text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-blue hover:bg-accent-blue/90' : 'bg-blue-500 hover:bg-blue-600'}`}
+            >
+              Mengerti
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} theme={theme} />
     </div>
   );
 }
 
-function Pagination({ totalItems, itemsPerPage, currentPage, onPageChange }: { totalItems: number, itemsPerPage: number, currentPage: number, onPageChange: (page: number) => void }) {
+function Pagination({ totalItems, itemsPerPage, currentPage, onPageChange, theme = 'dark' }: { totalItems: number, itemsPerPage: number, currentPage: number, onPageChange: (page: number) => void, theme?: 'light' | 'dark' }) {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   if (totalPages <= 1) return null;
 
   return (
-    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+    <div className={`flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4 ${theme === 'dark' ? 'bg-dark-750 border-dark-border' : 'bg-gray-50 border-gray-200'}`}>
       <div className="flex-1 flex justify-between sm:hidden">
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md disabled:opacity-50 ${theme === 'dark' ? 'border-dark-border bg-dark-700 text-dark-text-primary hover:bg-dark-600' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
         >
           Previous
         </button>
         <button
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+          className={`ml-3 relative inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md disabled:opacity-50 ${theme === 'dark' ? 'border-dark-border bg-dark-700 text-dark-text-primary hover:bg-dark-600' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
         >
           Next
         </button>
       </div>
       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-gray-700">
+          <p className={`text-sm ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>
             Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
             <span className="font-medium">{totalItems}</span> results
           </p>
@@ -2004,7 +2543,7 @@ function Pagination({ totalItems, itemsPerPage, currentPage, onPageChange }: { t
             <button
               onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              className={`relative inline-flex items-center px-2 py-2 rounded-l-md border text-sm font-medium disabled:opacity-50 ${theme === 'dark' ? 'border-dark-border bg-dark-700 text-dark-text-secondary hover:bg-dark-600' : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'}`}
             >
               <span className="sr-only">Previous</span>
               <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -2016,8 +2555,8 @@ function Pagination({ totalItems, itemsPerPage, currentPage, onPageChange }: { t
                 key={i + 1}
                 onClick={() => onPageChange(i + 1)}
                 className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === i + 1
-                  ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  ? (theme === 'dark' ? 'z-10 bg-accent-purple/20 border-accent-purple text-accent-purple' : 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600')
+                  : (theme === 'dark' ? 'bg-dark-700 border-dark-border text-dark-text-secondary hover:bg-dark-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50')
                   }`}
               >
                 {i + 1}
@@ -2026,7 +2565,7 @@ function Pagination({ totalItems, itemsPerPage, currentPage, onPageChange }: { t
             <button
               onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              className={`relative inline-flex items-center px-2 py-2 rounded-r-md border text-sm font-medium disabled:opacity-50 ${theme === 'dark' ? 'border-dark-border bg-dark-700 text-dark-text-secondary hover:bg-dark-600' : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'}`}
             >
               <span className="sr-only">Next</span>
               <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

@@ -1,4 +1,3 @@
-const CATEGORY_SLUG_PATTERN = /^[a-z0-9_\-\.]+$/;
 
 export function normalizeCategorySlug(value: string): string {
   const str = String(value ?? '').trim();
@@ -43,6 +42,5 @@ export function formatCategorySelectionLabel(value?: string | null): string {
 }
 
 export function isSafeCategorySlug(value: string): boolean {
-  // Return true to avoid blocking any categories, let the normalization handle it
-  return true;
+  return /^[a-z0-9_]{1,80}$/.test(value);
 }

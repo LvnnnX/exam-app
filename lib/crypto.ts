@@ -9,7 +9,7 @@ const SECRET_SALT = "exam-secure-salt-2026";
 /**
  * Scrambles an object into an obfuscated string.
  */
-export function scramble(data: any): string {
+export function scramble(data: unknown): string {
   try {
     const jsonStr = JSON.stringify(data);
     // Simple XOR-like scrambling with Base64
@@ -28,7 +28,7 @@ export function scramble(data: any): string {
 /**
  * Unscrambles an obfuscated string back into an object.
  */
-export function unscramble(scrambled: string): any {
+export function unscramble<T = unknown>(scrambled: string): T | null {
   try {
     const decoded = decodeURIComponent(atob(scrambled));
     let result = "";

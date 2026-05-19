@@ -1,677 +1,226 @@
 "use client";
 
-import React, { useState, useEffect, use, useRef, useCallback, useLayoutEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { secureLoad, secureSave, secureRemove } from '@/lib/security';
-import { fetchQuizByCode, joinLiveQuiz, submitSecureAnswer, getJitQuestion, finishPlayerQuiz, normalizeQuizCode, formatHMS, type KuisLog, type Player } from '@/lib/quiz';
-import { type ShuffledQuestion } from '@/lib/questions';
-import { useRouter } from 'next/navigation';
+import React, { use } from 'react';
+import { secureSave } from '@/lib/security';
+import { formatHMS } from '@/lib/quiz';
 import RichContent from '@/app/components/RichContent';
-import { useExamSecurity } from '@/app/hooks/useExamSecurity';
 import TabWarningModal from '@/app/components/TabWarningModal';
 import LeaderboardViewModal from '@/app/components/LeaderboardViewModal';
 import EditHorseModal from '@/app/components/EditHorseModal';
-import { HORSE_SKINS, getHorseSkin } from '@/lib/horse-skins';
+import { getHorseSkin } from '@/lib/horse-skins';
 import HorseAvatar from '@/app/components/HorseAvatar';
-import { updatePlayerHorseSkin } from '@/lib/quiz';
 import { formatCategorySelectionLabel } from '@/lib/categories';
 import CrownIcon from '@/app/components/CrownIcon';
-import confetti from 'canvas-confetti';
-
-type AnswerData = string;
+import useQuizSessionController from '@/app/hooks/useQuizSessionController';
 
 export default function QuizSessionPage({ params }: { params: Promise<{ code: string }> }) {
   const unwrappedParams = use(params);
   const code = unwrappedParams.code;
-  const quizCode = normalizeQuizCode(code);
-  const router = useRouter();
 
-  const [session, setSession] = useState<KuisLog | null>(null);
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [name, setName] = useState('');
+  const { meta, state, setters, actions } = useQuizSessionController(code);
+
+  const {
+    quizCode,
+    router,
+    isStandard,
+    leaderboardRowRefs,
+    getRankBadgeClasses,
+  } = meta;
+
+  const {
+    session,
+    player,
+    name,
+    currentQuestion,
+    currentIndex,
+    score,
+    isFinished,
+    leaderboard,
+    loading,
+    timeLeftDisplay,
+    waitTimer,
+    selectedAnswer,
+    loadError,
+    doubtFlags,
+    localAnswers,
+    showNavPopup,
+    showSubmitConfirm,
+    isEditHorseModalOpen,
+    showLeaderboardView,
+    changingHorseSkin,
+    warningCount,
+    showWarningModal,
+  } = state;
+
+  const {
+    setName,
+    setSelectedAnswer,
+    setDoubtFlags,
+    setShowNavPopup,
+    setShowSubmitConfirm,
+    setIsEditHorseModalOpen,
+    setShowLeaderboardView,
+  } = setters;
+
+  const {
+    dismissWarning,
+    handleJoin,
+    handleHorseSkinChange,
+    handleAnswer,
+    goToQuizQuestion,
+    finishStandardQuiz,
+  } = actions;
 
-  // Game state
-  const [currentQuestion, setCurrentQuestion] = useState<ShuffledQuestion | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [isFinished, setIsFinished] = useState(false);
-
-  // Trigger confetti when user finishes
-  useEffect(() => {
-    if (isFinished) {
-      const duration = 3 * 1000;
-      const animationEnd = Date.now() + duration;
-      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10001 };
-
-      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
-
-      const interval: any = setInterval(function() {
-        const timeLeft = animationEnd - Date.now();
-
-        if (timeLeft <= 0) {
-          return clearInterval(interval);
-        }
-
-        const particleCount = 50 * (timeLeft / duration);
-        // since particles fall down, start a bit higher than random
-        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
-        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
-      }, 250);
-
-      return () => clearInterval(interval);
-    }
-  }, [isFinished]);
-
-  const [startTime, setStartTime] = useState<number>(0);
-  const [leaderboard, setLeaderboard] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [timeLeftDisplay, setTimeLeftDisplay] = useState<string>('');
-  const [waitTimer, setWaitTimer] = useState<string | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<AnswerData | null>(null);
-  const [pausedAt, setPausedAt] = useState<number | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  // Standard mode state
-  const [doubtFlags, setDoubtFlags] = useState<boolean[]>([]);
-  const [localAnswers, setLocalAnswers] = useState<(string | null)[]>([]);
-  const [showNavPopup, setShowNavPopup] = useState(false);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [isEditHorseModalOpen, setIsEditHorseModalOpen] = useState(false);
-  const [showLeaderboardView, setShowLeaderboardView] = useState(false);
-  const [changingHorseSkin, setChangingHorseSkin] = useState(false);
-  const isStandard = session?.quiz_mode === 'standard';
-  const leaderboardRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const previousLeaderboardRects = useRef<Map<string, DOMRect>>(new Map());
-
-  const selectedAnswerRef = useRef<AnswerData | null>(null);
-  useEffect(() => {
-    selectedAnswerRef.current = selectedAnswer;
-  }, [selectedAnswer]);
-
-  useLayoutEffect(() => {
-    const rowElements = leaderboard
-      .map((entry) => leaderboardRowRefs.current[entry.id])
-      .filter((element): element is HTMLDivElement => Boolean(element));
-
-    rowElements.forEach((element) => {
-      element.getAnimations().forEach((animation) => animation.cancel());
-    });
-
-    const nextRects = new Map<string, DOMRect>();
-    leaderboard.forEach((entry) => {
-      const element = leaderboardRowRefs.current[entry.id];
-      if (element) {
-        nextRects.set(entry.id, element.getBoundingClientRect());
-      }
-    });
-
-    const previousRects = previousLeaderboardRects.current;
-
-    leaderboard.forEach((entry, index) => {
-      const element = leaderboardRowRefs.current[entry.id];
-      const nextRect = nextRects.get(entry.id);
-      if (!element || !nextRect) return;
-
-      const previousRect = previousRects.get(entry.id);
-      if (previousRect) {
-        const deltaX = previousRect.left - nextRect.left;
-        const deltaY = previousRect.top - nextRect.top;
-        if (deltaX === 0 && deltaY === 0) {
-          return;
-        }
-
-        const moveDistance = Math.hypot(deltaX, deltaY);
-        const pulseScale = 1.02 + Math.min(0.015, moveDistance / 2400);
-
-        element.animate(
-          [
-            { transform: `translate(${deltaX}px, ${deltaY}px) scale(1)`, boxShadow: '0 0 0 rgba(0, 0, 0, 0)' },
-            { offset: 0.38, transform: `translate(${deltaX * 0.45}px, ${deltaY * 0.45}px) scale(${pulseScale})`, boxShadow: '0 16px 32px rgba(15, 23, 42, 0.16)' },
-            { transform: 'translate(0px, 0px) scale(1)', boxShadow: '0 0 0 rgba(0, 0, 0, 0)' },
-          ],
-          {
-            duration: Math.min(660, Math.max(320, 240 + Math.min(260, Math.abs(deltaY)))),
-            easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-            fill: 'both',
-          }
-        );
-        return;
-      }
-
-      element.animate(
-        [
-          { opacity: 0, transform: 'translateY(14px) scale(0.98)' },
-          { opacity: 1, transform: 'translateY(0) scale(1)' },
-        ],
-        {
-          duration: 320 + index * 30,
-          easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-          fill: 'both',
-          delay: index * 24,
-        }
-      );
-    });
-
-    previousLeaderboardRects.current = nextRects;
-  }, [leaderboard]);
-
-  const getRankBadgeClasses = (rank: number, isCurrentPlayer: boolean) => {
-    if (rank === 1) {
-      return isCurrentPlayer
-        ? 'border-white/30 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
-        : 'border-amber-300 bg-amber-50 text-amber-800 shadow-[0_0_0_1px_rgba(245,158,11,0.10)]';
-    }
-
-    if (rank === 2) {
-      return isCurrentPlayer
-        ? 'border-white/30 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
-        : 'border-slate-300 bg-slate-50 text-slate-700 shadow-[0_0_0_1px_rgba(148,163,184,0.12)]';
-    }
-
-    return isCurrentPlayer
-      ? 'border-white/30 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)]'
-      : 'border-orange-300 bg-orange-50 text-orange-800 shadow-[0_0_0_1px_rgba(251,146,60,0.10)]';
-  };
-
-  // ─── Anti-Cheat Security ──────────────────────────────────────────
-  const examSecurityActive = session?.status === 'active' && !!player && !isFinished;
-  const { warningCount, showWarningModal, dismissWarning } = useExamSecurity({
-    isActive: examSecurityActive,
-    enableTabDetection: true,
-    enableWakeLock: true,
-    onForceSubmit: useCallback(() => {
-      // Strike 3 — auto-submit all answers immediately
-      if (!player || isFinished) return;
-      const timeTaken = startTime > 0 ? Math.floor((Date.now() - startTime) / 1000) : 0;
-      const q = currentQuestion;
-      if (q) {
-        const currentSelection = selectedAnswerRef.current;
-        const answerText = currentSelection || '';
-        void submitSecureAnswer(player.id, q.id, answerText, timeTaken, currentIndex);
-      }
-      void finishPlayerQuiz(player.id);
-      secureRemove(`quiz_index_${quizCode}`);
-      setIsFinished(true);
-    }, [player, isFinished, startTime, currentQuestion, quizCode]),
-  });
-
-  // 1. Initial Load & Subscription
-  useEffect(() => {
-    fetchQuizByCode(quizCode).then(quiz => {
-      if (!quiz) {
-        alert("Kuis tidak ditemukan");
-        router.push('/');
-        return;
-      }
-      setSession(quiz);
-      setLoading(false);
-
-      if (quiz.status === 'finished') {
-        setIsFinished(true);
-        fetchLeaderboard(quiz.id);
-      }
-
-      // Check localStorage for existing player
-      const savedPlayerId = secureLoad<string>(`quiz_player_${quizCode}`);
-      if (savedPlayerId) {
-        supabase.from('public_players').select('*').eq('id', savedPlayerId).single().then(({ data }) => {
-          if (data) {
-            // Rule 4 & 5: Strict check for completion state on mount
-            if (data.finished_at) {
-              setIsFinished(true);
-              return;
-            }
-            // Add missing properties for Player type
-            setPlayer({ ...data, question_ids: [] } as Player);
-            // Restore index (Questions are loaded JIT)
-            const savedIndex = secureLoad<string>(`quiz_index_${quizCode}`);
-            if (savedIndex) {
-              setCurrentIndex(parseInt(savedIndex));
-            }
-            // Restore standard mode state
-            const savedDoubts = secureLoad<string>(`quiz_doubts_${quizCode}`);
-            if (savedDoubts) {
-              try { setDoubtFlags(JSON.parse(savedDoubts)); } catch { }
-            } else if (quiz) {
-              setDoubtFlags(Array(quiz.question_count).fill(false));
-            }
-            const savedAnswers = secureLoad<string>(`quiz_answers_${quizCode}`);
-            if (savedAnswers) {
-              try {
-                const parsedAnswers = JSON.parse(savedAnswers);
-                setLocalAnswers(parsedAnswers);
-                if (savedIndex && parsedAnswers[parseInt(savedIndex)]) {
-                  setSelectedAnswer(parsedAnswers[parseInt(savedIndex)]);
-                }
-              } catch { }
-            } else if (quiz) {
-              setLocalAnswers(Array(quiz.question_count).fill(null));
-            }
-          }
-        });
-      }
-    });
-
-    const channel = supabase.channel(`quiz_${quizCode}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'kuis_logs', filter: `quiz_code=eq.${quizCode}` },
-        (payload) => {
-          const updated = payload.new as KuisLog;
-          setSession(updated);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [quizCode, router]);
-
-  // Layer 1: Visibility Check (Immediately sync when returning to tab)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && session && !isFinished) {
-        fetchQuizByCode(quizCode).then(s => { if (s) setSession(s); });
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [quizCode, session, isFinished]);
-
-  // Layer 2: Polling Fallback (Backup sync in case realtime fails)
-  useEffect(() => {
-    if (session && !isFinished) {
-      // Faster polling (5s) while in waiting room, standard polling (15s) when active
-      const pollInterval = session.status === 'waiting' ? 5000 : 15000;
-      const interval = setInterval(() => {
-        fetchQuizByCode(quizCode).then(s => { if (s) setSession(s); });
-      }, pollInterval);
-      return () => clearInterval(interval);
-    }
-  }, [quizCode, session, isFinished]);
-
-  // Subscription for leaderboard when finished
-  useEffect(() => {
-    if (isFinished && session) {
-      fetchLeaderboard(session.id);
-      const lbChannel = supabase.channel('leaderboard')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'player', filter: `kuis_id=eq.${session.id}` },
-          () => {
-            fetchLeaderboard(session.id);
-          }
-        )
-        .subscribe();
-      return () => { supabase.removeChannel(lbChannel); };
-    }
-  }, [isFinished, session]);
-
-  const fetchLeaderboard = async (kuisId: string) => {
-    const { data } = await supabase.from('public_players').select('*').eq('kuis_id', kuisId);
-    if (data) {
-      const isStandard = session?.quiz_mode === 'standard';
-      const qCount = session?.question_count || 1;
-      
-      const playersList = data as Player[];
-      
-      // Override score for standard mode unfinished players to 0 before sorting
-      const mapped = playersList.map(p => {
-        const isFinished = isStandard ? !!p.finished_at : (!!p.finished_at || p.score >= qCount);
-        return {
-          ...p,
-          score: (isStandard && !isFinished) ? 0 : p.score
-        };
-      });
-
-      // Sort: highest score first, then lowest time, then oldest join
-      mapped.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        if (a.total_time !== b.total_time) return a.total_time - b.total_time;
-        return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
-      });
-
-      setLeaderboard(mapped);
-    }
-  };
-
-  const handleJoin = async () => {
-    if (!name.trim()) return;
-    setLoading(true);
-
-    if ((session?.status === 'active' || session?.status === 'paused') && session?.allow_join_mid_game === false) {
-      alert('Maaf, kuis ini telah dimulai dan tidak menerima peserta baru.');
-      setLoading(false);
-      return;
-    }
-
-    const result = await joinLiveQuiz(quizCode, name.trim());
-    if ('error' in result) {
-      alert(result.error);
-      setLoading(false);
-      return;
-    }
-
-    setPlayer(result);
-    secureSave(`quiz_player_${quizCode}`, result.id);
-    secureSave(`quiz_index_${quizCode}`, '0');
-    // Initialize standard mode arrays
-    if (session) {
-      setDoubtFlags(Array(session.question_count).fill(false));
-      setLocalAnswers(Array(session.question_count).fill(null));
-      secureSave(`quiz_doubts_${quizCode}`, JSON.stringify(Array(session.question_count).fill(false)));
-      secureSave(`quiz_answers_${quizCode}`, JSON.stringify(Array(session.question_count).fill(null)));
-    }
-    setLoading(false);
-  };
-
-  const handleHorseSkinChange = useCallback(async (horseSkin: string) => {
-    if (!player || !session || session.status !== 'waiting' || changingHorseSkin) return;
-    if (player.horse_skin === horseSkin) return;
-
-    setChangingHorseSkin(true);
-    const result = await updatePlayerHorseSkin(player.id, horseSkin);
-    if ('error' in result) {
-      alert(result.error);
-      setChangingHorseSkin(false);
-      return;
-    }
-
-    setPlayer((prev) => (prev ? { ...prev, horse_skin: result.horse_skin } : prev));
-    setChangingHorseSkin(false);
-  }, [player, session, changingHorseSkin]);
-
-  const loadQuestion = useCallback(async (index: number) => {
-    if (!player) return;
-    setLoading(true);
-    setLoadError(null);
-    const qData = await getJitQuestion(player.id, index);
-    if (qData) {
-      setCurrentQuestion(qData);
-    } else {
-      setLoadError("Gagal mengambil soal. Silakan refresh halaman atau hubungi admin.");
-    }
-    setLoading(false);
-  }, [player]);
-
-  useEffect(() => {
-    if (session?.status === 'active' && player && !isFinished && !currentQuestion && !loading && !loadError) {
-      loadQuestion(currentIndex);
-    }
-  }, [session?.status, player, isFinished, currentIndex, currentQuestion, loading, loadError, loadQuestion]);
-
-  useEffect(() => {
-    if (session?.status === 'active' && player && !isFinished && currentQuestion && startTime === 0) {
-      setStartTime(Date.now());
-    }
-  }, [session?.status, player, isFinished, currentQuestion, startTime]);
-
-  const handleTimeout = useCallback(async () => {
-    if (!player || !session || isFinished) return;
-
-    const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-    const q = currentQuestion;
-
-    if (q) {
-      const currentSelection = selectedAnswerRef.current;
-      const answerText = currentSelection || '';
-      await submitSecureAnswer(player.id, q.id, answerText, timeTaken, currentIndex);
-    }
-
-    await finishPlayerQuiz(player.id);
-    secureRemove(`quiz_index_${quizCode}`);
-    secureRemove(`quiz_answers_${quizCode}`);
-    secureRemove(`quiz_doubts_${quizCode}`);
-    setIsFinished(true);
-  }, [player, session, isFinished, startTime, currentQuestion, quizCode]);
-
-  // Handle auto-finish when admin ends the quiz
-  useEffect(() => {
-    if (session?.status === 'finished' && !isFinished) {
-      handleTimeout();
-    }
-  }, [session?.status, isFinished, handleTimeout]);
-
-  useEffect(() => {
-    // Global timer - use server's expires_at for perfect sync with admin
-    if ((session?.status === 'active' || session?.status === 'paused') && session.expires_at && !isFinished) {
-      const interval = setInterval(() => {
-        if (session.status === 'paused') {
-          setTimeLeftDisplay('PAUSED');
-          return;
-        }
-
-        const diff = new Date(session.expires_at!).getTime() - Date.now();
-        if (diff <= 0) {
-          clearInterval(interval);
-          handleTimeout();
-        } else {
-          const m = Math.floor(diff / 60000);
-          const s = Math.floor((diff % 60000) / 1000);
-          setTimeLeftDisplay(`${m}:${s.toString().padStart(2, '0')}`);
-        }
-      }, 1000);
-
-      return () => clearInterval(interval);
-    }
-  }, [session?.status, session?.expires_at, player, isFinished, handleTimeout]);
-
-  // Adjust startTime when quiz is paused/resumed
-  useEffect(() => {
-    if (session?.status === 'paused' && !pausedAt) {
-      setPausedAt(session.paused_at ? new Date(session.paused_at).getTime() : Date.now());
-    } else if (session?.status === 'active' && pausedAt) {
-      const pauseDuration = Date.now() - pausedAt;
-      if (startTime > 0) {
-        setStartTime(prev => prev + pauseDuration);
-      }
-      setPausedAt(null);
-    }
-  }, [session?.status, pausedAt, startTime]);
-
-  // Handle waiting room countdown
-  useEffect(() => {
-    if (session?.status === 'waiting' && session.scheduled_at) {
-      const updateTimer = () => {
-        const diff = new Date(session.scheduled_at!).getTime() - Date.now();
-        if (diff <= 0) {
-          setWaitTimer(null);
-          return false; // stop
-        } else {
-          const hours = Math.floor(diff / 3600000);
-          const minutes = Math.floor((diff % 3600000) / 60000);
-          const seconds = Math.floor((diff % 60000) / 1000);
-
-          if (hours > 0) {
-            setWaitTimer(`${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-          } else {
-            setWaitTimer(`${minutes}:${seconds.toString().padStart(2, '0')}`);
-          }
-          return true; // continue
-        }
-      };
-
-      const shouldContinue = updateTimer();
-      if (!shouldContinue) return;
-
-      const interval = setInterval(() => {
-        const keepGoing = updateTimer();
-        if (!keepGoing) clearInterval(interval);
-      }, 1000);
-
-      return () => clearInterval(interval);
-    } else {
-      setWaitTimer(null);
-    }
-  }, [session?.status, session?.scheduled_at]);
-
-  const handleAnswer = async (opt: AnswerData | null) => {
-    if (!player || !session || isFinished) return;
-
-    const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-    if (!currentQuestion) return;
-    const answerText = opt || '';
-
-    const result = await submitSecureAnswer(player.id, currentQuestion.id, answerText, timeTaken, currentIndex);
-    const isCorrect = result.success ? result.is_correct : false;
-
-    // Track local answers for Standard mode nav popup
-    if (isStandard) {
-      const updated = [...localAnswers];
-      updated[currentIndex] = answerText;
-      setLocalAnswers(updated);
-    }
-
-    if (isCorrect) setScore(s => s + 1);
-
-    setSelectedAnswer(null);
-    if (currentIndex + 1 < (session?.question_count || 0)) {
-      const nextIndex = currentIndex + 1;
-      setCurrentIndex(nextIndex);
-      setCurrentQuestion(null); // Trigger JIT load
-      secureSave(`quiz_index_${quizCode}`, nextIndex.toString());
-      setStartTime(Date.now());
-    } else {
-      await finishPlayerQuiz(player.id);
-      // Rule 6: Clear active session data
-      secureRemove(`quiz_index_${quizCode}`);
-      secureRemove(`quiz_player_${quizCode}`);
-      setIsFinished(true);
-      // Rule 7: Replace history state
-      router.replace(`/quiz/${quizCode}`);
-    }
-  };
-
-  // Standard mode: navigate to any question in live quiz
-  const goToQuizQuestion = async (targetIndex: number) => {
-    if (!player || !session || isFinished) return;
-    if (targetIndex < 0 || targetIndex >= (session.question_count || 0)) return;
-    if (targetIndex === currentIndex) {
-      setShowNavPopup(false);
-      return;
-    }
-    setShowNavPopup(false);
-
-    // Save current answer before navigating (if any)
-    const updatedAnswers = [...localAnswers];
-    if (selectedAnswer && currentQuestion) {
-      const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-      await submitSecureAnswer(player.id, currentQuestion.id, selectedAnswer, timeTaken, currentIndex);
-      updatedAnswers[currentIndex] = selectedAnswer;
-      setLocalAnswers(updatedAnswers);
-      secureSave(`quiz_answers_${quizCode}`, JSON.stringify(updatedAnswers));
-    }
-
-    // Restore the previously saved answer for the target question, if any
-    setSelectedAnswer(updatedAnswers[targetIndex] || null);
-    setCurrentIndex(targetIndex);
-    setCurrentQuestion(null); // Trigger JIT load
-    secureSave(`quiz_index_${quizCode}`, targetIndex.toString());
-    setStartTime(Date.now());
-  };
-
-  // Standard mode: finish quiz (submit all remaining)
-  const finishStandardQuiz = async () => {
-    if (!player || isFinished) return;
-    // Save current answer if any
-    if (selectedAnswer && currentQuestion) {
-      const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-      await submitSecureAnswer(player.id, currentQuestion.id, selectedAnswer, timeTaken, currentIndex);
-    }
-    await finishPlayerQuiz(player.id);
-    secureRemove(`quiz_index_${quizCode}`);
-    secureRemove(`quiz_player_${quizCode}`);
-    secureRemove(`quiz_answers_${quizCode}`);
-    secureRemove(`quiz_doubts_${quizCode}`);
-    setIsFinished(true);
-    router.replace(`/quiz/${quizCode}`);
-  };
 
   if (loading) return <div className="p-8 text-center text-gray-500 font-bold">LOADING...</div>;
   if (!session) return null;
 
   if (isFinished) {
+    const topicTiers = ([
+      { label: 'Mapel', raw: session.mapel },
+      { label: 'Bab', raw: session.bab },
+      { label: 'Sub', raw: session.sub_bab },
+    ] as const);
+
     return (
-      <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16 bg-white min-h-screen">
-        <div className="max-w-3xl mx-auto w-full">
-          <div className="mb-12 border-b border-nike-black pb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-            <div>
-              <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-2 flex flex-wrap items-baseline gap-4">
-                <span>Leaderboard.</span>
-              </h2>
-              <div className="flex flex-col gap-1 mb-2">
-                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{formatCategorySelectionLabel(session.mapel)}</p>
-                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{formatCategorySelectionLabel(session.bab)}</p>
-                <p className="text-[16px] sm:text-[20px] font-bold text-nike-black uppercase">{formatCategorySelectionLabel(session.sub_bab)}</p>
-              </div>
-              <p className="text-[16px] font-medium text-nike-grey-500 uppercase mt-4">
-                {player && (
-                  <>
-                    SKOR KAMU: <span className="font-bold text-nike-black">{score} / {session.question_count}</span>
-                  </>
-                )}
-              </p>
-            </div>
-            <div className="flex flex-col items-start sm:items-end gap-3">
-              <span className="inline-block px-4 py-2 bg-nike-green text-white text-[12px] font-bold uppercase rounded-[30px]">Live Result</span>
-              <button
-                type="button"
-                onClick={() => setShowLeaderboardView(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-[30px] border border-slate-200 bg-white text-[11px] font-black uppercase tracking-[0.22em] text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
-              >
-                <span>🏇</span>
-                Leaderboard View
-              </button>
-            </div>
+      <div className="flex-1 flex flex-col px-4 sm:px-6 pt-8 pb-10 bg-white min-h-screen">
+        <div className="max-w-2xl mx-auto w-full">
+          {/* Header */}
+          <div className="mb-6">
+            <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-nike-green/10 text-nike-green text-[11px] font-medium tracking-tight">
+              <span className="w-1.5 h-1.5 rounded-full bg-nike-green animate-pulse" />
+              Live result
+            </span>
+            <h2 className="mt-3 font-display text-[32px] sm:text-[40px] text-nike-black leading-[1.05] tracking-[-0.02em]">
+              Leaderboard.
+            </h2>
+            <p className="mt-1 text-[13px] text-nike-grey-500 tracking-tight">
+              Hasil akhir untuk semua peserta.
+            </p>
           </div>
 
-          <div className="space-y-4 mb-12">
-            {leaderboard.map((lb, idx) => (
-              <div
-                key={lb.id}
-                ref={(element) => { leaderboardRowRefs.current[lb.id] = element; }}
-                className={`p-6 sm:p-8 rounded-[20px] flex justify-between items-center transform-gpu will-change-transform ${lb.id === player?.id ? 'bg-nike-black text-nike-white' : 'bg-nike-grey-100 text-nike-black'}`}
-              >
-                <div className="flex items-center gap-4">
-                  {idx < 3 ? (
-                    <div className="relative">
-                      <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[32px] drop-shadow-md z-10 flex items-center justify-center w-12 h-12">
-                        <CrownIcon rank={(idx + 1) as 1 | 2 | 3} />
-                      </span>
-                      <span className={`inline-flex min-w-[76px] items-center justify-center gap-0.5 rounded-full border-2 px-3 py-1 font-display text-[16px] sm:text-[18px] leading-none tracking-[0.18em] shrink-0 ${getRankBadgeClasses(idx + 1, lb.id === player?.id)}`}>
-                        <span>{(idx + 1).toString().padStart(2, '0')}</span>
-                      </span>
+          {/* Summary card */}
+          <div className="rounded-3xl bg-black/[0.03] px-5 py-4 mb-3 flex flex-col gap-3.5">
+            {player && (
+              <div className="flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium text-nike-grey-500/80 mb-1 tracking-tight uppercase">Skor kamu</p>
+                  <p className="text-[22px] font-semibold tabular-nums text-nike-black tracking-tight leading-none">
+                    {score} <span className="text-nike-grey-500/50 text-[16px]">/ {session.question_count}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLeaderboardView(true)}
+                  className="h-9 px-4 rounded-full bg-nike-black text-white text-[12px] font-medium tracking-tight hover:bg-nike-grey-500 transition-spring-fast active:scale-95 shadow-ios-sm shrink-0"
+                >
+                  Race view
+                </button>
+              </div>
+            )}
+
+            <div className="h-px bg-black/[0.06]" aria-hidden="true" />
+
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium text-nike-grey-500/80 mb-1 tracking-tight uppercase">Topik</p>
+              {topicTiers.map(({ label, raw }) => {
+                const items = String(raw || '')
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((v) => formatCategorySelectionLabel(v));
+                if (items.length === 0) {
+                  return (
+                    <div key={label} className="flex items-baseline gap-1.5">
+                      <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
+                      <span className="text-[13px] font-medium text-nike-grey-500 tracking-tight">None</span>
                     </div>
-                  ) : (
-                    <span className={`font-display text-[24px] shrink-0 ${lb.id === player?.id ? 'text-nike-grey-300' : 'text-nike-grey-400'}`}>{(idx + 1).toString().padStart(2, '0')}</span>
-                  )}
-                  <span className="font-bold text-[18px] sm:text-[20px] leading-tight flex-1">{lb.name}</span>
-                </div>
-                <div className="text-right flex flex-col items-end">
-                  {isStandard && !lb.finished_at ? (
-                    <span className="font-bold text-[16px] uppercase text-nike-grey-400">? Benar</span>
-                  ) : (
-                    <span className="font-bold text-[16px] uppercase">{lb.score} Benar</span>
-                  )}
-                  {isStandard && !lb.finished_at ? (
-                    <span className={`text-[12px] font-medium uppercase tracking-widest ${lb.id === player?.id ? 'text-nike-grey-400' : 'text-nike-grey-300'}`}>-- s</span>
-                  ) : (
-                    <span className={`text-[12px] font-medium uppercase tracking-widest ${lb.id === player?.id ? 'text-nike-grey-300' : 'text-nike-grey-500'}`}>{formatHMS(lb.total_time)}</span>
-                  )}
-                </div>
-              </div>
-            ))}
+                  );
+                }
+                const [first, ...rest] = items;
+                return (
+                  <div key={label} className="flex items-baseline gap-1.5 min-w-0">
+                    <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
+                    <span className="text-[13px] font-medium text-nike-black tracking-tight truncate">{first}</span>
+                    {rest.length > 0 && (
+                      <span
+                        title={items.join(', ')}
+                        className="inline-flex items-center px-1.5 h-5 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums tracking-tight shrink-0"
+                      >
+                        +{rest.length}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="border-t border-nike-grey-200 pt-8">
-            <button
-              onClick={() => router.push('/')}
-              className="w-full sm:w-auto px-12 h-[60px] rounded-[30px] bg-white border-[1.5px] border-nike-grey-300 text-nike-black text-[16px] font-medium hover:bg-nike-grey-100 transition-colors uppercase tracking-wider"
-            >
-              Kembali ke Beranda
-            </button>
+          {/* Leaderboard list */}
+          <div className="space-y-1.5 mb-5">
+            {leaderboard.map((lb, idx) => {
+              const isMe = lb.id === player?.id;
+              const rank = idx + 1;
+              const showCrown = rank <= 3;
+              return (
+                <div
+                  key={lb.id}
+                  ref={(element) => { leaderboardRowRefs.current[lb.id] = element; }}
+                  className={`px-4 py-3 rounded-2xl flex items-center gap-3 transform-gpu will-change-transform transition-spring-fast ${
+                    isMe ? 'bg-nike-black text-white shadow-ios-sm' : 'bg-black/[0.03] text-nike-black'
+                  }`}
+                >
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold tabular-nums ${
+                    showCrown
+                      ? rank === 1
+                        ? 'bg-yellow-400 text-yellow-900'
+                        : rank === 2
+                          ? 'bg-slate-300 text-slate-700'
+                          : 'bg-amber-700 text-amber-100'
+                      : isMe
+                        ? 'bg-white/10 text-white/70'
+                        : 'bg-black/[0.06] text-nike-grey-500'
+                  }`}>
+                    {showCrown ? (
+                      <span className="text-[14px]">{rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>
+                    ) : rank}
+                  </div>
+
+                  <p className="flex-1 min-w-0 truncate text-[14px] font-semibold tracking-tight">
+                    {lb.name}
+                    {isMe && (
+                      <span className="ml-1.5 text-[10px] font-medium text-white/60 tracking-tight uppercase">You</span>
+                    )}
+                  </p>
+
+                  <div className="text-right shrink-0">
+                    <p className={`text-[13px] font-semibold tabular-nums tracking-tight leading-none ${
+                      isMe ? 'text-white' : 'text-nike-black'
+                    }`}>
+                      {isStandard && !lb.finished_at ? '?' : lb.score}
+                      <span className={`text-[10px] font-medium ml-1 ${isMe ? 'text-white/50' : 'text-nike-grey-500'}`}>
+                        / {session.question_count}
+                      </span>
+                    </p>
+                    <p className={`mt-0.5 text-[10px] font-medium tabular-nums font-mono tracking-tight ${
+                      isMe ? 'text-white/60' : 'text-nike-grey-500'
+                    }`}>
+                      {isStandard && !lb.finished_at ? '—' : formatHMS(lb.total_time)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+
+          {/* Footer */}
+          <button
+            onClick={() => router.push('/')}
+            className="w-full h-12 rounded-full bg-black/5 text-nike-black text-[13px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+          >
+            Kembali ke beranda
+          </button>
+
           <LeaderboardViewModal
             open={showLeaderboardView && !!session}
             session={session}
@@ -685,41 +234,77 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
   if (!player) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-white">
-        <div className="text-center max-w-sm w-full">
-          <p className="text-[14px] font-black text-nike-black uppercase tracking-[0.3em] mb-4">Live Quiz</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
+        <div className="max-w-sm w-full">
+          <div className="text-center mb-6">
+            <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-nike-red/10 text-nike-red text-[11px] font-medium tracking-tight">
+              <span className="w-1.5 h-1.5 rounded-full bg-nike-red animate-pulse" />
+              Live quiz
+            </span>
+            <h2 className="mt-4 font-display text-[28px] sm:text-[32px] text-nike-black leading-[1.05] tracking-[-0.02em]">
+              Gabung ke kuis.
+            </h2>
+            <p className="mt-1 text-[13px] text-nike-grey-500 tracking-tight">
+              Masukkan namamu untuk masuk ruang tunggu.
+            </p>
+          </div>
 
-          <div className="mb-8 flex flex-col gap-3">
-            <div>
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mapel</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.mapel)}</p>
-            </div>
-            <div>
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Bab</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.bab)}</p>
-            </div>
-            <div>
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Subbab</p>
-              <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.sub_bab)}</p>
+          <div className="rounded-3xl bg-black/[0.03] px-5 py-4 mb-4">
+            <p className="text-[10px] font-medium text-nike-grey-500/80 mb-2.5 tracking-tight uppercase">Topik</p>
+            <div className="space-y-1.5">
+              {([
+                { label: 'Mapel', raw: session.mapel },
+                { label: 'Bab', raw: session.bab },
+                { label: 'Sub', raw: session.sub_bab },
+              ] as const).map(({ label, raw }) => {
+                const items = String(raw || '')
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((v) => formatCategorySelectionLabel(v));
+                if (items.length === 0) {
+                  return (
+                    <div key={label} className="flex items-baseline gap-1.5">
+                      <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
+                      <span className="text-[13px] font-medium text-nike-grey-500 tracking-tight">None</span>
+                    </div>
+                  );
+                }
+                const [first, ...rest] = items;
+                return (
+                  <div key={label} className="flex items-baseline gap-1.5 min-w-0">
+                    <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
+                    <span className="text-[13px] font-medium text-nike-black tracking-tight truncate">{first}</span>
+                    {rest.length > 0 && (
+                      <span
+                        title={items.join(', ')}
+                        className="inline-flex items-center px-1.5 h-5 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums tracking-tight shrink-0"
+                      >
+                        +{rest.length}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <h2 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-8">Join.</h2>
-
-          <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-[11px] font-medium text-nike-grey-500 tracking-tight pl-1">Nama kamu</label>
             <input
               type="text"
-              placeholder="MASUKKAN NAMA KAMU"
+              placeholder="Tulis nama lengkap"
               value={name}
-              onChange={e => setName(e.target.value.toUpperCase())}
-              className="w-full text-center text-[16px] font-bold py-5 rounded-[24px] border-2 border-gray-100 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/5 focus:outline-none mb-2 uppercase tracking-widest transition-all shadow-sm"
+              maxLength={24}
+              onChange={e => setName(e.target.value.slice(0, 24))}
+              className="w-full h-12 rounded-2xl bg-black/5 px-4 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none focus:bg-black/10 transition-spring-fast tracking-tight"
             />
             <button
               onClick={handleJoin}
               disabled={!name.trim() || loading}
-              className="w-full h-[64px] rounded-[32px] bg-nike-black text-nike-white text-[16px] font-black uppercase tracking-widest hover:bg-nike-grey-500 transition-all disabled:opacity-20 active:scale-[0.98] shadow-xl shadow-nike-black/20"
+              className="w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight shadow-ios-sm"
             >
-              {loading ? 'MENYAMBUNGKAN...' : 'MASUK RUANG TUNGGU'}
+              {loading ? 'Menyambungkan…' : 'Masuk ruang tunggu'}
             </button>
           </div>
         </div>
@@ -729,82 +314,102 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
   if (session.status === 'waiting') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-white">
-        <div className="text-center max-w-3xl w-full mx-auto">
-          <h2 className="font-display text-[32px] sm:text-[48px] text-nike-black leading-[0.90] tracking-[0.03em] uppercase mb-1">Menunggu Admin</h2>
-          <p className="text-[14px] font-black text-nike-black uppercase tracking-[0.3em] mb-10">Ruang Tunggu</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
+        <div className="max-w-md w-full mx-auto">
+          <div className="text-center mb-6">
+            <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-black/5 text-nike-grey-500 text-[11px] font-medium tracking-tight">
+              <span className="w-1.5 h-1.5 rounded-full bg-nike-grey-500 animate-pulse" />
+              Ruang tunggu
+            </span>
+            <h2 className="mt-4 font-display text-[28px] sm:text-[32px] text-nike-black leading-[1.05] tracking-[-0.02em]">
+              Menunggu admin.
+            </h2>
+            <p className="mt-1 text-[13px] text-nike-grey-500 tracking-tight">
+              Kuis akan segera dimulai.
+            </p>
 
-          <div className="w-16 h-16 border-[4px] border-gray-100 border-t-nike-black rounded-full animate-spin mx-auto mb-6"></div>
-
-          <p className="text-[12px] font-bold text-nike-grey-300 uppercase tracking-[0.2em] mb-10">Kuis akan segera dimulai</p>
+            <div className="mt-5 flex items-center justify-center gap-1.5" aria-label="Memuat">
+              <span className="w-1.5 h-1.5 rounded-full bg-nike-black animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-nike-black animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-nike-black animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
 
           {waitTimer && (
-            <div className="mb-10 -mt-6 bg-nike-black rounded-2xl py-3 px-8 inline-block animate-in fade-in zoom-in duration-300">
-              <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] block mb-1">Mulai Otomatis Dalam</span>
-              <span className="text-[28px] font-black font-mono text-white leading-none tabular-nums">{waitTimer}</span>
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-black/[0.03] px-5 py-4 animate-in fade-in duration-300">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-nike-black shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Mulai otomatis</p>
+                  <p className="text-[12px] font-medium text-nike-grey-500 tracking-tight">Kuis akan dimulai dalam</p>
+                </div>
+              </div>
+              <span className="text-[22px] font-semibold font-mono tabular-nums text-nike-black tracking-tight leading-none shrink-0">
+                {waitTimer}
+              </span>
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-6 mt-8">
-
-            {/* Topik Box */}
-            <div className="flex-1 rounded-[28px] border border-slate-200 bg-slate-50/80 p-5 text-left shadow-sm flex flex-col">
-              <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Informasi</p>
-                  <p className="text-[18px] font-black uppercase text-slate-900">Topik Kuis</p>
-                </div>
-              </div>
-              <div className="flex flex-col justify-center gap-4 flex-1 p-2">
-                <div>
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mapel</p>
-                  <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.mapel)}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Bab</p>
-                  <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.bab)}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Subbab</p>
-                  <p className="text-[13px] font-bold text-gray-800 uppercase">{formatCategorySelectionLabel(session.sub_bab)}</p>
-                </div>
-              </div>
+          <div className="rounded-3xl bg-black/[0.03] px-5 py-4 mb-3 flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-ios-sm">
+              <HorseAvatar colors={getHorseSkin(player?.horse_skin, player?.id).horse} mount={getHorseSkin(player?.horse_skin, player?.id).mount} size="md" animate={true} />
             </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Pemain</p>
+              <p className="text-[14px] font-semibold text-nike-black tracking-tight truncate">{player?.name || 'Tamu'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsEditHorseModalOpen(true)}
+              disabled={changingHorseSkin || !player}
+              className="h-9 px-4 rounded-full bg-black/5 text-nike-black text-[12px] font-medium tracking-tight hover:bg-black/10 transition-spring-fast active:scale-95 disabled:opacity-50 shrink-0"
+            >
+              {changingHorseSkin ? 'Tunggu…' : 'Ubah'}
+            </button>
+          </div>
 
-            {/* Avatar Box */}
-            <div className="flex-1 rounded-[28px] border border-slate-200 bg-slate-50/80 p-5 text-left shadow-sm flex flex-col">
-              <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Horse Skin</p>
-                  <p className="text-[18px] font-black uppercase text-slate-900">Avatar Kuda</p>
-                </div>
-              </div>
-
-              <div className="flex-1 flex flex-col justify-center gap-4">
-                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-[60px] w-[60px] items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-100">
-                      <HorseAvatar colors={getHorseSkin(player?.horse_skin, player?.id).horse} size="md" animate={true} />
+          <div className="rounded-3xl bg-black/[0.03] px-5 py-4">
+            <p className="text-[10px] font-medium text-nike-grey-500/80 mb-2.5 tracking-tight uppercase">Topik</p>
+            <div className="space-y-1.5">
+              {([
+                { label: 'Mapel', raw: session.mapel },
+                { label: 'Bab', raw: session.bab },
+                { label: 'Sub', raw: session.sub_bab },
+              ] as const).map(({ label, raw }) => {
+                const items = String(raw || '')
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .map((v) => formatCategorySelectionLabel(v));
+                if (items.length === 0) {
+                  return (
+                    <div key={label} className="flex items-baseline gap-1.5">
+                      <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
+                      <span className="text-[13px] font-medium text-nike-grey-500 tracking-tight">None</span>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pemain</p>
-                      <p className="font-display text-[15px] text-slate-800 max-w-[100px] truncate">{player?.name || 'Tamu'}</p>
-                    </div>
+                  );
+                }
+                const [first, ...rest] = items;
+                return (
+                  <div key={label} className="flex items-baseline gap-1.5 min-w-0">
+                    <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
+                    <span className="text-[13px] font-medium text-nike-black tracking-tight truncate">{first}</span>
+                    {rest.length > 0 && (
+                      <span
+                        title={items.join(', ')}
+                        className="inline-flex items-center px-1.5 h-5 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums tracking-tight shrink-0"
+                      >
+                        +{rest.length}
+                      </span>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditHorseModalOpen(true)}
-                    disabled={changingHorseSkin || !player}
-                    className="rounded-xl bg-slate-100 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-colors hover:bg-slate-200 flex-shrink-0"
-                  >
-                    {changingHorseSkin ? 'Wait...' : 'Edit'}
-                  </button>
-                </div>
-
-                <p className="text-center text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                  Skin tampil di leaderboard.
-                </p>
-              </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -852,128 +457,149 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   }
 
   const textLength = q.question_text.replace(/<[^>]*>/g, '').length;
-  const fontSizeClass = textLength > 500 ? 'text-[14px] md:text-[18px]' :
-    textLength > 250 ? 'text-[16px] md:text-[22px]' :
-      'text-[18px] md:text-[28px]';
+  const fontSizeClass = textLength > 500 ? 'text-[14px] md:text-[16px]' :
+    textLength > 250 ? 'text-[15px] md:text-[18px]' :
+      'text-[16px] md:text-[20px]';
+
+  const splitMountTopicLabels = (raw: string | null | undefined) => String(raw || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((v) => formatCategorySelectionLabel(v));
+
+  const renderTopicSegment = (items: string[]) => {
+    if (items.length === 0) return <span className="text-nike-grey-500/70">None</span>;
+    const [first, ...rest] = items;
+    return (
+      <span title={items.join(', ')} className="inline-flex items-baseline gap-1 min-w-0">
+        <span className="truncate">{first}</span>
+        {rest.length > 0 && (
+          <span className="inline-flex items-center px-1.5 h-4 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums shrink-0">
+            +{rest.length}
+          </span>
+        )}
+      </span>
+    );
+  };
+  const totalQuestions = session?.question_count || 0;
+  const isLastQuestion = currentIndex >= totalQuestions - 1;
 
   return (
-    <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16 min-h-screen bg-white relative">
+    <div className="flex-1 flex flex-col px-4 sm:px-6 pt-6 pb-10 md:pt-8 md:pb-16 min-h-screen bg-white relative">
       {session.status === 'paused' && (
-        <div className="fixed inset-0 bg-white/30 backdrop-blur-md z-[9999] flex items-center justify-center animate-in fade-in duration-300">
-          <div className="text-center p-12 bg-white/80 rounded-[40px] shadow-2xl border border-white/50">
-            <div className="w-24 h-24 bg-nike-black rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse shadow-lg">
-              <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl z-[9999] flex items-center justify-center animate-in fade-in duration-300">
+          <div className="text-center px-8 py-7 bg-white/85 rounded-[32px] shadow-ios-xl max-w-[280px]">
+            <div className="w-14 h-14 bg-nike-black rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
             </div>
-            <h1 className="font-display text-[48px] sm:text-[64px] text-nike-black leading-none tracking-tight uppercase mb-4">PAUSED</h1>
-            <p className="text-nike-grey-500 font-bold text-sm tracking-[0.2em] uppercase">Kuis sedang dijeda oleh admin</p>
+            <h1 className="text-[22px] font-semibold text-nike-black tracking-tight mb-1">Kuis dijeda</h1>
+            <p className="text-[12px] font-medium text-nike-grey-500 tracking-tight">Menunggu admin melanjutkan.</p>
           </div>
         </div>
       )}
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
-        {/* Progress & Status */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 pb-4 border-b border-nike-grey-200 gap-4">
-          <div className="flex flex-col">
-            <span className="text-[17px] font-bold text-nike-black uppercase tracking break-words">
+        {/* Status header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col min-w-0 gap-1.5">
+            <span className="text-[16px] font-semibold text-nike-black tracking-tight break-words">
               {player.name}
             </span>
-            <div className="flex flex-col gap-0.5 mt-2">
-              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{formatCategorySelectionLabel(session.mapel)}</span>
-              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{formatCategorySelectionLabel(session.bab)}</span>
-              <span className="text-[12px] font-medium text-nike-grey-500 uppercase tracking-tight">{formatCategorySelectionLabel(session.sub_bab)}</span>
-              <span className="text-[13px] font-black text-nike uppercase tracking-widest mt-1.5">SOAL NOMOR {currentIndex + 1}</span>
+            <div className="flex items-baseline gap-1.5 text-[11px] font-medium text-nike-grey-500 tracking-tight min-w-0 flex-wrap">
+              {renderTopicSegment(splitMountTopicLabels(session.mapel))}
+              <span className="text-nike-grey-500/40">·</span>
+              {renderTopicSegment(splitMountTopicLabels(session.bab))}
+              <span className="text-nike-grey-500/40">·</span>
+              {renderTopicSegment(splitMountTopicLabels(session.sub_bab))}
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 shrink-0">
             {timeLeftDisplay && (
-              <div className="flex items-center gap-2 bg-nike-grey-100 px-4 py-2 rounded-full border border-nike-grey-200 shadow-sm">
-                <div className="w-2 h-2 rounded-full bg-nike-red animate-pulse"></div>
-                <span className="text-[14px] font-black font-mono text-nike-black">{timeLeftDisplay}</span>
+              <div className="inline-flex items-center gap-2 bg-black/5 px-3 h-9 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-nike-red animate-pulse"></span>
+                <span className="text-[12px] font-semibold tabular-nums font-mono text-nike-black">{timeLeftDisplay}</span>
               </div>
             )}
 
-            {/* Standard Mode: Navigation Grid Button */}
             {isStandard && (
               <button
                 onClick={() => setShowNavPopup(true)}
-                className="h-10 px-3 sm:px-4 rounded-[12px] bg-nike-grey-100 border border-nike-grey-200 flex items-center justify-center gap-2 hover:bg-nike-grey-200 transition-colors shadow-sm"
-                title="Daftar Soal"
+                className="h-9 px-3 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center gap-2 transition-spring-fast active:scale-95"
+                title="Daftar soal"
               >
-                <svg className="w-5 h-5 text-nike-black shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4 text-nike-black shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
-                <span className="text-xs sm:text-sm font-bold text-nike-black uppercase tracking-wider hidden sm:block">Daftar Soal</span>
+                <span className="text-[12px] font-medium text-nike-black hidden sm:block tracking-tight">Daftar soal</span>
               </button>
             )}
 
-            <div className="sm:text-right">
-              {selectedAnswer && selectedAnswer.trim().length > 0 ? (
-                <span className="text-[14px] font-bold text-nike-green uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">
-                  Answer Selected
-                </span>
-              ) : (
-                <span className="text-[14px] font-bold text-nike-grey-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">
-                  Pending Response
-                </span>
-              )}
-            </div>
+            {selectedAnswer && selectedAnswer.trim().length > 0 ? (
+              <span className="inline-flex items-center px-3 h-9 rounded-full bg-nike-green/10 text-nike-green text-[11px] font-medium tracking-tight whitespace-nowrap">
+                Tersimpan
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-3 h-9 rounded-full bg-black/5 text-nike-grey-500 text-[11px] font-medium tracking-tight whitespace-nowrap">
+                Pending
+              </span>
+            )}
           </div>
         </div>
 
         {/* Question Display Layout */}
-        <div className="mb-0 h-auto md:h-[min(65vh,620px)] md:min-h-[420px] overflow-y-auto md:overflow-hidden border border-nike-grey-200 rounded-[24px] bg-white shadow-sm flex flex-col">
-          <div className="flex flex-col md:grid md:h-full md:grid-cols-[70%_1px_1fr] flex-1">
-            <div className="h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable p-6 md:p-10 flex flex-col pt-6 md:pt-12 border-b md:border-b-0 border-nike-grey-100 flex-1 min-w-0">
+        <div className="mb-0 h-auto md:h-[min(62vh,580px)] md:min-h-[400px] overflow-y-auto md:overflow-hidden rounded-3xl bg-black/[0.03] flex flex-col">
+          <div className="flex flex-col md:grid md:h-full md:grid-cols-[1.4fr_1fr] flex-1">
+            <div className="h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable px-5 py-5 md:px-8 md:py-8 flex flex-col flex-1 min-w-0 border-b border-black/[0.04] md:border-b-0 md:border-r">
+              <div className="mb-4 pb-3 border-b border-black/[0.06] flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-[20px] md:text-[22px] font-bold text-nike-black tracking-tight tabular-nums">
+                  Soal No. {currentIndex + 1}
+                </p>
+                <span className="text-[11px] font-medium text-nike-grey-500 tabular-nums tracking-tight">
+                  {currentIndex + 1} / {totalQuestions}
+                </span>
+              </div>
               <RichContent
                 html={q.question_text}
-                className={`exam-question-content ${fontSizeClass} font-bold text-nike-black leading-[1.25] tracking-tight`}
+                className={`exam-question-content ${fontSizeClass} font-medium text-nike-black leading-[1.4] tracking-tight`}
               />
             </div>
 
-            <div className="hidden md:flex items-center">
-              <div className="w-px h-[85%] bg-nike-grey-200" aria-hidden="true" />
-            </div>
-
-            <div className="flex-1 h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable p-6 md:p-10 flex flex-col justify-center bg-nike-grey-50 md:bg-white min-w-0">
+            <div className="flex-1 h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable px-5 py-5 md:px-6 md:py-6 flex flex-col justify-center min-w-0">
               {q.question_type === 'short_answer' ? (
-                <div className="w-full space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[12px] font-bold uppercase tracking-widest text-nike-grey-500">Jawaban Singkat</p>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-nike-grey-400">Text / Angka</span>
-                  </div>
+                <div className="w-full space-y-2.5">
+                  <p className="text-[11px] font-medium text-nike-grey-500 tracking-tight">Jawaban singkat</p>
                   <input
                     type="text"
                     value={selectedAnswer ?? ''}
                     onChange={(event) => setSelectedAnswer(event.target.value)}
-                    placeholder="Ketik jawaban di sini..."
-                    className="w-full rounded-[16px] border-[1.5px] border-nike-grey-200 bg-white px-4 py-3 text-[15px] font-medium text-nike-black focus:border-nike-black focus:outline-none focus:ring-4 focus:ring-nike-black/5 transition-all"
+                    placeholder="Ketik jawaban…"
+                    className="w-full rounded-2xl bg-white px-4 h-11 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none transition-spring-fast shadow-ios-sm"
                   />
-                  <p className="text-[11px] text-nike-grey-400 uppercase tracking-widest">Tekan Next untuk lanjut.</p>
+                  <p className="text-[11px] text-nike-grey-500 tracking-tight">Tekan Next untuk lanjut.</p>
                 </div>
               ) : (
-                <div className="grid grid-rows-5 gap-1.5 w-full">
+                <div className="space-y-1.5 w-full">
                   {q.options.map((opt, i) => {
-                    const prefix = opt.label;
                     const isSelected = selectedAnswer === opt.text;
                     return (
                       <button
                         key={i}
                         onClick={() => setSelectedAnswer(opt.text)}
-                        className={`w-full min-w-0 group flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-[12px] text-left transition-all duration-200 border-[1.5px] ${isSelected
-                          ? 'bg-nike-black border-nike-black text-nike-white'
-                          : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black hover:bg-nike-grey-100'
-                          }`}
+                        className={`w-full min-w-0 group flex items-center gap-2.5 px-3 py-2 md:px-3.5 md:py-2.5 rounded-2xl text-left transition-spring-fast active:scale-[0.99] ${
+                          isSelected
+                            ? 'bg-nike-black text-white shadow-ios-sm'
+                            : 'bg-white text-nike-black hover:bg-black/[0.04]'
+                        }`}
                       >
-                        <div className="flex items-center gap-2.5 w-full min-w-0">
-                          <span className={`font-display shrink-0 text-[15px] md:text-[17px] transition-colors ${isSelected ? 'text-nike-grey-300' : 'text-nike-grey-500 group-hover:text-nike-black'}`}>
-                            {prefix}
-                          </span>
-                          <div className="w-px h-4 shrink-0 bg-nike-grey-200 group-hover:bg-nike-grey-300 transition-colors" />
-                          <RichContent
-                            html={opt.text}
-                            className={`exam-option-content flex-1 min-w-0 text-[14px] md:text-[15px] font-medium tracking-tight leading-snug ${isSelected ? 'text-nike-white' : 'text-nike-black'}`}
-                          />
-                        </div>
+                        <span className={`shrink-0 flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-medium tabular-nums transition-spring-fast ${
+                          isSelected ? 'bg-white/15 text-white' : 'bg-black/[0.06] text-nike-grey-500'
+                        }`}>
+                          {opt.label}
+                        </span>
+                        <RichContent
+                          html={opt.text}
+                          className={`exam-option-content flex-1 min-w-0 text-[13px] md:text-[14px] font-medium tracking-tight leading-snug ${isSelected ? 'text-white' : 'text-nike-black'}`}
+                        />
                       </button>
                     );
                   })}
@@ -984,16 +610,15 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-nike-grey-200 pt-8 mt-6">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 border-t border-black/[0.06] pt-6 mt-5">
           {isStandard ? (
-            /* Standard Mode: Back / Doubt / Next */
             <>
               <button
                 onClick={() => goToQuizQuestion(currentIndex - 1)}
                 disabled={currentIndex === 0}
-                className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-transparent border-[1.5px] border-nike-grey-300 text-nike-black text-[16px] font-medium hover:bg-nike-grey-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed uppercase tracking-wider"
+                className="w-full sm:flex-1 h-12 rounded-full bg-black/5 text-nike-black text-[13px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed tracking-tight"
               >
-                ◀ Back
+                Back
               </button>
               <button
                 onClick={() => {
@@ -1002,39 +627,38 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   setDoubtFlags(updated);
                   secureSave(`quiz_doubts_${quizCode}`, JSON.stringify(updated));
                 }}
-                className={`w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] text-[16px] font-medium transition-all uppercase tracking-wider border-[1.5px] ${doubtFlags[currentIndex]
-                  ? 'bg-yellow-400 border-yellow-400 text-nike-black shadow-lg shadow-yellow-400/20'
-                  : 'bg-transparent border-nike-grey-300 text-nike-grey-500 hover:border-yellow-400 hover:text-yellow-600'
+                className={`w-full sm:flex-1 h-12 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 tracking-tight ${doubtFlags[currentIndex]
+                  ? 'bg-yellow-400 text-nike-black shadow-ios-sm'
+                  : 'bg-black/5 text-nike-grey-500 hover:bg-black/10'
                   }`}
               >
-                🤔 Ragu-ragu
+                Ragu-ragu
               </button>
               <button
                 onClick={() => {
-                  if (currentIndex >= (session?.question_count || 0) - 1) {
+                  if (isLastQuestion) {
                     setShowSubmitConfirm(true);
                   } else {
                     goToQuizQuestion(currentIndex + 1);
                   }
                 }}
-                className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors uppercase tracking-wider"
+                className="w-full sm:flex-1 h-12 rounded-full bg-nike-black text-white text-[13px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] tracking-tight shadow-ios-sm"
               >
-                {currentIndex >= (session?.question_count || 0) - 1 ? 'Finish' : 'Next ▶'}
+                {isLastQuestion ? 'Finish' : 'Next'}
               </button>
             </>
           ) : (
-            /* Strict Mode: original buttons */
             <>
               <button
                 onClick={() => handleAnswer(selectedAnswer)}
                 disabled={!selectedAnswer || selectedAnswer.trim().length === 0}
-                className="w-full sm:w-auto sm:flex-1 h-[60px] rounded-[30px] bg-nike-black text-nike-white text-[16px] font-medium hover:bg-nike-grey-500 transition-colors disabled:bg-nike-grey-200 disabled:text-nike-grey-500 disabled:cursor-not-allowed uppercase tracking-wider"
+                className="w-full sm:flex-1 h-12 rounded-full bg-nike-black text-white text-[13px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight shadow-ios-sm"
               >
-                Next Question
+                Next question
               </button>
               <button
                 onClick={() => handleAnswer(null)}
-                className="w-full sm:w-auto px-8 h-[60px] rounded-[30px] bg-transparent text-nike-grey-500 text-[16px] font-medium hover:text-nike-black transition-colors uppercase tracking-wider"
+                className="w-full sm:w-auto sm:px-6 h-12 rounded-full bg-black/5 text-nike-grey-500 text-[13px] font-medium hover:bg-black/10 hover:text-nike-black transition-spring-fast active:scale-95 tracking-tight"
               >
                 Skip
               </button>
@@ -1044,29 +668,29 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
         {/* Standard Mode: Navigation Popup */}
         {isStandard && showNavPopup && (
-          <div className="fixed inset-0 z-[100] bg-nike-white/40 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
-            <div className="bg-white rounded-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] max-w-md w-full border border-nike-grey-200 overflow-hidden animate-in zoom-in-95 duration-300">
-              <div className="p-8 pb-4">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-bold text-[28px] text-nike-black leading-none uppercase">Daftar Soal</h3>
+          <div className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-[28px] shadow-ios-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="px-5 pt-5 pb-4 border-b border-black/[0.06]">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[17px] font-semibold tracking-tight text-nike-black">Daftar soal</h3>
                   <button
                     onClick={() => setShowNavPopup(false)}
-                    className="w-10 h-10 rounded-full bg-nike-grey-100 flex items-center justify-center hover:bg-nike-grey-200 transition-colors"
+                    className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-spring-fast active:scale-90"
                   >
-                    <svg className="w-5 h-5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="w-3.5 h-3.5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-                <div className="flex items-center gap-4 mb-4 text-[10px] font-bold uppercase tracking-widest text-nike-grey-400">
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-nike-black"></span> Terjawab</span>
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-yellow-400"></span> Ragu-ragu</span>
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white border border-nike-grey-300"></span> Kosong</span>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-nike-grey-500 tracking-tight">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-nike-black"></span> Terjawab</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span> Ragu</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-black/10"></span> Kosong</span>
                 </div>
               </div>
-              <div className="px-8 pt-2 pb-8 max-h-[60vh] overflow-y-auto">
+              <div className="px-5 py-5 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                  {Array.from({ length: session?.question_count || 0 }, (_, i) => {
+                  {Array.from({ length: totalQuestions }, (_, i) => {
                     const isAnswered = localAnswers[i] !== null && localAnswers[i] !== undefined && String(localAnswers[i]).trim().length > 0;
                     const isDoubt = doubtFlags[i] || false;
                     const isCurrent = i === currentIndex;
@@ -1074,12 +698,11 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                       <button
                         key={i}
                         onClick={() => goToQuizQuestion(i)}
-                        className={`h-10 rounded-[10px] text-[13px] font-black transition-all border-2 ${isCurrent ? 'ring-2 ring-[#4A90D9] ring-offset-2' : ''
-                          } ${isDoubt
-                            ? 'bg-yellow-400 border-yellow-400 text-nike-black'
-                            : isAnswered
-                              ? 'bg-nike-black border-nike-black text-white'
-                              : 'bg-white border-nike-grey-200 text-nike-black hover:border-nike-black'
+                        className={`h-10 rounded-xl text-[13px] font-medium tabular-nums transition-spring-fast active:scale-95 ${isCurrent ? 'ring-2 ring-nike-black ring-offset-2' : ''} ${isDoubt
+                          ? 'bg-yellow-400 text-nike-black'
+                          : isAnswered
+                            ? 'bg-nike-black text-white'
+                            : 'bg-black/5 text-nike-black hover:bg-black/10'
                           }`}
                       >
                         {i + 1}
@@ -1094,16 +717,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       </div>
 
       {showSubmitConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[24px] p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-300">
-            <h3 className="text-xl font-bold text-nike-black mb-2">Selesai Kuis?</h3>
-            <p className="text-nike-grey-500 text-sm mb-6">
-              Pastikan Anda sudah mengecek kembali semua jawaban Anda sebelum menyelesaikan kuis.
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl animate-in fade-in duration-200">
+          <div className="bg-white rounded-[28px] p-6 max-w-sm w-full shadow-ios-xl animate-in zoom-in-95 duration-300">
+            <h3 className="text-[17px] font-semibold tracking-tight text-nike-black mb-1">Selesai kuis?</h3>
+            <p className="text-[13px] text-nike-grey-500 mb-5 tracking-tight">
+              Pastikan jawaban kamu sudah dicek sebelum menyelesaikan kuis.
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => setShowSubmitConfirm(false)}
-                className="flex-1 h-12 rounded-[16px] font-bold text-nike-black bg-nike-grey-100 hover:bg-nike-grey-200 transition-colors"
+                className="flex-1 h-11 rounded-full text-[13px] font-medium text-nike-black bg-black/5 hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
               >
                 Batal
               </button>
@@ -1112,7 +735,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   setShowSubmitConfirm(false);
                   finishStandardQuiz();
                 }}
-                className="flex-1 h-12 rounded-[16px] font-bold text-white bg-nike-black hover:bg-nike-grey-500 transition-colors"
+                className="flex-1 h-11 rounded-full text-[13px] font-medium text-white bg-nike-black hover:bg-nike-grey-500 transition-spring-fast active:scale-95 tracking-tight"
               >
                 Selesai
               </button>

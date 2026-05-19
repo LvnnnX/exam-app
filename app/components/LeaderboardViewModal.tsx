@@ -2,7 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type KuisLog, type Player } from '@/lib/quiz';
-import { HORSE_SKINS, getHorseSkin } from '@/lib/horse-skins';
+import { getHorseSkin } from '@/lib/horse-skins';
 import HorseAvatar from '@/app/components/HorseAvatar';
 import CrownIcon from '@/app/components/CrownIcon';
 import confetti from 'canvas-confetti';
@@ -14,9 +14,10 @@ type LeaderboardViewModalProps = {
   onClose: () => void;
   currentTime?: number;
   serverTimeOffset?: number;
+  theme?: 'light' | 'dark';
 };
 
-export default function LeaderboardViewModal({ open, session, players, onClose, currentTime, serverTimeOffset = 0 }: LeaderboardViewModalProps) {
+export default function LeaderboardViewModal({ open, session, players, onClose, currentTime, serverTimeOffset = 0, theme = 'dark' }: LeaderboardViewModalProps) {
   const rankBadgeRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const crownRefs = useRef<Record<string, HTMLSpanElement | null>>({});
   const horseScaleRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -24,7 +25,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
   const previousRanksRef = useRef<Map<string, number>>(new Map());
   const previousScoresRef = useRef<Map<string, number>>(new Map());
   const gallopingRef = useRef<Set<string>>(new Set());
-  const finishedPlayersRef = useRef<Set<string>>(new Set());
+  const previousFinishedRef = useRef<Map<string, boolean>>(new Map());
   const [internalNow, setInternalNow] = useState(() => Date.now());
 
   // Use currentTime if provided (from parent), otherwise fallback to internalNow
@@ -172,28 +173,21 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     if (!open) {
       previousScoresRef.current = new Map();
       gallopingRef.current = new Set();
-      finishedPlayersRef.current = new Set();
+      previousFinishedRef.current = new Map();
       return;
     }
 
-    // Initialize finishedPlayersRef on mount if it's empty
-    if (finishedPlayersRef.current.size === 0) {
-      fixedOrderPlayers.forEach(p => {
-        const isFinished = !!p.finished_at || p.score >= questionCount;
-        if (isFinished) finishedPlayersRef.current.add(p.id);
-      });
-    }
-
     const prevScores = previousScoresRef.current;
+    const prevFinished = previousFinishedRef.current;
 
     fixedOrderPlayers.forEach((player) => {
       const prevScore = prevScores.get(player.id);
       const currentScore = player.score;
       const isFinished = isStandard ? !!player.finished_at : (!!player.finished_at || player.score >= questionCount);
+      const wasFinished = prevFinished.get(player.id) === true;
 
       // Confetti logic: trigger when a player JUST finished
-      if (isFinished && !finishedPlayersRef.current.has(player.id)) {
-        finishedPlayersRef.current.add(player.id);
+      if (isFinished && !wasFinished && prevFinished.has(player.id)) {
         
         // Wait a tiny bit for the horse to reach the finish line position if it moved
         setTimeout(() => {
@@ -272,26 +266,31 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
       }
     });
 
-    // Store current scores
+    // Store current scores and finish states
     const newScores = new Map<string, number>();
-    fixedOrderPlayers.forEach(p => newScores.set(p.id, p.score));
+    const newFinished = new Map<string, boolean>();
+    fixedOrderPlayers.forEach((p) => {
+      newScores.set(p.id, p.score);
+      newFinished.set(p.id, isStandard ? !!p.finished_at : (!!p.finished_at || p.score >= questionCount));
+    });
     previousScoresRef.current = newScores;
+    previousFinishedRef.current = newFinished;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, scoreFingerprint]);
 
   if (!open || !session) return null;
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-xl p-2 sm:p-4" onClick={onClose}>
-      <div className="flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[28px] border border-white/20 bg-gradient-to-b from-white to-slate-50 shadow-[0_30px_80px_rgba(15,23,42,0.35)]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-xl p-2 sm:p-4" onClick={onClose}>
+      <div className={`flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[32px] shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="relative flex items-center justify-center border-b border-slate-200/80 bg-white px-5 py-4 sm:px-8">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🏁</span>
+        <div className={`relative flex items-center justify-center border-b p-4 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-slate-200 bg-white'}`}>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🏁</span>
               <div className="text-center">
-                <h2 className="text-lg font-black uppercase tracking-tight text-slate-900 sm:text-xl">Leaderboard</h2>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                <h2 className={`text-base font-bold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-slate-900'}`}>Leaderboard</h2>
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
                   {fixedOrderPlayers.length} peserta • {session.question_count} soal
                 </p>
               </div>
@@ -299,17 +298,17 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
 
             {/* Timer Display */}
             {session.status !== 'waiting' && session.status !== 'finished' && (
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 transition-all ${session.status === 'paused' ? 'bg-orange-50 border-orange-200' :
-                timeRemaining < 60000 ? 'bg-red-50 border-red-200 animate-pulse' : 'bg-slate-50 border-slate-200'
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${session.status === 'paused' ? (theme === 'dark' ? 'bg-accent-orange/20 border-accent-orange/30' : 'bg-orange-50 border-orange-200') :
+                timeRemaining < 60000 ? (theme === 'dark' ? 'bg-accent-red/20 border-accent-red/30 animate-pulse' : 'bg-red-50 border-red-200 animate-pulse') : (theme === 'dark' ? 'bg-dark-700 border-[#2a2a2a]' : 'bg-slate-50 border-slate-200')
                 }`}>
-                <span className="text-xl">⏱️</span>
+                <span className="text-base">⏱️</span>
                 <div className="flex flex-col">
-                  <span className={`font-mono text-xl font-black tabular-nums leading-none ${session.status === 'paused' ? 'text-orange-600' :
-                    timeRemaining < 60000 ? 'text-red-600' : 'text-slate-900'
+                  <span className={`font-mono text-base font-bold tabular-nums leading-none ${session.status === 'paused' ? (theme === 'dark' ? 'text-accent-orange' : 'text-orange-600') :
+                    timeRemaining < 60000 ? (theme === 'dark' ? 'text-accent-red' : 'text-red-600') : (theme === 'dark' ? 'text-dark-text-primary' : 'text-slate-900')
                     }`}>
                     {timeStr}
                   </span>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
+                  <span className={`text-[8px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
                     {session.status === 'paused' ? 'PAUSED' : 'SISA WAKTU'}
                   </span>
                 </div>
@@ -318,10 +317,12 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
           </div>
           <button
             onClick={onClose}
-            className="absolute right-5 sm:right-8 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+            className={`absolute right-4 flex h-7 w-7 items-center justify-center rounded-full transition-spring-fast hover:scale-110 ${theme === 'dark' ? 'hover:bg-dark-700 text-dark-text-tertiary' : 'hover:bg-slate-100 text-slate-400'}`}
             aria-label="Close"
           >
-            ✕
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -329,23 +330,23 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
         <div className="flex-1 overflow-y-auto">
           {fixedOrderPlayers.length === 0 ? (
             <div className="px-6 py-16 text-center">
-              <p className="text-sm font-bold text-slate-400">Belum ada peserta</p>
+              <p className={`text-sm font-bold ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Belum ada peserta</p>
             </div>
           ) : (
             <table className="w-full">
-              <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm">
-                <tr className="border-b border-slate-200">
-                  <th className="w-14 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Rank</th>
-                  <th className="px-2 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+              <thead className={`sticky top-0 z-10 backdrop-blur-sm ${theme === 'dark' ? 'bg-dark-750/95' : 'bg-slate-50/95'}`}>
+                <tr className={`border-b ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-slate-200'}`}>
+                  <th className={`w-14 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Rank</th>
+                  <th className={`px-2 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
                     <div className="flex items-center justify-between pr-2">
                       <span>Lintasan</span>
-                      <span className="text-slate-300">🏁 Finish</span>
+                      <span className={theme === 'dark' ? 'text-dark-text-tertiary/50' : 'text-slate-300'}>🏁 Finish</span>
                     </div>
                   </th>
-                  <th className="w-20 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Status</th>
+                  <th className={`w-20 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className={`divide-y ${theme === 'dark' ? 'divide-[#2a2a2a]' : 'divide-slate-100'}`}>
                 {fixedOrderPlayers.map((player) => {
                   const rank = playerRanks.get(player.id) ?? 999;
                   const progress = Math.max(0, Math.min(100, (player.score / questionCount) * 100));
@@ -354,12 +355,12 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
                   const isTop3 = rank <= 3;
 
                   const rankBadge = rank === 1
-                    ? 'bg-amber-100 text-amber-700 border-amber-200'
+                    ? (theme === 'dark' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-200')
                     : rank === 2
-                      ? 'bg-slate-100 text-slate-600 border-slate-200'
+                      ? (theme === 'dark' ? 'bg-slate-500/20 text-slate-300 border-slate-500/30' : 'bg-slate-100 text-slate-600 border-slate-200')
                       : rank === 3
-                        ? 'bg-orange-100 text-orange-700 border-orange-200'
-                        : 'bg-white text-slate-400 border-slate-100';
+                        ? (theme === 'dark' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-orange-100 text-orange-700 border-orange-200')
+                        : (theme === 'dark' ? 'bg-dark-700 text-dark-text-tertiary border-[#2a2a2a]' : 'bg-white text-slate-400 border-slate-100');
 
                   return (
                     <tr key={player.id} className="transition-colors">
@@ -375,16 +376,16 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
 
                       {/* Race Track */}
                       <td className="px-2 py-1.5 overflow-hidden">
-                        <div className="relative h-11 w-full overflow-visible rounded-2xl border border-slate-200/60 bg-slate-100/70">
+                        <div className={`relative h-11 w-full overflow-visible rounded-2xl border ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-700/70' : 'border-slate-200/60 bg-slate-100/70'}`}>
                           {/* Track stripes */}
-                          <div className="absolute inset-0 rounded-2xl opacity-30" style={{ backgroundImage: 'repeating-linear-gradient(90deg, rgba(148,163,184,0.13) 0, rgba(148,163,184,0.13) 1px, transparent 1px, transparent 60px)' }} />
+                          <div className={`absolute inset-0 rounded-2xl opacity-30`} style={{ backgroundImage: theme === 'dark' ? 'repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 60px)' : 'repeating-linear-gradient(90deg, rgba(148,163,184,0.13) 0, rgba(148,163,184,0.13) 1px, transparent 1px, transparent 60px)' }} />
 
                           {/* Watermark (Name | Score) */}
                           <div
                             className={`absolute inset-y-0 flex items-center z-10 pointer-events-none transition-all duration-700 ease-in-out ${progress > 30 ? 'left-4' : 'left-1/2 -translate-x-1/2'
                               }`}
                           >
-                            <span className="text-[15px] font-black uppercase tracking-widest text-slate-600/80 drop-shadow-sm truncate max-w-[250px]">
+                            <span className={`text-[15px] font-black uppercase tracking-widest drop-shadow-sm truncate max-w-[250px] ${theme === 'dark' ? 'text-dark-text-secondary/80' : 'text-slate-600/80'}`}>
                               {player.name} <span className="mx-2 opacity-50">|</span> {player.score}
                             </span>
                           </div>
@@ -419,25 +420,25 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
                                   ref={(el) => { horseGallopRefs.current[player.id] = el; }}
                                   className="relative"
                                 >
-                                  <HorseAvatar colors={skin.horse} size="lg" className="drop-shadow-md" />
+                                  <HorseAvatar colors={skin.horse} mount={skin.mount} size="lg" className="drop-shadow-md" />
                                 </div>
                               </div>
                             </div>
                           </div>
 
                           {/* Finish line */}
-                          <div className="absolute right-0 top-0 bottom-0 w-[3px] bg-[repeating-linear-gradient(180deg,#1e293b_0,#1e293b_3px,white_3px,white_6px)] rounded-r-2xl opacity-40 z-10" />
+                          <div className={`absolute right-0 top-0 bottom-0 w-[3px] rounded-r-2xl opacity-40 z-10`} style={{ backgroundImage: theme === 'dark' ? 'repeating-linear-gradient(180deg,#64748b_0,#64748b_3px,#1e293b_3px,#1e293b_6px)' : 'repeating-linear-gradient(180deg,#1e293b_0,#1e293b_3px,white_3px,white_6px)' }} />
                         </div>
                       </td>
 
                       {/* Status */}
                       <td className="px-2 py-1.5 text-center">
                         {isFinished ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[9px] font-black text-green-700">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${theme === 'dark' ? 'bg-accent-green/20 text-accent-green' : 'bg-green-100 text-green-700'}`}>
                             ✓ Selesai
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black text-blue-500">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${theme === 'dark' ? 'bg-accent-blue/20 text-accent-blue' : 'bg-blue-50 text-blue-500'}`}>
                             ● Live
                           </span>
                         )}
@@ -451,9 +452,9 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-200 bg-slate-50 px-5 py-2.5 sm:px-8">
-          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-            {/* <span>Total: {fixedOrderPlayers.length} peserta</span> */}
+        <div className={`border-t px-4 py-2 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-slate-200 bg-slate-50'}`}>
+          <div className={`flex items-center justify-center text-[9px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
+            <span>{fixedOrderPlayers.length} peserta</span>
           </div>
         </div>
       </div>

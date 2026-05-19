@@ -1,6 +1,6 @@
 "use server";
 
-import { getSupabaseServer } from "@/lib/supabase";
+import { getExamSecretKey, getSupabaseServer } from "@/lib/supabase";
 import { type PublicQuestion } from "@/lib/questions";
 import { scramble, unscramble } from "@/lib/crypto";
 
@@ -18,7 +18,7 @@ export async function startExamSessionAction(
   userAgent: string
 ) {
   const supabase = getSupabaseServer();
-  const secret = process.env.EXAM_SECRET_KEY || process.env.NEXT_PUBLIC_EXAM_SECRET_KEY || 'default-secret-key-123';
+  const secret = getExamSecretKey();
   
   const { data, error } = await supabase.rpc('start_exam_session', {
     p_name: name,
@@ -45,7 +45,7 @@ export async function startExamSessionAction(
  */
 export async function getLiveQuizQuestionAction(playerId: string, index: number): Promise<{ success: boolean; error?: string; data: PublicQuestion | null; scrambled?: string }> {
   const supabase = getSupabaseServer();
-  const secret = process.env.EXAM_SECRET_KEY || process.env.NEXT_PUBLIC_EXAM_SECRET_KEY || 'default-secret-key-123';
+  const secret = getExamSecretKey();
   
   const { data, error } = await supabase.rpc('get_live_quiz_question', {
     p_player_id: playerId,
@@ -78,7 +78,7 @@ export async function submitLiveQuizAnswerAction(
   index: number
 ) {
   const supabase = getSupabaseServer();
-  const secret = process.env.EXAM_SECRET_KEY || process.env.NEXT_PUBLIC_EXAM_SECRET_KEY || 'default-secret-key-123';
+  const secret = getExamSecretKey();
   
   // Unscramble the user's answer
   const userAnswer = unscramble(scrambledAnswer);

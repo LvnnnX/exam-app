@@ -1,11 +1,9 @@
-import { supabase, EXAM_SECRET_KEY } from './supabase';
+import { supabase } from './supabase';
 import { type PublicQuestion, type ShuffledQuestion, shuffleOptions } from './questions';
 
 // Safe columns list — excludes question_ids (VULN-01 fix)
 const KUIS_SAFE_COLUMNS = 'id, quiz_code, mapel, bab, sub_bab, question_count, duration_minutes, status, created_at, started_at, finished_at, expires_at, paused_at, scheduled_at, quiz_mode, allow_join_mid_game';
 export const QUIZ_CODE_LENGTH = 6;
-
-const QUIZ_CODE_ALPHABET = '0123456789';
 
 export type KuisStatus = 'waiting' | 'active' | 'finished' | 'paused';
 
@@ -73,213 +71,19 @@ export function formatHMS(totalSeconds: number): string {
   return parts.join(' ');
 }
 
-type LiveQuizQuestionRpcResult = {
-  success: boolean;
-  error?: string;
-  data: PublicQuestion;
-};
-
-type SubmitLiveQuizAnswerRpcResult = {
-  success?: boolean;
-  is_correct?: boolean;
+type ScrambledQuestionPayload = {
+  scrambled?: string;
+  data?: PublicQuestion;
 };
 
 type QuizHistoryRow = KuisLog & {
   player?: Player[];
 };
 
-type QuizStatusUpdates = Partial<Pick<KuisLog, 'status' | 'started_at' | 'finished_at' | 'paused_at' | 'expires_at' | 'scheduled_at'>>;
-
 export function normalizeQuizCode(value: string): string {
   return String(value ?? '')
     .replace(/[^0-9]/g, '')
     .slice(0, QUIZ_CODE_LENGTH);
-}
-
-function generateQuizCode(length = QUIZ_CODE_LENGTH): string {
-  const cryptoObject = globalThis.crypto;
-  const randomBytes = cryptoObject?.getRandomValues
-    ? cryptoObject.getRandomValues(new Uint8Array(length))
-    : Uint8Array.from({ length }, () => Math.floor(Math.random() * 256));
-
-  return Array.from(randomBytes, (byte) => QUIZ_CODE_ALPHABET[byte % QUIZ_CODE_ALPHABET.length]).join('');
-}
-
-// Admin: Create a new Quiz Live Session
-export async function createQuizSession(
-  mapel: string | string[],
-  bab: string | string[],
-  subBabs: string[],
-  questionCount: number,
-  durationMinutes: number,
-  scheduledAt?: string,
-  percentages?: Record<string, number>,
-  quizMode: 'strict' | 'standard' = 'strict',
-  allowJoinMidGame: boolean = true
-): Promise<KuisLog | null> {
-  const code = generateQuizCode();
-  let questionIds: number[] = [];
-
-  const isAllSubBabs = subBabs.length === 0 || subBabs.includes('Semua Sub-bab');
-
-  let targetSubBabs = subBabs;
-  let activePercentages = percentages;
-
-  if (!percentages) {
-    // If toggle OFF, distribute equally.
-    // If "Semua Sub-bab", fetch ALL sub-babs from visible questions.
-    if (isAllSubBabs) {
-      let q = supabase.from('public_categories').select('sub_babs');
-      const mapels = Array.isArray(mapel) ? mapel : [mapel];
-      const filteredMapels = mapels.filter(m => m !== 'None' && m !== 'Semua MAPEL');
-      if (filteredMapels.length > 0) {
-        q = q.overlaps('mapels', filteredMapels);
-      }
-
-      const babs = Array.isArray(bab) ? bab : [bab];
-      const filteredBabs = babs.filter(b => b !== 'None' && b !== 'Semua BAB');
-      if (filteredBabs.length > 0) {
-        q = q.overlaps('babs', filteredBabs);
-      }
-
-      const { data } = await q;
-      if (data) {
-        const allSubs = new Set<string>();
-        data.forEach(row => {
-          if (row.sub_babs) row.sub_babs.forEach((s: string) => allSubs.add(s));
-        });
-        targetSubBabs = Array.from(allSubs);
-      }
-    }
-
-    if (targetSubBabs.length > 0) {
-      activePercentages = {};
-      const equal = 100 / targetSubBabs.length;
-      targetSubBabs.forEach(s => activePercentages![s] = equal);
-    }
-  }
-
-  if (activePercentages && targetSubBabs.length > 0) {
-    // Fetch with percentages
-    const pool = new Set<number>();
-
-    for (const sub of targetSubBabs) {
-      let query = supabase.from('questions').select('id').eq('is_hidden', false);
-
-      const mapels = Array.isArray(mapel) ? mapel : [mapel];
-      const filteredMapels = mapels.filter(m => m !== 'None' && m !== 'Semua MAPEL');
-      if (filteredMapels.length > 0) {
-        query = query.overlaps('mapels', filteredMapels);
-      }
-
-      const babs = Array.isArray(bab) ? bab : [bab];
-      const filteredBabs = babs.filter(b => b !== 'None' && b !== 'Semua BAB');
-      if (filteredBabs.length > 0) {
-        query = query.overlaps('babs', filteredBabs);
-      }
-
-      query = query.contains('sub_babs', [sub]);
-
-      const { data } = await query;
-      if (data) {
-        const ids = data.map(q => q.id as number);
-        ids.forEach(id => pool.add(id));
-
-        const pct = activePercentages[sub] || 0;
-        const count = Math.round(questionCount * (pct / 100));
-
-        // Filter out already selected IDs to avoid duplicates across sub-chapters
-        const availableIds = ids.filter(id => !questionIds.includes(id));
-        const shuffled = availableIds.sort(() => 0.5 - Math.random()).slice(0, count);
-        questionIds.push(...shuffled);
-      }
-    }
-
-    // Fallback if we don't have enough questions due to overlap or small pool
-    if (questionIds.length < questionCount) {
-      const remainingNeeded = questionCount - questionIds.length;
-      const unusedPool = Array.from(pool).filter(id => !questionIds.includes(id));
-      const fallback = unusedPool.sort(() => 0.5 - Math.random()).slice(0, remainingNeeded);
-      questionIds.push(...fallback);
-    }
-
-    // Slice just in case it exceeded due to rounding
-    questionIds = questionIds.slice(0, questionCount);
-    // Shuffle final array
-    questionIds.sort(() => 0.5 - Math.random());
-
-  } else {
-    // Failsafe: Fetch without percentages or subbabs
-    let query = supabase.from('questions').select('id').eq('is_hidden', false);
-
-    if (mapel !== 'None' && mapel !== 'Semua MAPEL') {
-      query = query.contains('mapels', [mapel]);
-    }
-    if (bab !== 'None' && bab !== 'Semua BAB') {
-      query = query.contains('babs', [bab]);
-    }
-
-    const { data: qData, error: qErr } = await query;
-    if (qErr || !qData) {
-      console.error('Error fetching questions for quiz:', qErr);
-      return null;
-    }
-
-    const shuffled = qData.sort(() => 0.5 - Math.random()).slice(0, questionCount);
-    questionIds = shuffled.map(q => q.id);
-  }
-
-  const actualQuestionCount = questionIds.length;
-  if (actualQuestionCount === 0) {
-    console.error('No questions found for the given criteria.');
-    return null;
-  }
-
-  const isAllMapels = !mapel || (Array.isArray(mapel) && mapel.length === 0) || (typeof mapel === 'string' && mapel === 'Semua MAPEL');
-  const isAllBabs = !bab || (Array.isArray(bab) && bab.length === 0) || (typeof bab === 'string' && bab === 'Semua BAB');
-
-  const insertData: Record<string, unknown> = {
-    quiz_code: code,
-    mapel: isAllMapels ? 'Semua MAPEL' : (Array.isArray(mapel) ? mapel.join(', ') : mapel),
-    bab: isAllBabs ? 'Semua BAB' : (Array.isArray(bab) ? bab.join(', ') : bab),
-    sub_bab: isAllSubBabs ? 'Semua Sub-bab' : subBabs.join(', '),
-    question_count: actualQuestionCount,
-    duration_minutes: durationMinutes,
-    status: 'waiting',
-    question_ids: questionIds,
-    quiz_mode: quizMode,
-    allow_join_mid_game: allowJoinMidGame,
-  };
-  if (scheduledAt) {
-    insertData.scheduled_at = scheduledAt;
-  }
-
-  const { data, error } = await supabase
-    .from('kuis_logs')
-    .insert([insertData])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating quiz session:', error);
-    return null;
-  }
-  return data;
-}
-
-// Schedule or update schedule for a waiting quiz
-export async function updateQuizSchedule(id: string, scheduledAt: string | null): Promise<boolean> {
-  const { error } = await supabase
-    .from('kuis_logs')
-    .update({ scheduled_at: scheduledAt })
-    .eq('id', id)
-    .eq('status', 'waiting');
-
-  if (error) {
-    console.error('Error updating quiz schedule:', error);
-    return false;
-  }
-  return true;
 }
 
 export async function fetchQuizByCode(code: string): Promise<KuisLog | null> {
@@ -368,12 +172,16 @@ export async function getJitQuestion(playerId: string, index: number): Promise<S
     }
     
     // Unscramble the data from the server
-    const rawData = (result as any).scrambled ? unscramble((result as any).scrambled) : result.data;
+    const payload = result as ScrambledQuestionPayload;
+    const rawData = payload.scrambled
+      ? unscramble<PublicQuestion>(payload.scrambled)
+      : payload.data;
     if (!rawData) return null;
 
     return shuffleOptions(rawData);
-  } catch (err: any) {
-    console.error('JIT fetch action failed:', err.message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('JIT fetch action failed:', message);
     return null;
   }
 }
@@ -395,9 +203,10 @@ export async function submitSecureAnswer(
       is_correct: result?.is_correct,
       error: result?.error
     };
-  } catch (err: any) {
-    console.error('Security verification action failed:', err.message);
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Security verification action failed:', message);
+    return { success: false, error: message };
   }
 }
 
@@ -408,59 +217,6 @@ export async function finishPlayerQuiz(playerId: string): Promise<void> {
   if (error) {
     console.error('Failed to finish player quiz:', error.message);
   }
-}
-
-// Admin actions
-export async function updateQuizStatus(id: string, status: KuisStatus): Promise<KuisLog | null> {
-  const { data: current } = await supabase.from('kuis_logs').select('*').eq('id', id).single();
-  if (!current) return null;
-
-  const updates: QuizStatusUpdates = { status };
-  const now = new Date().toISOString();
-
-  if (status === 'active') {
-    if (current.status === 'waiting') {
-      updates.started_at = now;
-      // Set expires_at to the end of the quiz duration
-      updates.expires_at = new Date(new Date().getTime() + current.duration_minutes * 60000).toISOString();
-    } else if (current.status === 'paused' && current.paused_at && current.started_at) {
-      // Calculate how long it was paused and shift started_at and expires_at
-      const pauseDuration = new Date().getTime() - new Date(current.paused_at).getTime();
-      const newStartedAt = new Date(new Date(current.started_at).getTime() + pauseDuration).toISOString();
-      updates.started_at = newStartedAt;
-      if (current.expires_at) {
-        updates.expires_at = new Date(new Date(current.expires_at).getTime() + pauseDuration).toISOString();
-      }
-      updates.paused_at = undefined;
-    }
-  } else if (status === 'paused') {
-    updates.paused_at = now;
-  } else if (status === 'finished') {
-    updates.finished_at = now;
-  }
-
-  const { data: updated, error } = await supabase
-    .from('kuis_logs')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error updating quiz status:', error);
-    return null;
-  }
-
-  return updated as KuisLog;
-}
-
-export async function deleteQuizSession(id: string): Promise<boolean> {
-  const { error } = await supabase.from('kuis_logs').delete().eq('id', id);
-  if (error) {
-    console.error('Error deleting quiz:', error);
-    return false;
-  }
-  return true;
 }
 
 export async function fetchQuizPlayers(kuisId: string): Promise<Player[]> {
@@ -486,17 +242,50 @@ export async function fetchPlayerQuestionIds(playerId: string): Promise<number[]
   return data as number[];
 }
 
-export async function fetchQuizHistory(): Promise<KuisLog[]> {
-  const { data, error } = await supabase
+type QuizHistoryCache = {
+  rows: KuisLog[];
+  lastCreatedAt: string | null;
+  fetchedAt: number;
+  limit: number;
+};
+
+let quizHistoryCache: QuizHistoryCache | null = null;
+const QUIZ_HISTORY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const QUIZ_HISTORY_DEFAULT_LIMIT = 200;
+
+export function invalidateQuizHistoryCache() {
+  quizHistoryCache = null;
+}
+
+export async function fetchQuizHistory(options?: { force?: boolean; limit?: number }): Promise<KuisLog[]> {
+  const force = options?.force ?? false;
+  const limit = options?.limit ?? QUIZ_HISTORY_DEFAULT_LIMIT;
+  const now = Date.now();
+
+  // Use cache only if non-forced, fresh, and same limit
+  if (!force && quizHistoryCache && quizHistoryCache.limit === limit && now - quizHistoryCache.fetchedAt < QUIZ_HISTORY_TTL_MS) {
+    return quizHistoryCache.rows;
+  }
+
+  // Incremental fetch: only get rows newer than the latest cached entry (when limit unchanged)
+  let query = supabase
     .from('kuis_logs')
     .select('*, player(name, score, total_time)')
     .eq('status', 'finished')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(limit);
 
-  if (error) return [];
+  const incremental = !force && quizHistoryCache?.lastCreatedAt && quizHistoryCache.limit === limit;
+  if (incremental) {
+    query = query.gt('created_at', quizHistoryCache!.lastCreatedAt!);
+  }
+
+  const { data, error } = await query;
+
+  if (error) return quizHistoryCache?.rows ?? [];
   const rows = (data || []) as QuizHistoryRow[];
 
-  return rows.map((row) => {
+  const mapped = rows.map((row) => {
     const players = row.player || [];
     const sorted = [...players].sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
@@ -509,19 +298,26 @@ export async function fetchQuizHistory(): Promise<KuisLog[]> {
       top_score: sorted[0]?.score || 0
     };
   });
+
+  // Merge with cache (incremental) or replace (full fetch); cap to limit
+  let merged: KuisLog[];
+  if (incremental && quizHistoryCache) {
+    merged = [...mapped, ...quizHistoryCache.rows].slice(0, limit);
+  } else {
+    merged = mapped;
+  }
+
+  quizHistoryCache = {
+    rows: merged,
+    lastCreatedAt: merged[0]?.created_at ?? null,
+    fetchedAt: now,
+    limit,
+  };
+
+  return merged;
 }
 
 export async function fetchActiveSessions(): Promise<KuisLog[]> {
-  // Delete quizzes that were never started and are older than 2 days
-  const twoDaysAgo = new Date();
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-  await supabase
-    .from('kuis_logs')
-    .delete()
-    .eq('status', 'waiting')
-    .lt('created_at', twoDaysAgo.toISOString());
-
   const { data, error } = await supabase
     .from('kuis_logs')
     .select('*, player:player(count)')
@@ -530,18 +326,11 @@ export async function fetchActiveSessions(): Promise<KuisLog[]> {
 
   if (error) return [];
 
-  const now = Date.now();
   const results: KuisLog[] = [];
 
   for (const d of data) {
     const createdAt = new Date(d.created_at);
     const expiresAt = d.expires_at ? new Date(d.expires_at) : new Date(createdAt.getTime() + 2 * 24 * 60 * 60 * 1000);
-
-    // Auto-finish expired sessions
-    if (d.status === 'active' && expiresAt.getTime() <= now) {
-      await updateQuizStatus(d.id, 'finished');
-      continue; // Skip — it's now in history
-    }
 
     results.push({
       ...d,

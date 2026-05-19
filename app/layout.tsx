@@ -1,5 +1,14 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import SiteHeader from "@/app/components/SiteHeader";
+import { Providers } from "@/app/providers";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Smandapura Shuffled Exam",
@@ -12,21 +21,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-nike-white text-nike-black font-sans">
-        {/* Sticky Minimal Navigation */}
-        <header className="sticky top-0 z-50 bg-nike-white border-b border-nike-grey-200">
-          <div className="max-w-[1440px] mx-auto px-4 md:px-12 h-[60px] flex items-center justify-center">
-            <div className="font-display text-2xl font-bold tracking-[0.04em] uppercase">
-              OSK SMANDAPURA 2026
-            </div>
-          </div>
-        </header>
+        <Providers>
+          <SiteHeader />
 
-        {/* Main Content Area */}
-        <main className="flex-1 w-full max-w-[1440px] mx-auto flex flex-col">
-          {children}
-        </main>
+          {/* Main Content Area */}
+          <main className="flex-1 w-full max-w-[1440px] mx-auto flex flex-col">
+            {children}
+          </main>
+        </Providers>
       </body>
     </html>
   );

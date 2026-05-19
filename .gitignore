@@ -32,7 +32,6 @@ yarn-error.log*
 
 # env files
 .env*
-*.md
 
 # supabase
 supabase/.temp/
@@ -56,3 +55,7 @@ supabase/
 *supabase
 *.sql
 *.svg
+apps/mobile/expo-env.d.ts
+apps/mobile/node_modules
+apps/mobile/*
+apps/

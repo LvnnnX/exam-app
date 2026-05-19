@@ -6,6 +6,39 @@ export const HORSE_SKIN_IDS = [
 
 export type HorseSkinId = (typeof HORSE_SKIN_IDS)[number];
 
+// Mount (tunggangan) options. The 'horse' mount keeps the original full
+// horse+jockey rendering. Other mounts render the animal SVG with a small
+// jockey emblem overlay so the jockey colors stay meaningful.
+export const MOUNT_IDS = [
+  'horse', 'angsa', 'citah', 'dino', 'kalkun', 'kebo', 'llama', 'macan', 'mamot', 'sapi', 'udang', 'ulat',
+] as const;
+
+export type MountId = (typeof MOUNT_IDS)[number];
+
+export const MOUNT_OPTIONS: { id: MountId; name: string; src: string | null }[] = [
+  { id: 'horse', name: 'Kuda', src: '/horse.svg' },
+  { id: 'angsa', name: 'Angsa', src: '/angsa.svg' },
+  { id: 'citah', name: 'Citah', src: '/citah.svg' },
+  { id: 'dino', name: 'Dino', src: '/dino.svg' },
+  { id: 'kalkun', name: 'Kalkun', src: '/kalkun.svg' },
+  { id: 'kebo', name: 'Kebo', src: '/kebo.svg' },
+  { id: 'llama', name: 'Llama', src: '/llama.svg' },
+  { id: 'macan', name: 'Macan', src: '/macan.svg' },
+  { id: 'mamot', name: 'Mamot', src: '/mamot.svg' },
+  { id: 'sapi', name: 'Sapi', src: '/sapi.svg' },
+  { id: 'udang', name: 'Udang', src: '/udang.svg' },
+  { id: 'ulat', name: 'Ulat', src: '/ulat.svg' },
+];
+
+export function isMountId(v: string | null | undefined): v is MountId {
+  return Boolean(v && (MOUNT_IDS as readonly string[]).includes(v));
+}
+
+export function getMountSrc(id: MountId | null | undefined): string | null {
+  if (!id) return null;
+  return MOUNT_OPTIONS.find((m) => m.id === id)?.src ?? null;
+}
+
 export type HorseSkin = {
   id: HorseSkinId;
   name: string;
@@ -16,6 +49,7 @@ export type HorseSkin = {
   trackFillClass: string;
   trackGlowClass: string;
   horse: HorseColors;
+  mount: MountId;
 };
 
 export const HORSE_SKINS: HorseSkin[] = [
@@ -27,6 +61,7 @@ export const HORSE_SKINS: HorseSkin[] = [
     trackFillClass: 'from-orange-400 via-red-500 to-rose-600',
     trackGlowClass: 'from-orange-200/45 via-rose-100/25 to-transparent',
     horse: { jersey: '#ef4444', pants: '#7f1d1d', saddle: '#f97316' },
+    mount: 'horse',
   },
   {
     id: 'storm', name: 'Storm',
@@ -36,6 +71,7 @@ export const HORSE_SKINS: HorseSkin[] = [
     trackFillClass: 'from-slate-500 via-slate-700 to-indigo-900',
     trackGlowClass: 'from-slate-200/45 via-slate-100/25 to-transparent',
     horse: { jersey: '#6366f1', pants: '#1e1b4b', saddle: '#818cf8' },
+    mount: 'horse',
   },
   {
     id: 'dune', name: 'Dune',
@@ -45,6 +81,7 @@ export const HORSE_SKINS: HorseSkin[] = [
     trackFillClass: 'from-yellow-400 via-amber-500 to-orange-600',
     trackGlowClass: 'from-yellow-100/55 via-amber-100/30 to-transparent',
     horse: { jersey: '#eab308', pants: '#713f12', saddle: '#f59e0b' },
+    mount: 'horse',
   },
   {
     id: 'forest', name: 'Forest',
@@ -54,6 +91,7 @@ export const HORSE_SKINS: HorseSkin[] = [
     trackFillClass: 'from-emerald-400 via-green-500 to-lime-600',
     trackGlowClass: 'from-emerald-200/50 via-lime-100/25 to-transparent',
     horse: { jersey: '#22c55e', pants: '#14532d', saddle: '#4ade80' },
+    mount: 'horse',
   },
   {
     id: 'aurora', name: 'Aurora',
@@ -63,6 +101,7 @@ export const HORSE_SKINS: HorseSkin[] = [
     trackFillClass: 'from-cyan-400 via-sky-500 to-fuchsia-500',
     trackGlowClass: 'from-cyan-200/50 via-sky-100/25 to-transparent',
     horse: { jersey: '#06b6d4', pants: '#164e63', saddle: '#a78bfa' },
+    mount: 'horse',
   },
   {
     id: 'midnight', name: 'Midnight',
@@ -72,6 +111,7 @@ export const HORSE_SKINS: HorseSkin[] = [
     trackFillClass: 'from-slate-700 via-slate-800 to-slate-950',
     trackGlowClass: 'from-slate-200/40 via-violet-100/20 to-transparent',
     horse: { jersey: '#7c3aed', pants: '#1e1b4b', saddle: '#a78bfa' },
+    mount: 'horse',
   },
   {
     id: 'rose', name: 'Rose',
@@ -81,6 +121,7 @@ export const HORSE_SKINS: HorseSkin[] = [
     trackFillClass: 'from-fuchsia-400 via-rose-500 to-pink-600',
     trackGlowClass: 'from-fuchsia-200/45 via-rose-100/25 to-transparent',
     horse: { jersey: '#ec4899', pants: '#831843', saddle: '#f472b6' },
+    mount: 'horse',
   },
   {
     id: 'glacier', name: 'Glacier',
@@ -90,6 +131,7 @@ export const HORSE_SKINS: HorseSkin[] = [
     trackFillClass: 'from-sky-400 via-cyan-500 to-blue-600',
     trackGlowClass: 'from-sky-200/45 via-cyan-100/25 to-transparent',
     horse: { jersey: '#0ea5e9', pants: '#0c4a6e', saddle: '#38bdf8' },
+    mount: 'horse',
   },
 ];
 
@@ -115,7 +157,11 @@ export function getHorseSkinId(v: string | null | undefined, seed?: string): Hor
 export function getHorseSkin(v: string | null | undefined, seed?: string): HorseSkin {
   if (v?.startsWith('custom:')) {
     const parts = v.split(':');
-    if (parts.length === 4) {
+    // Legacy: custom:<j>:<p>:<s>           (4 parts, mount defaults to 'horse')
+    // New:    custom:<j>:<p>:<s>:<mount>   (5 parts)
+    if (parts.length === 4 || parts.length === 5) {
+      const candidateMount = parts.length === 5 ? parts[4]! : 'horse';
+      const mount = isMountId(candidateMount) ? (candidateMount as MountId) : 'horse';
       return {
         id: v as HorseSkinId,
         name: 'Custom',
@@ -125,7 +171,8 @@ export function getHorseSkin(v: string | null | undefined, seed?: string): Horse
         cardClass: 'border-slate-200 bg-white text-slate-800',
         trackFillClass: 'from-slate-400 via-slate-500 to-slate-600',
         trackGlowClass: 'from-slate-200/45 via-slate-100/25 to-transparent',
-        horse: { jersey: parts[1]!, pants: parts[2]!, saddle: parts[3]! }
+        horse: { jersey: parts[1]!, pants: parts[2]!, saddle: parts[3]! },
+        mount,
       };
     }
   }

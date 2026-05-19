@@ -4,7 +4,7 @@ const STORAGE_VERSION = '4';
 const STORAGE_SALT = 'exam-app-storage-v4';
 const STORAGE_PREFIX = 's2_';
 const LEGACY_PREFIX = 's_';
-const LEGACY_SECRET = process.env.NEXT_PUBLIC_EXAM_SECRET_KEY?.trim() || '';
+const LEGACY_SECRET = '';
 
 const INTERNAL_SECRET = 'smd-exam-v4-sec-' + STORAGE_SALT;
 const AES_KEY = CryptoJS.PBKDF2(INTERNAL_SECRET, 'aes-salt', { keySize: 256 / 32, iterations: 10 }).toString();
