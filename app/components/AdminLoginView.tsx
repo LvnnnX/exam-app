@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAdminTheme } from '@/app/hooks/useAdminTheme';
 
 type AdminLoginViewProps = {
@@ -24,6 +24,7 @@ export default function AdminLoginView({
 }: AdminLoginViewProps) {
   const { theme, toggleTheme } = useAdminTheme();
   const isDark = theme === 'dark';
+  const [showPassword, setShowPassword] = useState(false);
 
   const pageBg = isDark ? 'bg-black' : 'bg-white';
   const cardBg = isDark ? 'bg-[#111111]' : 'bg-white';
@@ -119,15 +120,37 @@ export default function AdminLoginView({
 
             <label className="block">
               <span className={`block text-xs font-semibold mb-2 ml-1 ${labelClass}`}>Password</span>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => onPasswordChange(e.target.value)}
-                placeholder="••••••••"
-                className={inputClass}
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => onPasswordChange(e.target.value)}
+                  placeholder="••••••••"
+                  className={`${inputClass} pr-12`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition-spring-fast ${isDark ? 'text-white/55 hover:bg-white/10 hover:text-white' : 'text-black/50 hover:bg-black/5 hover:text-nike-black'}`}
+                >
+                  {showPassword ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
+                      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.7 21.7 0 0 1 5.17-6.17" />
+                      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.7 21.7 0 0 1-3.17 4.19" />
+                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </label>
 
             {authError && (

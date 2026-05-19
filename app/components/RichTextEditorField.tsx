@@ -678,37 +678,43 @@ export default function RichTextEditorField({
       </div>
 
       {mathModalMode && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4 backdrop-blur-md" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-xl overflow-hidden rounded-[24px] border shadow-ios-xl ${theme === 'dark' ? 'border-dark-border-strong bg-dark-800 text-dark-text-primary' : 'border-slate-300 bg-white text-slate-900'}`}>
-            <div className={`flex items-center justify-between border-b px-5 py-4 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800/95' : 'border-slate-300 bg-white/95'}`}>
-              <div>
-                <p className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>LaTeX</p>
-                <h3 className="text-base font-semibold">{mathModalMode === 'inline' ? 'Inline Math' : 'Block Math'}</h3>
-              </div>
-              <button type="button" onClick={closeMathModal} className={`flex h-8 w-8 items-center justify-center rounded-full text-lg transition-colors ${theme === 'dark' ? 'text-dark-text-secondary hover:bg-dark-700' : 'text-slate-500 hover:bg-slate-100'}`} title="Close">×</button>
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/40 p-3 sm:p-4 backdrop-blur-xl" role="dialog" aria-modal="true">
+          <div className={`w-full max-w-sm sm:max-w-md overflow-hidden rounded-3xl shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary' : 'bg-white text-nike-black'}`}>
+            <div className="flex items-center justify-between px-5 pt-4 pb-3">
+              <h3 className="text-base font-semibold tracking-tight">{mathModalMode === 'inline' ? 'Inline math.' : 'Block math.'}</h3>
+              <button
+                type="button"
+                onClick={closeMathModal}
+                aria-label="Tutup"
+                className={`flex h-8 w-8 items-center justify-center rounded-full transition-spring-fast ${theme === 'dark' ? 'text-white/70 hover:bg-white/10' : 'text-black/60 hover:bg-black/5'}`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
-            <div className="space-y-4 p-5">
-              {/* Tab Navigation */}
-              <div className={`flex gap-1 rounded-xl border p-1 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700/50' : 'border-slate-300 bg-slate-100'}`}>
+            <div className="space-y-3 px-4 pb-4 sm:px-5 sm:pb-5">
+              <div className={`flex gap-1 overflow-x-auto rounded-full p-1 quick-insert-scroll ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
                 {(['functions', 'operators', 'colors', 'sizes', 'matrices', 'reference'] as MathModalTab[]).map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setMathModalTab(tab)}
-                    className={`flex-1 rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${mathModalTab === tab ? (theme === 'dark' ? 'bg-accent-blue text-white shadow-sm' : 'bg-white text-slate-900 shadow-sm') : (theme === 'dark' ? 'text-dark-text-tertiary hover:text-dark-text-secondary' : 'text-slate-500 hover:text-slate-700')}`}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold capitalize transition-spring-fast ${
+                      mathModalTab === tab
+                        ? (theme === 'dark' ? 'bg-white text-nike-black shadow-ios-sm' : 'bg-white text-nike-black shadow-ios-sm')
+                        : (theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/55 hover:text-nike-black')
+                    }`}
                   >
                     {tab}
                   </button>
                 ))}
               </div>
 
-              {/* Quick Insert Buttons */}
-              <div className={`rounded-2xl border p-3 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700/50' : 'border-slate-300 bg-slate-50'}`}>
-                <div className={`mb-2 text-[10px] font-bold uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Quick Insert</div>
-
+              <div className={`rounded-2xl p-2 ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
                 {mathModalTab === 'functions' && (
-                  <div className="grid grid-cols-3 gap-1.5 max-h-[150px] overflow-y-auto quick-insert-scroll">
+                  <div className="grid grid-cols-3 gap-1.5 max-h-[140px] overflow-y-auto quick-insert-scroll">
                     {MATH_FUNCTIONS.map((fn) => {
                       const preview = katex.renderToString(fn.latex, { displayMode: false, throwOnError: false, strict: false });
                       return (
@@ -716,10 +722,10 @@ export default function RichTextEditorField({
                           key={fn.label}
                           type="button"
                           onClick={() => insertLatexSnippet(fn.latex)}
-                          className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary hover:bg-dark-600' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
                           title={fn.latex}
                         >
-                          <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60">{fn.label}</span>
+                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{fn.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -728,7 +734,7 @@ export default function RichTextEditorField({
                 )}
 
                 {mathModalTab === 'operators' && (
-                  <div className="grid grid-cols-2 gap-1.5 max-h-[150px] overflow-y-auto quick-insert-scroll">
+                  <div className="grid grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto quick-insert-scroll">
                     {MATH_OPERATORS.map((op) => {
                       const preview = katex.renderToString(op.latex, { displayMode: false, throwOnError: false, strict: false });
                       return (
@@ -736,10 +742,10 @@ export default function RichTextEditorField({
                           key={op.label}
                           type="button"
                           onClick={() => insertLatexSnippet(op.latex)}
-                          className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary hover:bg-dark-600' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
                           title={op.latex}
                         >
-                          <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60">{op.label}</span>
+                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{op.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -748,7 +754,7 @@ export default function RichTextEditorField({
                 )}
 
                 {mathModalTab === 'colors' && (
-                  <div className="grid grid-cols-3 gap-1.5 max-h-[150px] overflow-y-auto quick-insert-scroll">
+                  <div className="grid grid-cols-3 gap-1.5 max-h-[140px] overflow-y-auto quick-insert-scroll">
                     {MATH_COLORS.map((color) => {
                       const preview = katex.renderToString(color.latex, { displayMode: false, throwOnError: false, strict: false });
                       return (
@@ -756,10 +762,10 @@ export default function RichTextEditorField({
                           key={color.label}
                           type="button"
                           onClick={() => insertLatexSnippet(color.latex)}
-                          className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary hover:bg-dark-600' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
                           title={color.latex}
                         >
-                          <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60">{color.label}</span>
+                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{color.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -768,7 +774,7 @@ export default function RichTextEditorField({
                 )}
 
                 {mathModalTab === 'sizes' && (
-                  <div className="grid grid-cols-3 gap-1.5 max-h-[150px] overflow-y-auto quick-insert-scroll">
+                  <div className="grid grid-cols-3 gap-1.5 max-h-[140px] overflow-y-auto quick-insert-scroll">
                     {MATH_SIZES.map((size) => {
                       const preview = katex.renderToString(size.latex + 'text', { displayMode: false, throwOnError: false, strict: false });
                       return (
@@ -776,10 +782,10 @@ export default function RichTextEditorField({
                           key={size.label}
                           type="button"
                           onClick={() => insertLatexSnippet(size.latex)}
-                          className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary hover:bg-dark-600' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
                           title={size.latex}
                         >
-                          <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60">{size.label}</span>
+                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{size.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -788,43 +794,41 @@ export default function RichTextEditorField({
                 )}
 
                 {mathModalTab === 'matrices' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <label className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-slate-600'}`}>Rows:</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={matrixRows}
-                          onChange={(e) => setMatrixRows(parseInt(e.target.value) || 2)}
-                          className={`w-16 rounded-lg border px-2 py-1 text-xs outline-none transition-colors ${theme === 'dark' ? 'border-dark-border bg-dark-800 text-dark-text-primary focus:border-accent-blue' : 'border-slate-200 bg-white text-slate-900 focus:border-slate-400'}`}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-slate-600'}`}>Cols:</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={matrixCols}
-                          onChange={(e) => setMatrixCols(parseInt(e.target.value) || 2)}
-                          className={`w-16 rounded-lg border px-2 py-1 text-xs outline-none transition-colors ${theme === 'dark' ? 'border-dark-border bg-dark-800 text-dark-text-primary focus:border-accent-blue' : 'border-slate-200 bg-white text-slate-900 focus:border-slate-400'}`}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={generateMatrix}
-                        className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${theme === 'dark' ? 'bg-accent-blue text-white hover:bg-accent-blue/90' : 'bg-slate-900 text-white hover:bg-slate-700'}`}
-                      >
-                        Generate
-                      </button>
+                  <div className="flex flex-wrap items-center gap-2 px-1 py-1">
+                    <div className="flex items-center gap-1.5">
+                      <label className={`text-[11px] font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/55'}`}>Baris</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={matrixRows}
+                        onChange={(e) => setMatrixRows(parseInt(e.target.value) || 2)}
+                        className={`w-12 rounded-lg px-2 py-1 text-xs outline-none transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 text-white focus:bg-dark-700' : 'bg-white text-nike-black focus:ring-2 focus:ring-nike-black/15'}`}
+                      />
                     </div>
+                    <div className="flex items-center gap-1.5">
+                      <label className={`text-[11px] font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/55'}`}>Kolom</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={matrixCols}
+                        onChange={(e) => setMatrixCols(parseInt(e.target.value) || 2)}
+                        className={`w-12 rounded-lg px-2 py-1 text-xs outline-none transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 text-white focus:bg-dark-700' : 'bg-white text-nike-black focus:ring-2 focus:ring-nike-black/15'}`}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={generateMatrix}
+                      className={`ml-auto rounded-full px-3 py-1 text-[11px] font-semibold transition-spring-fast ${theme === 'dark' ? 'bg-white text-nike-black hover:scale-[1.01]' : 'bg-nike-black text-white hover:scale-[1.01]'}`}
+                    >
+                      Buat
+                    </button>
                   </div>
                 )}
 
                 {mathModalTab === 'reference' && (
-                  <div className="grid grid-cols-2 gap-1.5 max-h-[150px] overflow-y-auto quick-insert-scroll">
+                  <div className="grid grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto quick-insert-scroll">
                     {MATH_REFERENCE.map((ref) => {
                       const preview = katex.renderToString(ref.latex, { displayMode: false, throwOnError: false, strict: false });
                       return (
@@ -832,10 +836,10 @@ export default function RichTextEditorField({
                           key={ref.label}
                           type="button"
                           onClick={() => insertLatexSnippet(ref.latex)}
-                          className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary hover:bg-dark-600' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
                           title={ref.latex}
                         >
-                          <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60">{ref.label}</span>
+                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{ref.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -844,40 +848,45 @@ export default function RichTextEditorField({
                 )}
               </div>
 
-              {/* LaTeX Input */}
-              <div>
-                <label className={`mb-2 block text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-slate-600'}`}>Formula</label>
-                <textarea
-                  ref={mathTextareaRef}
-                  value={mathLatex}
-                  onChange={(event) => setMathLatex(event.target.value)}
-                  onKeyDown={(event) => {
-                    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-                      event.preventDefault();
-                      insertMathFromModal();
-                    }
-                  }}
-                  className={`min-h-[104px] w-full resize-y rounded-2xl border px-4 py-3 font-mono text-sm outline-none transition-colors quick-insert-scroll ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary focus:border-accent-blue placeholder:text-dark-text-tertiary' : 'border-slate-300 bg-slate-50 text-slate-900 focus:border-slate-400 placeholder:text-slate-400'}`}
-                  placeholder="\\frac{a}{b}"
-                />
+              <textarea
+                ref={mathTextareaRef}
+                value={mathLatex}
+                onChange={(event) => setMathLatex(event.target.value)}
+                onKeyDown={(event) => {
+                  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                    event.preventDefault();
+                    insertMathFromModal();
+                  }
+                }}
+                className={`min-h-[72px] w-full resize-none rounded-2xl px-4 py-3 font-mono text-sm outline-none transition-spring-fast quick-insert-scroll ${theme === 'dark' ? 'bg-white/5 text-white placeholder:text-white/30 focus:bg-white/10' : 'bg-black/5 text-nike-black placeholder:text-black/30 focus:bg-white focus:ring-2 focus:ring-nike-black/15'}`}
+                placeholder="\\frac{a}{b}"
+              />
+
+              <div className={`flex min-h-[56px] items-center justify-center overflow-x-auto rounded-2xl px-3 py-3 quick-insert-scroll ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
+                {mathPreview ? (
+                  <div dangerouslySetInnerHTML={{ __html: mathPreview }} />
+                ) : (
+                  <span className={`text-xs ${theme === 'dark' ? 'text-white/40' : 'text-black/40'}`}>Preview muncul di sini.</span>
+                )}
               </div>
 
-              {/* Preview */}
-              <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700/70' : 'border-slate-300 bg-slate-50'}`}>
-                <div className={`mb-3 text-[10px] font-bold uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Preview</div>
-                <div className={`min-h-[64px] overflow-x-auto rounded-xl px-3 py-4 text-center quick-insert-scroll ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary' : 'bg-white text-slate-900'}`}>
-                  {mathPreview ? (
-                    <div dangerouslySetInnerHTML={{ __html: mathPreview }} />
-                  ) : (
-                    <span className={theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}>Preview will appear here.</span>
-                  )}
-                </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={closeMathModal}
+                  className={`h-11 rounded-full text-xs font-semibold transition-spring-fast ${theme === 'dark' ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-black/5 text-nike-black hover:bg-black/10'}`}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={insertMathFromModal}
+                  disabled={!mathLatex.trim()}
+                  className={`h-11 rounded-full text-xs font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${theme === 'dark' ? 'bg-white text-nike-black' : 'bg-nike-black text-white'}`}
+                >
+                  Sisipkan
+                </button>
               </div>
-            </div>
-
-            <div className={`flex justify-end gap-2 border-t px-5 py-4 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800/95' : 'border-slate-300 bg-white/95'}`}>
-              <button type="button" onClick={closeMathModal} className={`h-10 rounded-full border px-5 text-xs font-semibold transition-colors ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600' : 'border-slate-400 bg-white text-slate-700 hover:bg-slate-50'}`}>Cancel</button>
-              <button type="button" onClick={insertMathFromModal} disabled={!mathLatex.trim()} className={`h-10 rounded-full px-6 text-xs font-semibold text-white transition-colors disabled:opacity-50 ${theme === 'dark' ? 'bg-accent-blue hover:bg-accent-blue/90' : 'bg-slate-900 hover:bg-slate-700'}`}>Insert</button>
             </div>
           </div>
         </div>
