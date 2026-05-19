@@ -54,8 +54,9 @@ skills-lock.json
 supabase/
 *supabase
 *.sql
-*.svg
+
 apps/mobile/expo-env.d.ts
 apps/mobile/node_modules
 apps/mobile/*
 apps/
+
