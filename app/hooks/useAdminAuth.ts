@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getCurrentAdminProfileAction, resolveAdminLoginIdentifierAction } from '@/app/actions/admin/access';
+import {
+  getCurrentAdminProfileAction,
+  precheckAdminLoginAction,
+  recordAdminLoginAttemptAction,
+  resolveAdminLoginIdentifierAction,
+} from '@/app/actions/admin/access';
 import { type AdminProfile } from '@/lib/admin-permissions';
 
 type UseAdminAuthArgs = {
@@ -63,14 +68,22 @@ export default function useAdminAuth({ authVersion, onAuthenticated }: UseAdminA
     setAuthLoading(true);
     setAuthError('');
 
+    const identifier = email.trim().toLowerCase();
     try {
+      // Pre-check throttle. Throws if the (identifier, ip) is locked out.
+      await precheckAdminLoginAction(identifier);
+
       const resolvedEmail = await resolveAdminLoginIdentifierAction(email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email: resolvedEmail,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Record the failure even if Supabase throws.
+        await recordAdminLoginAttemptAction(identifier, false).catch(() => {});
+        throw error;
+      }
 
       if (data.session) {
         const profile = await getCurrentAdminProfileAction(data.session.access_token);
@@ -78,6 +91,7 @@ export default function useAdminAuth({ authVersion, onAuthenticated }: UseAdminA
         setAdminProfile(profile);
         setAdminEmail(profile.email || data.session.user.email || '');
         setIsAuthenticated(true);
+        await recordAdminLoginAttemptAction(identifier, true).catch(() => {});
         await onAuthenticatedRef.current();
       }
     } catch (err: unknown) {

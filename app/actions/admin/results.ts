@@ -35,14 +35,21 @@ export type PaginatedResultsResult = {
   pageSize: number;
 };
 
-function splitResultCategories(value: string) {
-  return value.split(',').map(item => item.trim()).filter(Boolean);
+const MAX_PAGE_SIZE = 200;
+
+function escapeLikeTerm(value: string): string {
+  // Reject characters that would break PostgREST `or` syntax or expand the
+  // ILIKE pattern beyond a literal substring match.
+  return value.replace(/[,()*%\\]/g, ' ').trim();
 }
 
-function hasAnyResultCategory(value: string, selectedValues: string[]) {
-  if (selectedValues.length === 0) return true;
-  const categories = splitResultCategories(value);
-  return selectedValues.some(selected => categories.includes(selected));
+function buildCategoryOrFilter(column: string, values: string[]): string | null {
+  const cleaned = values
+    .map(escapeLikeTerm)
+    .filter((value) => value.length > 0 && value.length <= 120)
+    .slice(0, 25);
+  if (cleaned.length === 0) return null;
+  return cleaned.map((value) => `${column}.ilike.%${value}%`).join(',');
 }
 
 export async function fetchResultsPaginatedAction(
@@ -53,41 +60,46 @@ export async function fetchResultsPaginatedAction(
 ): Promise<PaginatedResultsResult> {
   const { supabase } = await requireAdmin(accessToken);
 
+  const safePageSize = Math.min(Math.max(1, Math.floor(pageSize)), MAX_PAGE_SIZE);
+  const safePage = Math.max(1, Math.floor(page));
+  const from = (safePage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
+
   let query = supabase
     .from('exam_results')
-    .select('id, name, score, total_questions, mapel, bab, sub_bab, taken_at, duration_seconds, start_time, end_time, mode', { count: 'exact' })
+    .select(
+      'id, name, score, total_questions, mapel, bab, sub_bab, taken_at, duration_seconds, start_time, end_time, mode',
+      { count: 'exact' }
+    )
     .order('taken_at', { ascending: false });
 
   if (filters.mode && filters.mode !== 'all') {
     query = query.eq('mode', filters.mode);
   }
 
-  const { data: allData, error: allError, count: totalCount } = await query;
+  const mapelOr = buildCategoryOrFilter('mapel', filters.mapels || []);
+  if (mapelOr) query = query.or(mapelOr);
 
-  if (allError) {
-    throw new Error(allError.message);
+  const babOr = buildCategoryOrFilter('bab', filters.babs || []);
+  if (babOr) query = query.or(babOr);
+
+  const subBabOr = buildCategoryOrFilter('sub_bab', filters.subBabs || []);
+  if (subBabOr) query = query.or(subBabOr);
+
+  const { data, error, count } = await query.range(from, to);
+
+  if (error) {
+    throw new Error(error.message);
   }
 
-  const filteredData = (allData || []).filter((row: typeof allData[0]) => {
-    const mapelMatch = !filters.mapels || filters.mapels.length === 0 || hasAnyResultCategory(row.mapel || '', filters.mapels);
-    const babMatch = !filters.babs || filters.babs.length === 0 || hasAnyResultCategory(row.bab || '', filters.babs);
-    const subBabMatch = !filters.subBabs || filters.subBabs.length === 0 || hasAnyResultCategory(row.sub_bab || '', filters.subBabs);
-    return mapelMatch && babMatch && subBabMatch;
-  });
-
-  const filteredTotal = filteredData.length;
-  const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const from = (safePage - 1) * pageSize;
-  const to = from + pageSize;
-
-  const paginatedData = filteredData.slice(from, to);
+  const total = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / safePageSize));
 
   return {
-    results: paginatedData,
-    total: filteredTotal,
+    results: data ?? [],
+    total,
     totalPages,
-    page: safePage,
-    pageSize,
+    page: Math.min(safePage, totalPages),
+    pageSize: safePageSize,
   };
 }

@@ -32,12 +32,45 @@ const SANITIZE_OPTIONS: DomPurifyConfig = {
     'decoding',
     'referrerpolicy',
   ],
+  // Block any URI scheme that can execute script. Allow http(s), mailto,
+  // tel, relative paths, fragments, and data: only for image bytes.
+  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[#/?]|data:image\/(?:png|jpeg|gif|webp|svg\+xml);)/i,
+  ADD_ATTR: ['target', 'rel'],
+  KEEP_CONTENT: true,
 };
+
+let domPurifyHooksInstalled = false;
+function ensureDomPurifyHooks() {
+  if (domPurifyHooksInstalled) return;
+  domPurifyHooksInstalled = true;
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (!(node instanceof Element)) return;
+    if (node.tagName === 'A') {
+      // Force safe target/rel on every anchor to block reverse tabnabbing.
+      const href = node.getAttribute('href') || '';
+      if (/^\s*javascript:/i.test(href) || /^\s*vbscript:/i.test(href)) {
+        node.removeAttribute('href');
+      }
+      if (node.hasAttribute('target')) {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener noreferrer');
+      }
+    }
+    if (node.tagName === 'IMG') {
+      // Allow only http(s) and data:image; strip anything else.
+      const src = node.getAttribute('src') || '';
+      if (!/^(?:https?:\/\/|data:image\/(?:png|jpeg|gif|webp|svg\+xml);)/i.test(src) && !src.startsWith('/')) {
+        node.removeAttribute('src');
+      }
+    }
+  });
+}
 
 function RichContent({ html, className = '' }: RichContentProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const safeHtml = useMemo(() => {
+    ensureDomPurifyHooks();
     const normalized = ensureHtmlDocument(html);
     return String(DOMPurify.sanitize(normalized, SANITIZE_OPTIONS));
   }, [html]);

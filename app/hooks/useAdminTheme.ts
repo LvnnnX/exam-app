@@ -7,15 +7,20 @@ export type AdminTheme = 'light' | 'dark';
 const DARK_BG = '#000000';
 const DARK_FG = '#ffffff';
 
-export function useAdminTheme() {
-  const [theme, setTheme] = useState<AdminTheme>('dark');
+function readStoredTheme(): AdminTheme {
+  // Read from localStorage during state initialisation so we don't trigger a
+  // cascading re-render via setState inside an effect.
+  if (typeof window === 'undefined') return 'dark';
+  try {
+    const stored = window.localStorage.getItem('admin-theme');
+    return stored === 'light' || stored === 'dark' ? stored : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem('admin-theme') as AdminTheme | null;
-    if (stored) {
-      setTheme(stored);
-    }
-  }, []);
+export function useAdminTheme() {
+  const [theme, setTheme] = useState<AdminTheme>(readStoredTheme);
 
   useEffect(() => {
     const root = document.documentElement;

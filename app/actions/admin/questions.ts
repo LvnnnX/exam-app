@@ -170,8 +170,28 @@ export async function fetchQuestionsPaginatedAction(
   }
 
   if (filters.searchQuery && filters.searchQuery.trim()) {
-    const searchTerm = filters.searchQuery.trim();
-    query = query.or(`question_text.ilike.%${searchTerm}%,option_a.ilike.%${searchTerm}%,option_b.ilike.%${searchTerm}%,option_c.ilike.%${searchTerm}%,option_d.ilike.%${searchTerm}%,option_e.ilike.%${searchTerm}%,short_answer.ilike.%${searchTerm}%`);
+    // PostgREST `or` filters are evaluated as a comma-separated list, so any
+    // raw comma, parenthesis, or wildcard in user input changes the query
+    // structure. Strip those characters and bound the length before injecting.
+    const safeTerm = filters.searchQuery
+      .trim()
+      .replace(/[,()*%\\]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .slice(0, 200);
+    if (safeTerm) {
+      const pattern = `%${safeTerm}%`;
+      query = query.or(
+        [
+          `question_text.ilike.${pattern}`,
+          `option_a.ilike.${pattern}`,
+          `option_b.ilike.${pattern}`,
+          `option_c.ilike.${pattern}`,
+          `option_d.ilike.${pattern}`,
+          `option_e.ilike.${pattern}`,
+          `short_answer.ilike.${pattern}`,
+        ].join(',')
+      );
+    }
   }
 
   const sortColumn = 'created_at';

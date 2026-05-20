@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { type MountId, getMountSrc } from '@/lib/horse-skins';
 
 export type HorseColors = {
@@ -32,8 +33,17 @@ function fetchSvgText(src: string): Promise<string> {
   const cached = svgCache.get(src);
   if (cached !== undefined) return Promise.resolve(cached);
   return fetch(src).then((r) => r.text()).then((t) => {
-    svgCache.set(src, t);
-    return t;
+    // Mount SVGs are bundled assets, but they go through innerHTML so we
+    // sanitize defensively to block script/foreignObject/event handlers.
+    const safe = String(
+      DOMPurify.sanitize(t, {
+        USE_PROFILES: { svg: true, svgFilters: true },
+        FORBID_TAGS: ['script', 'foreignObject', 'iframe'],
+        FORBID_ATTR: ['onload', 'onerror', 'onclick'],
+      })
+    );
+    svgCache.set(src, safe);
+    return safe;
   });
 }
 

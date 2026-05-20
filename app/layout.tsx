@@ -22,6 +22,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <head>
+        {/*
+          Preconnect to Supabase so the TLS + DNS handshake for realtime and
+          REST traffic completes before the first query. Saves ~150-300ms on
+          the first interactive request when network RTT is non-trivial.
+        */}
+        {process.env.NEXT_PUBLIC_SUPABASE_URL ? (
+          <>
+            <link
+              rel="preconnect"
+              href={process.env.NEXT_PUBLIC_SUPABASE_URL}
+              crossOrigin="anonymous"
+            />
+            <link
+              rel="dns-prefetch"
+              href={process.env.NEXT_PUBLIC_SUPABASE_URL}
+            />
+          </>
+        ) : null}
+      </head>
       <body className="min-h-full flex flex-col bg-nike-white text-nike-black font-sans">
         <Providers>
           <SiteHeader />

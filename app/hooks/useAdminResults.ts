@@ -169,7 +169,10 @@ export default function useAdminResults() {
         user_answers: fullResult?.user_answers || []
       });
 
-      const questionIds = (fullResult?.user_answers || []).map((a: any) => a.question_id);
+      type AnswerRow = { question_id: number };
+      const questionIds = (fullResult?.user_answers || []).map(
+        (a: AnswerRow) => a.question_id
+      );
       if (questionIds.length > 0) {
         const questions = await fetchQuestionsByIds(questionIds);
         setDetailQuestions(questions);

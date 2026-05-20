@@ -26,6 +26,15 @@ function generateQuizCode(length = QUIZ_CODE_LENGTH): string {
   return Array.from(randomBytes, (byte) => QUIZ_CODE_ALPHABET[byte % QUIZ_CODE_ALPHABET.length]).join('');
 }
 
+function shuffle<T>(input: readonly T[]): T[] {
+  const arr = [...input];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function asList(value: string | string[]): string[] {
   return Array.isArray(value) ? value : [value];
 }
@@ -83,10 +92,6 @@ async function buildSelectedQuestionIds(supabase: Awaited<ReturnType<typeof requ
 }
 
 async function buildQuestionIds(supabase: Awaited<ReturnType<typeof requirePermission>>['supabase'], input: CreateQuizSessionInput) {
-  // Debug: Check what's actually in the database
-  const { data: sampleQuestions } = await supabase.from('questions').select('id, mapels, babs, sub_babs').eq('is_hidden', false).limit(10);
-  console.log('[DEBUG] Sample questions from database:', JSON.stringify(sampleQuestions, null, 2));
-
   const questionIds: number[] = [];
   const isAllSubBabs = input.subBabs.length === 0 || input.subBabs.includes('Semua Sub-bab');
   let targetSubBabs = input.subBabs;
@@ -118,62 +123,45 @@ async function buildQuestionIds(supabase: Awaited<ReturnType<typeof requirePermi
   }
 
   if (activePercentages && targetSubBabs.length > 0) {
-    console.log('[DEBUG] Using percentage-based path');
-    console.log('[DEBUG] targetSubBabs:', targetSubBabs);
-    console.log('[DEBUG] activePercentages:', activePercentages);
     const pool = new Set<number>();
 
     for (const subBab of targetSubBabs) {
       let query = supabase.from('questions').select('id').eq('is_hidden', false);
       const filteredMapels = asList(input.mapel).filter((m) => m !== 'None' && m !== 'Semua MAPEL');
-      console.log('[DEBUG] [subBab:', subBab, '] filteredMapels:', filteredMapels);
       if (filteredMapels.length > 0) query = query.overlaps('mapels', filteredMapels);
       const filteredBabs = asList(input.bab).filter((b) => b !== 'None' && b !== 'Semua BAB');
-      console.log('[DEBUG] [subBab:', subBab, '] filteredBabs:', filteredBabs);
       if (filteredBabs.length > 0) query = query.overlaps('babs', filteredBabs);
       query = query.contains('sub_babs', [subBab]);
 
       const { data } = await query;
-      console.log('[DEBUG] [subBab:', subBab, '] Query result count:', data?.length || 0);
       if (!data) continue;
 
       const ids = data.map((question) => question.id as number);
       ids.forEach((id) => pool.add(id));
       const count = Math.round(input.questionCount * ((activePercentages[subBab] || 0) / 100));
       const availableIds = ids.filter((id) => !questionIds.includes(id));
-      questionIds.push(...availableIds.sort(() => 0.5 - Math.random()).slice(0, count));
+      questionIds.push(...shuffle(availableIds).slice(0, count));
     }
 
     if (questionIds.length < input.questionCount) {
       const remainingNeeded = input.questionCount - questionIds.length;
       const unusedPool = Array.from(pool).filter((id) => !questionIds.includes(id));
-      questionIds.push(...unusedPool.sort(() => 0.5 - Math.random()).slice(0, remainingNeeded));
+      questionIds.push(...shuffle(unusedPool).slice(0, remainingNeeded));
     }
 
-    return questionIds.slice(0, input.questionCount).sort(() => 0.5 - Math.random());
+    return shuffle(questionIds.slice(0, input.questionCount));
   }
 
   let query = supabase.from('questions').select('id').eq('is_hidden', false);
   const filteredMapels = asList(input.mapel).filter((m) => m !== 'None' && m !== 'Semua MAPEL');
-  console.log('[DEBUG] input.mapel:', input.mapel);
-  console.log('[DEBUG] filteredMapels:', filteredMapels);
   if (filteredMapels.length > 0) query = query.overlaps('mapels', filteredMapels);
   const filteredBabs = asList(input.bab).filter((b) => b !== 'None' && b !== 'Semua BAB');
-  console.log('[DEBUG] input.bab:', input.bab);
-  console.log('[DEBUG] filteredBabs:', filteredBabs);
   if (filteredBabs.length > 0) query = query.overlaps('babs', filteredBabs);
 
   const { data, error } = await query;
-  console.log('[DEBUG] Query result count:', data?.length || 0);
-  console.log('[DEBUG] Query error:', error);
-
-  // Debug: Check what's actually in the database
-  const { data: allQuestions } = await supabase.from('questions').select('id, mapels, babs, sub_babs').eq('is_hidden', false).limit(5);
-  console.log('[DEBUG] Sample questions from database:', JSON.stringify(allQuestions, null, 2));
-
   if (error || !data) throw new Error(error?.message || 'Failed to fetch questions for quiz');
 
-  return data.sort(() => 0.5 - Math.random()).slice(0, input.questionCount).map((question) => question.id as number);
+  return shuffle(data.map((question) => question.id as number)).slice(0, input.questionCount);
 }
 
 export async function createQuizSessionAction(accessToken: string, input: CreateQuizSessionInput): Promise<KuisLog | null> {

@@ -10,6 +10,9 @@ import {
   isAdminRole,
   normalizePermissionOverrides,
 } from '@/lib/admin-permissions';
+import { createHmac } from 'crypto';
+import { headers } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 type AdminProfileRow = {
   user_id: string;
@@ -130,6 +133,69 @@ export async function resolveAdminLoginIdentifierAction(identifier: string): Pro
   const { data, error } = await supabase.rpc('resolve_admin_login_email', { p_username: username });
   if (error || !data) throw new Error('Invalid credentials');
   return normalizeEmail(String(data));
+}
+
+function getAnonClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, '').replace(/\/rest\/v1\/?$/, '');
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) throw new Error('Configuration error');
+  return createClient(url, anonKey);
+}
+
+async function getRequestIpHash(): Promise<string> {
+  try {
+    const h = await headers();
+    const fwd = h.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const real = h.get('x-real-ip')?.trim();
+    const ip = fwd || real || 'unknown';
+    const secret = process.env.EXAM_SECRET_KEY?.trim() || 'no-salt';
+    return createHmac('sha256', secret).update(ip).digest('hex').slice(0, 32);
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Throttle check before attempting admin login. Returns silently when allowed,
+ * throws "Too many failed attempts" when locked out.
+ */
+export async function precheckAdminLoginAction(identifier: string): Promise<void> {
+  const value = identifier?.trim().toLowerCase();
+  if (!value) throw new Error('Invalid credentials');
+
+  const supabase = getAnonClient();
+  const ipHash = await getRequestIpHash();
+  const { data, error } = await supabase.rpc('check_admin_login_allowed', {
+    p_identifier: value,
+    p_ip_hash: ipHash,
+  });
+  if (error) throw new Error('Login check failed');
+  if (data !== true) {
+    throw new Error('Too many failed attempts. Try again in 15 minutes.');
+  }
+}
+
+/**
+ * Record the result of an admin login attempt. Called from the client after
+ * supabase.auth.signInWithPassword resolves.
+ */
+export async function recordAdminLoginAttemptAction(
+  identifier: string,
+  success: boolean
+): Promise<void> {
+  const value = identifier?.trim().toLowerCase();
+  if (!value) return;
+  try {
+    const supabase = getAnonClient();
+    const ipHash = await getRequestIpHash();
+    await supabase.rpc('record_admin_login_attempt', {
+      p_identifier: value,
+      p_ip_hash: ipHash,
+      p_success: Boolean(success),
+    });
+  } catch {
+    // Throttle is best-effort; don't break login on telemetry failure.
+  }
 }
 
 export async function getCurrentAdminProfileAction(accessToken: string): Promise<AdminProfile> {
