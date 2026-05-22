@@ -7,6 +7,7 @@ import AnalyticsInsights from '@/app/components/admin/AnalyticsInsights';
 import StudentWeaknessPanel from '@/app/components/admin/StudentWeaknessPanel';
 import RemedialQuizBuilder from '@/app/components/admin/RemedialQuizBuilder';
 import RemedialQuizSuccessModal from '@/app/components/admin/RemedialQuizSuccessModal';
+import { buildRemedialQuestionPool } from '@/app/lib/remedialQuizSelection';
 
 type AnalyticsSource = 'exam' | 'quiz';
 type AnalyticsDateRange = { start: string; end: string };
@@ -26,6 +27,7 @@ type QuestionData = {
   mapels: string[];
   babs: string[];
   sub_babs: string[];
+  is_hidden?: boolean;
 };
 type QuestionStat = { questionId: number; attempts: number; incorrect: number; correct: number; wrongRate: number; question?: QuestionData };
 type TrendPoint = { key: string; label: string; attempts: number; avgScore: number };
@@ -197,34 +199,16 @@ export default function AnalyticsTabPanel({
 
   const handleCreateRemedialQuizFromBuilder = async (config: { studentKeys: string[]; mode: string; questionCount: number; name: string; duration: number }) => {
     try {
-      // Filter questions for selected students (UNION logic - include if at least 1 student got it wrong)
-      const availableQuestions = remedialCandidates.filter(q =>
-        q.participantKeys.some((key: string) => config.studentKeys.includes(key))
-      );
+      const selectedQuestions = buildRemedialQuestionPool({
+        mode: config.mode as 'wrong_only' | 'wrong_similar' | 'topic_based',
+        studentKeys: config.studentKeys,
+        remedialCandidates,
+        questionPool: hardestQuestions.map((question) => ({ ...question, participantKeys: [] })),
+      });
 
-      // Select questions based on mode
-      let selectedQuestions: RemedialQuestionCandidate[] = [];
-
-      if (config.mode === 'wrong_only') {
-        // Use filtered questions directly
-        selectedQuestions = availableQuestions;
-      } else if (config.mode === 'wrong_similar') {
-        // For now, use same as wrong_only
-        // TODO: Enhance to include similar questions from same topics
-        selectedQuestions = availableQuestions;
-      } else if (config.mode === 'topic_based') {
-        // For now, use same as wrong_only
-        // TODO: Enhance to include all questions from weak topics
-        selectedQuestions = availableQuestions;
-      }
-
-      // Sort by wrong rate (highest first) and limit to questionCount
-      const sortedQuestions = selectedQuestions
-        .sort((a, b) => b.wrongRate - a.wrongRate)
-        .slice(0, config.questionCount);
-
-      // Extract question IDs
-      const questionIds = sortedQuestions.map(q => q.questionId);
+      const questionIds = selectedQuestions
+        .slice(0, Math.min(config.questionCount, selectedQuestions.length))
+        .map((question) => question.questionId);
 
       if (questionIds.length === 0) {
         window.alert('No questions available for the selected students.');
@@ -405,6 +389,7 @@ export default function AnalyticsTabPanel({
             return student?.name || 'Unknown';
           })}
           remedialCandidates={remedialCandidates}
+          questionPool={hardestQuestions.map((question) => ({ ...question, participantKeys: [] }))}
           onClose={() => setRemedialQuizBuilderOpen(false)}
           onCreateQuiz={handleCreateRemedialQuizFromBuilder}
           theme={theme}
