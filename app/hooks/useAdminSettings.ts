@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
 import { type VisibilitySettings, fetchVisibilitySettings } from '@/lib/questions';
+import { invalidateCache, invalidateCachePattern, setCache } from '@/lib/cache';
 import { categorySlugToLabel, normalizeCategorySlug } from '@/lib/categories';
 import { supabase } from '@/lib/supabase';
 import { removeQuestionCategoryAction } from '@/app/actions/admin/questions';
@@ -67,8 +68,14 @@ export default function useAdminSettings({
     setSettingsSaving(true);
     try {
       await saveVisibilitySettingsAction(await getAdminAccessToken(), visibilitySettings);
+      setCache('visibility_settings', visibilitySettings);
+      invalidateCachePattern('mapels_');
+      invalidateCachePattern('babs_');
+      invalidateCachePattern('sub_babs_');
+      invalidateCache('mapels_public');
+      invalidateCache('mapels_admin');
       setSettingsDirty(false);
-      showToast('Settings saved. Changes appear on next page load.', 'success');
+      showToast('Settings saved. Changes are active now.', 'success');
     } catch (err) {
       console.error('Failed to save settings:', err);
       showToast(err instanceof Error ? err.message : 'Failed to save settings.', 'error');

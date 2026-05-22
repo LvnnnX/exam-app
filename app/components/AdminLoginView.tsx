@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useAdminTheme } from '@/app/hooks/useAdminTheme';
+import type { AdminTheme } from '@/app/hooks/useAdminTheme';
 
 type AdminLoginViewProps = {
   email: string;
@@ -11,6 +11,8 @@ type AdminLoginViewProps = {
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onSubmit: (event: React.FormEvent) => void;
+  theme: AdminTheme;
+  onToggleTheme: () => void;
 };
 
 export default function AdminLoginView({
@@ -21,8 +23,9 @@ export default function AdminLoginView({
   onEmailChange,
   onPasswordChange,
   onSubmit,
+  theme,
+  onToggleTheme,
 }: AdminLoginViewProps) {
-  const { theme, toggleTheme } = useAdminTheme();
   const isDark = theme === 'dark';
   const [showPassword, setShowPassword] = useState(false);
 
@@ -56,7 +59,7 @@ export default function AdminLoginView({
         <div className="flex justify-end mb-3">
           <button
             type="button"
-            onClick={toggleTheme}
+            onClick={onToggleTheme}
             aria-label={isDark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'}
             className={togglePill}
           >

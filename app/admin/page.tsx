@@ -147,6 +147,8 @@ function AdminPageInner() {
         onEmailChange={auth.setEmail}
         onPasswordChange={auth.setPassword}
         onSubmit={auth.handleLogin}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
     );
   }

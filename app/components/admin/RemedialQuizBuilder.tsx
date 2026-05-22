@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { buildRemedialQuestionPool, type RemedialQuestionLike } from '@/app/lib/remedialQuizSelection';
 
-type RemedialCandidate = {
-  participantKeys: string[];
-};
+type RemedialCandidate = RemedialQuestionLike;
 
 type RemedialQuizBuilderProps = {
   selectedStudentKeys: string[];
   studentNames: string[];
   remedialCandidates: RemedialCandidate[];
+  questionPool: RemedialCandidate[];
   onClose: () => void;
   onCreateQuiz: (config: QuizConfig) => void;
   theme?: 'light' | 'dark';
@@ -27,6 +27,7 @@ export default function RemedialQuizBuilder({
   selectedStudentKeys,
   studentNames,
   remedialCandidates,
+  questionPool,
   onClose,
   onCreateQuiz,
   theme = 'dark',
@@ -36,16 +37,26 @@ export default function RemedialQuizBuilder({
   const [questionCount, setQuestionCount] = useState(20);
   const [mode, setMode] = useState<'wrong_only' | 'wrong_similar' | 'topic_based'>('wrong_only');
 
-  // Filter questions for selected students
-  const availableQuestions = remedialCandidates.filter(q =>
-    q.participantKeys.some((key: string) => selectedStudentKeys.includes(key))
-  );
+  const availableQuestions = useMemo(() => buildRemedialQuestionPool({
+    mode,
+    studentKeys: selectedStudentKeys,
+    remedialCandidates,
+    questionPool,
+  }), [mode, selectedStudentKeys, remedialCandidates, questionPool]);
+
+  const questionOptions = useMemo(() => {
+    const presets = [5, 10, 20, 30, 50, 100];
+    const capped = presets.filter((value) => value <= availableQuestions.length);
+    return capped.length > 0 ? capped : availableQuestions.length > 0 ? [availableQuestions.length] : [];
+  }, [availableQuestions.length]);
+
+  const effectiveQuestionCount = availableQuestions.length > 0 ? Math.min(questionCount, availableQuestions.length) : questionCount;
 
   const handleCreate = () => {
     onCreateQuiz({
       name: quizName,
       duration,
-      questionCount,
+      questionCount: effectiveQuestionCount,
       mode,
       studentKeys: selectedStudentKeys,
     });
@@ -150,7 +161,7 @@ export default function RemedialQuizBuilder({
                 Questions
               </label>
               <select
-                value={questionCount}
+                value={effectiveQuestionCount}
                 onChange={(e) => setQuestionCount(Number(e.target.value))}
                 className={`h-11 w-full cursor-pointer rounded-2xl border px-4 text-sm font-medium transition-spring-fast focus:outline-none focus:ring-2 ${
                   theme === 'dark'
@@ -158,11 +169,9 @@ export default function RemedialQuizBuilder({
                     : 'border-[#E5E5E5] bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
                 }`}
               >
-                <option value={10}>10 questions</option>
-                <option value={20}>20 questions</option>
-                <option value={30}>30 questions</option>
-                <option value={50}>50 questions</option>
-                <option value={100}>100 questions</option>
+                {questionOptions.map((value) => (
+                  <option key={value} value={value}>{value} questions</option>
+                ))}
               </select>
             </div>
           </div>
