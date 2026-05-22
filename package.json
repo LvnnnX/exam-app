@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:rls": "playwright test tests/rls.spec.ts --config=playwright.rls.config.ts",
+    "audit:high": "npm audit --audit-level=high",
+    "security:check": "npm run build && npm run test:api-security && npm run test:rls && npm run audit:high",
+    "test:api-security": "playwright test tests/api-security.spec.ts --config=playwright.rls.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-label": "2.1.8",

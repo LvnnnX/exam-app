@@ -203,7 +203,7 @@ export default function AnalyticsTabPanel({
     setRemedialQuizBuilderOpen(true);
   };
 
-  const handleCreateRemedialQuizFromBuilder = async (config: any) => {
+  const handleCreateRemedialQuizFromBuilder = async (config: { studentKeys: string[]; mode: string; questionCount: number; name: string; duration: number }) => {
     try {
       // Filter questions for selected students (UNION logic - include if at least 1 student got it wrong)
       const availableQuestions = remedialCandidates.filter(q =>

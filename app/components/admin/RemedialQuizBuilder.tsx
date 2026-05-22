@@ -2,10 +2,14 @@
 
 import React, { useState } from 'react';
 
+type RemedialCandidate = {
+  participantKeys: string[];
+};
+
 type RemedialQuizBuilderProps = {
   selectedStudentKeys: string[];
   studentNames: string[];
-  remedialCandidates: any[];
+  remedialCandidates: RemedialCandidate[];
   onClose: () => void;
   onCreateQuiz: (config: QuizConfig) => void;
   theme?: 'light' | 'dark';
@@ -172,15 +176,15 @@ export default function RemedialQuizBuilder({
               Question selection mode
             </label>
             <div className="space-y-2.5">
-              {[
+              {([
                 { value: 'wrong_only', label: 'Only Wrong Questions', desc: 'Include only questions students got wrong' },
                 { value: 'wrong_similar', label: 'Wrong + Similar', desc: 'Include wrong questions plus similar ones from same topics' },
                 { value: 'topic_based', label: 'Topic-Based', desc: 'Include all questions from weak topics' },
-              ].map((option) => (
+              ] as Array<{ value: QuizConfig['mode']; label: string; desc: string }>).map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setMode(option.value as any)}
+                  onClick={() => setMode(option.value)}
                   className={`w-full rounded-2xl border p-3.5 text-left transition-spring hover:scale-[1.01] ${
                     mode === option.value
                       ? theme === 'dark'

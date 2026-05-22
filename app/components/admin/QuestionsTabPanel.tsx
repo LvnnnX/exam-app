@@ -5,6 +5,7 @@ import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 import { type RawQuestion } from '@/lib/questions';
 import { stripHtml } from '@/lib/rich-text';
 import { normalizeCategorySlug } from '@/lib/categories';
+import type { QuestionFilters } from '@/app/actions/admin/questions';
 
 type DropdownOption = {
   value: string;
@@ -97,7 +98,7 @@ type QuestionsTabPanelProps = {
   onToggleQuestionVisibility: (question: RawQuestion) => void | Promise<void>;
   paginationMeta: { total: number; totalPages: number } | null;
   mapelCounts: Array<{ mapel: string; count: number }>;
-  fetchQuestionsPaginated: (filters: any, page: number, pageSize: number) => Promise<void>;
+  fetchQuestionsPaginated: (filters: QuestionFilters, page: number, pageSize: number) => Promise<void>;
   fetchMapelCounts: () => Promise<void>;
   theme?: 'light' | 'dark';
 };
