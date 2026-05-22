@@ -21,6 +21,13 @@ import { getOptionText, getCorrectOptionText } from '@/app/hooks/adminOptionText
 import { useAdminTheme } from '@/app/hooks/useAdminTheme';
 import { ToastContainer } from '@/app/components/Toast';
 
+type AdminTab = 'questions' | 'quiz' | 'results' | 'analytics' | 'settings' | 'access';
+
+const adminTabs: AdminTab[] = ['questions', 'quiz', 'results', 'analytics', 'settings', 'access'];
+
+function isAdminTab(value: string | null): value is AdminTab {
+  return !!value && adminTabs.includes(value as AdminTab);
+}
 
 export default function AdminPage() {
   return (
@@ -54,8 +61,8 @@ function AdminPageInner() {
     if (auth.isAuthenticated !== true) return;
 
     const urlTab = searchParams.get('tab');
-    if (urlTab && ['questions', 'quiz', 'results', 'analytics', 'settings', 'access'].includes(urlTab)) {
-      tabs.handleTabChange(urlTab as any);
+    if (isAdminTab(urlTab)) {
+      tabs.handleTabChange(urlTab);
     }
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,8 +74,8 @@ function AdminPageInner() {
 
     const handlePopState = () => {
       const urlTab = new URL(window.location.href).searchParams.get('tab');
-      if (urlTab && ['questions', 'quiz', 'results', 'analytics', 'settings', 'access'].includes(urlTab)) {
-        tabs.handleTabChange(urlTab as any);
+      if (isAdminTab(urlTab)) {
+        tabs.handleTabChange(urlTab);
       }
     };
 
@@ -77,8 +84,8 @@ function AdminPageInner() {
   }, [auth.isAuthenticated, tabs]);
 
   // Wrapper for tab change that also updates URL
-  const handleTabChangeWithUrl = useCallback((tab: string) => {
-    tabs.handleTabChange(tab as any);
+  const handleTabChangeWithUrl = useCallback((tab: AdminTab) => {
+    tabs.handleTabChange(tab);
 
     // Update URL and remove code parameter (code is specific to Quiz tab sessions)
     const newUrl = new URL(window.location.href);

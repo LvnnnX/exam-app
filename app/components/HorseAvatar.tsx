@@ -85,6 +85,7 @@ export default function HorseAvatar({
 
   useEffect(() => {
     if (!src) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSvg(null);
       return;
     }

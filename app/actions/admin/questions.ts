@@ -210,7 +210,7 @@ export async function fetchQuestionsPaginatedAction(
   const totalPages = Math.ceil(total / pageSize);
 
   // Fetch usernames for all unique created_by IDs
-  const uniqueCreatorIds = [...new Set((questions || []).map((q: any) => q.created_by).filter(Boolean))];
+  const uniqueCreatorIds = [...new Set((questions || []).map((q) => q.created_by).filter(Boolean))];
   let usernameMap: Record<string, string> = {};
 
   if (uniqueCreatorIds.length > 0) {
@@ -224,7 +224,7 @@ export async function fetchQuestionsPaginatedAction(
 
       if (adminProfiles && adminProfiles.length > 0) {
         usernameMap = Object.fromEntries(
-          adminProfiles.map((u: any) => [u.user_id, u.username])
+          adminProfiles.map((u) => [u.user_id, u.username])
         );
       } else if (profileError) {
         // Try 2: admin_users table with user_id field
@@ -235,7 +235,7 @@ export async function fetchQuestionsPaginatedAction(
 
         if (adminUsers && adminUsers.length > 0) {
           usernameMap = Object.fromEntries(
-            adminUsers.map((u: any) => [u.user_id, u.username])
+            adminUsers.map((u) => [u.user_id, u.username])
           );
         } else if (adminError) {
           // Try 3: profiles table with id field
@@ -246,7 +246,7 @@ export async function fetchQuestionsPaginatedAction(
 
           if (profiles && profiles.length > 0) {
             usernameMap = Object.fromEntries(
-              profiles.map((u: any) => [u.id, u.username])
+              profiles.map((u) => [u.id, u.username])
             );
           }
         }
@@ -256,7 +256,7 @@ export async function fetchQuestionsPaginatedAction(
     }
   }
 
-  const transformedQuestions = (questions || []).map((q: any) => ({
+  const transformedQuestions = (questions || []).map((q) => ({
     ...q,
     creator_username: q.created_by ? usernameMap[q.created_by] || null : null,
   })) as RawQuestion[];

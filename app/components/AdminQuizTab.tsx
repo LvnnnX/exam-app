@@ -191,6 +191,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       // Switch to manage view only if this is a new session being loaded
       // Don't force view change if user is already viewing this session
       if ((!activeSession || activeSession.quiz_code !== code) && activeView !== 'manage') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveView('manage');
       }
 

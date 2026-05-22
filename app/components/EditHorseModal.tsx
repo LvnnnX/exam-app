@@ -28,6 +28,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
   useEffect(() => {
     if (!isOpen) return;
     const skin = getHorseSkin(currentSkinId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setJersey(skin.horse.jersey);
     setPants(skin.horse.pants);
     setSaddle(skin.horse.saddle);
@@ -221,6 +222,7 @@ function ColorRow({
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraft(value);
   }, [value]);
 
