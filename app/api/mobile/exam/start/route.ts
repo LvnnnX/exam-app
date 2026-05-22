@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { startExamSessionAction } from '@/app/actions/exam';
 import { normalizeCategorySlug, isSafeCategorySlug } from '@/lib/categories';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import { genericError, readJsonBody, rejectNonJson } from '@/lib/api-security';
 
 const ALLOWED_MODES = new Set(['standard', 'survival']);
 const ALLOWED_COUNTS = new Set([5, 10, 20, 25, 30, 40, 50, 100]);
@@ -18,11 +19,16 @@ function normalizeStringArray(value: unknown): string[] | null {
 
 export async function POST(request: Request) {
   try {
+    const contentTypeError = rejectNonJson(request);
+    if (contentTypeError) return contentTypeError;
+
     if (!rateLimit(`exam:start:${getClientIp(request)}`, 20, 60_000)) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const body = await request.json();
+    // SECURITY: Parse bounded JSON only. Reject malformed or oversized bodies before validation.
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    if (!body) return genericError('Invalid exam session payload', 400);
     const { name, mapels, babs, subBabs, mode, count, timeLimitMinutes, userAgent } = body;
     const safeMapels = normalizeStringArray(mapels);
     const safeBabs = normalizeStringArray(babs);
@@ -37,8 +43,10 @@ export async function POST(request: Request) {
       !safeSubBabs ||
       typeof mode !== 'string' ||
       !ALLOWED_MODES.has(mode) ||
-      !ALLOWED_COUNTS.has(count) ||
-      !ALLOWED_TIME_LIMITS.has(timeLimitMinutes)
+      !Number.isInteger(count) ||
+      !ALLOWED_COUNTS.has(count as number) ||
+      !Number.isInteger(timeLimitMinutes) ||
+      !ALLOWED_TIME_LIMITS.has(timeLimitMinutes as number)
     ) {
       return NextResponse.json({ error: 'Invalid exam session payload' }, { status: 400 });
     }
@@ -48,15 +56,15 @@ export async function POST(request: Request) {
       safeMapels,
       safeBabs,
       safeSubBabs,
-      mode,
-      count,
-      timeLimitMinutes,
+      mode as 'standard' | 'survival',
+      count as number,
+      timeLimitMinutes as number,
       typeof userAgent === 'string' ? userAgent.slice(0, 200) : 'expo-native'
     );
 
     return NextResponse.json(data);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to start exam session';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    console.warn('mobile.exam.start.failed', { timestamp: new Date().toISOString() });
+    return genericError('Failed to start exam session');
   }
 }
