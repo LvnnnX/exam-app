@@ -2,7 +2,7 @@
 
 Guide for AI assistants working on the Smandapura Exam App. Read this before making changes.
 
-This is a companion to [`README.md`](./README.md) and [`docs/srs/`](./docs/srs/README.md). When the SRS and the code disagree, the code is authoritative — flag the drift and ask before "fixing" the SRS.
+This is a companion to [`README.md`](./README.md), [`SECURITY.md`](./SECURITY.md), and [`docs/srs/`](./docs/srs/README.md). `SECURITY.md` is mandatory for all code generation and review. When the SRS and the code disagree, the code is authoritative — flag the drift and ask before "fixing" the SRS.
 
 ---
 
