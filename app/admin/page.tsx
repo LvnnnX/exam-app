@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useCallback, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import AdminTabSwitcher from '@/app/components/AdminTabSwitcher';
 import AdminLoginView from '@/app/components/AdminLoginView';
 import AdminAuthLoadingView from '@/app/components/AdminAuthLoadingView';
@@ -54,7 +54,6 @@ function AdminPageInner() {
   const { theme, toggleTheme } = useAdminTheme();
 
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   // Initialize from URL on mount only
   useEffect(() => {

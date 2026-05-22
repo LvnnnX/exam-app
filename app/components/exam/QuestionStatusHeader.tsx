@@ -43,8 +43,8 @@ function TopicSegment({ items }: { items: string[] }) {
 
 export default function QuestionStatusHeader({
   isSurvival,
-  score,
-  lives,
+  score: _score,
+  lives: _lives,
   userName,
   mapelsLabel,
   babsLabel,

@@ -80,14 +80,14 @@ function TopicChips({ mapel, bab, subBab, formatCategorySelectionLabel, theme = 
 export default function ResultsHistoryTable({
   loading,
   results,
-  totalResults,
-  itemsPerPage,
-  resultPage,
-  paginationMeta,
+  totalResults: _totalResults,
+  itemsPerPage: _itemsPerPage,
+  resultPage: _resultPage,
+  paginationMeta: _paginationMeta,
   formatCategorySelectionLabel,
   onViewDetails,
-  onPageChange,
-  onItemsPerPageChange,
+  onPageChange: _onPageChange,
+  onItemsPerPageChange: _onItemsPerPageChange,
   theme = 'dark',
 }: ResultsHistoryTableProps) {
   if (loading) {
