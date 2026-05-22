@@ -510,7 +510,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [activeSession?.id, activeSession?.status]);
+  }, [activeSession, activeSession?.id, activeSession?.status]);
 
   // Auto-finish timer
   useEffect(() => {
@@ -814,7 +814,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
     void tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [activeSession, activeSession?.id, activeSession?.status, activeSession?.scheduled_at, currentTime, deleteQuizSession, updateQuizStatus]);
+  }, [activeSession, activeSession?.id, activeSession?.status, activeSession?.scheduled_at, currentTime, deleteQuizSession, handleCloseSession, updateQuizStatus]);
 
   // Refresh active sessions list when admin returns to the manage view.
   // Auto-start of scheduled quizzes is handled server-side by pg_cron;

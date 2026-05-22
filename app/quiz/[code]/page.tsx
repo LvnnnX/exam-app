@@ -10,7 +10,6 @@ import EditHorseModal from '@/app/components/EditHorseModal';
 import { getHorseSkin } from '@/lib/horse-skins';
 import HorseAvatar from '@/app/components/HorseAvatar';
 import { formatCategorySelectionLabel } from '@/lib/categories';
-import CrownIcon from '@/app/components/CrownIcon';
 import useQuizSessionController from '@/app/hooks/useQuizSessionController';
 
 export default function QuizSessionPage({ params }: { params: Promise<{ code: string }> }) {
@@ -24,7 +23,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     router,
     isStandard,
     leaderboardRowRefs,
-    getRankBadgeClasses,
+    getRankBadgeClasses: _getRankBadgeClasses,
   } = meta;
 
   const {

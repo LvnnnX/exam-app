@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react';
 import RichContent from '@/app/components/RichContent';
-import { Card } from '@/components/ui/card';
-import { BorderBeam } from '@/components/ui/border-beam';
 import AnalyticsHeroStats from '@/app/components/admin/AnalyticsHeroStats';
 import AnalyticsInsights from '@/app/components/admin/AnalyticsInsights';
 import StudentWeaknessPanel from '@/app/components/admin/StudentWeaknessPanel';
@@ -75,12 +73,6 @@ type AnalyticsTabPanelProps = {
   theme?: 'light' | 'dark';
 };
 
-function formatDuration(seconds: number | null) {
-  if (seconds == null) return '-';
-  const minutes = Math.floor(seconds / 60);
-  const remainder = Math.round(seconds % 60);
-  return minutes > 0 ? `${minutes}m ${remainder}s` : `${remainder}s`;
-}
 
 function rangeFromDays(days: number): AnalyticsDateRange {
   const end = new Date();
@@ -164,7 +156,7 @@ export default function AnalyticsTabPanel({
   onNavigateToQuiz,
   onCreateRemedialQuiz,
 }: AnalyticsTabPanelProps) {
-  const { summary, hardestTopics, hardestQuestions, scoreTrend, topicTrend, studentWeaknesses, participants, quizSessions, remedialCandidates } = analyticsData;
+  const { summary, hardestTopics, hardestQuestions, scoreTrend, topicTrend: _topicTrend, studentWeaknesses, participants, quizSessions, remedialCandidates } = analyticsData;
 
   const isDateRangeActive = (days: number | 'all') => {
     if (days === 'all') {
@@ -175,7 +167,7 @@ export default function AnalyticsTabPanel({
   };
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionStat | null>(null);
   const [selectedRemedialIds, setSelectedRemedialIds] = useState<number[]>([]);
-  const [creatingRemedial, setCreatingRemedial] = useState(false);
+  const [_creatingRemedial, setCreatingRemedial] = useState(false);
   const [remedialQuizBuilderOpen, setRemedialQuizBuilderOpen] = useState(false);
   const [remedialQuizStudentKeys, setRemedialQuizStudentKeys] = useState<string[]>([]);
   const [remedialQuizSuccess, setRemedialQuizSuccess] = useState<{ quizCode: string; questionCount: number } | null>(null);
@@ -195,8 +187,8 @@ export default function AnalyticsTabPanel({
         : `${activeQuizSessionKeys.length} sessions selected`;
   const toggleDraftSession = (sessionKey: string) => setDraftQuizSessionKeys((current) => current.includes(sessionKey) ? current.filter((key) => key !== sessionKey) : [...current, sessionKey]);
 
-  const selectTop = (count: number) => setSelectedRemedialIds(candidateIds.slice(0, count));
-  const toggleRemedialId = (id: number, checked: boolean) => setSelectedRemedialIds((current) => checked ? Array.from(new Set([...current, id])) : current.filter((item) => item !== id));
+  const _selectTop = (count: number) => setSelectedRemedialIds(candidateIds.slice(0, count));
+  const _toggleRemedialId = (id: number, checked: boolean) => setSelectedRemedialIds((current) => checked ? Array.from(new Set([...current, id])) : current.filter((item) => item !== id));
 
   const handleOpenRemedialQuizBuilder = (studentKeys: string[]) => {
     setRemedialQuizStudentKeys(studentKeys);
@@ -255,7 +247,7 @@ export default function AnalyticsTabPanel({
     }
   };
 
-  const createRemedialQuiz = async () => {
+  const _createRemedialQuiz = async () => {
     if (selectedCandidateIds.length === 0) return;
     setCreatingRemedial(true);
     try {

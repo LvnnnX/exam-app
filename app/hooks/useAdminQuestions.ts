@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } 
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import { type RawQuestion, type BabInfo, type SubBabInfo, fetchQuestions, fetchBabsAdmin, fetchSubBabsAdmin } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
-import { createQuestionAction, deleteQuestionAction, updateQuestionAction, updateQuestionsVisibilityAction, fetchQuestionCountsByMapelAction, fetchQuestionsPaginatedAction, type MapelCount, type QuestionFilters, type PaginatedQuestionsResult } from '@/app/actions/admin/questions';
+import { createQuestionAction, deleteQuestionAction, updateQuestionAction, updateQuestionsVisibilityAction, fetchQuestionCountsByMapelAction, fetchQuestionsPaginatedAction, type MapelCount, type QuestionFilters } from '@/app/actions/admin/questions';
 import { type ToastMessage } from '@/app/components/Toast';
 
 type QuestionDraft = {

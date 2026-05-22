@@ -59,7 +59,7 @@ type AnalyticsInsightsProps = {
 export default function AnalyticsInsights({
   hardestTopics,
   hardestQuestions,
-  scoreTrend,
+  scoreTrend: _scoreTrend,
   formatCategorySelectionLabel,
   onQuestionClick,
   theme = 'dark',

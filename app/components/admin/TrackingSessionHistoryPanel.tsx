@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import RichContent from '@/app/components/RichContent';
 import { type RawQuestion } from '@/lib/questions';
 import { stripHtml } from '@/lib/rich-text';
 

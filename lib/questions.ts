@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { ensureHtmlDocument } from './rich-text';
-import { categorySlugToLabel, isSafeCategorySlug, normalizeCategorySlug } from './categories';
-import { getCache, setCache, CACHE_TTL, generateCacheKey } from './cache';
+import { isSafeCategorySlug, normalizeCategorySlug } from './categories';
+import { getCache, setCache, CACHE_TTL } from './cache';
 
 const getUA = () => typeof window !== 'undefined' ? window.navigator.userAgent : 'server';
 
@@ -227,7 +227,7 @@ export async function fetchMapels(): Promise<BabInfo[]> {
     const result = Array.from(seen.entries())
       .filter(([slug]) => !visibility.hidden_mapels.includes(slug) && !visibility.admin_only_mapels.includes(slug))
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([slug, raw]) => ({ value: raw, label: raw }));
+      .map(([_slug, raw]) => ({ value: raw, label: raw }));
 
     // Cache the result
     setCache(cacheKey, result, { ttl: CACHE_TTL.CATEGORIES });
@@ -271,7 +271,7 @@ export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
   const result = Array.from(seen.entries())
     .filter(([slug]) => !visibility.hidden_mapels.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 
   // Cache the result
   setCache(cacheKey, result, { ttl: CACHE_TTL.CATEGORIES });
@@ -306,7 +306,7 @@ export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
@@ -340,7 +340,7 @@ export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
   return Array.from(seen.entries())
     .filter(([slug]) => !visibility.hidden_babs.includes(slug) && !visibility.admin_only_babs.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo[]> {
@@ -375,7 +375,7 @@ export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
@@ -398,7 +398,7 @@ export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
@@ -431,7 +431,7 @@ export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
   return Array.from(seen.entries())
     .filter(([slug]) => !visibility.hidden_sub_babs.includes(slug) && !visibility.admin_only_sub_babs.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBabInfo[]> {
@@ -466,7 +466,7 @@ export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBab
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 /** 
@@ -511,7 +511,7 @@ export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInf
   return Array.from(seen.entries())
     .filter(([slug]) => !visibility.hidden_sub_babs.includes(slug) && !visibility.admin_only_sub_babs.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 /** Returns ALL sub_babs from the questions table with zero filtering.
@@ -535,7 +535,7 @@ export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchQuestions(mapel?: string, bab?: string, subBab?: string): Promise<RawQuestion[]> {
