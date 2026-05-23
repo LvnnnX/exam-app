@@ -224,6 +224,10 @@ function endIso(value: string) {
   return value ? `${value}T23:59:59.999` : null;
 }
 
+function hasAnalyticsSelection(mapels: string[], babs: string[], subBabs: string[], participantKey: string, quizSessionKeys: string[]) {
+  return mapels.length > 0 || babs.length > 0 || subBabs.length > 0 || participantKey !== 'all' || quizSessionKeys.length > 0;
+}
+
 function primaryTopic(row: AnalyticsResultRow) {
   return splitResultCategories(row.sub_bab)[0]
     || splitResultCategories(row.bab)[0]
@@ -708,6 +712,13 @@ export default function useAdminAnalytics() {
     participantKey = activeParticipantKey,
     quizSessionKeys: string[] = activeQuizSessionKeys,
   ) => {
+    if (!hasAnalyticsSelection(mapels, babs, subBabs, participantKey, quizSessionKeys)) {
+      setAnalyticsData(emptyAnalyticsData);
+      setAnalyticsError(null);
+      setAnalyticsLoading(false);
+      return;
+    }
+
     setAnalyticsLoading(true);
     setAnalyticsError(null);
 
