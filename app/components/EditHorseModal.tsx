@@ -99,7 +99,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
             {/* Preview */}
             <div className="rounded-[28px] bg-white px-6 py-8 shadow-[0_18px_45px_rgba(0,0,0,0.10)] lg:sticky lg:top-0 lg:self-start">
               <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.18em] text-nike-grey-500/70">Preview</p>
@@ -122,7 +122,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
               </div>
             </div>
 
-            <div className="flex min-h-[460px] flex-col">
+            <div className="flex min-h-[460px] min-w-0 flex-col">
               <div className="space-y-6">
                 {/* Presets */}
                 <div>
@@ -136,7 +136,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                       <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">Custom</span>
                     )}
                   </div>
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 py-2 scrollbar-hide">
                     {HORSE_SKINS.map((skin) => {
                       const isActive = matchedPresetId === skin.id;
                       return (
@@ -166,7 +166,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                       {MOUNT_OPTIONS.find((m) => m.id === mount)?.name ?? 'Kuda'}
                     </span>
                   </div>
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 py-2 scrollbar-hide">
                     {MOUNT_OPTIONS.map((opt) => {
                       const isActive = mount === opt.id;
                       return (
