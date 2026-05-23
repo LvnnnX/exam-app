@@ -181,7 +181,7 @@ export default function ExamPage() {
               </div>
             </div>
 
-            <div className={`grid gap-3 ${state.isSurvival ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
                   Time limit
@@ -195,20 +195,18 @@ export default function ExamPage() {
                 />
               </div>
 
-              {!state.isSurvival && (
-                <div className="space-y-2">
-                  <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
-                    Question count
-                    <HelpTooltip text="Jumlah soal yang ingin dikerjakan." />
-                  </span>
-                  <SingleSelectDropdown
-                    options={QUESTION_COUNTS.map((count) => ({ value: count, label: `${count} questions` }))}
-                    value={state.questionCount}
-                    onChange={setters.setQuestionCount}
-                    placeholder="Choose question count"
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+                  Question count
+                  <HelpTooltip text="Jumlah soal yang ingin dikerjakan." />
+                </span>
+                <SingleSelectDropdown
+                  options={QUESTION_COUNTS.map((count) => ({ value: count, label: `${count} questions` }))}
+                  value={state.questionCount}
+                  onChange={setters.setQuestionCount}
+                  placeholder="Choose question count"
+                />
+              </div>
             </div>
 
             <NeumorphButton
