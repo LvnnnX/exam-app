@@ -5,6 +5,7 @@ import QuestionDisplay from '@/app/components/QuestionDisplay';
 import HelpTooltip from '@/app/components/exam/HelpTooltip';
 import MultiSelectDropdown from '@/app/components/exam/MultiSelectDropdown';
 import SingleSelectDropdown from '@/app/components/exam/SingleSelectDropdown';
+import NeumorphButton from '@/app/components/ui/neumorph-button';
 import JoinQuizModal from '@/app/components/exam/JoinQuizModal';
 import ConfirmIdentityStep from '@/app/components/exam/ConfirmIdentityStep';
 import RestoringSessionView from '@/app/components/exam/RestoringSessionView';
@@ -53,32 +54,37 @@ export default function ExamPage() {
                 Mode
                 <HelpTooltip text="Pilih mode ujian: Exam (biasa) atau Survival (nyawa terbatas)." />
               </span>
-              <div className="inline-flex w-full h-10 rounded-full bg-black/5 p-0.5">
-                <button
+              <div className="grid grid-cols-2 gap-3">
+                <NeumorphButton
+                  type="button"
+                  size="medium"
+                  intent={state.gameMode === 'exam' ? 'secondary' : 'default'}
+                  pressed={state.gameMode === 'exam'}
+                  fullWidth
                   onClick={() => setters.setGameMode('exam')}
-                  className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.gameMode === 'exam'
-                    ? 'neumorph-button-active bg-white text-nike-black'
-                    : 'neumorph-button bg-[#f5f5f5] text-nike-grey-500 hover:text-nike-black'
-                    }`}
                 >
                   Exam
-                </button>
-                <button
+                </NeumorphButton>
+                <NeumorphButton
+                  type="button"
+                  size="medium"
+                  intent={state.gameMode === 'survival' ? 'danger' : 'default'}
+                  pressed={state.gameMode === 'survival'}
+                  fullWidth
                   onClick={() => { setters.setGameMode('survival'); setters.setExamMode('strict'); }}
-                  className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.gameMode === 'survival'
-                    ? 'neumorph-button-active bg-nike-red text-white'
-                    : 'neumorph-button bg-[#f5f5f5] text-nike-grey-500 hover:text-nike-black'
-                    }`}
                 >
                   Survival
-                </button>
+                </NeumorphButton>
               </div>
-              <button
+              <NeumorphButton
+                type="button"
+                size="medium"
+                intent="primary"
+                fullWidth
                 onClick={() => setters.setIsJoinModalOpen(true)}
-                className="neumorph-button w-full h-10 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 bg-nike-black text-white hover:bg-nike-grey-500"
               >
                 Join with code
-              </button>
+              </NeumorphButton>
             </div>
 
             {!state.isSurvival && (
@@ -87,25 +93,27 @@ export default function ExamPage() {
                   Navigation
                   <HelpTooltip text="Strict: Soal berurutan, tidak bisa kembali. Standard: Bebas navigasi dan bisa menandai ragu-ragu." />
                 </span>
-                <div className="inline-flex w-full h-10 rounded-full bg-black/5 p-0.5">
-                  <button
+                <div className="grid grid-cols-2 gap-3">
+                  <NeumorphButton
+                    type="button"
+                    size="medium"
+                    intent={state.examMode === 'strict' ? 'secondary' : 'default'}
+                    pressed={state.examMode === 'strict'}
+                    fullWidth
                     onClick={() => setters.setExamMode('strict')}
-                    className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.examMode === 'strict'
-                      ? 'neumorph-button-active bg-white text-nike-black'
-                      : 'neumorph-button bg-[#f5f5f5] text-nike-grey-500 hover:text-nike-black'
-                      }`}
                   >
                     Strict
-                  </button>
-                  <button
+                  </NeumorphButton>
+                  <NeumorphButton
+                    type="button"
+                    size="medium"
+                    intent={state.examMode === 'standard' ? 'secondary' : 'default'}
+                    pressed={state.examMode === 'standard'}
+                    fullWidth
                     onClick={() => setters.setExamMode('standard')}
-                    className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.examMode === 'standard'
-                      ? 'neumorph-button-active bg-white text-nike-black'
-                      : 'neumorph-button bg-[#f5f5f5] text-nike-grey-500 hover:text-nike-black'
-                      }`}
                   >
                     Standard
-                  </button>
+                  </NeumorphButton>
                 </div>
                 <p className="text-[12px] text-nike-grey-500 tracking-tight">
                   {state.examMode === 'strict' ? 'Sequential only, no going back.' : 'Free navigation, mark as doubtful.'}
@@ -203,7 +211,11 @@ export default function ExamPage() {
               )}
             </div>
 
-            <button
+            <NeumorphButton
+              type="button"
+              size="medium"
+              intent="primary"
+              fullWidth
               onClick={() => setters.setStep(2)}
               disabled={
                 !state.userName.trim() ||
@@ -211,10 +223,10 @@ export default function ExamPage() {
                 state.babs.length === 0 ||
                 state.subBabs.length === 0
               }
-              className="neumorph-button w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight"
+              className="h-12 text-[14px]"
             >
               Begin session
-            </button>
+            </NeumorphButton>
           </div>
 
           <JoinQuizModal
