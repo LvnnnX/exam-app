@@ -363,14 +363,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Pemain</p>
               <p className="text-[14px] font-semibold text-nike-black tracking-tight truncate">{player?.name || 'Tamu'}</p>
             </div>
-            <button
+            <motion.button
               type="button"
+              layoutId="edit-horse-expandable"
+              transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
               onClick={() => setIsEditHorseModalOpen(true)}
               disabled={changingHorseSkin || !player}
-              className="h-9 px-4 rounded-full bg-black/5 text-nike-black text-[12px] font-medium tracking-tight hover:bg-black/10 transition-spring-fast active:scale-95 disabled:opacity-50 shrink-0"
+              className="h-9 px-4 rounded-full bg-black/5 text-nike-black text-[12px] font-medium tracking-tight hover:bg-black/10 transition-spring-fast hover:scale-[1.03] active:scale-95 disabled:opacity-50 shrink-0"
             >
               {changingHorseSkin ? 'Tunggu…' : 'Ubah'}
-            </button>
+            </motion.button>
           </div>
 
           <div className="rounded-3xl bg-black/[0.03] px-5 py-4">

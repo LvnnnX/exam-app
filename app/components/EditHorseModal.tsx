@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { HORSE_SKINS, getHorseSkin, MOUNT_OPTIONS, isMountId, type MountId } from '@/lib/horse-skins';
 import HorseAvatar from './HorseAvatar';
 
@@ -71,8 +72,12 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-2xl p-3 animate-in fade-in duration-200">
-      <div className="w-full max-w-md max-h-[92vh] overflow-hidden rounded-[28px] bg-white shadow-ios-xl flex flex-col animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111111]/95 backdrop-blur-2xl p-3 animate-in fade-in duration-200">
+      <motion.div
+        layoutId="edit-horse-expandable"
+        transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
+        className="w-full max-w-md max-h-[92vh] overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_rgba(0,0,0,0.45)] flex flex-col"
+      >
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-4 border-b border-black/[0.06]">
           <div className="min-w-0">
@@ -205,7 +210,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
             Simpan
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
