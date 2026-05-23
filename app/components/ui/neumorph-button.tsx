@@ -40,7 +40,7 @@ export default function NeumorphButton({
       disabled={disabled || loading}
       aria-pressed={pressed}
       className={cn(
-        "inline-flex items-center justify-center rounded-full font-medium tracking-tight transition-spring-fast active:scale-95 disabled:cursor-not-allowed disabled:bg-black/5 disabled:text-nike-grey-500 disabled:opacity-70",
+        "inline-flex items-center justify-center rounded-[4px] font-medium tracking-tight transition-spring-fast hover:animate-[neumorph-pulse_0.65s_ease-out] active:scale-95 disabled:cursor-not-allowed disabled:bg-black/5 disabled:text-nike-grey-500 disabled:opacity-70",
         pressed ? "neumorph-button-active" : "neumorph-button",
         intentClasses[intent],
         sizeClasses[size],
