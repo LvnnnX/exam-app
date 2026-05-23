@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import NeumorphButton from '@/app/components/ui/neumorph-button';
 
 type ConfirmIdentityStepProps = {
   userName: string;
@@ -117,19 +118,28 @@ export default function ConfirmIdentityStep({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2.5">
-            <button
+            <NeumorphButton
+              type="button"
+              intent="secondary"
+              size="medium"
+              fullWidth
               onClick={onEdit}
-              className="w-full sm:flex-1 h-12 rounded-full bg-black/5 text-nike-black text-[14px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+              className="h-12 sm:flex-1"
             >
               Edit
-            </button>
-            <button
-              onClick={onStart}
+            </NeumorphButton>
+            <NeumorphButton
+              type="button"
+              intent="primary"
+              size="medium"
+              fullWidth
+              loading={isLoading}
               disabled={isLoading}
-              className="w-full sm:flex-1 h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 tracking-tight shadow-ios-sm"
+              onClick={onStart}
+              className="h-12 sm:flex-1"
             >
               {isLoading ? 'Preparing…' : 'Start exam'}
-            </button>
+            </NeumorphButton>
           </div>
         </div>
       </div>

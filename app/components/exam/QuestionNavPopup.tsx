@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { motion } from 'framer-motion';
 
 type QuestionNavPopupProps = {
   isOpen: boolean;
@@ -26,8 +27,12 @@ export default function QuestionNavPopup({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[28px] shadow-ios-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[100] bg-[#111111]/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <motion.div
+        layoutId="question-nav-expandable"
+        transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
+        className="bg-white rounded-[28px] shadow-[0_30px_80px_rgba(0,0,0,0.45)] max-w-2xl w-full overflow-hidden"
+      >
         <div className="px-5 pt-5 pb-4 border-b border-black/[0.06]">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[17px] font-semibold tracking-tight text-nike-black">Daftar soal</h3>
@@ -69,7 +74,7 @@ export default function QuestionNavPopup({
             })}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

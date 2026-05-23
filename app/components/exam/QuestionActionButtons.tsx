@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import NeumorphButton from '@/app/components/ui/neumorph-button';
 
 type QuestionActionButtonsProps = {
   isStandard: boolean;
@@ -81,12 +82,16 @@ export default function QuestionActionButtons({
             Next question
           </button>
           {isSurvival ? (
-            <button
+            <NeumorphButton
+              type="button"
+              intent="danger"
+              size="medium"
+              layoutId="surrender-expandable"
               onClick={onOpenSurrenderConfirm}
-              className="w-full sm:w-auto sm:px-6 h-12 rounded-full bg-nike-red/10 text-nike-red text-[13px] font-medium hover:bg-nike-red/15 transition-spring-fast active:scale-95 tracking-tight"
+              className="h-12 w-full sm:w-auto sm:px-6"
             >
               Surrender
-            </button>
+            </NeumorphButton>
           ) : (
             <button
               onClick={onSkip}

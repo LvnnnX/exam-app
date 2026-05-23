@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { motion } from 'framer-motion';
 
 type QuestionStatusHeaderProps = {
   isSurvival: boolean;
@@ -92,16 +93,18 @@ export default function QuestionStatusHeader({
           )}
 
           {isStandard && (
-            <button
+            <motion.button
+              layoutId="question-nav-expandable"
+              transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
               onClick={onOpenNavPopup}
-              className="h-9 px-3 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center gap-2 transition-spring-fast active:scale-95"
+              className="h-9 px-3 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center gap-2 transition-spring-fast hover:scale-[1.03] active:scale-95"
               title="Daftar Soal"
             >
               <svg className="w-4 h-4 text-nike-black shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
               <span className="text-[12px] font-medium text-nike-black hidden sm:block tracking-tight">Daftar soal</span>
-            </button>
+            </motion.button>
           )}
 
           {hasAnswerSelected ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use } from 'react';
+import { motion } from 'framer-motion';
 import { secureSave } from '@/lib/security';
 import { formatHMS } from '@/lib/quiz';
 import RichContent from '@/app/components/RichContent';
@@ -362,14 +363,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
               <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Pemain</p>
               <p className="text-[14px] font-semibold text-nike-black tracking-tight truncate">{player?.name || 'Tamu'}</p>
             </div>
-            <button
+            <motion.button
               type="button"
+              layoutId="edit-horse-expandable"
+              transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
               onClick={() => setIsEditHorseModalOpen(true)}
               disabled={changingHorseSkin || !player}
-              className="h-9 px-4 rounded-full bg-black/5 text-nike-black text-[12px] font-medium tracking-tight hover:bg-black/10 transition-spring-fast active:scale-95 disabled:opacity-50 shrink-0"
+              className="h-9 px-4 rounded-full bg-black/5 text-nike-black text-[12px] font-medium tracking-tight hover:bg-black/10 transition-spring-fast hover:scale-[1.03] active:scale-95 disabled:opacity-50 shrink-0"
             >
               {changingHorseSkin ? 'Tunggu…' : 'Ubah'}
-            </button>
+            </motion.button>
           </div>
 
           <div className="rounded-3xl bg-black/[0.03] px-5 py-4">
@@ -521,16 +524,18 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             )}
 
             {isStandard && (
-              <button
+              <motion.button
+                layoutId="quiz-question-nav-expandable"
+                transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
                 onClick={() => setShowNavPopup(true)}
-                className="h-9 px-3 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center gap-2 transition-spring-fast active:scale-95"
+                className="h-9 px-3 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center gap-2 transition-spring-fast hover:scale-[1.03] active:scale-95"
                 title="Daftar soal"
               >
                 <svg className="w-4 h-4 text-nike-black shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 <span className="text-[12px] font-medium text-nike-black hidden sm:block tracking-tight">Daftar soal</span>
-              </button>
+              </motion.button>
             )}
 
             {selectedAnswer && selectedAnswer.trim().length > 0 ? (
@@ -667,8 +672,12 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
         {/* Standard Mode: Navigation Popup */}
         {isStandard && showNavPopup && (
-          <div className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-[28px] shadow-ios-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="fixed inset-0 z-[100] bg-[#111111]/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <motion.div
+              layoutId="quiz-question-nav-expandable"
+              transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
+              className="bg-white rounded-[28px] shadow-[0_30px_80px_rgba(0,0,0,0.45)] max-w-2xl w-full overflow-hidden"
+            >
               <div className="px-5 pt-5 pb-4 border-b border-black/[0.06]">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-[17px] font-semibold tracking-tight text-nike-black">Daftar soal</h3>
@@ -710,7 +719,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   })}
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
       </div>

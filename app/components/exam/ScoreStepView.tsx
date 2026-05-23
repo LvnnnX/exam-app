@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import NeumorphButton from '@/app/components/ui/neumorph-button';
 
 type ScoreStepViewProps = {
   isSurvival: boolean;
@@ -128,12 +129,16 @@ export default function ScoreStepView({
           )}
         </div>
 
-        <button
+        <NeumorphButton
+          type="button"
+          intent="primary"
+          size="medium"
+          fullWidth
           onClick={onViewBreakdown}
-          className="w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] tracking-tight shadow-ios-sm"
+          className="h-12"
         >
           Lihat ringkasan
-        </button>
+        </NeumorphButton>
       </div>
     </div>
   );
