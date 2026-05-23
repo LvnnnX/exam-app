@@ -54,7 +54,7 @@ export default function ExamPage() {
                 Mode
                 <HelpTooltip text="Pilih mode ujian: Exam (biasa) atau Survival (nyawa terbatas)." />
               </span>
-              <div className="grid grid-cols-2 gap-3 rounded-[8px] bg-nike-black p-2">
+              <div className="grid grid-cols-2 gap-3">
                 <NeumorphButton
                   type="button"
                   size="medium"
@@ -93,7 +93,7 @@ export default function ExamPage() {
                   Navigation
                   <HelpTooltip text="Strict: Soal berurutan, tidak bisa kembali. Standard: Bebas navigasi dan bisa menandai ragu-ragu." />
                 </span>
-                <div className="grid grid-cols-2 gap-3 rounded-[8px] bg-nike-black p-2">
+                <div className="grid grid-cols-2 gap-3">
                   <NeumorphButton
                     type="button"
                     size="medium"
