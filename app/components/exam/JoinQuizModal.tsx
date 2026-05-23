@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import NeumorphButton from '@/app/components/ui/neumorph-button';
 
 type JoinQuizModalProps = {
   isOpen: boolean;
@@ -30,50 +31,75 @@ export default function JoinQuizModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
-      <div className="bg-white rounded-[32px] shadow-ios-xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-300">
-        <div className="px-6 pt-8 pb-6 text-center">
-          <p className="text-[12px] font-medium text-nike-grey-500 mb-2 tracking-tight">Join live quiz</p>
-          <h2 className="font-display text-[28px] text-nike-black leading-[1.1] tracking-[-0.02em] mb-2">
-            Enter quiz code.
-          </h2>
-          <p className="text-[13px] text-nike-grey-500 mb-6 tracking-tight">{quizCodeLength}-digit code from your host.</p>
-
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="one-time-code"
-              maxLength={quizCodeLength}
-              value={quizCode}
-              onChange={(e) => onCodeChange(e.target.value)}
-              placeholder="000000"
-              className={`w-full h-14 rounded-2xl px-5 text-center text-[24px] font-semibold tracking-[0.25em] tabular-nums transition-spring-fast focus:outline-none ${codeError ? 'bg-red-50 text-nike-red' : 'bg-black/5 text-nike-black focus:bg-black/10'
-                }`}
-            />
-            {codeError && (
-              <p className="mt-2 text-[12px] font-medium text-nike-red tracking-tight animate-in slide-in-from-top-1">
-                {codeError}
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
+      <div className="flex min-h-screen items-center justify-center px-5 py-10">
+        <div className="w-full max-w-5xl rounded-[24px] bg-[#151515] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-in zoom-in-90 duration-300 sm:p-8 lg:p-12">
+          <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:gap-14">
+            <div className="flex flex-col justify-center space-y-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Join live quiz</p>
+              <h2 className="font-display text-[42px] leading-[0.95] tracking-[-0.04em] text-white sm:text-[56px]">
+                Enter quiz code.
+              </h2>
+              <p className="max-w-md text-[15px] leading-[1.6] tracking-tight text-white/65">
+                Masukkan {quizCodeLength}-digit code dari host untuk masuk ke sesi quiz real-time.
               </p>
-            )}
-          </div>
-        </div>
+              <div className="grid gap-3 pt-2 sm:grid-cols-2">
+                <div className="rounded-[10px] bg-white/5 p-4">
+                  <p className="text-[12px] font-medium text-white/55">Fast join</p>
+                  <p className="mt-1 text-[13px] text-white/80">Kode diverifikasi otomatis sebelum masuk.</p>
+                </div>
+                <div className="rounded-[10px] bg-white/5 p-4">
+                  <p className="text-[12px] font-medium text-white/55">Live session</p>
+                  <p className="mt-1 text-[13px] text-white/80">Leaderboard aktif saat quiz dimulai.</p>
+                </div>
+              </div>
+            </div>
 
-        <div className="px-6 pb-6 space-y-2">
-          <button
-            onClick={onJoin}
-            disabled={isCheckingCode || !canJoin}
-            className="w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 tracking-tight shadow-ios-sm"
-          >
-            {isCheckingCode ? 'Verifying…' : 'Join'}
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full h-12 rounded-full bg-transparent text-nike-grey-500 text-[14px] font-medium hover:bg-black/5 transition-spring-fast active:scale-95 tracking-tight"
-          >
-            Cancel
-          </button>
+            <div className="rounded-[18px] bg-white p-5 text-nike-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:p-6">
+              <p className="mb-2 text-[10px] font-mono uppercase tracking-[0.12em] text-nike-grey-500">Quiz code *</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
+                maxLength={quizCodeLength}
+                value={quizCode}
+                onChange={(e) => onCodeChange(e.target.value)}
+                placeholder="000000"
+                className={`neumorph-pulse-control h-14 w-full rounded-[8px] px-5 text-center text-[24px] font-semibold tabular-nums tracking-[0.25em] transition-spring-fast focus:outline-none ${codeError ? 'bg-red-50 text-nike-red' : 'bg-black/5 text-nike-black focus:bg-black/10'}`}
+              />
+              {codeError && (
+                <p className="mt-2 text-[12px] font-medium tracking-tight text-nike-red animate-in slide-in-from-top-1">
+                  {codeError}
+                </p>
+              )}
+
+              <div className="mt-6 space-y-3">
+                <NeumorphButton
+                  type="button"
+                  intent="primary"
+                  size="medium"
+                  fullWidth
+                  loading={isCheckingCode}
+                  disabled={!canJoin}
+                  onClick={onJoin}
+                  className="h-12"
+                >
+                  {isCheckingCode ? 'Verifying…' : 'Join'}
+                </NeumorphButton>
+                <NeumorphButton
+                  type="button"
+                  intent="secondary"
+                  size="medium"
+                  fullWidth
+                  onClick={onClose}
+                  className="h-12"
+                >
+                  Cancel
+                </NeumorphButton>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
