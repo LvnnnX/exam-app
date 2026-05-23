@@ -77,7 +77,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
       <motion.div
         layoutId="edit-horse-expandable"
         transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
-        className="w-full max-w-lg max-h-[92vh] overflow-hidden rounded-[32px] bg-[#f7f7f2] shadow-[0_30px_80px_rgba(0,0,0,0.42)] flex flex-col"
+        className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-[32px] bg-[#f7f7f2] shadow-[0_30px_80px_rgba(0,0,0,0.42)] flex flex-col"
       >
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-5 border-b border-black/[0.06]">
@@ -98,124 +98,136 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-          {/* Preview */}
-          <div className="rounded-[28px] bg-white px-5 py-7 flex items-center justify-center shadow-[0_18px_45px_rgba(0,0,0,0.10)]">
-            <div className="flex h-24 w-24 items-center justify-center">
-              <HorseAvatar
-                colors={{ jersey, pants, saddle }}
-                mount={mount}
-                size="lg"
-                animate={true}
-                className="scale-[2.2]"
-              />
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+            {/* Preview */}
+            <div className="rounded-[28px] bg-white px-6 py-8 shadow-[0_18px_45px_rgba(0,0,0,0.10)] lg:sticky lg:top-0 lg:self-start">
+              <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.18em] text-nike-grey-500/70">Preview</p>
+              <div className="flex min-h-[300px] items-center justify-center rounded-[24px] bg-[#f7f7f2]">
+                <div className="flex h-28 w-28 items-center justify-center">
+                  <HorseAvatar
+                    colors={{ jersey, pants, saddle }}
+                    mount={mount}
+                    size="lg"
+                    animate={true}
+                    className="scale-[2.6]"
+                  />
+                </div>
+              </div>
+              <div className="mt-5 rounded-[20px] bg-[#f7f7f2] px-4 py-3">
+                <p className="text-[11px] font-medium text-nike-grey-500">Pilihan aktif</p>
+                <p className="mt-1 text-[14px] font-semibold tracking-tight text-nike-black">
+                  {matchedPresetId ? HORSE_SKINS.find((s) => s.id === matchedPresetId)?.name ?? matchedPresetId : 'Custom'} · {MOUNT_OPTIONS.find((m) => m.id === mount)?.name ?? 'Kuda'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex min-h-[460px] flex-col">
+              <div className="space-y-6">
+                {/* Presets */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Preset</p>
+                    {matchedPresetId ? (
+                      <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">
+                        {HORSE_SKINS.find((s) => s.id === matchedPresetId)?.name ?? matchedPresetId}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">Custom</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {HORSE_SKINS.map((skin) => {
+                      const isActive = matchedPresetId === skin.id;
+                      return (
+                        <button
+                          key={skin.id}
+                          type="button"
+                          onClick={() => handlePresetClick(skin.id)}
+                          title={skin.name}
+                          className={`group shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast hover:scale-[1.03] active:scale-95 ${
+                            isActive
+                              ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-[#f7f7f2] shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
+                              : 'bg-white/70 hover:bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)]'
+                          }`}
+                        >
+                          <HorseAvatar colors={skin.horse} size="sm" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Mount picker */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Tunggangan</p>
+                    <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">
+                      {MOUNT_OPTIONS.find((m) => m.id === mount)?.name ?? 'Kuda'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {MOUNT_OPTIONS.map((opt) => {
+                      const isActive = mount === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            if (isMountId(opt.id)) setMount(opt.id);
+                          }}
+                          title={opt.name}
+                          className={`shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast hover:scale-[1.03] active:scale-95 ${
+                            isActive
+                              ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-[#f7f7f2] shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
+                              : 'bg-white/70 hover:bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)]'
+                          }`}
+                        >
+                          {opt.id === 'horse' ? (
+                            <HorseAvatar colors={{ jersey, pants, saddle }} size="sm" />
+                          ) : opt.src ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={opt.src} alt={opt.name} className="h-9 w-9 object-contain" draggable={false} />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Colors */}
+                <div>
+                  <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase mb-2.5">Edit warna kustom</p>
+                  <div className="rounded-[22px] bg-white divide-y divide-black/[0.05] shadow-[0_10px_24px_rgba(0,0,0,0.06)]">
+                    <ColorRow label="Baju joki" value={jersey} onChange={setJersey} />
+                    <ColorRow label="Celana joki" value={pants} onChange={setPants} />
+                    <ColorRow label="Sadel kuda" value={saddle} onChange={setSaddle} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-auto flex justify-end gap-3 pt-6">
+                <NeumorphButton
+                  type="button"
+                  intent="secondary"
+                  size="medium"
+                  onClick={onClose}
+                  className="h-11 min-w-[120px]"
+                >
+                  Batal
+                </NeumorphButton>
+                <NeumorphButton
+                  type="button"
+                  intent="primary"
+                  size="medium"
+                  onClick={handleSave}
+                  className="h-11 min-w-[120px]"
+                >
+                  Simpan
+                </NeumorphButton>
+              </div>
             </div>
           </div>
-
-          {/* Presets */}
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Preset</p>
-              {matchedPresetId ? (
-                <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">
-                  {HORSE_SKINS.find((s) => s.id === matchedPresetId)?.name ?? matchedPresetId}
-                </span>
-              ) : (
-                <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">Custom</span>
-              )}
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-              {HORSE_SKINS.map((skin) => {
-                const isActive = matchedPresetId === skin.id;
-                return (
-                  <button
-                    key={skin.id}
-                    type="button"
-                    onClick={() => handlePresetClick(skin.id)}
-                    title={skin.name}
-                    className={`group shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast active:scale-95 ${
-                      isActive
-                        ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-[#f7f7f2] shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
-                        : 'bg-white/70 hover:bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)]'
-                    }`}
-                  >
-                    <HorseAvatar colors={skin.horse} size="sm" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Mount picker */}
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Tunggangan</p>
-              <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">
-                {MOUNT_OPTIONS.find((m) => m.id === mount)?.name ?? 'Kuda'}
-              </span>
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-              {MOUNT_OPTIONS.map((opt) => {
-                const isActive = mount === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      if (isMountId(opt.id)) setMount(opt.id);
-                    }}
-                    title={opt.name}
-                    className={`shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast active:scale-95 ${
-                      isActive
-                        ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-[#f7f7f2] shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
-                        : 'bg-white/70 hover:bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)]'
-                    }`}
-                  >
-                    {opt.id === 'horse' ? (
-                      <HorseAvatar colors={{ jersey, pants, saddle }} size="sm" />
-                    ) : opt.src ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={opt.src} alt={opt.name} className="h-9 w-9 object-contain" draggable={false} />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Custom Colors */}
-          <div>
-            <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase mb-2.5">Warna kustom</p>
-            <div className="rounded-[22px] bg-white divide-y divide-black/[0.05] shadow-[0_10px_24px_rgba(0,0,0,0.06)]">
-              <ColorRow label="Baju joki" value={jersey} onChange={setJersey} />
-              <ColorRow label="Celana joki" value={pants} onChange={setPants} />
-              <ColorRow label="Sadel kuda" value={saddle} onChange={setSaddle} />
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="shrink-0 flex gap-3 px-6 py-5 border-t border-black/[0.06]">
-          <NeumorphButton
-            type="button"
-            intent="secondary"
-            size="medium"
-            fullWidth
-            onClick={onClose}
-            className="h-11"
-          >
-            Batal
-          </NeumorphButton>
-          <NeumorphButton
-            type="button"
-            intent="primary"
-            size="medium"
-            fullWidth
-            onClick={handleSave}
-            className="h-11"
-          >
-            Simpan
-          </NeumorphButton>
         </div>
       </motion.div>
     </div>
