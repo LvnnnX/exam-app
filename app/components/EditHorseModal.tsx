@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { HORSE_SKINS, getHorseSkin, MOUNT_OPTIONS, isMountId, type MountId } from '@/lib/horse-skins';
 import HorseAvatar from './HorseAvatar';
+import NeumorphButton from '@/app/components/ui/neumorph-button';
 
 type EditHorseModalProps = {
   isOpen: boolean;
@@ -76,13 +77,13 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
       <motion.div
         layoutId="edit-horse-expandable"
         transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
-        className="w-full max-w-md max-h-[92vh] overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_rgba(0,0,0,0.45)] flex flex-col"
+        className="w-full max-w-lg max-h-[92vh] overflow-hidden rounded-[32px] bg-[#f7f7f2] shadow-[0_30px_80px_rgba(0,0,0,0.42)] flex flex-col"
       >
         {/* Header */}
-        <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-4 border-b border-black/[0.06]">
+        <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-5 border-b border-black/[0.06]">
           <div className="min-w-0">
-            <h3 className="text-[17px] font-semibold tracking-tight text-nike-black">Ubah avatar</h3>
-            <p className="text-[12px] text-nike-grey-500 tracking-tight">Pilih preset atau atur warnamu sendiri.</p>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-nike-grey-500/70">Avatar</p>
+            <h3 className="text-[22px] font-semibold tracking-[-0.04em] text-nike-black">Ubah tampilan</h3>
           </div>
           <button
             type="button"
@@ -97,9 +98,9 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {/* Preview */}
-          <div className="rounded-3xl bg-black/[0.03] px-5 py-6 flex items-center justify-center">
+          <div className="rounded-[28px] bg-white px-5 py-7 flex items-center justify-center shadow-[0_18px_45px_rgba(0,0,0,0.10)]">
             <div className="flex h-24 w-24 items-center justify-center">
               <HorseAvatar
                 colors={{ jersey, pants, saddle }}
@@ -134,8 +135,8 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                     title={skin.name}
                     className={`group shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast active:scale-95 ${
                       isActive
-                        ? 'bg-nike-black/[0.04] ring-2 ring-nike-black ring-offset-2 ring-offset-white'
-                        : 'bg-black/[0.04] hover:bg-black/[0.07]'
+                        ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-[#f7f7f2] shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
+                        : 'bg-white/70 hover:bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)]'
                     }`}
                   >
                     <HorseAvatar colors={skin.horse} size="sm" />
@@ -166,8 +167,8 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                     title={opt.name}
                     className={`shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast active:scale-95 ${
                       isActive
-                        ? 'bg-nike-black/[0.04] ring-2 ring-nike-black ring-offset-2 ring-offset-white'
-                        : 'bg-black/[0.04] hover:bg-black/[0.07]'
+                        ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-[#f7f7f2] shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
+                        : 'bg-white/70 hover:bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)]'
                     }`}
                   >
                     {opt.id === 'horse' ? (
@@ -185,7 +186,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
           {/* Custom Colors */}
           <div>
             <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase mb-2.5">Warna kustom</p>
-            <div className="rounded-2xl bg-black/[0.03] divide-y divide-black/[0.05]">
+            <div className="rounded-[22px] bg-white divide-y divide-black/[0.05] shadow-[0_10px_24px_rgba(0,0,0,0.06)]">
               <ColorRow label="Baju joki" value={jersey} onChange={setJersey} />
               <ColorRow label="Celana joki" value={pants} onChange={setPants} />
               <ColorRow label="Sadel kuda" value={saddle} onChange={setSaddle} />
@@ -194,21 +195,27 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 flex gap-2 px-5 py-4 border-t border-black/[0.06]">
-          <button
+        <div className="shrink-0 flex gap-3 px-6 py-5 border-t border-black/[0.06]">
+          <NeumorphButton
             type="button"
+            intent="secondary"
+            size="medium"
+            fullWidth
             onClick={onClose}
-            className="flex-1 h-11 rounded-full bg-black/5 text-nike-black text-[13px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+            className="h-11"
           >
             Batal
-          </button>
-          <button
+          </NeumorphButton>
+          <NeumorphButton
             type="button"
+            intent="primary"
+            size="medium"
+            fullWidth
             onClick={handleSave}
-            className="flex-1 h-11 rounded-full bg-nike-black text-white text-[13px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] tracking-tight shadow-ios-sm"
+            className="h-11"
           >
             Simpan
-          </button>
+          </NeumorphButton>
         </div>
       </motion.div>
     </div>
