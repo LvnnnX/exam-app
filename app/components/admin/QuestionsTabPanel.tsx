@@ -55,6 +55,63 @@ function getTopicChips(question: RawQuestion, formatCategorySelectionLabel: (val
   ].filter((chip) => chip.value !== '-');
 }
 
+type QuestionBankCutoutCardProps = {
+  title: string;
+  count: number;
+  badge: string;
+  accent: 'purple' | 'blue';
+  theme: 'light' | 'dark';
+  onOpen: () => void;
+};
+
+function QuestionBankCutoutCard({ title, count, badge, accent, theme, onOpen }: QuestionBankCutoutCardProps) {
+  const isDark = theme === 'dark';
+  const accentClasses = accent === 'purple'
+    ? 'bg-accent-purple text-white shadow-accent-purple/20'
+    : 'bg-accent-blue text-white shadow-accent-blue/20';
+  const surfaceClass = isDark
+    ? 'bg-dark-800 text-dark-text-primary ring-dark-border-subtle hover:ring-dark-border-medium'
+    : 'bg-white text-gray-900 ring-black/[0.06] hover:ring-black/[0.12]';
+  const mutedClass = isDark ? 'text-dark-text-tertiary' : 'text-gray-500';
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      className={`group relative min-h-[190px] cursor-pointer overflow-hidden rounded-[28px] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.16)] ring-1 transition-spring-fast hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(0,0,0,0.22)] ${surfaceClass}`}
+    >
+      <div className={`absolute right-0 top-0 rounded-bl-[18px] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] shadow-md ${accentClasses}`}>
+        {count} soal
+        <span className={`absolute -left-[18px] top-0 h-[18px] w-[18px] rounded-tr-[18px] shadow-[6px_-6px_0_6px_currentColor] ${accent === 'purple' ? 'text-accent-purple' : 'text-accent-blue'}`} />
+        <span className={`absolute -bottom-[18px] right-0 h-[18px] w-[18px] rounded-tr-[18px] shadow-[6px_-6px_0_6px_currentColor] ${accent === 'purple' ? 'text-accent-purple' : 'text-accent-blue'}`} />
+      </div>
+
+      <div className="absolute bottom-0 left-0 rounded-tr-[20px] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white bg-nike-black">
+        Buka soal
+        <span className="absolute -right-[20px] bottom-0 h-5 w-5 rounded-bl-[20px] shadow-[-6px_6px_0_6px_#111111]" />
+        <span className="absolute -top-[20px] left-0 h-5 w-5 rounded-bl-[20px] shadow-[-6px_6px_0_6px_#111111]" />
+      </div>
+
+      <div className="flex h-full flex-col justify-between gap-8 pr-16 pb-12">
+        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-semibold shadow-[0_12px_30px_rgba(0,0,0,0.12)] ${accentClasses}`}>
+          {badge}
+        </div>
+        <div>
+          <h3 className="line-clamp-2 text-[20px] font-semibold tracking-[-0.04em]">{title}</h3>
+          <p className={`mt-2 text-[12px] leading-relaxed ${mutedClass}`}>Kelola kumpulan soal dan filter topik.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type QuestionsTabPanelProps = {
   filteredQuestions: RawQuestion[];
   questionLoading: boolean;
@@ -466,59 +523,19 @@ export default function QuestionsTabPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 transition-all duration-300 ease-in-out">
-            {/* Semua Soal Card */}
-            <div
-              className={`group rounded-3xl px-4 py-5 transition-spring-fast hover:scale-[1.01] cursor-pointer sm:px-6 sm:py-7 ${
-                theme === 'dark'
-                  ? 'bg-white/[0.03] hover:bg-white/[0.05]'
-                  : 'bg-black/[0.025] hover:bg-black/[0.04]'
-              }`}
-              onClick={() => {
+          <div className="grid grid-cols-1 gap-4 transition-all duration-300 ease-in-out md:grid-cols-2 lg:grid-cols-3">
+            <QuestionBankCutoutCard
+              title="Semua soal"
+              count={mapelCounts.reduce((sum, item) => sum + item.count, 0)}
+              badge="∀"
+              accent="purple"
+              theme={theme}
+              onOpen={() => {
                 setSelectedMapelFromHome(null);
                 onMapelFilterChange([]);
                 setCurrentView('filtered');
               }}
-            >
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold ${
-                  theme === 'dark'
-                    ? 'bg-accent-purple/15 text-accent-purple'
-                    : 'bg-indigo-50 text-indigo-600'
-                }`}>
-                  ∀
-                </div>
-
-                <div>
-                  <h3 className={`text-[15px] font-semibold tracking-tight ${
-                    theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'
-                  }`}>
-                    Semua soal
-                  </h3>
-                  <p className={`text-[12px] tabular-nums mt-0.5 ${
-                    theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
-                  }`}>
-                    {mapelCounts.reduce((sum, item) => sum + item.count, 0)} soal
-                  </p>
-                </div>
-
-                <button
-                  className={`w-full h-9 rounded-full text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${
-                    theme === 'dark'
-                      ? 'bg-accent-purple hover:bg-accent-purple/90'
-                      : 'bg-indigo-500 hover:bg-indigo-600'
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedMapelFromHome(null);
-                    onMapelFilterChange([]);
-                    setCurrentView('filtered');
-                  }}
-                >
-                  Buka soal
-                </button>
-              </div>
-            </div>
+            />
 
             {mapelTabs
               .filter(mapel =>
@@ -526,63 +543,24 @@ export default function QuestionsTabPanel({
                 mapel.label.toLowerCase().includes(homeSearchQuery.toLowerCase())
               )
               .map((mapel) => {
-              const mapelQuestionCount = mapelCounts.find(m => m.mapel === mapel.value)?.count || 0;
+                const mapelQuestionCount = mapelCounts.find(m => m.mapel === mapel.value)?.count || 0;
 
-              return (
-                <div
-                  key={mapel.value}
-                  className={`group rounded-3xl px-4 py-5 transition-spring-fast hover:scale-[1.01] cursor-pointer sm:px-6 sm:py-7 ${
-                    theme === 'dark'
-                      ? 'bg-white/[0.03] hover:bg-white/[0.05]'
-                      : 'bg-black/[0.025] hover:bg-black/[0.04]'
-                  }`}
-                  onClick={() => {
-                    setSelectedMapelFromHome(mapel.value);
-                    onMapelFilterChange([mapel.value]);
-                    setCurrentView('filtered');
-                  }}
-                >
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold ${
-                      theme === 'dark'
-                        ? 'bg-accent-blue/15 text-accent-blue'
-                        : 'bg-blue-50 text-blue-600'
-                    }`}>
-                      {mapel.label.charAt(0).toUpperCase()}
-                    </div>
-
-                    <div>
-                      <h3 className={`text-[15px] font-semibold tracking-tight ${
-                        theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'
-                      }`}>
-                        {mapel.label}
-                      </h3>
-                      <p className={`text-[12px] tabular-nums mt-0.5 ${
-                        theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
-                      }`}>
-                        {mapelQuestionCount} soal
-                      </p>
-                    </div>
-
-                    <button
-                      className={`w-full h-9 rounded-full text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${
-                        theme === 'dark'
-                          ? 'bg-accent-blue hover:bg-accent-blue/90'
-                          : 'bg-blue-500 hover:bg-blue-600'
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedMapelFromHome(mapel.value);
-                        onMapelFilterChange([mapel.value]);
-                        setCurrentView('filtered');
-                      }}
-                    >
-                      Buka soal
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                return (
+                  <QuestionBankCutoutCard
+                    key={mapel.value}
+                    title={mapel.label}
+                    count={mapelQuestionCount}
+                    badge={mapel.label.charAt(0).toUpperCase()}
+                    accent="blue"
+                    theme={theme}
+                    onOpen={() => {
+                      setSelectedMapelFromHome(mapel.value);
+                      onMapelFilterChange([mapel.value]);
+                      setCurrentView('filtered');
+                    }}
+                  />
+                );
+              })}
           </div>
         </div>
       ) : (
