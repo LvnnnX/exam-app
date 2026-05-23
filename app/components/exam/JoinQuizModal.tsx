@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import NeumorphButton from '@/app/components/ui/neumorph-button';
 
 type JoinQuizModalProps = {
@@ -33,7 +34,11 @@ export default function JoinQuizModal({
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
       <div className="flex min-h-screen items-center justify-center px-5 py-10">
-        <div className="w-full max-w-5xl rounded-[24px] bg-[#151515] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-in zoom-in-90 duration-300 sm:p-8 lg:p-12">
+        <motion.div
+          layoutId="join-quiz-expandable"
+          transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
+          className="w-full max-w-5xl rounded-[24px] bg-[#151515] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-12"
+        >
           <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:gap-14">
             <div className="flex flex-col justify-center space-y-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Join live quiz</p>
@@ -100,7 +105,7 @@ export default function JoinQuizModal({
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

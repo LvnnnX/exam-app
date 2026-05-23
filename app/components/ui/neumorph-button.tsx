@@ -1,14 +1,16 @@
 "use client";
 
 import React from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-type NeumorphButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+type NeumorphButtonProps = Omit<HTMLMotionProps<"button">, "children"> & {
   intent?: "default" | "primary" | "secondary" | "danger";
   size?: "small" | "medium" | "large";
   fullWidth?: boolean;
   loading?: boolean;
   pressed?: boolean;
+  children?: React.ReactNode;
 };
 
 const intentClasses = {
@@ -36,9 +38,10 @@ export default function NeumorphButton({
   ...props
 }: NeumorphButtonProps) {
   return (
-    <button
+    <motion.button
       disabled={disabled || loading}
       aria-pressed={pressed}
+      transition={{ type: "spring", stiffness: 260, damping: 28 }}
       className={cn(
         "inline-flex items-center justify-center rounded-[6px] font-semibold uppercase tracking-[0.08em] transition-spring-fast hover:scale-[1.03] hover:animate-[neumorph-pulse_0.65s_ease-out] active:scale-95 disabled:cursor-not-allowed disabled:bg-black/5 disabled:text-nike-grey-500 disabled:opacity-70",
         pressed ? "neumorph-button-active" : "neumorph-button",
@@ -52,7 +55,7 @@ export default function NeumorphButton({
       {loading && (
         <span className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
       )}
-      {children}
-    </button>
+      {children as React.ReactNode}
+    </motion.button>
   );
 }

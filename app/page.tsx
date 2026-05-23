@@ -81,6 +81,7 @@ export default function ExamPage() {
                 size="medium"
                 intent="primary"
                 fullWidth
+                layoutId="join-quiz-expandable"
                 onClick={() => setters.setIsJoinModalOpen(true)}
               >
                 Join with code
