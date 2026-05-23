@@ -14,10 +14,42 @@ type ResultsStatsCardsProps = {
   theme?: 'light' | 'dark';
 };
 
+type StatAccent = 'blue' | 'green' | 'purple' | 'orange';
+
 function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainder = Math.round(seconds % 60);
   return minutes > 0 ? `${minutes}m ${remainder}s` : `${remainder}s`;
+}
+
+function getStatTheme(accent: StatAccent, theme: 'light' | 'dark') {
+  const dark = {
+    blue: {
+      card: 'bg-[radial-gradient(circle_at_50%_0%,rgba(72,145,217,0.22),rgba(72,145,217,0.07)_44%,rgba(10,14,18,0.96)_100%)] ring-[#2b4a63]/50 shadow-[0_18px_44px_rgba(20,62,101,0.24)]',
+      value: 'text-[#55a9ff]',
+    },
+    green: {
+      card: 'bg-[radial-gradient(circle_at_50%_0%,rgba(74,163,117,0.22),rgba(74,163,117,0.07)_44%,rgba(10,16,13,0.96)_100%)] ring-[#2f5b46]/50 shadow-[0_18px_44px_rgba(29,86,57,0.22)]',
+      value: 'text-[#5fd091]',
+    },
+    purple: {
+      card: 'bg-[radial-gradient(circle_at_50%_0%,rgba(168,111,255,0.22),rgba(168,111,255,0.07)_44%,rgba(15,11,19,0.96)_100%)] ring-[#4b356f]/50 shadow-[0_18px_44px_rgba(88,42,139,0.22)]',
+      value: 'text-[#b579ff]',
+    },
+    orange: {
+      card: 'bg-[radial-gradient(circle_at_50%_0%,rgba(255,151,79,0.22),rgba(255,151,79,0.07)_44%,rgba(19,13,8,0.96)_100%)] ring-[#6f432b]/50 shadow-[0_18px_44px_rgba(134,75,31,0.22)]',
+      value: 'text-[#ff9d57]',
+    },
+  } satisfies Record<StatAccent, { card: string; value: string }>;
+
+  const light = {
+    blue: { card: 'bg-blue-50 ring-blue-100 shadow-[0_14px_34px_rgba(37,99,235,0.10)]', value: 'text-blue-600' },
+    green: { card: 'bg-green-50 ring-green-100 shadow-[0_14px_34px_rgba(22,163,74,0.10)]', value: 'text-green-600' },
+    purple: { card: 'bg-purple-50 ring-purple-100 shadow-[0_14px_34px_rgba(124,58,237,0.10)]', value: 'text-purple-600' },
+    orange: { card: 'bg-orange-50 ring-orange-100 shadow-[0_14px_34px_rgba(234,88,12,0.10)]', value: 'text-orange-600' },
+  } satisfies Record<StatAccent, { card: string; value: string }>;
+
+  return theme === 'dark' ? dark[accent] : light[accent];
 }
 
 export default function ResultsStatsCards({ isLiveMode, statsData, theme = 'dark' }: ResultsStatsCardsProps) {
@@ -30,28 +62,31 @@ export default function ResultsStatsCards({ isLiveMode, statsData, theme = 'dark
   const averageDuration = durations.length > 0 ? formatDuration(durations.reduce((sum, value) => sum + value, 0) / durations.length) : '-';
 
   const stats = [
-    { value: statsData.length.toString(), label: 'Attempts', sub: 'Filtered results', accent: 'blue' as const },
-    { value: `${averageScore}%`, label: 'Avg score', sub: 'Mean accuracy', accent: 'green' as const },
-    { value: `${passRate}%`, label: 'Pass rate', sub: 'Score ≥ 70%', accent: 'purple' as const },
-    { value: averageDuration, label: 'Avg time', sub: 'Completed only', accent: 'orange' as const },
+    { value: statsData.length.toString(), label: 'Attempts', accent: 'blue' as const },
+    { value: `${averageScore}%`, label: 'Avg score', accent: 'green' as const },
+    { value: `${passRate}%`, label: 'Pass rate', accent: 'purple' as const },
+    { value: averageDuration, label: 'Avg duration', accent: 'orange' as const },
   ];
-
-  const accentClasses = {
-    blue: theme === 'dark' ? 'text-accent-blue' : 'text-blue-600',
-    green: theme === 'dark' ? 'text-accent-green' : 'text-green-600',
-    purple: theme === 'dark' ? 'text-accent-purple' : 'text-indigo-600',
-    orange: theme === 'dark' ? 'text-accent-orange' : 'text-orange-600',
-  };
 
   return (
     <div className="mb-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
-      {stats.map((s) => (
-        <div key={s.label} className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-          <div className={`text-2xl font-semibold tracking-tight tabular-nums ${accentClasses[s.accent]}`}>{s.value}</div>
-          <div className={`mt-0.5 text-[12px] font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{s.label}</div>
-          <div className={`text-[11px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>{s.sub}</div>
-        </div>
-      ))}
+      {stats.map((s) => {
+        const statTheme = getStatTheme(s.accent, theme);
+        return (
+          <div
+            key={s.label}
+            className={`relative overflow-hidden rounded-2xl px-4 py-4 ring-1 ${statTheme.card}`}
+          >
+            <div className="absolute inset-x-4 top-0 h-px bg-white/15" />
+            <div className={`text-[28px] font-semibold leading-none tracking-[-0.04em] tabular-nums ${statTheme.value}`}>
+              {s.value}
+            </div>
+            <div className={`mt-2 text-[12px] font-medium ${theme === 'dark' ? 'text-[#d9e0dc]/75' : 'text-gray-700'}`}>
+              {s.label}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
