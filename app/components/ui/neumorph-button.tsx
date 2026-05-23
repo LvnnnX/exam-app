@@ -12,16 +12,16 @@ type NeumorphButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const intentClasses = {
-  default: "bg-[#f5f5f5] text-nike-black",
-  primary: "bg-nike-black text-white hover:bg-nike-grey-500",
-  secondary: "bg-white text-nike-black",
-  danger: "bg-nike-red text-white hover:bg-red-600",
+  default: "border border-white/15 bg-[#2b2b2b] text-white hover:bg-[#333333]",
+  primary: "border border-white/15 bg-[#111111] text-white hover:bg-[#1f1f1f]",
+  secondary: "border border-black/10 bg-white text-[#2a2a2a] hover:bg-[#f4f4f4]",
+  danger: "border border-[#ff5a42] bg-[#ff4b35] text-white hover:bg-[#f0442f]",
 };
 
 const sizeClasses = {
-  small: "h-9 px-4 text-[12px]",
-  medium: "h-10 px-5 text-[13px]",
-  large: "h-12 px-6 text-[14px]",
+  small: "h-9 px-4 text-[11px]",
+  medium: "h-10 px-5 text-[12px]",
+  large: "h-12 px-6 text-[13px]",
 };
 
 export default function NeumorphButton({
@@ -40,7 +40,7 @@ export default function NeumorphButton({
       disabled={disabled || loading}
       aria-pressed={pressed}
       className={cn(
-        "inline-flex items-center justify-center rounded-[4px] font-medium tracking-tight transition-spring-fast hover:animate-[neumorph-pulse_0.65s_ease-out] active:scale-95 disabled:cursor-not-allowed disabled:bg-black/5 disabled:text-nike-grey-500 disabled:opacity-70",
+        "inline-flex items-center justify-center rounded-[6px] font-semibold uppercase tracking-[0.08em] transition-spring-fast hover:animate-[neumorph-pulse_0.65s_ease-out] active:scale-95 disabled:cursor-not-allowed disabled:bg-black/5 disabled:text-nike-grey-500 disabled:opacity-70",
         pressed ? "neumorph-button-active" : "neumorph-button",
         intentClasses[intent],
         sizeClasses[size],
