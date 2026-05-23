@@ -597,79 +597,86 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
   }, [viewingPlayer, activeSession]);
 
   const handleCreate = async () => {
-    if (selectedMapels.length === 0 || selectedBabs.length === 0 || selectedSubBabs.length === 0) {
-      showToast('Pilih MAPEL, BAB, dan Sub-bab terlebih dahulu.', 'error');
-      return;
-    }
+    if (creating) return;
 
-    const { count: availableCount, error: countError } = await supabase
-      .from('questions')
-      .select('id', { count: 'exact', head: true })
-      .eq('is_hidden', false)
-      .overlaps('mapels', selectedMapels)
-      .overlaps('babs', selectedBabs)
-      .overlaps('sub_babs', selectedSubBabs);
-
-    if (countError) {
-      showToast('Gagal memeriksa jumlah soal tersedia.', 'error');
-      return;
-    }
-
-    if ((availableCount || 0) < questionCount) {
-      setCreateErrorModal({
-        availableCount: availableCount || 0,
-        requestedCount: questionCount,
-        mapels: selectedMapels,
-        babs: selectedBabs,
-        subBabs: selectedSubBabs,
-      });
-      return;
-    }
-
-    setCreating(true);
-    let scheduledAt: string | undefined;
-    if (scheduleEnabled && scheduleDate && scheduleTime) {
-      const target = new Date(`${scheduleDate}T${scheduleTime}:00`);
-      if (target.getTime() <= currentTime) {
-        alert('Waktu schedule tidak boleh di masa lalu.');
-        setCreating(false);
+    try {
+      if (selectedMapels.length === 0 || selectedBabs.length === 0 || selectedSubBabs.length === 0) {
+        showToast('Pilih MAPEL, BAB, dan Sub-bab terlebih dahulu.', 'error');
         return;
       }
-      scheduledAt = target.toISOString();
-    }
-    const effectiveSubBabs = selectedSubBabs;
 
-    if (percentagesEnabled) {
-      const totalPct = effectiveSubBabs.reduce((acc, val) => acc + (subBabPercentages[val] || 0), 0);
-      if (totalPct !== 100) {
-        alert('Total persentase soal harus 100%. Saat ini: ' + totalPct + '%');
-        setCreating(false);
+      setCreating(true);
+
+      const { count: availableCount, error: countError } = await supabase
+        .from('questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_hidden', false)
+        .overlaps('mapels', selectedMapels)
+        .overlaps('babs', selectedBabs)
+        .overlaps('sub_babs', selectedSubBabs);
+
+      if (countError) {
+        console.error('Failed to count available quiz questions', countError);
+        showToast('Gagal memeriksa jumlah soal tersedia.', 'error');
         return;
       }
-    }
 
-    const session = await createQuizSession(
-      selectedMapels,
-      selectedBabs,
-      selectedSubBabs,
-      questionCount,
-      durationMinutes,
-      scheduledAt,
-      percentagesEnabled ? subBabPercentages : undefined,
-      quizMode,
-      allowJoinMidGame
-    );
-    if (session) {
-      setActiveSession(session);
-      setActiveView('manage');
-      // Reset schedule form
-      setScheduleEnabled(false);
-      setScheduleDate('');
-      setScheduleTime('');
-    } else {
-      showToast("Tidak ada soal tersedia. Silakan tambahkan soal terlebih dahulu.", "error");
+      if ((availableCount || 0) < questionCount) {
+        setCreateErrorModal({
+          availableCount: availableCount || 0,
+          requestedCount: questionCount,
+          mapels: selectedMapels,
+          babs: selectedBabs,
+          subBabs: selectedSubBabs,
+        });
+        return;
+      }
+
+      let scheduledAt: string | undefined;
+      if (scheduleEnabled && scheduleDate && scheduleTime) {
+        const target = new Date(`${scheduleDate}T${scheduleTime}:00`);
+        if (target.getTime() <= currentTime) {
+          showToast('Waktu schedule tidak boleh di masa lalu.', 'error');
+          return;
+        }
+        scheduledAt = target.toISOString();
+      }
+      const effectiveSubBabs = selectedSubBabs;
+
+      if (percentagesEnabled) {
+        const totalPct = effectiveSubBabs.reduce((acc, val) => acc + (subBabPercentages[val] || 0), 0);
+        if (totalPct !== 100) {
+          showToast('Total persentase soal harus 100%. Saat ini: ' + totalPct + '%', 'error');
+          return;
+        }
+      }
+
+      const session = await createQuizSession(
+        selectedMapels,
+        selectedBabs,
+        selectedSubBabs,
+        questionCount,
+        durationMinutes,
+        scheduledAt,
+        percentagesEnabled ? subBabPercentages : undefined,
+        quizMode,
+        allowJoinMidGame
+      );
+      if (session) {
+        setActiveSession(session);
+        setActiveView('manage');
+        setScheduleEnabled(false);
+        setScheduleDate('');
+        setScheduleTime('');
+      } else {
+        showToast("Tidak ada soal tersedia. Silakan tambahkan soal terlebih dahulu.", "error");
+      }
+    } catch (error) {
+      console.error('Failed to create quiz session', error);
+      showToast('Gagal membuat quiz. Cek koneksi, login admin, lalu coba lagi.', 'error');
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   };
 
   const resolveCurrentLabel = (player: Player) => {
