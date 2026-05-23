@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
+import NeumorphButton from '@/app/components/ui/neumorph-button';
 import { type RawQuestion } from '@/lib/questions';
 import { stripHtml } from '@/lib/rich-text';
 import { normalizeCategorySlug } from '@/lib/categories';
@@ -512,13 +514,15 @@ export default function QuestionsTabPanel({
                 )}
               </div>
               {canCreateQuestion && (
-                <button
+                <motion.button
+                  layoutId="create-mapel-expandable"
+                  transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
                   onClick={() => setIsCreateMapelModalOpen(true)}
-                  className={`h-11 w-11 rounded-full flex items-center justify-center text-xl font-semibold transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-green text-white hover:bg-accent-green/90' : 'bg-green-500 text-white hover:bg-green-600'}`}
+                  className={`h-11 w-11 rounded-full flex items-center justify-center text-xl font-semibold shadow-[0_10px_26px_rgba(0,0,0,0.18)] transition-spring-fast hover:scale-[1.04] active:scale-95 ${theme === 'dark' ? 'bg-[#2f4f43] text-[#d7eadf] hover:bg-[#395e4f]' : 'bg-[#dbe8df] text-[#1f3a30] hover:bg-[#cfddD3]'}`}
                   title="Buat mapel baru"
                 >
                   +
-                </button>
+                </motion.button>
               )}
             </div>
           </div>
@@ -721,15 +725,20 @@ export default function QuestionsTabPanel({
 
       {/* Create MAPEL Modal */}
       {isCreateMapelModalOpen && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl" onClick={() => setIsCreateMapelModalOpen(false)}>
-          <div
-            className={`w-full max-w-md rounded-[28px] shadow-ios-xl overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-[#070807]/80 backdrop-blur-2xl" onClick={() => setIsCreateMapelModalOpen(false)}>
+          <motion.div
+            layoutId="create-mapel-expandable"
+            transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
+            className={`w-full max-w-md overflow-hidden rounded-[30px] shadow-[0_30px_80px_rgba(0,0,0,0.35)] ${theme === 'dark' ? 'bg-[#171d1a] text-[#d9e0dc]' : 'bg-[#f3f0e9] text-[#20251f]'}`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={`flex items-center justify-between px-4 py-3 border-b sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
-              <h3 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
-                Buat mapel baru
-              </h3>
+            <div className={`flex items-center justify-between px-5 py-5 border-b sm:px-6 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+              <div>
+                <p className={`mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-[#8c9a92]' : 'text-[#73796f]'}`}>Bank soal</p>
+                <h3 className={`text-[22px] font-semibold tracking-[-0.04em] ${theme === 'dark' ? 'text-[#e2e8e4]' : 'text-[#20251f]'}`}>
+                  Buat mapel baru
+                </h3>
+              </div>
               <button
                 onClick={() => setIsCreateMapelModalOpen(false)}
                 className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
@@ -781,7 +790,7 @@ export default function QuestionsTabPanel({
                     onChange={(e) => setNewMapelName(e.target.value)}
                     placeholder="Contoh: Matematika, Fisika, Biologi"
                     autoFocus
-                    className={`w-full h-11 rounded-2xl px-4 text-[13px] font-medium transition-spring-fast focus:outline-none ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary placeholder:text-dark-text-tertiary focus:bg-white/10' : 'bg-black/5 text-gray-900 placeholder:text-gray-400 focus:bg-black/10'}`}
+                    className={`neumorph-pulse-control w-full h-12 rounded-[18px] border-0 px-4 text-[13px] font-medium shadow-[0_10px_24px_rgba(0,0,0,0.16)] transition-spring-fast focus:outline-none ${theme === 'dark' ? 'bg-[#202820] text-[#d9e0dc] placeholder:text-[#79867d] focus:bg-[#263028]' : 'bg-white text-[#20251f] placeholder:text-[#8c9288] focus:bg-white'}`}
                   />
                 </div>
 
@@ -793,25 +802,31 @@ export default function QuestionsTabPanel({
               </div>
 
               <div className={`flex gap-2 px-4 py-3 border-t sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
-                <button
+                <NeumorphButton
                   type="button"
+                  intent="secondary"
+                  size="medium"
+                  fullWidth
                   onClick={() => {
                     setIsCreateMapelModalOpen(false);
                     setNewMapelName('');
                   }}
-                  className={`flex-1 h-9 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+                  className="h-11"
                 >
                   Batal
-                </button>
-                <button
+                </NeumorphButton>
+                <NeumorphButton
                   type="submit"
-                  className={`flex-1 h-9 rounded-full text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-green hover:bg-accent-green/90' : 'bg-green-500 hover:bg-green-600'}`}
+                  intent="primary"
+                  size="medium"
+                  fullWidth
+                  className="h-11"
                 >
                   Buat mapel
-                </button>
+                </NeumorphButton>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
 
