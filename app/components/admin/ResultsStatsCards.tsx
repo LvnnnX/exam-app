@@ -24,10 +24,10 @@ function formatDuration(seconds: number) {
 
 function getStatTheme(accent: StatAccent, theme: 'light' | 'dark') {
   const dark = {
-    blue: { card: 'bg-[#101b26]', value: 'text-[#5aa7e8]' },
-    green: { card: 'bg-[#122119]', value: 'text-[#67c88d]' },
-    purple: { card: 'bg-[#1d1628]', value: 'text-[#b587ee]' },
-    orange: { card: 'bg-[#241a12]', value: 'text-[#e69a5d]' },
+    blue: { card: 'bg-accent-blue/10', value: 'text-accent-blue' },
+    green: { card: 'bg-accent-green/10', value: 'text-accent-green' },
+    purple: { card: 'bg-accent-purple/10', value: 'text-accent-purple' },
+    orange: { card: 'bg-accent-orange/10', value: 'text-accent-orange' },
   } satisfies Record<StatAccent, { card: string; value: string }>;
 
   const light = {
