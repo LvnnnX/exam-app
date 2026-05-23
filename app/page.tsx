@@ -22,6 +22,7 @@ import AppFallbackView from '@/app/components/exam/AppFallbackView';
 import { QUESTION_COUNTS } from '@/lib/questions';
 import useExamPageController from '@/app/hooks/useExamPageController';
 import { TIME_LIMIT_OPTIONS } from '@/app/hooks/examControllerConstants';
+import { ChoicePoll, CutoutCard, DistortedGlass, ExpandableScreen, GradientHeading, NeumorphButton, NeumorphEyebrow, TextAnimate } from '@/app/components/cult/CultPrimitives';
 
 export default function ExamPage() {
   const {
@@ -37,47 +38,44 @@ export default function ExamPage() {
 
   if (state.step === 1) {
     return (
-      <div className="flex-1 flex flex-col pt-10 md:pt-16 px-5 sm:px-6 pb-10">
-        <div className="max-w-2xl mx-auto w-full">
-          <div className="mb-7 md:mb-10">
-            <p className="text-[12px] font-medium text-nike-grey-500 mb-2 tracking-tight">Smandapura Exam</p>
-            <h1 className="font-display text-[36px] sm:text-[48px] text-nike-black leading-[1.05] tracking-[-0.02em] mb-2">
-              Take the exam.
-            </h1>
-            <p className="text-[14px] text-nike-grey-500 tracking-tight">Pick your mode, your topic, and start whenever you’re ready.</p>
+      <div className="relative flex-1 overflow-hidden px-5 pb-10 pt-8 sm:px-6 md:pt-14">
+        <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-[#f1efe7] blur-3xl" />
+        <div className="pointer-events-none absolute right-0 top-0 h-80 w-80 rounded-full bg-[#d9eef7]/70 blur-3xl" />
+        <div className="relative mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+          <div className="pt-4 md:pt-10">
+            <NeumorphEyebrow>Smandapura Exam</NeumorphEyebrow>
+            <GradientHeading className="mt-5 mb-4">
+              <TextAnimate>Take the exam.</TextAnimate>
+            </GradientHeading>
+            <p className="max-w-xl text-[15px] font-medium leading-7 text-black/50 tracking-tight">Pick your mode, your topic, and start whenever you’re ready. Built like a calm control room for focused work.</p>
+            <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
+              <CutoutCard className="p-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/35">Mode</p><p className="mt-2 text-2xl font-black tracking-[-0.04em]">{state.isSurvival ? 'Survival' : 'Exam'}</p></CutoutCard>
+              <CutoutCard className="p-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/35">Timer</p><p className="mt-2 text-2xl font-black tracking-[-0.04em]">{state.timeLimit}m</p></CutoutCard>
+              <ExpandableScreen title="Quick guide"><p>Pilih mapel, bab, sub-bab, lalu mulai sesi. Strict mengunci navigasi; Standard bebas pindah soal.</p></ExpandableScreen>
+            </div>
           </div>
-          <div className="max-w-md w-full space-y-5">
+          <DistortedGlass className="p-4 sm:p-6">
+          <div className="w-full space-y-5">
             <div className="space-y-2">
-              <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+              <span className="flex items-center text-[12px] font-bold text-black/45 tracking-tight">
                 Mode
                 <HelpTooltip text="Pilih mode ujian: Exam (biasa) atau Survival (nyawa terbatas)." />
               </span>
-              <div className="inline-flex w-full h-10 rounded-full bg-black/5 p-0.5">
-                <button
-                  onClick={() => setters.setGameMode('exam')}
-                  className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.gameMode === 'exam'
-                    ? 'bg-white text-nike-black shadow-ios-sm'
-                    : 'text-nike-grey-500'
-                    }`}
-                >
-                  Exam
-                </button>
-                <button
-                  onClick={() => { setters.setGameMode('survival'); setters.setExamMode('strict'); }}
-                  className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.gameMode === 'survival'
-                    ? 'bg-nike-red text-white shadow-ios-sm'
-                    : 'text-nike-grey-500'
-                    }`}
-                >
-                  Survival
-                </button>
-              </div>
-              <button
-                onClick={() => setters.setIsJoinModalOpen(true)}
-                className="w-full h-10 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 bg-nike-black text-white hover:bg-nike-grey-500"
-              >
+              <ChoicePoll
+                value={state.gameMode}
+                onChange={(value) => {
+                  if (value === 'survival') {
+                    setters.setGameMode('survival');
+                    setters.setExamMode('strict');
+                  } else {
+                    setters.setGameMode('exam');
+                  }
+                }}
+                options={[{ value: 'exam', label: 'Exam' }, { value: 'survival', label: 'Survival', tone: 'red' }]}
+              />
+              <NeumorphButton type="button" onClick={() => setters.setIsJoinModalOpen(true)} className="w-full py-2.5 text-[13px]">
                 Join with code
-              </button>
+              </NeumorphButton>
             </div>
 
             {!state.isSurvival && (
@@ -241,6 +239,7 @@ export default function ExamPage() {
               Begin session
             </button>
           </div>
+          </DistortedGlass>
 
           <JoinQuizModal
             isOpen={state.isJoinModalOpen}
