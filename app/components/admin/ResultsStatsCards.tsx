@@ -24,29 +24,17 @@ function formatDuration(seconds: number) {
 
 function getStatTheme(accent: StatAccent, theme: 'light' | 'dark') {
   const dark = {
-    blue: {
-      card: 'bg-[radial-gradient(circle_at_50%_0%,rgba(72,145,217,0.22),rgba(72,145,217,0.07)_44%,rgba(10,14,18,0.96)_100%)] ring-[#2b4a63]/50 shadow-[0_18px_44px_rgba(20,62,101,0.24)]',
-      value: 'text-[#55a9ff]',
-    },
-    green: {
-      card: 'bg-[radial-gradient(circle_at_50%_0%,rgba(74,163,117,0.22),rgba(74,163,117,0.07)_44%,rgba(10,16,13,0.96)_100%)] ring-[#2f5b46]/50 shadow-[0_18px_44px_rgba(29,86,57,0.22)]',
-      value: 'text-[#5fd091]',
-    },
-    purple: {
-      card: 'bg-[radial-gradient(circle_at_50%_0%,rgba(168,111,255,0.22),rgba(168,111,255,0.07)_44%,rgba(15,11,19,0.96)_100%)] ring-[#4b356f]/50 shadow-[0_18px_44px_rgba(88,42,139,0.22)]',
-      value: 'text-[#b579ff]',
-    },
-    orange: {
-      card: 'bg-[radial-gradient(circle_at_50%_0%,rgba(255,151,79,0.22),rgba(255,151,79,0.07)_44%,rgba(19,13,8,0.96)_100%)] ring-[#6f432b]/50 shadow-[0_18px_44px_rgba(134,75,31,0.22)]',
-      value: 'text-[#ff9d57]',
-    },
+    blue: { card: 'bg-[#101b26]', value: 'text-[#5aa7e8]' },
+    green: { card: 'bg-[#122119]', value: 'text-[#67c88d]' },
+    purple: { card: 'bg-[#1d1628]', value: 'text-[#b587ee]' },
+    orange: { card: 'bg-[#241a12]', value: 'text-[#e69a5d]' },
   } satisfies Record<StatAccent, { card: string; value: string }>;
 
   const light = {
-    blue: { card: 'bg-blue-50 ring-blue-100 shadow-[0_14px_34px_rgba(37,99,235,0.10)]', value: 'text-blue-600' },
-    green: { card: 'bg-green-50 ring-green-100 shadow-[0_14px_34px_rgba(22,163,74,0.10)]', value: 'text-green-600' },
-    purple: { card: 'bg-purple-50 ring-purple-100 shadow-[0_14px_34px_rgba(124,58,237,0.10)]', value: 'text-purple-600' },
-    orange: { card: 'bg-orange-50 ring-orange-100 shadow-[0_14px_34px_rgba(234,88,12,0.10)]', value: 'text-orange-600' },
+    blue: { card: 'bg-[#e8f1fb]', value: 'text-[#2563a8]' },
+    green: { card: 'bg-[#e8f4ed]', value: 'text-[#268353]' },
+    purple: { card: 'bg-[#f0eafb]', value: 'text-[#7c4fc2]' },
+    orange: { card: 'bg-[#f8eee5]', value: 'text-[#b8642e]' },
   } satisfies Record<StatAccent, { card: string; value: string }>;
 
   return theme === 'dark' ? dark[accent] : light[accent];
@@ -73,11 +61,7 @@ export default function ResultsStatsCards({ isLiveMode, statsData, theme = 'dark
       {stats.map((s) => {
         const statTheme = getStatTheme(s.accent, theme);
         return (
-          <div
-            key={s.label}
-            className={`relative overflow-hidden rounded-2xl px-4 py-4 ring-1 ${statTheme.card}`}
-          >
-            <div className="absolute inset-x-4 top-0 h-px bg-white/15" />
+          <div key={s.label} className={`rounded-2xl px-4 py-4 ${statTheme.card}`}>
             <div className={`text-[28px] font-semibold leading-none tracking-[-0.04em] tabular-nums ${statTheme.value}`}>
               {s.value}
             </div>
