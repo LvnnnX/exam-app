@@ -4,6 +4,7 @@ import React from 'react';
 import QuestionDisplay from '@/app/components/QuestionDisplay';
 import HelpTooltip from '@/app/components/exam/HelpTooltip';
 import MultiSelectDropdown from '@/app/components/exam/MultiSelectDropdown';
+import SingleSelectDropdown from '@/app/components/exam/SingleSelectDropdown';
 import JoinQuizModal from '@/app/components/exam/JoinQuizModal';
 import ConfirmIdentityStep from '@/app/components/exam/ConfirmIdentityStep';
 import RestoringSessionView from '@/app/components/exam/RestoringSessionView';
@@ -56,8 +57,8 @@ export default function ExamPage() {
                 <button
                   onClick={() => setters.setGameMode('exam')}
                   className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.gameMode === 'exam'
-                    ? 'bg-white text-nike-black shadow-ios-sm'
-                    : 'text-nike-grey-500'
+                    ? 'neumorph-button-active bg-white text-nike-black'
+                    : 'neumorph-button bg-[#f5f5f5] text-nike-grey-500 hover:text-nike-black'
                     }`}
                 >
                   Exam
@@ -65,8 +66,8 @@ export default function ExamPage() {
                 <button
                   onClick={() => { setters.setGameMode('survival'); setters.setExamMode('strict'); }}
                   className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.gameMode === 'survival'
-                    ? 'bg-nike-red text-white shadow-ios-sm'
-                    : 'text-nike-grey-500'
+                    ? 'neumorph-button-active bg-nike-red text-white'
+                    : 'neumorph-button bg-[#f5f5f5] text-nike-grey-500 hover:text-nike-black'
                     }`}
                 >
                   Survival
@@ -74,7 +75,7 @@ export default function ExamPage() {
               </div>
               <button
                 onClick={() => setters.setIsJoinModalOpen(true)}
-                className="w-full h-10 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 bg-nike-black text-white hover:bg-nike-grey-500"
+                className="neumorph-button w-full h-10 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 bg-nike-black text-white hover:bg-nike-grey-500"
               >
                 Join with code
               </button>
@@ -90,8 +91,8 @@ export default function ExamPage() {
                   <button
                     onClick={() => setters.setExamMode('strict')}
                     className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.examMode === 'strict'
-                      ? 'bg-white text-nike-black shadow-ios-sm'
-                      : 'text-nike-grey-500'
+                      ? 'neumorph-button-active bg-white text-nike-black'
+                      : 'neumorph-button bg-[#f5f5f5] text-nike-grey-500 hover:text-nike-black'
                       }`}
                   >
                     Strict
@@ -99,8 +100,8 @@ export default function ExamPage() {
                   <button
                     onClick={() => setters.setExamMode('standard')}
                     className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.examMode === 'standard'
-                      ? 'bg-white text-nike-black shadow-ios-sm'
-                      : 'text-nike-grey-500'
+                      ? 'neumorph-button-active bg-white text-nike-black'
+                      : 'neumorph-button bg-[#f5f5f5] text-nike-grey-500 hover:text-nike-black'
                       }`}
                   >
                     Standard
@@ -122,7 +123,7 @@ export default function ExamPage() {
                 value={state.userName}
                 onChange={(e) => setters.setUserName(e.target.value)}
                 placeholder="Enter name"
-                className="w-full h-11 rounded-2xl bg-black/5 px-4 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none focus:bg-black/10 transition-spring-fast"
+                className="neumorph-pulse-control w-full h-11 rounded-2xl bg-black/5 px-4 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none focus:bg-black/10 transition-spring-fast"
               />
             </div>
 
@@ -178,25 +179,12 @@ export default function ExamPage() {
                   Time limit
                   <HelpTooltip text="Batas waktu maksimal untuk menyelesaikan seluruh soal." />
                 </span>
-                <div className="relative">
-                  <select
-                    value={state.timeLimit}
-                    onChange={(e) => setters.setTimeLimit(Number(e.target.value))}
-                    className="w-full appearance-none bg-black/5 hover:bg-black/10 rounded-2xl pl-4 pr-10 h-11 text-[13px] font-medium text-nike-black tracking-tight focus:outline-none focus:bg-black/10 transition-spring-fast cursor-pointer"
-                  >
-                    {TIME_LIMIT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  <svg
-                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-nike-grey-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                <SingleSelectDropdown
+                  options={TIME_LIMIT_OPTIONS}
+                  value={state.timeLimit}
+                  onChange={setters.setTimeLimit}
+                  placeholder="Choose time limit"
+                />
               </div>
 
               {!state.isSurvival && (
@@ -205,25 +193,12 @@ export default function ExamPage() {
                     Question count
                     <HelpTooltip text="Jumlah soal yang ingin dikerjakan." />
                   </span>
-                  <div className="relative">
-                    <select
-                      value={state.questionCount}
-                      onChange={(e) => setters.setQuestionCount(Number(e.target.value) as typeof state.questionCount)}
-                      className="w-full appearance-none bg-black/5 hover:bg-black/10 rounded-2xl pl-4 pr-10 h-11 text-[13px] font-medium text-nike-black tabular-nums tracking-tight focus:outline-none focus:bg-black/10 transition-spring-fast cursor-pointer"
-                    >
-                      {QUESTION_COUNTS.map((count) => (
-                        <option key={count} value={count}>{count} questions</option>
-                      ))}
-                    </select>
-                    <svg
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-nike-grey-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
+                  <SingleSelectDropdown
+                    options={QUESTION_COUNTS.map((count) => ({ value: count, label: `${count} questions` }))}
+                    value={state.questionCount}
+                    onChange={setters.setQuestionCount}
+                    placeholder="Choose question count"
+                  />
                 </div>
               )}
             </div>
@@ -236,7 +211,7 @@ export default function ExamPage() {
                 state.babs.length === 0 ||
                 state.subBabs.length === 0
               }
-              className="w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight shadow-ios-sm"
+              className="neumorph-button w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight"
             >
               Begin session
             </button>

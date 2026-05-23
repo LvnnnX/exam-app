@@ -53,7 +53,8 @@ export default function MultiSelectDropdown({
         type="button"
         disabled={disabled || options.length === 0}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between bg-black/5 hover:bg-black/10 rounded-2xl px-4 h-11 text-[13px] transition-spring-fast ${disabled || options.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+        data-open={isOpen ? 'true' : 'false'}
+        className={`neumorph-pulse-control w-full flex items-center justify-between bg-black/5 hover:bg-black/10 rounded-2xl px-4 h-11 text-[13px] transition-spring-fast active:scale-[0.98] ${disabled || options.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
           }`}
       >
         <span className={`truncate font-medium tracking-tight ${selectedValues.length > 0 ? 'text-nike-black' : 'text-nike-grey-500'}`}>
