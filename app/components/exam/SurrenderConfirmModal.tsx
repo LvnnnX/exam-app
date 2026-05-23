@@ -31,12 +31,6 @@ export default function SurrenderConfirmModal({
 
         <div className="relative grid gap-8 lg:grid-cols-[1fr_320px] lg:items-center">
           <div className="space-y-4">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-[12px] bg-[#ff4b35]/15 text-[#ff4b35]">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4v17" />
-                <path d="M4 4h13l-2 4 2 4H4" />
-              </svg>
-            </span>
             <div>
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Survival mode</p>
               <h3 className="font-display text-[40px] leading-[0.95] tracking-[-0.04em] text-white sm:text-[52px]">
