@@ -178,7 +178,7 @@ export default function AnalyticsTabPanel({
   const [draftQuizSessionKeys, setDraftQuizSessionKeys] = useState<string[]>([]);
   const candidateIds = remedialCandidates.map((candidate) => candidate.questionId);
   const selectedCandidateIds = selectedRemedialIds.filter((id) => candidateIds.includes(id));
-  const activeParticipant = activeParticipantKey === 'all' ? null : participants.find((participant) => participant.key === activeParticipantKey);
+  const activeParticipant = activeParticipantKey === 'all' || activeParticipantKey === 'none' ? null : participants.find((participant) => participant.key === activeParticipantKey);
   const activeQuizSessions = quizSessions.filter((session) => activeQuizSessionKeys.includes(session.key));
   const sessionCardTitle = analyticsSource !== 'quiz'
     ? 'Quiz only'
@@ -345,8 +345,8 @@ export default function AnalyticsTabPanel({
           </button>
           <button type="button" onClick={() => setParticipantPickerOpen(true)} className={`rounded-2xl border px-4 py-3 text-left shadow-ios-sm transition-spring hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-blue bg-dark-800 hover:bg-dark-750' : 'border-[#111111] bg-white hover:bg-[#f5f5f5]'}`}>
             <div className="flex items-center justify-between gap-2"><span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Participant</span><span className={`text-[10px] font-black uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Change</span></div>
-            <p className={`mt-1 truncate text-sm font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>{activeParticipant?.name || 'All participants'}</p>
-            <p className={`mt-0.5 text-[10px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#8a8a8a]'}`}>{activeParticipant ? `${activeParticipant.attempts} attempts in scope` : `${participants.length} participants included`}</p>
+            <p className={`mt-1 truncate text-sm font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>{activeParticipant?.name || (activeParticipantKey === 'all' ? 'All participants' : 'No participant selected')}</p>
+            <p className={`mt-0.5 text-[10px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#8a8a8a]'}`}>{activeParticipant ? `${activeParticipant.attempts} attempts in scope` : activeParticipantKey === 'all' ? `${participants.length} participants included` : 'Choose a participant to view analytics'}</p>
           </button>
         </div>
 
@@ -479,6 +479,10 @@ export default function AnalyticsTabPanel({
               <button type="button" onClick={() => setParticipantPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:border-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'}`}>Close</button>
             </div>
             <div className={`grid max-h-[60vh] gap-2 overflow-y-auto sm:grid-cols-2 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
+              <button type="button" onClick={() => { setSelectedRemedialIds([]); onParticipantChange('none'); setParticipantPickerOpen(false); }} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${activeParticipantKey === 'none' ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
+                <p className="truncate text-sm font-black">No participant</p>
+                <p className={`mt-1 text-[10px] font-semibold ${activeParticipantKey === 'none' ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>Show empty analytics</p>
+              </button>
               <button type="button" onClick={() => { setSelectedRemedialIds([]); onParticipantChange('all'); setParticipantPickerOpen(false); }} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${activeParticipantKey === 'all' ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
                 <p className="truncate text-sm font-black">All participants</p>
                 <p className={`mt-1 text-[10px] font-semibold ${activeParticipantKey === 'all' ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{participants.length} participants included</p>
