@@ -224,9 +224,6 @@ function endIso(value: string) {
   return value ? `${value}T23:59:59.999` : null;
 }
 
-function hasAnalyticsSelection(mapels: string[], babs: string[], subBabs: string[], participantKey: string, quizSessionKeys: string[]) {
-  return mapels.length > 0 || babs.length > 0 || subBabs.length > 0 || participantKey !== 'all' || quizSessionKeys.length > 0;
-}
 
 function primaryTopic(row: AnalyticsResultRow) {
   return splitResultCategories(row.sub_bab)[0]
@@ -699,7 +696,7 @@ export default function useAdminAnalytics() {
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [analyticsSource, setAnalyticsSource] = useState<AnalyticsSource>('exam');
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>(() => getDefaultDateRange());
-  const [activeParticipantKey, setActiveParticipantKey] = useState('all');
+  const [activeParticipantKey, setActiveParticipantKey] = useState('none');
   const [activeQuizSessionKeys, setActiveQuizSessionKeys] = useState<string[]>([]);
 
   const fetchAnalytics = useCallback(async (
@@ -712,13 +709,6 @@ export default function useAdminAnalytics() {
     participantKey = activeParticipantKey,
     quizSessionKeys: string[] = activeQuizSessionKeys,
   ) => {
-    if (!hasAnalyticsSelection(mapels, babs, subBabs, participantKey, quizSessionKeys)) {
-      setAnalyticsData(emptyAnalyticsData);
-      setAnalyticsError(null);
-      setAnalyticsLoading(false);
-      return;
-    }
-
     setAnalyticsLoading(true);
     setAnalyticsError(null);
 
@@ -745,8 +735,8 @@ export default function useAdminAnalytics() {
 
   const changeAnalyticsSource = useCallback((source: AnalyticsSource, mapels: string[] = [], babs: string[] = [], subBabs: string[] = [], mode = 'all') => {
     setAnalyticsSource(source);
-    setActiveParticipantKey('all');
-    void fetchAnalytics(mapels, babs, subBabs, mode, source, dateRange, 'all', activeQuizSessionKeys);
+    setActiveParticipantKey('none');
+    void fetchAnalytics(mapels, babs, subBabs, mode, source, dateRange, 'none', activeQuizSessionKeys);
   }, [activeQuizSessionKeys, dateRange, fetchAnalytics]);
 
   const changeDateRange = useCallback((range: AnalyticsDateRange, mapels: string[] = [], babs: string[] = [], subBabs: string[] = [], mode = 'all') => {
