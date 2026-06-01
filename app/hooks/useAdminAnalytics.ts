@@ -224,7 +224,6 @@ function endIso(value: string) {
   return value ? `${value}T23:59:59.999` : null;
 }
 
-
 function primaryTopic(row: AnalyticsResultRow) {
   return splitResultCategories(row.sub_bab)[0]
     || splitResultCategories(row.bab)[0]
@@ -409,11 +408,12 @@ async function fetchSummaryViaRPC(
 
 async function buildAnalyticsData(
   rows: AnalyticsResultRow[],
-  participantKey = 'all',
+  participantKeys: string[] = [],
   rpcSummary: AnalyticsSummary | null = null
 ): Promise<AnalyticsData> {
   const answerRows = rows.filter((row) => row.participantKey !== '__session_option__');
-  const scopedRows = participantKey === 'all' ? answerRows : answerRows.filter((row) => row.participantKey === participantKey);
+  const selectedParticipantKeys = new Set(participantKeys);
+  const scopedRows = participantKeys.length === 0 ? answerRows : answerRows.filter((row) => selectedParticipantKeys.has(row.participantKey));
   const scoredRows = scopedRows
     .map((row) => ({ row, pct: safePercent(row.score, row.total_questions) }))
     .filter((item): item is { row: AnalyticsResultRow; pct: number } => item.pct !== null);
@@ -422,8 +422,8 @@ async function buildAnalyticsData(
     .map((row) => row.duration_seconds)
     .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
 
-  // Use RPC summary if available and participantKey is 'all', otherwise calculate client-side
-  const summary: AnalyticsSummary = (rpcSummary && participantKey === 'all')
+  // Use RPC summary if available and all participants selected, otherwise calculate client-side
+  const summary: AnalyticsSummary = (rpcSummary && participantKeys.length === 0)
     ? rpcSummary
     : {
         attempts: scopedRows.length,
@@ -696,7 +696,7 @@ export default function useAdminAnalytics() {
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [analyticsSource, setAnalyticsSource] = useState<AnalyticsSource>('exam');
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>(() => getDefaultDateRange());
-  const [activeParticipantKey, setActiveParticipantKey] = useState('none');
+  const [activeParticipantKeys, setActiveParticipantKeys] = useState<string[]>([]);
   const [activeQuizSessionKeys, setActiveQuizSessionKeys] = useState<string[]>([]);
 
   const fetchAnalytics = useCallback(async (
@@ -706,7 +706,7 @@ export default function useAdminAnalytics() {
     mode = 'all',
     source: AnalyticsSource = analyticsSource,
     range: AnalyticsDateRange = dateRange,
-    participantKey = activeParticipantKey,
+    participantKeys: string[] = activeParticipantKeys,
     quizSessionKeys: string[] = activeQuizSessionKeys,
   ) => {
     setAnalyticsLoading(true);
@@ -719,11 +719,11 @@ export default function useAdminAnalytics() {
 
       // Use RPC for summary calculation when possible (exam source + no participant filter)
       let rpcSummary: AnalyticsSummary | null = null;
-      if (source === 'exam' && participantKey === 'all') {
+      if (source === 'exam' && participantKeys.length === 0) {
         rpcSummary = await fetchSummaryViaRPC(range, mode, mapels, babs, subBabs);
       }
 
-      setAnalyticsData(await buildAnalyticsData(rows, participantKey, rpcSummary));
+      setAnalyticsData(await buildAnalyticsData(rows, participantKeys, rpcSummary));
     } catch (err) {
       console.error('Error fetching analytics:', err);
       setAnalyticsError(err instanceof Error ? err.message : 'Failed to fetch analytics');
@@ -731,28 +731,28 @@ export default function useAdminAnalytics() {
     } finally {
       setAnalyticsLoading(false);
     }
-  }, [activeParticipantKey, activeQuizSessionKeys, analyticsSource, dateRange]);
+  }, [activeParticipantKeys, activeQuizSessionKeys, analyticsSource, dateRange]);
 
   const changeAnalyticsSource = useCallback((source: AnalyticsSource, mapels: string[] = [], babs: string[] = [], subBabs: string[] = [], mode = 'all') => {
     setAnalyticsSource(source);
-    setActiveParticipantKey('none');
-    void fetchAnalytics(mapels, babs, subBabs, mode, source, dateRange, 'none', activeQuizSessionKeys);
+    setActiveParticipantKeys([]);
+    void fetchAnalytics(mapels, babs, subBabs, mode, source, dateRange, [], activeQuizSessionKeys);
   }, [activeQuizSessionKeys, dateRange, fetchAnalytics]);
 
   const changeDateRange = useCallback((range: AnalyticsDateRange, mapels: string[] = [], babs: string[] = [], subBabs: string[] = [], mode = 'all') => {
     setDateRange(range);
-    void fetchAnalytics(mapels, babs, subBabs, mode, analyticsSource, range, activeParticipantKey, activeQuizSessionKeys);
-  }, [activeParticipantKey, activeQuizSessionKeys, analyticsSource, fetchAnalytics]);
+    void fetchAnalytics(mapels, babs, subBabs, mode, analyticsSource, range, activeParticipantKeys, activeQuizSessionKeys);
+  }, [activeParticipantKeys, activeQuizSessionKeys, analyticsSource, fetchAnalytics]);
 
-  const changeParticipant = useCallback((participantKey: string, mapels: string[] = [], babs: string[] = [], subBabs: string[] = [], mode = 'all') => {
-    setActiveParticipantKey(participantKey);
-    void fetchAnalytics(mapels, babs, subBabs, mode, analyticsSource, dateRange, participantKey, activeQuizSessionKeys);
+  const changeParticipants = useCallback((participantKeys: string[], mapels: string[] = [], babs: string[] = [], subBabs: string[] = [], mode = 'all') => {
+    setActiveParticipantKeys(participantKeys);
+    void fetchAnalytics(mapels, babs, subBabs, mode, analyticsSource, dateRange, participantKeys, activeQuizSessionKeys);
   }, [activeQuizSessionKeys, analyticsSource, dateRange, fetchAnalytics]);
 
   const changeQuizSessions = useCallback((quizSessionKeys: string[], mapels: string[] = [], babs: string[] = [], subBabs: string[] = [], mode = 'all') => {
     setActiveQuizSessionKeys(quizSessionKeys);
-    void fetchAnalytics(mapels, babs, subBabs, mode, analyticsSource, dateRange, activeParticipantKey, quizSessionKeys);
-  }, [activeParticipantKey, analyticsSource, dateRange, fetchAnalytics]);
+    void fetchAnalytics(mapels, babs, subBabs, mode, analyticsSource, dateRange, activeParticipantKeys, quizSessionKeys);
+  }, [activeParticipantKeys, analyticsSource, dateRange, fetchAnalytics]);
 
   return {
     analyticsData,
@@ -760,12 +760,12 @@ export default function useAdminAnalytics() {
     analyticsError,
     analyticsSource,
     dateRange,
-    activeParticipantKey,
+    activeParticipantKeys,
     activeQuizSessionKeys,
     fetchAnalytics,
     changeAnalyticsSource,
     changeDateRange,
-    changeParticipant,
+    changeParticipants,
     changeQuizSessions,
   };
 }
