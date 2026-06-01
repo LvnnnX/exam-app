@@ -310,14 +310,14 @@ function AdminPageInner() {
                   analyticsError={analytics.analyticsError}
                   analyticsSource={analytics.analyticsSource}
                   dateRange={analytics.dateRange}
-                  activeParticipantKey={analytics.activeParticipantKey}
+                  activeParticipantKeys={analytics.activeParticipantKeys}
                   activeQuizSessionKeys={analytics.activeQuizSessionKeys}
                   formatCategorySelectionLabel={shared.formatCategorySelectionLabel}
                   theme={theme}
                   onRefresh={() => void analytics.fetchAnalytics(results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onSourceChange={(source) => analytics.changeAnalyticsSource(source, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onDateRangeChange={(range) => analytics.changeDateRange(range, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
-                  onParticipantChange={(participantKey) => analytics.changeParticipant(participantKey, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
+                  onParticipantsChange={(participantKeys) => analytics.changeParticipants(participantKeys, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onQuizSessionsChange={(sessionKeys) => analytics.changeQuizSessions(sessionKeys, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onNavigateToQuiz={handleNavigateToQuizWithCode}
                   onCreateRemedialQuiz={async (questionIds) => {
