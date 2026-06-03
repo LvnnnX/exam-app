@@ -71,7 +71,7 @@ type AnalyticsTabPanelProps = {
   onParticipantsChange: (participantKeys: string[]) => void;
   onQuizSessionsChange: (sessionKeys: string[]) => void;
   onNavigateToQuiz: (code: string) => void;
-  onCreateRemedialQuiz: (questionIds: number[]) => Promise<{ quiz_code: string; question_count: number }>;
+  onCreateRemedialQuiz: (questionIds: number[], options: { quizMode: 'strict' | 'standard'; duration: number }) => Promise<{ quiz_code: string; question_count: number }>;
   theme?: 'light' | 'dark';
 };
 
@@ -207,7 +207,7 @@ export default function AnalyticsTabPanel({
     setRemedialQuizBuilderOpen(true);
   };
 
-  const handleCreateRemedialQuizFromBuilder = async (config: { studentKeys: string[]; mode: string; questionCount: number; name: string; duration: number }) => {
+  const handleCreateRemedialQuizFromBuilder = async (config: { studentKeys: string[]; mode: string; questionCount: number; quizMode: 'strict' | 'standard'; duration: number }) => {
     try {
       const selectedQuestions = buildRemedialQuestionPool({
         mode: config.mode as 'wrong_only' | 'wrong_similar' | 'topic_based',
@@ -229,7 +229,7 @@ export default function AnalyticsTabPanel({
       setRemedialQuizBuilderOpen(false);
 
       // Create the quiz
-      const result = await onCreateRemedialQuiz(questionIds);
+      const result = await onCreateRemedialQuiz(questionIds, { quizMode: config.quizMode, duration: config.duration });
 
       // Show success modal
       setRemedialQuizSuccess({
@@ -245,7 +245,7 @@ export default function AnalyticsTabPanel({
     if (selectedCandidateIds.length === 0) return;
     setCreatingRemedial(true);
     try {
-      await onCreateRemedialQuiz(selectedCandidateIds);
+      await onCreateRemedialQuiz(selectedCandidateIds, { quizMode: 'strict', duration: 30 });
       setSelectedRemedialIds([]);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Failed to create remedial quiz.');
