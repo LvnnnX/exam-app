@@ -58,7 +58,7 @@ export default function ExamPage() {
                 <NeumorphButton
                   type="button"
                   size="medium"
-                  intent={state.gameMode === 'exam' ? 'secondary' : 'default'}
+                  intent={state.gameMode === 'exam' ? 'primary' : 'secondary'}
                   pressed={state.gameMode === 'exam'}
                   fullWidth
                   onClick={() => setters.setGameMode('exam')}
@@ -68,7 +68,7 @@ export default function ExamPage() {
                 <NeumorphButton
                   type="button"
                   size="medium"
-                  intent={state.gameMode === 'survival' ? 'danger' : 'default'}
+                  intent={state.gameMode === 'survival' ? 'primary' : 'secondary'}
                   pressed={state.gameMode === 'survival'}
                   fullWidth
                   onClick={() => { setters.setGameMode('survival'); setters.setExamMode('strict'); }}
@@ -98,7 +98,7 @@ export default function ExamPage() {
                   <NeumorphButton
                     type="button"
                     size="medium"
-                    intent={state.examMode === 'strict' ? 'secondary' : 'default'}
+                    intent={state.examMode === 'strict' ? 'primary' : 'secondary'}
                     pressed={state.examMode === 'strict'}
                     fullWidth
                     onClick={() => setters.setExamMode('strict')}
@@ -108,7 +108,7 @@ export default function ExamPage() {
                   <NeumorphButton
                     type="button"
                     size="medium"
-                    intent={state.examMode === 'standard' ? 'secondary' : 'default'}
+                    intent={state.examMode === 'standard' ? 'primary' : 'secondary'}
                     pressed={state.examMode === 'standard'}
                     fullWidth
                     onClick={() => setters.setExamMode('standard')}
