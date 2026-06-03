@@ -320,15 +320,15 @@ function AdminPageInner() {
                   onParticipantsChange={(participantKeys) => analytics.changeParticipants(participantKeys, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onQuizSessionsChange={(sessionKeys) => analytics.changeQuizSessions(sessionKeys, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onNavigateToQuiz={handleNavigateToQuizWithCode}
-                  onCreateRemedialQuiz={async (questionIds) => {
+                  onCreateRemedialQuiz={async (questionIds, options) => {
                     const token = await getAdminAccessToken();
                     const session = await createQuizSessionAction(token, {
                       mapel: results.activeResMapel.length > 0 ? results.activeResMapel : 'Semua MAPEL',
                       bab: results.activeResbab.length > 0 ? results.activeResbab : 'Semua BAB',
                       subBabs: results.activeResSubBab,
                       questionCount: questionIds.length,
-                      durationMinutes: 30,
-                      quizMode: 'standard',
+                      durationMinutes: options.duration,
+                      quizMode: options.quizMode,
                       allowJoinMidGame: true,
                       selectedQuestionIds: questionIds,
                     });

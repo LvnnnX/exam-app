@@ -16,10 +16,10 @@ type RemedialQuizBuilderProps = {
 };
 
 type QuizConfig = {
-  name: string;
   duration: number;
   questionCount: number;
   mode: 'wrong_only' | 'wrong_similar' | 'topic_based';
+  quizMode: 'strict' | 'standard';
   studentKeys: string[];
 };
 
@@ -32,10 +32,10 @@ export default function RemedialQuizBuilder({
   onCreateQuiz,
   theme = 'dark',
 }: RemedialQuizBuilderProps) {
-  const [quizName, setQuizName] = useState('Remedial Quiz');
   const [duration, setDuration] = useState(60);
   const [questionCount, setQuestionCount] = useState(20);
   const [mode, setMode] = useState<'wrong_only' | 'wrong_similar' | 'topic_based'>('wrong_only');
+  const [quizMode, setQuizMode] = useState<'strict' | 'standard'>('strict');
 
   const availableQuestions = useMemo(() => buildRemedialQuestionPool({
     mode,
@@ -45,7 +45,7 @@ export default function RemedialQuizBuilder({
   }), [mode, selectedStudentKeys, remedialCandidates, questionPool]);
 
   const questionOptions = useMemo(() => {
-    const presets = [5, 10, 20, 30, 50, 100];
+    const presets = [5, 10, 20, 25, 30, 40, 50, 100];
     const capped = presets.filter((value) => value <= availableQuestions.length);
     return capped.length > 0 ? capped : availableQuestions.length > 0 ? [availableQuestions.length] : [];
   }, [availableQuestions.length]);
@@ -54,10 +54,10 @@ export default function RemedialQuizBuilder({
 
   const handleCreate = () => {
     onCreateQuiz({
-      name: quizName,
       duration,
       questionCount: effectiveQuestionCount,
       mode,
+      quizMode,
       studentKeys: selectedStudentKeys,
     });
   };
@@ -112,18 +112,49 @@ export default function RemedialQuizBuilder({
                 theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
               }`}
             >
-              Quiz name
+              Mode navigasi
             </label>
-            <input
-              type="text"
-              value={quizName}
-              onChange={(e) => setQuizName(e.target.value)}
-              className={`h-11 w-full rounded-2xl border px-4 text-sm font-medium transition-spring-fast focus:outline-none focus:ring-2 ${
-                theme === 'dark'
-                  ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue focus:ring-accent-blue/10'
-                  : 'border-[#E5E5E5] bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setQuizMode('strict')}
+                className={`flex h-[42px] items-center justify-center gap-1.5 rounded-2xl border text-[12px] font-bold transition-spring-fast ${
+                  quizMode === 'strict'
+                    ? theme === 'dark'
+                      ? 'border-transparent bg-dark-text-primary text-dark-900'
+                      : 'border-transparent bg-gray-900 text-white'
+                    : theme === 'dark'
+                    ? 'border-dark-border-medium bg-dark-750 text-dark-text-secondary hover:border-dark-text-primary'
+                    : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-400'
+                }`}
+              >
+                🔒 STRICT
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuizMode('standard')}
+                className={`flex h-[42px] items-center justify-center gap-1.5 rounded-2xl border text-[12px] font-bold transition-spring-fast ${
+                  quizMode === 'standard'
+                    ? theme === 'dark'
+                      ? 'border-transparent bg-accent-blue text-white'
+                      : 'border-transparent bg-blue-600 text-white'
+                    : theme === 'dark'
+                    ? 'border-dark-border-medium bg-dark-750 text-dark-text-secondary hover:border-accent-blue'
+                    : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-blue-400'
+                }`}
+              >
+                📋 STANDARD
+              </button>
+            </div>
+            <p
+              className={`mt-1.5 text-[11px] font-medium ${
+                theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
               }`}
-            />
+            >
+              {quizMode === 'strict'
+                ? 'Soal harus dikerjakan berurutan, tidak bisa kembali.'
+                : 'Peserta bisa bolak-balik soal dan menandai ragu-ragu.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
