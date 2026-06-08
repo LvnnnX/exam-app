@@ -155,8 +155,10 @@ type QuestionsTabPanelProps = {
   currentAdminUserId?: string;
   currentAdminUsername?: string;
   onToggleQuestionVisibility: (question: RawQuestion) => void | Promise<void>;
-  onExport: () => void | Promise<void>;
-  exporting: boolean;
+  onExport?: () => void;
+  exporting?: boolean;
+  onImport?: () => void;
+  importing?: boolean;
   paginationMeta: { total: number; totalPages: number } | null;
   mapelCounts: Array<{ mapel: string; count: number }>;
   fetchQuestionsPaginated: (filters: QuestionFilters, page: number, pageSize: number) => Promise<void>;
@@ -207,6 +209,8 @@ export default function QuestionsTabPanel({
   onToggleQuestionVisibility,
   onExport,
   exporting,
+  onImport,
+  importing,
   paginationMeta,
   mapelCounts,
   fetchQuestionsPaginated,
@@ -304,6 +308,15 @@ export default function QuestionsTabPanel({
                 className={`px-4 h-9 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark' ? 'bg-accent-green/15 text-accent-green hover:bg-accent-green/25' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
               >
                 {exporting ? 'Exporting…' : 'Export Excel'}
+              </button>
+            )}
+            {currentView === 'filtered' && (
+              <button
+                onClick={onImport}
+                disabled={importing}
+                className={`px-4 h-9 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark' ? 'bg-accent-amber/15 text-accent-amber hover:bg-accent-amber/25' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+              >
+                {importing ? 'Importing…' : 'Import Excel'}
               </button>
             )}
           </div>

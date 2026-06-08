@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useCallback, Suspense, useState } from 'react';
+import React, { useEffect, useCallback, Suspense, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AdminTabSwitcher from '@/app/components/AdminTabSwitcher';
 import AdminLoginView from '@/app/components/AdminLoginView';
@@ -17,6 +17,7 @@ import useAdminPageController from '@/app/hooks/useAdminPageController';
 import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
 import { createQuizSessionAction } from '@/app/actions/admin/quiz';
 import { exportQuestionsAction } from '@/app/actions/admin/export-questions';
+import { importQuestionsAction } from '@/app/actions/admin/import-questions';
 import { hasPermission } from '@/lib/admin-permissions';
 import { getOptionText, getCorrectOptionText } from '@/app/hooks/adminOptionText';
 import { useAdminTheme } from '@/app/hooks/useAdminTheme';
@@ -55,6 +56,50 @@ function AdminPageInner() {
   const { theme, toggleTheme } = useAdminTheme();
 
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const base64 = btoa(
+        String.fromCharCode(...new Uint8Array(buffer))
+      );
+      const token = await getAdminAccessToken();
+      const result = await importQuestionsAction(token, base64);
+
+      const parts: string[] = [];
+      if (result.created > 0) parts.push(`${result.created} dibuat`);
+      if (result.updated > 0) parts.push(`${result.updated} diperbarui`);
+      const summary = parts.length > 0 ? parts.join(', ') : '0 soal diproses';
+
+      if (result.errors.length > 0) {
+        const errorPreviews = result.errors.slice(0, 5).map(e => `Baris ${e.row}: ${e.message}`).join('\n');
+        const extra = result.errors.length > 5 ? `\n... dan ${result.errors.length - 5} error lainnya` : '';
+        questions.showToast(`${summary} — ${result.errors.length} error:\n${errorPreviews}${extra}`, 'warning');
+      } else {
+        questions.showToast(`Import berhasil: ${summary}.`, 'success');
+      }
+
+      // Refresh list
+      await questions.fetchAdminQuestions();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal mengimport soal.';
+      questions.showToast(message, 'error');
+    } finally {
+      setImporting(false);
+      // Reset input so same file can be re-imported
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [questions]);
 
   const handleExport = useCallback(async () => {
     setExporting(true);
@@ -299,6 +344,8 @@ function AdminPageInner() {
                 onToggleQuestionVisibility={questions.onToggleQuestionVisibility}
                 onExport={handleExport}
                 exporting={exporting}
+                onImport={handleImport}
+                importing={importing}
               />
               </div>
             )}
@@ -485,6 +532,14 @@ function AdminPageInner() {
           <ToastContainer toasts={settings.toasts} onDismiss={settings.dismissToast} theme={theme} />
         </div>
       </main>
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".xlsx"
+        onChange={handleFileChange}
+        className="hidden"
+        aria-hidden="true"
+      />
     </div>
   );
 }
