@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useCallback, Suspense } from 'react';
+import React, { useEffect, useCallback, Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AdminTabSwitcher from '@/app/components/AdminTabSwitcher';
 import AdminLoginView from '@/app/components/AdminLoginView';
@@ -16,6 +16,7 @@ import AnalyticsTabPanel from '@/app/components/admin/AnalyticsTabPanel';
 import useAdminPageController from '@/app/hooks/useAdminPageController';
 import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
 import { createQuizSessionAction } from '@/app/actions/admin/quiz';
+import { exportQuestionsAction } from '@/app/actions/admin/export-questions';
 import { hasPermission } from '@/lib/admin-permissions';
 import { getOptionText, getCorrectOptionText } from '@/app/hooks/adminOptionText';
 import { useAdminTheme } from '@/app/hooks/useAdminTheme';
@@ -52,6 +53,51 @@ function AdminPageInner() {
   } = useAdminPageController();
 
   const { theme, toggleTheme } = useAdminTheme();
+
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const token = await getAdminAccessToken();
+      const filters = {
+        mapels: questions.activeMapelFilter.length > 0 ? questions.activeMapelFilter : undefined,
+        babs: questions.activebabFilter.length > 0 ? questions.activebabFilter : undefined,
+        subBabs: questions.activeSubBabFilter.length > 0 ? questions.activeSubBabFilter : undefined,
+        questionType: questions.questionTypeFilter,
+        visibility: questions.visibilityFilter,
+        searchQuery: questions.searchQuery || undefined,
+        sortOrder: questions.sortOrder,
+      };
+      const result = await exportQuestionsAction(token, filters);
+
+      const byteChars = atob(result.bufferBase64);
+      const byteNums = new Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) {
+        byteNums[i] = byteChars.charCodeAt(i);
+      }
+      const byteArr = new Uint8Array(byteNums);
+      const blob = new Blob([byteArr], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      questions.showToast(`${result.total} soal berhasil diexport.`, 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal mengexport soal.';
+      questions.showToast(message, 'error');
+    } finally {
+      setExporting(false);
+    }
+  }, [questions]);
 
   const searchParams = useSearchParams();
 
@@ -251,6 +297,8 @@ function AdminPageInner() {
                 onEditQuestion={questions.startEdit}
                 onDeleteQuestion={questions.setDeletingQuestion}
                 onToggleQuestionVisibility={questions.onToggleQuestionVisibility}
+                onExport={handleExport}
+                exporting={exporting}
               />
               </div>
             )}
