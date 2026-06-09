@@ -3,6 +3,7 @@
 import { type RawQuestion } from '@/lib/questions';
 import { assertQuestionDeleteAllowed, hasPermission, requireAdmin, requirePermission } from '@/lib/admin-server';
 import { isSafeCategorySlug, normalizeCategorySlug } from '@/lib/categories';
+import { canDeleteQuestion } from '@/lib/admin-permissions';
 
 type QuestionPayload = Omit<RawQuestion, 'id'>;
 type CategoryField = 'mapels' | 'babs' | 'sub_babs';
@@ -62,6 +63,22 @@ export async function deleteQuestionAction(accessToken: string, id: number) {
   if (fetchError) throw new Error(fetchError.message);
   assertQuestionDeleteAllowed(admin, question?.created_by as string | null | undefined);
   const { error } = await supabase.from('questions').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteSelectedQuestionsAction(accessToken: string, ids: number[]) {
+  const safeIds = ids.filter(Number.isInteger);
+  if (safeIds.length === 0) throw new Error('No question ids selected');
+  const { supabase, admin } = await requireAdmin(accessToken);
+  const { data: questions, error: fetchError } = await supabase.from('questions').select('id, created_by').in('id', safeIds);
+  if (fetchError) throw new Error(fetchError.message);
+
+  const deletableIds = (questions || [])
+    .filter((question) => canDeleteQuestion(admin, question.created_by as string | null | undefined))
+    .map((question) => question.id);
+  if (deletableIds.length === 0) throw new Error('Forbidden');
+
+  const { error } = await supabase.from('questions').delete().in('id', deletableIds);
   if (error) throw new Error(error.message);
 }
 

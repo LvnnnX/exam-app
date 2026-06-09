@@ -144,6 +144,7 @@ type QuestionsTabPanelProps = {
   onToggleQuestionSelect: (questionId: number, checked: boolean) => void;
   onOpenBatchHideConfirm: () => void;
   onOpenBatchVisibleConfirm: () => void;
+  onOpenBatchDeleteConfirm: () => void;
   onViewQuestion: (question: RawQuestion) => void;
   onEditQuestion: (question: RawQuestion) => void;
   onDeleteQuestion: (question: RawQuestion) => void;
@@ -196,6 +197,7 @@ export default function QuestionsTabPanel({
   onToggleQuestionSelect,
   onOpenBatchHideConfirm,
   onOpenBatchVisibleConfirm,
+  onOpenBatchDeleteConfirm,
   onViewQuestion,
   onEditQuestion,
   onDeleteQuestion,
@@ -473,6 +475,14 @@ export default function QuestionsTabPanel({
                 title="Show Selected"
               >
                 Show {selectedAccessibleCount}
+              </button>
+              <button
+                onClick={onOpenBatchDeleteConfirm}
+                disabled={batchProcessing}
+                className={`px-3 h-9 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 disabled:opacity-50 whitespace-nowrap ${theme === 'dark' ? 'bg-accent-red text-white hover:bg-accent-red/90' : 'bg-red-500 text-white hover:bg-red-600'}`}
+                title="Delete Selected"
+              >
+                Delete {selectedAccessibleCount}
               </button>
             </>
           )}

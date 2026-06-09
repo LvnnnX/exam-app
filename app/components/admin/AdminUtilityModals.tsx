@@ -3,6 +3,7 @@
 import React from 'react';
 import DeleteTopicErrorModal from '@/app/components/admin/DeleteTopicErrorModal';
 import BatchVisibilityConfirmModal from '@/app/components/admin/BatchVisibilityConfirmModal';
+import BatchDeleteConfirmModal from '@/app/components/admin/BatchDeleteConfirmModal';
 import DeleteQuestionConfirmModal from '@/app/components/admin/DeleteQuestionConfirmModal';
 
 type DeleteTopicError = {
@@ -20,11 +21,14 @@ type AdminUtilityModalsProps = {
   batchVisibilityTarget: boolean;
   selectedQuestionCount: number;
   batchProcessing: boolean;
+  batchDeleteModalOpen: boolean;
   deletingQuestion: DeletingQuestion | null;
   deletingQuestionPreview: string;
   onCloseDeleteTopicError: () => void;
   onCancelBatchVisibility: () => void;
   onConfirmBatchVisibility: () => void;
+  onCancelBatchDelete: () => void;
+  onConfirmBatchDelete: () => void;
   onCancelDeleteQuestion: () => void;
   onConfirmDeleteQuestion: () => void;
   theme?: 'light' | 'dark';
@@ -36,11 +40,14 @@ export default function AdminUtilityModals({
   batchVisibilityTarget,
   selectedQuestionCount,
   batchProcessing,
+  batchDeleteModalOpen,
   deletingQuestion,
   deletingQuestionPreview,
   onCloseDeleteTopicError,
   onCancelBatchVisibility,
   onConfirmBatchVisibility,
+  onCancelBatchDelete,
+  onConfirmBatchDelete,
   onCancelDeleteQuestion,
   onConfirmDeleteQuestion,
   theme = 'dark',
@@ -60,6 +67,15 @@ export default function AdminUtilityModals({
         batchProcessing={batchProcessing}
         onCancel={onCancelBatchVisibility}
         onConfirm={onConfirmBatchVisibility}
+        theme={theme}
+      />
+
+      <BatchDeleteConfirmModal
+        isOpen={batchDeleteModalOpen}
+        selectedCount={selectedQuestionCount}
+        batchProcessing={batchProcessing}
+        onCancel={onCancelBatchDelete}
+        onConfirm={onConfirmBatchDelete}
         theme={theme}
       />
 

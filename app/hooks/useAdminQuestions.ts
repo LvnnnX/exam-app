@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } 
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
 import { type RawQuestion, type BabInfo, type SubBabInfo, fetchQuestions, fetchBabsAdmin, fetchSubBabsAdmin } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
-import { createQuestionAction, deleteQuestionAction, updateQuestionAction, updateQuestionsVisibilityAction, fetchQuestionCountsByMapelAction, fetchQuestionsPaginatedAction, type MapelCount, type QuestionFilters } from '@/app/actions/admin/questions';
+import { createQuestionAction, deleteQuestionAction, updateQuestionAction, updateQuestionsVisibilityAction, deleteSelectedQuestionsAction, fetchQuestionCountsByMapelAction, fetchQuestionsPaginatedAction, type MapelCount, type QuestionFilters } from '@/app/actions/admin/questions';
 import { type ToastMessage } from '@/app/components/Toast';
 
 type QuestionDraft = {
@@ -91,6 +91,7 @@ export default function useAdminQuestions({
   const [batchProcessing, setBatchProcessing] = useState(false);
   const [batchVisibilityModalOpen, setBatchVisibilityModalOpen] = useState(false);
   const [batchVisibilityTarget, setBatchVisibilityTarget] = useState(false);
+  const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
   const [newMapelInput, setNewMapelInput] = useState('');
   const [newSubBabInput, setNewSubBabInput] = useState('');
@@ -335,6 +336,23 @@ export default function useAdminQuestions({
     }
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedQuestionIds.length === 0) return;
+
+    setBatchProcessing(true);
+    try {
+      await deleteSelectedQuestionsAction(await getAdminAccessToken(), selectedQuestionIds);
+      await fetchAdminQuestions();
+      setSelectedQuestionIds([]);
+    } catch (err) {
+      console.error('Error batch deleting questions:', err);
+      window.alert('Gagal menghapus soal secara massal.');
+    } finally {
+      setBatchProcessing(false);
+      setBatchDeleteModalOpen(false);
+    }
+  };
+
   const startAddNew = (prefilledMapel?: string | null) => {
     setFormData({
       ...EMPTY_DRAFT,
@@ -457,6 +475,7 @@ export default function useAdminQuestions({
     batchProcessing,
     batchVisibilityModalOpen,
     batchVisibilityTarget,
+    batchDeleteModalOpen,
     deletingQuestion,
     newMapelInput,
     newSubBabInput,
@@ -471,6 +490,7 @@ export default function useAdminQuestions({
     setSelectedQuestionIds,
     setBatchVisibilityModalOpen,
     setBatchVisibilityTarget,
+    setBatchDeleteModalOpen,
     setDeletingQuestion,
     setNewMapelInput,
     setNewSubBabInput,
@@ -487,6 +507,7 @@ export default function useAdminQuestions({
     handleSave,
     confirmDelete,
     handleBatchVisibilityToggle,
+    handleBatchDelete,
     startAddNew,
     startEdit,
     onToggleQuestionVisibility,
