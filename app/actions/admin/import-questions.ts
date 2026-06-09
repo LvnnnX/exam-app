@@ -65,9 +65,28 @@ function assertCategoryList(value: unknown, label: string) {
   }
 }
 
-function buildPayload(q: RawQuestion): Omit<RawQuestion, 'id'> {
-  const { id: _, ...payload } = q;
-  return payload;
+// Read an ExcelJS cell value as plain text. ExcelJS returns objects for
+// formula cells ({ formula, result }), rich text ({ richText: [...] }), and
+// hyperlinks ({ text, hyperlink }) — naive String() on those yields
+// "[object Object]". Use the cell's resolved value/text instead.
+function cellToString(cell: ExcelJS.Cell): string {
+  const value = cell.value;
+  if (value === null || value === undefined) return '';
+
+  if (typeof value === 'object') {
+    // Formula cell: prefer the cached result.
+    if ('result' in value && value.result !== undefined && value.result !== null) {
+      return String(value.result);
+    }
+    // Rich text / hyperlink / shared formula: cell.text resolves to display string.
+    if ('richText' in value || 'hyperlink' in value || 'formula' in value || 'sharedFormula' in value) {
+      return String(cell.text ?? '');
+    }
+    // Date or other object — fall back to display text.
+    return String(cell.text ?? '');
+  }
+
+  return String(value);
 }
 
 // Treat a cell as "filled" if it has visible text or embedded media (img/iframe).
@@ -175,6 +194,11 @@ function parseRow(row: ImportRow): ParseOutcome {
   };
 }
 
+function buildPayload(q: RawQuestion): Omit<RawQuestion, 'id'> {
+  const { id: _, ...payload } = q;
+  return payload;
+}
+
 // ── main action ──────────────────────────────────────────
 
 export async function importQuestionsAction(
@@ -204,11 +228,10 @@ export async function importQuestionsAction(
     const row = sheet.getRow(i);
 
     // Read columns by position (match HEADER_KEYS order)
-    const rawId = row.getCell(1).value;
+    const rawId = cellToString(row.getCell(1));
     const rowData: ImportRow = {};
     for (let c = 0; c < HEADER_KEYS.length; c++) {
-      const cellVal = row.getCell(c + 1).value;
-      rowData[HEADER_KEYS[c]] = String(cellVal ?? '');
+      rowData[HEADER_KEYS[c]] = cellToString(row.getCell(c + 1));
     }
 
     // Skip completely empty rows (all cells empty)
