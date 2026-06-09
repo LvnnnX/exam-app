@@ -100,13 +100,51 @@ type ParseOutcome =
   | { ok: true; question: RawQuestion }
   | { ok: false; reason: string };
 
-function parseRow(row: ImportRow): ParseOutcome {
+// Auto-detect question type from cell content, falling back to the explicit
+// "tipe" column only when content signals are ambiguous.
+function detectType(row: ImportRow): RawQuestion['question_type'] {
+  const jawaban = String(row.jawaban ?? '').trim().toUpperCase();
+  const optA = String(row.option_a ?? '').trim();
+  const optB = String(row.option_b ?? '').trim();
+  const optC = String(row.option_c ?? '').trim();
+  const optD = String(row.option_d ?? '').trim();
+  const optE = String(row.option_e ?? '').trim();
+  const shortAnswerRaw = String(row.short_answer ?? '').trim();
   const tipe = String(row.tipe ?? '').trim().toLowerCase();
-  const questionType: RawQuestion['question_type'] =
-    tipe === 'isian' ? 'short_answer' : 'multiple_choice';
 
+  // ── PG signals ────────────────────
+  const jawabanIsPg = ANSWER_LABELS.includes(jawaban as (typeof ANSWER_LABELS)[number]);
+  const filledOptionCount = [optA, optB, optC, optD, optE].filter(
+    (o) => o.length > 0,
+  ).length;
+  const hasPgOptions = filledOptionCount >= 3; // 3+ filled → likely PG
+  const pgScore = (jawabanIsPg ? 3 : 0) + (hasPgOptions ? 5 : 0) + Math.min(filledOptionCount, 5);
+
+  // ── Isian signals ─────────────────
+  const jawabanIsNonPgText = jawaban.length > 0 && !jawabanIsPg; // text answer, not A-E
+  const allOptionsEmpty = filledOptionCount === 0;
+  const shortAnswerFilled = stripHtml(shortAnswerRaw).trim().length > 0;
+  // Only count empty options when there's a positive Isian indicator
+  const allOptionsEmptySignal =
+    allOptionsEmpty && (jawabanIsNonPgText || shortAnswerFilled);
+  const isianScore =
+    (jawabanIsNonPgText ? 3 : 0) +
+    (allOptionsEmptySignal ? 5 : 0) +
+    (shortAnswerFilled ? 3 : 0);
+
+  // Decide
+  if (pgScore > isianScore) return 'multiple_choice';
+  if (isianScore > pgScore) return 'short_answer';
+
+  // tie or zero → fallback to explicit tipe column
+  return tipe === 'isian' ? 'short_answer' : 'multiple_choice';
+}
+
+function parseRow(row: ImportRow): ParseOutcome {
   const status = String(row.status ?? '').trim().toLowerCase();
   const isHidden = status === 'hidden';
+
+  const questionType = detectType(row);
 
   const questionText = String(row.question_text ?? '').trim();
   const optionA = String(row.option_a ?? '').trim();
