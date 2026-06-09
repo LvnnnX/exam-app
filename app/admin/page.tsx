@@ -338,6 +338,16 @@ function AdminPageInner() {
                   questions.setBatchVisibilityTarget(false);
                   questions.setBatchVisibilityModalOpen(true);
                 }}
+                onOpenBatchDeleteConfirm={() => {
+                  const deletableIds = questionDerived.filteredQuestions
+                    .filter((question) => {
+                      const ownsQuestion = String(adminProfile?.userId || '') === String(question.created_by || '');
+                      return canDeleteAnyQuestion || (ownsQuestion && canDeleteOwnQuestion);
+                    })
+                    .map((question) => question.id);
+                  questions.setSelectedQuestionIds(questions.selectedQuestionIds.filter((id) => deletableIds.includes(id)));
+                  questions.setBatchDeleteModalOpen(true);
+                }}
                 onViewQuestion={questions.onViewQuestion}
                 onEditQuestion={questions.startEdit}
                 onDeleteQuestion={questions.setDeletingQuestion}
@@ -483,11 +493,14 @@ function AdminPageInner() {
             batchVisibilityTarget={questions.batchVisibilityTarget}
             selectedQuestionCount={questions.selectedQuestionIds.length}
             batchProcessing={questions.batchProcessing}
+            batchDeleteModalOpen={questions.batchDeleteModalOpen}
             deletingQuestion={questions.deletingQuestion}
             deletingQuestionPreview={questions.deletingQuestion ? shared.stripHtml(questions.deletingQuestion.question_text).slice(0, 80) : ''}
             onCloseDeleteTopicError={settings.closeDeleteTopicError}
             onCancelBatchVisibility={() => questions.setBatchVisibilityModalOpen(false)}
             onConfirmBatchVisibility={() => void questions.handleBatchVisibilityToggle(questions.batchVisibilityTarget)}
+            onCancelBatchDelete={() => questions.setBatchDeleteModalOpen(false)}
+            onConfirmBatchDelete={() => void questions.handleBatchDelete()}
             onCancelDeleteQuestion={() => questions.setDeletingQuestion(null)}
             onConfirmDeleteQuestion={questions.confirmDelete}
             theme={theme}
