@@ -45,7 +45,7 @@ In standard mode, total time is recomputed at finish via `finish_player_quiz_rpc
 
 The system shall return whether the answer is correct.
 
-For multiple choice, the server compares against `correct_answer`. For short answer, the server compares (case-insensitive, HTML-stripped, trimmed) against `short_answer`.
+For multiple choice, the server compares against `correct_answer`. For short answer, the server compares (case-insensitive, HTML-stripped, whitespace-stripped) against `short_answer`. Whitespace-stripped means every whitespace character is removed before comparison, so `"1, 3"`, `"1,3"`, and `"1,    3"` are treated as equal.
 
 ## FR-QUIZ-014: Finish Player Quiz
 

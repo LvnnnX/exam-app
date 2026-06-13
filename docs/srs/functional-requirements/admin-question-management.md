@@ -79,7 +79,7 @@ The system shall support multiple-choice questions with five options (A–E) and
 
 The system shall support short-answer questions.
 
-The expected answer is stored in `short_answer`. The student input shall be compared case-insensitive, HTML-stripped, and trimmed.
+The expected answer is stored in `short_answer`. The student input shall be compared case-insensitive, HTML-stripped, and whitespace-stripped (every whitespace character removed, not just leading/trailing). Authors can space comma-separated lists or formulas freely without breaking grading.
 
 ## FR-QM-013: Category Assignment
 

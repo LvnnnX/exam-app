@@ -51,9 +51,11 @@ skills-lock.json
 .claude
 *.claude
 
-supabase/
-*supabase
+supabase/*
+!supabase/migrations/
+!supabase/migrations/**
 *.sql
+!supabase/migrations/*.sql
 
 apps/mobile/expo-env.d.ts
 apps/mobile/node_modules
