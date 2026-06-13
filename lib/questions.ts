@@ -237,47 +237,6 @@ export async function fetchMapels(): Promise<BabInfo[]> {
   }
 }
 
-export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
-  // Try cache first
-  const cacheKey = 'mapels_admin';
-  const cached = getCache<BabInfo[]>(cacheKey, { ttl: CACHE_TTL.CATEGORIES });
-  if (cached) return cached;
-
-  const [mapelsResult, visibility] = await Promise.all([
-    supabase.from('questions').select('mapels').eq('is_hidden', false),
-    fetchVisibilitySettings(),
-  ]);
-
-  const { data, error } = mapelsResult;
-
-  if (error) {
-    console.error('Failed to fetch mapels admin:', error.message);
-    return [];
-  }
-
-  const rawMapels = data.flatMap((q) => {
-    const row = q as CategoryRow;
-    return toStringArray(row.mapels ?? row.mapel);
-  }).filter(Boolean);
-
-  const seen = new Map<string, string>();
-  for (const raw of rawMapels) {
-    const slug = normalizeCategorySlug(raw);
-    if (slug && !seen.has(slug)) {
-      seen.set(slug, raw);
-    }
-  }
-
-  const result = Array.from(seen.entries())
-    .filter(([slug]) => !visibility.hidden_mapels.includes(slug))
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([_slug, raw]) => ({ value: raw, label: raw }));
-
-  // Cache the result
-  setCache(cacheKey, result, { ttl: CACHE_TTL.CATEGORIES });
-  return result;
-}
-
 export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
   const [categoryResult, questionResult] = await Promise.all([
     supabase.from('public_categories').select('*'),
@@ -397,39 +356,6 @@ export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
   }
 
   return Array.from(seen.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([_slug, raw]) => ({ value: raw, label: raw }));
-}
-
-export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
-  let query = supabase.from('public_categories').select('*');
-  if (bab && bab !== 'Semua BAB' && bab !== 'None') {
-    query = query.contains('babs', [bab]);
-  }
-
-  const [subBabsResult, visibility] = await Promise.all([
-    query,
-    fetchVisibilitySettings(),
-  ]);
-
-  const { data, error } = subBabsResult;
-  if (error || !data) return [];
-
-  const rawSubBabs = data.flatMap((q) => {
-    const row = q as CategoryRow;
-    return toStringArray(row.sub_babs);
-  }).filter(Boolean);
-
-  const seen = new Map<string, string>();
-  for (const raw of rawSubBabs) {
-    const slug = normalizeCategorySlug(String(raw));
-    if (slug && !seen.has(slug)) {
-      seen.set(slug, String(raw));
-    }
-  }
-
-  return Array.from(seen.entries())
-    .filter(([slug]) => !visibility.hidden_sub_babs.includes(slug) && !visibility.admin_only_sub_babs.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }

@@ -1,5 +1,3 @@
-import { getSupabaseServer } from '@/lib/supabase';
-
 type Bucket = {
   count: number;
   resetAt: number;
@@ -33,35 +31,6 @@ function localRateLimit(key: string, limit: number, windowMs: number): boolean {
  */
 export function rateLimit(key: string, limit: number, windowMs: number): boolean {
   return localRateLimit(key, limit, windowMs);
-}
-
-/**
- * Distributed rate limit backed by Postgres. Falls back to the local map if
- * the RPC fails so a transient DB blip does not lock out every caller.
- */
-export async function rateLimitAsync(
-  key: string,
-  limit: number,
-  windowMs: number
-): Promise<boolean> {
-  if (!key || limit <= 0 || windowMs <= 0) return false;
-
-  try {
-    const supabase = getSupabaseServer();
-    const { data, error } = await supabase.rpc('consume_rate_limit', {
-      p_key: key.slice(0, 200),
-      p_limit: limit,
-      p_window_ms: windowMs,
-    });
-    if (error) {
-      // Graceful degradation. Logging the message but not the key/value.
-      console.warn('rateLimitAsync DB error, falling back to local map');
-      return localRateLimit(key, limit, windowMs);
-    }
-    return data === true;
-  } catch {
-    return localRateLimit(key, limit, windowMs);
-  }
 }
 
 export function getClientIp(request: Request): string {

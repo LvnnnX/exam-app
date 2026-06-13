@@ -167,7 +167,6 @@ exam-app/
 │  │  ├─ admin/                   tab panels, modals, settings tree
 │  │  ├─ exam/                    runtime, setup, recap, score
 │  │  ├─ AdminTabSwitcher.tsx     iOS-style sidebar
-│  │  ├─ AdminHeader.tsx          account chip + theme toggle
 │  │  ├─ MultiSelectDropdown.tsx  multi-select with inline create
 │  │  ├─ RichContent.tsx          DOMPurify-aware HTML renderer
 │  │  └─ Toast.tsx

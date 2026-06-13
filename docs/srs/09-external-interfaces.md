@@ -32,8 +32,7 @@ Routes:
 Components rendered to admins:
 
 - AdminLoginView, AdminAuthLoadingView.
-- AdminHeader (account chip, theme toggle).
-- AdminTabSwitcher (sidebar with iOS-style nav).
+- AdminTabSwitcher (sidebar with iOS-style nav, includes account chip and theme toggle).
 - Tab panels: Questions, Quiz, Results, Settings, Analytics, Admins (super admin only).
 - Modals: QuestionModalShell, TrackingModal, ResultDetailsModal, BatchVisibilityConfirmModal, DeleteTopicErrorModal, LeaderboardViewModal, EditHorseModal, SessionDetailsModal.
 - Toast component for success/error feedback.

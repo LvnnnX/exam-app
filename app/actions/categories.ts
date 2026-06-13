@@ -3,7 +3,6 @@
 import { 
   fetchMapels, 
   fetchbabs, 
-  fetchSubBabs, 
   fetchSubBabsForMultiple 
 } from '@/lib/questions';
 
@@ -19,10 +18,6 @@ export async function getSafeMapels() {
 
 export async function getSafeBabs(mapel?: string) {
   return await fetchbabs(mapel);
-}
-
-export async function getSafeSubBabs(bab?: string) {
-  return await fetchSubBabs(bab);
 }
 
 export async function getSafeSubBabsForMultiple(babs: string[]) {
