@@ -248,11 +248,6 @@ There are **no sharp corners** anywhere in the system. If a component needs a sq
 - Hover: `bg-black/3` fill.
 - Bottom row: theme toggle pill, account chip.
 
-**`admin-header`** (`AdminHeader`)
-- Container: `flex items-center justify-between`, `px-8 py-6`.
-- Left: tab title (`heading-xl`).
-- Right: utility pills (`Refresh`, theme toggle, account).
-
 **`tab-segmented`** (Results tab History/Live toggle, similar pattern)
 - Same as `segmented-control` but full-width inside the tab content.
 
