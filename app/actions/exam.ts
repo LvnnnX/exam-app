@@ -19,9 +19,15 @@ export async function startExamSessionAction(
 ) {
   const supabase = getSupabaseServer();
   const secret = getExamSecretKey();
-  
+
+  // Enforce 16-char limit at the boundary. Defense in depth: even though the
+  // homepage input caps at 16, this server action is reachable from any
+  // caller of lib/questions.ts. Trimming here keeps leaderboard/recap
+  // rendering predictable across web and any future native client.
+  const safeName = name.trim().slice(0, 16);
+
   const { data, error } = await supabase.rpc('start_exam_session', {
-    p_name: name,
+    p_name: safeName,
     p_mapels: mapels,
     p_babs: babs,
     p_sub_babs: subBabs,
