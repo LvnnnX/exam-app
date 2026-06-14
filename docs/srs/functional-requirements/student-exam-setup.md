@@ -26,6 +26,8 @@ A helper line under the segmented control summarises the active mode.
 
 The system shall require a non-empty student name before starting.
 
+The student name shall be limited to 16 characters. The homepage input enforces the cap with `maxLength={16}` and slices on change so paste cannot exceed it. The exam-start server action (`startExamSessionAction`) trims and slices to 16 as a server-side guard, and the mobile API route rejects payloads with a name longer than 16 characters.
+
 The input persists raw casing the user types and renders as a flat pill (`bg-black/5`).
 
 ## FR-EXAM-004: Select Categories

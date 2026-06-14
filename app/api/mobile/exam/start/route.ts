@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     if (
       typeof name !== 'string' ||
       !name.trim() ||
-      name.trim().length > 80 ||
+      name.trim().length > 16 ||
       !safeMapels ||
       !safeBabs ||
       !safeSubBabs ||

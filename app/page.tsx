@@ -130,7 +130,8 @@ export default function ExamPage() {
               <input
                 type="text"
                 value={state.userName}
-                onChange={(e) => setters.setUserName(e.target.value)}
+                maxLength={16}
+                onChange={(e) => setters.setUserName(e.target.value.slice(0, 16))}
                 placeholder="Enter name"
                 className="neumorph-pulse-control w-full h-11 rounded-2xl bg-black/5 px-4 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none focus:bg-black/10 transition-spring-fast"
               />
