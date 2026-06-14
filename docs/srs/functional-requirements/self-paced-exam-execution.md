@@ -126,7 +126,7 @@ The system shall submit via `submit_exam_session(p_session_id, p_secret)`.
 
 The server shall:
 
-- Score every answer (case-insensitive trimmed match for short answer; option label match for multiple choice).
+- Score every answer (case-insensitive, HTML-stripped, whitespace-stripped match for short answer; option label match for multiple choice).
 - Compute `correct_count`, `total`, `score_percent`, and `duration_seconds`.
 - Persist the session row.
 - Return the recap payload.
