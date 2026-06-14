@@ -89,6 +89,8 @@ The admin shall assign questions to:
 - BAB (one or many).
 - Sub-bab (one or many).
 
+Category labels are stored raw on the question row and folded to a slug at runtime for matching, dedup, and visibility checks. The slug is lowercased, `&` expands to `dan`, and every other non-alphanumeric character (spaces, parentheses, slashes, hyphens, dots) folds to a single underscore, capped at 80 characters. This means human-friendly labels like `Teori Perilaku Konsumen (Utilitas Marginal)`, `Ekonomi Keuangan & Pasar Modal`, or `Kebijakan Kurs (Revaluasi/Devaluasi)` are accepted everywhere (manual entry and bulk import) and resolve to stable slugs (`teori_perilaku_konsumen_utilitas_marginal`, `ekonomi_keuangan_dan_pasar_modal`, `kebijakan_kurs_revaluasi_devaluasi`).
+
 ## FR-QM-014: Add Category During Question Editing
 
 The admin shall create new MAPEL, BAB, or Sub-bab values from inside the question modal when the multi-select dropdown allows it.
