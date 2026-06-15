@@ -62,6 +62,11 @@ export default function ExamPage() {
     questionCount: number,
     expiresAt: string,
     navMode: string,
+    scheduledExamTitle: string,
+    scheduledMapels: string[],
+    scheduledBabs: string[],
+    scheduledSubBabs: string[],
+    scheduledTimeLimitMinutes: number,
   ) => {
     setIsScheduledModalOpen(false);
     setters.setSessionId(sessionId);
@@ -73,6 +78,12 @@ export default function ExamPage() {
     setters.setStartTime(Number(new Date()));
     setters.setGameMode('exam');
     setters.setExamMode((navMode === 'standard' ? 'standard' : 'strict') as 'strict' | 'standard');
+    setters.setIsScheduledExam(true);
+    setters.setScheduledExamTitle(scheduledExamTitle);
+    setters.setMapels(scheduledMapels);
+    setters.setBabs(scheduledBabs);
+    setters.setSubBabs(scheduledSubBabs);
+    setters.setTimeLimit(scheduledTimeLimitMinutes);
     setters.setStep(3);
     try {
       const firstQ = await getSessionQuestionViaRpc(sessionId, 0);
@@ -317,8 +328,8 @@ export default function ExamPage() {
 
           <ScheduledExamEntry
             isOpen={isScheduledModalOpen}
-            onExamStarted={(sessionId, questionCount, expiresAt, navMode) => {
-              void handleScheduledExamStarted(sessionId, questionCount, expiresAt, navMode);
+            onExamStarted={(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes) => {
+              void handleScheduledExamStarted(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes);
             }}
             onClose={() => setIsScheduledModalOpen(false)}
           />
@@ -369,6 +380,8 @@ export default function ExamPage() {
             timeLeftDisplay={state.timeLeftDisplay}
             hasAnswerSelected={state.hasAnswerSelected}
             onOpenNavPopup={() => setters.setShowNavPopup(true)}
+            isScheduledExam={state.isScheduledExam}
+            scheduledExamTitle={state.scheduledExamTitle}
           />
 
           <QuestionDisplay

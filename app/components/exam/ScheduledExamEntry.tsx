@@ -16,6 +16,11 @@ type Props = {
     questionCount: number,
     expiresAt: string,
     navMode: string,
+    scheduledExamTitle: string,
+    scheduledMapels: string[],
+    scheduledBabs: string[],
+    scheduledSubBabs: string[],
+    scheduledTimeLimitMinutes: number,
   ) => void;
   onClose: () => void;
 };
@@ -129,6 +134,11 @@ export default function ScheduledExamEntry({
           result.question_count,
           result.expires_at,
           result.nav_mode || 'strict',
+          result.scheduled_exam_title || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.title || 'Ujian',
+          result.scheduled_mapels || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.mapels || [],
+          result.scheduled_babs || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.babs || [],
+          result.scheduled_sub_babs || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.sub_babs || [],
+          result.scheduled_time_limit_minutes || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.time_limit_minutes || 0,
         );
       } else {
         setView({

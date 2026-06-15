@@ -153,7 +153,13 @@ BEGIN
         'expires_at', v_existing.deadline_at,
         'deadline_at', v_existing.deadline_at,
         'scheduled_exam_id', v_exam.id,
-        'resuming', true
+        'resuming', true,
+        -- Exam metadata for UI display
+        'scheduled_exam_title', v_exam.title,
+        'scheduled_mapels', v_exam.mapels,
+        'scheduled_babs', v_exam.babs,
+        'scheduled_sub_babs', v_exam.sub_babs,
+        'scheduled_time_limit_minutes', v_exam.time_limit_minutes
       );
     END IF;
   END IF;
@@ -208,7 +214,13 @@ BEGIN
     'expires_at', v_deadline,
     'deadline_at', v_deadline,
     'scheduled_exam_id', v_exam.id,
-    'resuming', false
+    'resuming', false,
+    -- Exam metadata for UI display
+    'scheduled_exam_title', v_exam.title,
+    'scheduled_mapels', v_exam.mapels,
+    'scheduled_babs', v_exam.babs,
+    'scheduled_sub_babs', v_exam.sub_babs,
+    'scheduled_time_limit_minutes', v_exam.time_limit_minutes
   );
 END;
 $fn$;

@@ -51,6 +51,8 @@ export default function useExamControllerState() {
   const [doubtFlags, setDoubtFlags] = useState<boolean[]>([]);
   const [showNavPopup, setShowNavPopup] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [scheduledExamTitle, setScheduledExamTitle] = useState('');
+  const [isScheduledExam, setIsScheduledExam] = useState(false);
 
   return {
     userName,
@@ -122,5 +124,9 @@ export default function useExamControllerState() {
     setShowNavPopup,
     showSubmitConfirm,
     setShowSubmitConfirm,
+    scheduledExamTitle,
+    setScheduledExamTitle,
+    isScheduledExam,
+    setIsScheduledExam,
   };
 }

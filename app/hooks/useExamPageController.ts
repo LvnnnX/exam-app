@@ -91,6 +91,10 @@ export default function useExamPageController() {
     setShowNavPopup,
     showSubmitConfirm,
     setShowSubmitConfirm,
+    scheduledExamTitle,
+    setScheduledExamTitle,
+    isScheduledExam,
+    setIsScheduledExam,
   } = useExamControllerState();
 
   const clearStorage = useExamClearStorage();
@@ -360,6 +364,8 @@ export default function useExamPageController() {
       answeredCount,
       canJoinQuiz: joinState.canJoinQuiz,
       normalizedQuizCodeLength: joinState.normalizedQuizCodeLength,
+      scheduledExamTitle,
+      isScheduledExam,
     },
     setters: {
       setUserName,
@@ -388,6 +394,8 @@ export default function useExamPageController() {
       setEndTime,
       setRecapData,
       setSaved,
+      setScheduledExamTitle,
+      setIsScheduledExam,
     },
     actions: {
       goToStep,

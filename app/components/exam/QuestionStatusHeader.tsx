@@ -18,6 +18,8 @@ type QuestionStatusHeaderProps = {
   timeLeftDisplay: string;
   hasAnswerSelected: boolean;
   onOpenNavPopup: () => void;
+  isScheduledExam?: boolean;
+  scheduledExamTitle?: string;
 };
 
 function splitLabel(joined: string): string[] {
@@ -56,6 +58,8 @@ export default function QuestionStatusHeader({
   timeLeftDisplay,
   hasAnswerSelected,
   onOpenNavPopup,
+  isScheduledExam,
+  scheduledExamTitle,
 }: QuestionStatusHeaderProps) {
   const mapelItems = splitLabel(mapelsLabel);
   const babItems = splitLabel(babsLabel);
@@ -69,17 +73,28 @@ export default function QuestionStatusHeader({
             <span className="text-[16px] font-semibold text-nike-black tracking-tight break-words">
               {userName}
             </span>
-            <span className={`inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-medium tracking-tight ${
-              isSurvival ? 'bg-nike-red/10 text-nike-red' : 'bg-black/5 text-nike-grey-500'
-            }`}>
-              {isSurvival ? 'Survival' : 'Exam'}
-            </span>
+            {isScheduledExam && scheduledExamTitle ? (
+              <>
+                <span className="inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-medium tracking-tight bg-amber-500/10 text-amber-600">
+                  Ujian Terjadwal
+                </span>
+                <span className="text-[13px] font-medium text-nike-black/70 tracking-tight truncate max-w-[200px] sm:max-w-none">
+                  {scheduledExamTitle}
+                </span>
+              </>
+            ) : (
+              <span className={`inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-medium tracking-tight ${
+                isSurvival ? 'bg-nike-red/10 text-nike-red' : 'bg-black/5 text-nike-grey-500'
+              }`}>
+                {isSurvival ? 'Survival' : 'Exam'}
+              </span>
+            )}
           </div>
           <div className="flex items-baseline gap-1.5 text-[11px] font-medium text-nike-grey-500 tracking-tight min-w-0 flex-wrap">
             <TopicSegment items={mapelItems} />
-            <span className="text-nike-grey-500/40">·</span>
+            <span className="text-nike-grey-500/40">&middot;</span>
             <TopicSegment items={babItems} />
-            <span className="text-nike-grey-500/40">·</span>
+            <span className="text-nike-grey-500/40">&middot;</span>
             <TopicSegment items={subItems} />
           </div>
         </div>

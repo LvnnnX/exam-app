@@ -32,6 +32,12 @@ export type ScheduledExamStartResult = {
   window_status?: 'upcoming' | 'open' | 'closed';
   window_start?: string;
   nav_mode?: string;
+  // Exam metadata for UI display
+  scheduled_exam_title?: string;
+  scheduled_mapels?: string[];
+  scheduled_babs?: string[];
+  scheduled_sub_babs?: string[];
+  scheduled_time_limit_minutes?: number;
 };
 
 export async function lookupScheduledExamAction(
