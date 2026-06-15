@@ -16,12 +16,15 @@ import {
 } from '@/app/actions/admin/scheduled-exam';
 import { fetchAllMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin } from '@/lib/questions';
 import type { BabInfo, SubBabInfo } from '@/lib/questions';
+import type { VisibilitySettings } from '@/lib/questions';
+import { normalizeCategorySlug } from '@/lib/categories';
 
 const DURATION_OPTIONS = [30, 45, 60, 90, 120, 150, 180];
 const QUESTION_COUNT_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50];
 
 type Props = {
   theme: 'light' | 'dark';
+  visibilitySettings: VisibilitySettings;
 };
 
 type ActiveView = 'create' | 'manage' | 'history';
@@ -63,7 +66,7 @@ function formatDateTime(iso?: string | null): string {
   });
 }
 
-export default function ScheduledExamTabPanel({ theme }: Props) {
+export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Props) {
   const [activeView, setActiveView] = useState<ActiveView>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_scheduled_active_view');
@@ -212,6 +215,7 @@ export default function ScheduledExamTabPanel({ theme }: Props) {
 
                 <CreateFormCard
                   theme={theme}
+                  visibilitySettings={visibilitySettings}
                   onCreated={() => void loadExams()}
                 />
               </div>
@@ -485,8 +489,10 @@ function HistoryTable({ history, theme, onViewAttempts }: {
 
 /* ---------- CreateFormCard ---------- */
 
-function CreateFormCard({ theme, onCreated }: {
-  theme: 'light' | 'dark'; onCreated: () => void;
+function CreateFormCard({ theme, visibilitySettings, onCreated }: {
+  theme: 'light' | 'dark';
+  visibilitySettings: VisibilitySettings;
+  onCreated: () => void;
 }) {
   const [title, setTitle] = useState('');
   const [accessCode, setAccessCode] = useState('');
@@ -514,23 +520,40 @@ function CreateFormCard({ theme, onCreated }: {
   const [qcOpen, setQcOpen] = useState(false);
   const [durOpen, setDurOpen] = useState(false);
 
-  useEffect(() => { void fetchAllMapelsAdmin().then(setAvailMapels); }, []);
+  useEffect(() => {
+    void fetchAllMapelsAdmin().then(raw => {
+      setAvailMapels(raw.filter(m =>
+        !visibilitySettings.hidden_mapels.includes(normalizeCategorySlug(m.value)) &&
+        !visibilitySettings.admin_only_mapels.includes(normalizeCategorySlug(m.value))
+      ));
+    });
+  }, [visibilitySettings]);
 
   useEffect(() => {
     if (mapels.length > 0) {
-      void fetchBabsAdmin(mapels).then(setAvailBabs);
+      void fetchBabsAdmin(mapels).then(raw => {
+        setAvailBabs(raw.filter(b =>
+          !visibilitySettings.hidden_babs.includes(normalizeCategorySlug(b.value)) &&
+          !visibilitySettings.admin_only_babs.includes(normalizeCategorySlug(b.value))
+        ));
+      });
       // eslint-disable-next-line react-hooks/set-state-in-effect
     } else { setAvailBabs([]); }
     setBabs([]); setSubBabs([]);
-  }, [mapels]);
+  }, [mapels, visibilitySettings]);
 
   useEffect(() => {
     if (babs.length > 0) {
-      void fetchSubBabsAdmin(babs).then(setAvailSubBabs);
+      void fetchSubBabsAdmin(babs).then(raw => {
+        setAvailSubBabs(raw.filter(s =>
+          !visibilitySettings.hidden_sub_babs?.includes(normalizeCategorySlug(s.value)) &&
+          !visibilitySettings.admin_only_sub_babs?.includes(normalizeCategorySlug(s.value))
+        ));
+      });
       // eslint-disable-next-line react-hooks/set-state-in-effect
     } else { setAvailSubBabs([]); }
     setSubBabs([]);
-  }, [babs]);
+  }, [babs, visibilitySettings]);
 
   const effectiveSubBabs = subBabs.length > 0 ? subBabs : availSubBabs.map(s => s.value);
 

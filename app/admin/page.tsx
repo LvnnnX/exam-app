@@ -477,7 +477,7 @@ function AdminPageInner() {
 
             {tabs.activeTab === 'scheduled' && (
               <div className="h-full min-h-0 overflow-y-auto px-1 py-4">
-                <ScheduledExamTabPanel theme={theme} />
+                <ScheduledExamTabPanel theme={theme} visibilitySettings={settings.visibilitySettings} />
               </div>
             )}
 
