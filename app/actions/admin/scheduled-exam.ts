@@ -1,6 +1,95 @@
 "use server";
 
 import { requirePermissionAnyOf } from "@/lib/admin-server";
+import { getSupabaseServer } from "@/lib/supabase";
+import { normalizeCategorySlug } from "@/lib/categories";
+
+/**
+ * Fetches the full question data for a scheduled exam question pool.
+ * Uses service role (bypasses RLS) — called when admin clicks "Lihat".
+ */
+export async function fetchScheduledExamQuestionsAction(
+  questionIds: number[]
+): Promise<number[]> {
+  return questionIds; // IDs passed from exam row; questions fetched via getSessionQuestionViaRpc client-side
+}
+
+/**
+ * Fetches full question objects for a scheduled exam pool.
+ * Uses service role key (bypasses RLS).
+ */
+export async function fetchScheduledExamQuestionPoolAction(
+  questionIds: number[]
+): Promise<import("@/lib/questions").RawQuestion[]> {
+  if (!questionIds || questionIds.length === 0) return [];
+  const supabase = getSupabaseServer();
+  const { data, error } = await supabase
+    .from('questions')
+    .select(
+      'id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, created_by, mapels, babs, sub_babs'
+    )
+    .in('id', questionIds);
+
+  if (error || !data) return [];
+  return data as import("@/lib/questions").RawQuestion[];
+}
+
+/**
+ * Selects a random pool of visible question IDs for a scheduled exam.
+ * Uses the service role key (bypasses RLS) — called by CreateFormCard
+ * after admin authentication.
+ *
+ * All students in the same exam get the SAME question IDs in the SAME
+ * order. Only option order is shuffled per-student (client-side).
+ */
+export async function selectRandomQuestionsAction(params: {
+  mapels: string[];
+  babs: string[];
+  subBabs: string[];
+  count: number;
+}): Promise<number[]> {
+  const { mapels, babs, subBabs, count } = params;
+  const supabase = getSupabaseServer();
+
+  const safeMapels = mapels.map(normalizeCategorySlug);
+  const safeBabs = babs.map(normalizeCategorySlug);
+  const safeSubBabs = subBabs.map(normalizeCategorySlug);
+
+  // Build OR filter: question must match at least one of mapel, bab, or subbab
+  const orConditions: string[] = [
+    ...safeMapels.map(m => `mapels.cs.{"${m}"}`),
+    ...safeBabs.map(b => `babs.cs.{"${b}"}`),
+    ...safeSubBabs.map(s => `sub_babs.cs.{"${s}"}`),
+  ];
+
+  const { data, error } = await supabase
+    .from('questions')
+    .select('id')
+    .eq('is_hidden', false)
+    .or(orConditions.join(','))
+    .limit(500);
+
+  if (error || !data || data.length === 0) {
+    throw new Error('Tidak ada soal yang tersedia untuk pilihan ini.');
+  }
+
+  // Fisher-Yates shuffle
+  const shuffled = [...data];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const ids = shuffled.slice(0, count).map(q => q.id as number);
+
+  if (ids.length < count) {
+    throw new Error(
+      `Soal tidak cukup. Butuh ${count} soal, tersedia ${ids.length} soal.`
+    );
+  }
+
+  return ids;
+}
 
 export type ScheduledExamRow = {
   id: string;

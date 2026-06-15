@@ -8,6 +8,8 @@ import {
   createScheduledExamAction,
   listScheduledExamAttemptsAction,
   getScheduledExamHistoryAction,
+  selectRandomQuestionsAction,
+  fetchScheduledExamQuestionPoolAction,
   type ScheduledExamRow,
   type ScheduledExamAttemptRow,
   type ScheduledExamHistoryRow,
@@ -17,7 +19,6 @@ import { fetchAllMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin } from '@/lib/qu
 import type { BabInfo, SubBabInfo, RawQuestion } from '@/lib/questions';
 import type { VisibilitySettings } from '@/lib/questions';
 import { getCorrectOptionText } from '@/app/hooks/adminOptionText';
-import { supabase } from '@/lib/supabase';
 import { normalizeCategorySlug } from '@/lib/categories';
 
 const DURATION_OPTIONS = [30, 45, 60, 90, 120, 150, 180];
@@ -258,27 +259,10 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
 /* ---------- Manage Table ---------- */
 
 /* ---------- Fetch helper: question pool for a scheduled exam ---------- */
-async function fetchExamPoolQuestions(exam: ScheduledExamRow): Promise<RawQuestion[]> {
-  const mapels = exam.mapels ?? [];
-  const babs = exam.babs ?? [];
-  const subBabs = exam.sub_babs ?? [];
-
-  if (mapels.length === 0) return [];
-  const { data, error } = await supabase
-    .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, created_by, mapels, babs, sub_babs')
-    .eq('is_hidden', false)
-    .or(
-      mapels.map(m => `mapels.cs.{"${m}"}`).join(',') +
-      ',' +
-      babs.map(b => `babs.cs.{"${b}"}`).join(',') +
-      ',' +
-      subBabs.map(s => `sub_babs.cs.{"${s}"}`).join(',')
-    )
-    .limit(500);
-
-  if (error || !data) return [];
-  return data as RawQuestion[];
+async function fetchExamPoolQuestions(exam: ScheduledExamRow) {
+  const ids = exam.question_ids ?? [];
+  if (ids.length === 0) return [];
+  return fetchScheduledExamQuestionPoolAction(ids);
 }
 
 function ManageTable({ exams, theme, formatCategorySelectionLabel }: {
@@ -604,36 +588,12 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
       const selectedBabs = babs.length > 0 ? babs : availBabs.map(b => b.value);
       const selectedSubBabs = subBabs.length > 0 ? subBabs : availSubBabs.map(s => s.value);
 
-      const { data: poolData, error: poolError } = await supabase
-        .from('questions')
-        .select('id')
-        .eq('is_hidden', false)
-        .or(
-          selectedMapels.map(m => `mapels.cs.{"${m}"}`).join(',') +
-          ',' +
-          selectedBabs.map(b => `babs.cs.{"${b}"}`).join(',') +
-          ',' +
-          selectedSubBabs.map(s => `sub_babs.cs.{"${s}"}`).join(',')
-        )
-        .limit(500);
-
-      if (poolError || !poolData || poolData.length === 0) {
-        throw new Error('Tidak ada soal yang tersedia untuk pilihan ini.');
-      }
-
-      // Fisher-Yates shuffle then take N
-      const shuffled = [...poolData];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      const questionIds = shuffled.slice(0, questionCount).map((q: { id: number }) => q.id);
-
-      if (questionIds.length < questionCount) {
-        throw new Error(
-          `Soal tidak cukup. Pilih ${questionCount} soal, tersedia ${questionIds.length} soal.`
-        );
-      }
+      const questionIds = await selectRandomQuestionsAction({
+        mapels: selectedMapels,
+        babs: selectedBabs,
+        subBabs: selectedSubBabs,
+        count: questionCount,
+      });
 
       // ─── Step 2: Create the exam with the pre-selected question pool ───────
       const ws = windowStart ? new Date(windowStart).toISOString() : '';
