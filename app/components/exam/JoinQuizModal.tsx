@@ -32,7 +32,7 @@ export default function JoinQuizModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
+    <div className="modal-dark-overlay fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
       <div className="flex min-h-screen items-center justify-center px-5 py-10">
         <motion.div
           layoutId="join-quiz-expandable"

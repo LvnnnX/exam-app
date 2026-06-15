@@ -149,7 +149,7 @@ export default function ScheduledExamEntry({
   const canStart = isWindowOpen && !starting;
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
+    <div className="modal-dark-overlay fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
       <div className="flex min-h-screen items-center justify-center px-5 py-10">
         <motion.div
           layoutId="scheduled-exam-expandable"
@@ -202,7 +202,6 @@ export default function ScheduledExamEntry({
                   onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
                   placeholder="Masukkan kode"
                   maxLength={20}
-                  autoFocus
                   className={`neumorph-pulse-control h-14 w-full rounded-[8px] px-5 text-[16px] font-semibold tracking-wide transition-spring-fast focus:outline-none ${view.kind === 'error' ? 'bg-red-50 text-nike-red' : 'bg-black/5 text-nike-black focus:bg-black/10'}`}
                 />
                 {view.kind === 'error' && (

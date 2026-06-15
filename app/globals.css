@@ -594,7 +594,7 @@ body.exam-active textarea {
   html:not(.admin-dark-theme) h4,
   html:not(.admin-dark-theme) h5,
   html:not(.admin-dark-theme) h6,
-  html:not(.admin-dark-theme) .font-display,
+  html:not(.admin-dark-theme) :not(.modal-dark-overlay) .font-display,
   html:not(.admin-dark-theme) .mobile-exam-title,
   html:not(.admin-dark-theme) .mobile-title-black,
   html:not(.admin-dark-theme) [data-mobile-title="true"] {

@@ -9,7 +9,7 @@ import RemedialQuizBuilder from '@/app/components/admin/RemedialQuizBuilder';
 import RemedialQuizSuccessModal from '@/app/components/admin/RemedialQuizSuccessModal';
 import { buildRemedialQuestionPool } from '@/app/lib/remedialQuizSelection';
 
-type AnalyticsSource = 'exam' | 'quiz';
+type AnalyticsSource = 'exam' | 'quiz' | 'scheduled';
 type AnalyticsDateRange = { start: string; end: string };
 type AnalyticsSummary = { attempts: number; avgScore: number; passRate: number; avgDurationSeconds: number | null };
 type TopicStat = { key: string; mapel: string; bab: string; subBab: string; attempts: number; answered: number; correct: number; accuracy: number; wrongRate: number };
@@ -297,6 +297,13 @@ export default function AnalyticsTabPanel({
               className={`rounded-full px-4 text-[12px] font-medium transition-spring-fast ${analyticsSource === 'quiz' ? (theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-white text-gray-900 shadow-ios-sm') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}
             >
               Quiz
+            </button>
+            <button
+              type="button"
+              onClick={() => onSourceChange('scheduled')}
+              className={`rounded-full px-4 text-[12px] font-medium transition-spring-fast ${analyticsSource === 'scheduled' ? (theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-white text-gray-900 shadow-ios-sm') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}
+            >
+              Scheduled
             </button>
           </div>
         </div>

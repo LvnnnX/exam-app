@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { type RawQuestion, fetchQuestionsByIds } from '@/lib/questions';
 import { supabase } from '@/lib/supabase';
 
-export type AnalyticsSource = 'exam' | 'quiz';
+export type AnalyticsSource = 'exam' | 'quiz' | 'scheduled';
 
 export type AnalyticsDateRange = {
   start: string;
@@ -372,6 +372,62 @@ async function fetchQuizRows(mapels: string[], babs: string[], subBabs: string[]
   return [...sessionOptionRows, ...playerRows];
 }
 
+async function fetchScheduledRows(mapels: string[], babs: string[], subBabs: string[], _mode: string, dateRange: AnalyticsDateRange): Promise<AnalyticsResultRow[]> {
+  let query = supabase
+    .from('scheduled_exams')
+    .select('id, title, mapels, babs, sub_babs, question_count')
+    .eq('status', 'closed')
+    .limit(1000);
+
+  const start = startIso(dateRange.start);
+  const end = endIso(dateRange.end);
+  // Filter by window_end within date range (exams that ended in this period)
+  // We don't have direct date filter on scheduled_exams, so filter after fetch
+
+  const { data: exams, error: examsError } = await query;
+  if (examsError) throw examsError;
+
+  const filteredExams = ((exams || []) as { id: string; title: string; mapels: string[]; babs: string[]; sub_babs: string[]; question_count: number }[]).filter((exam) =>
+    hasAnyResultCategory(exam.mapels?.join(',') ?? null, mapels) &&
+    hasAnyResultCategory(exam.babs?.join(',') ?? null, babs) &&
+    hasAnyResultCategory(exam.sub_babs?.join(',') ?? null, subBabs)
+  );
+
+  if (filteredExams.length === 0) return [];
+
+  const examIds = filteredExams.map((e) => e.id);
+  const examsById = new Map(filteredExams.map((e) => [e.id, e]));
+
+  const { data: attempts, error: attemptsError } = await supabase
+    .from('scheduled_exam_attempts')
+    .select('id, scheduled_exam_id, student_name, session_id, started_at, submitted_at, score')
+    .in('scheduled_exam_id', examIds)
+    .not('submitted_at', 'is', null)
+    .limit(1000);
+
+  if (attemptsError) throw attemptsError;
+
+  return ((attempts || []) as { id: string; scheduled_exam_id: string; student_name: string; session_id: string | null; started_at: string; submitted_at: string | null; score: number | null }[]).map((a): AnalyticsResultRow => {
+    const exam = examsById.get(a.scheduled_exam_id)!;
+    return {
+      id: `sched-${a.id}`,
+      participantKey: `scheduled:${a.student_name.toLowerCase()}`,
+      participantName: a.student_name,
+      score: a.score ?? 0,
+      total_questions: exam.question_count,
+      mapel: exam.mapels?.[0] ?? null,
+      bab: exam.babs?.[0] ?? null,
+      sub_bab: exam.sub_babs?.[0] ?? null,
+      taken_at: a.submitted_at || a.started_at,
+      user_answers: [], // scheduled exam answers come from exam_sessions, skip for now
+      duration_seconds: null,
+      mode: 'exam',
+      sessionKey: a.scheduled_exam_id,
+      sessionLabel: `Scheduled: ${exam.title}`,
+    };
+  });
+}
+
 async function fetchSummaryViaRPC(
   dateRange: AnalyticsDateRange,
   mode: string,
@@ -713,9 +769,14 @@ export default function useAdminAnalytics() {
     setAnalyticsError(null);
 
     try {
-      const rows = source === 'quiz'
-        ? await fetchQuizRows(mapels, babs, subBabs, mode, range, quizSessionKeys)
-        : await fetchExamRows(mapels, babs, subBabs, mode, range);
+      let rows: AnalyticsResultRow[];
+      if (source === 'quiz') {
+        rows = await fetchQuizRows(mapels, babs, subBabs, mode, range, quizSessionKeys);
+      } else if (source === 'scheduled') {
+        rows = await fetchScheduledRows(mapels, babs, subBabs, mode, range);
+      } else {
+        rows = await fetchExamRows(mapels, babs, subBabs, mode, range);
+      }
 
       // Use RPC for summary calculation when possible (exam source + no participant filter)
       let rpcSummary: AnalyticsSummary | null = null;
