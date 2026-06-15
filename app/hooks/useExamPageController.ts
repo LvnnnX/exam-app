@@ -400,6 +400,9 @@ export default function useExamPageController() {
       setScheduledExamTitle,
       setIsScheduledExam,
       setScheduledTimeLimitMinutes,
+      setAvailableMapels,
+      setAvailableBabs,
+      setAvailableSubBabs,
     },
     actions: {
       goToStep,

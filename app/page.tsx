@@ -84,6 +84,11 @@ export default function ExamPage() {
     setters.setMapels(scheduledMapels);
     setters.setBabs(scheduledBabs);
     setters.setSubBabs(scheduledSubBabs);
+    // Seed available lookup arrays so mapelsLabel/babsLabel/subBabsLabel resolve immediately
+    // (useExamDerivedValues needs available* to map slugs → display labels)
+    setters.setAvailableMapels(scheduledMapels.map(m => ({ value: m, label: m })));
+    setters.setAvailableBabs(scheduledBabs.map(b => ({ value: b, label: b })));
+    setters.setAvailableSubBabs(scheduledSubBabs.map(s => ({ value: s, label: s })));
     setters.setTimeLimit(scheduledTimeLimitMinutes);
     setters.setStep(3);
     try {
