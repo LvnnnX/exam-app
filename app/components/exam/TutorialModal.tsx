@@ -80,25 +80,87 @@ function MiniNavGrid({ variant }: { variant: 'doubt' | 'plain' }) {
 }
 
 export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const panel = panelRef.current;
+      if (!panel) {
+        return;
+      }
+
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) {
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-[150] bg-[#111111]/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-[150] bg-[#111111]/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tutorial-title"
+      onClick={onClose}
+    >
       <motion.div
+        ref={panelRef}
         layoutId="tutorial-expandable"
         transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
         className="bg-white rounded-[28px] shadow-[0_30px_80px_rgba(0,0,0,0.45)] max-w-2xl w-full overflow-hidden flex flex-col max-h-[88vh]"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 pt-6 pb-4 border-b border-black/[0.06] flex items-start justify-between gap-4 shrink-0">
           <div>
             <p className="text-[12px] font-medium text-nike-grey-500 mb-1 tracking-tight">Tutorial</p>
-            <h3 className="font-display text-[24px] leading-[1.05] tracking-[-0.02em] text-nike-black">
+            <h3 id="tutorial-title" className="font-display text-[24px] leading-[1.05] tracking-[-0.02em] text-nike-black">
               Cara memulai ujian.
             </h3>
           </div>
           <button
+            ref={closeButtonRef}
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-spring-fast active:scale-90 shrink-0"
             aria-label="Tutup tutorial"
@@ -192,6 +254,45 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-nike-black"></span> Terjawab</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span> Ragu</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-black/10"></span> Kosong</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-white border-2 border-nike-black"></span> Soal aktif</span>
+            </div>
+          </div>
+
+          <div className="mt-7 pt-5 border-t border-black/[0.06]">
+            <h4 className="text-[16px] font-semibold text-nike-black tracking-tight mb-1">Setelah selesai.</h4>
+            <p className="text-[13px] text-nike-grey-500 tracking-tight mb-4">
+              Begitu ujian selesai, hasil langsung dihitung.
+            </p>
+            <ul className="space-y-2.5">
+              <li className="flex gap-2.5">
+                <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-nike-black mt-[7px]"></span>
+                <p className="text-[13px] text-nike-grey-500 leading-relaxed tracking-tight">
+                  <span className="font-semibold text-nike-black">Skor</span> ditampilkan dalam persen (mode Exam) atau jumlah jawaban benar (mode Survival).
+                </p>
+              </li>
+              <li className="flex gap-2.5">
+                <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-nike-black mt-[7px]"></span>
+                <p className="text-[13px] text-nike-grey-500 leading-relaxed tracking-tight">
+                  <span className="font-semibold text-nike-black">Ringkasan per soal</span> bisa dibuka lewat Lihat ringkasan untuk mengecek jawaban kamu satu per satu.
+                </p>
+              </li>
+              <li className="flex gap-2.5">
+                <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-nike-black mt-[7px]"></span>
+                <p className="text-[13px] text-nike-grey-500 leading-relaxed tracking-tight">
+                  <span className="font-semibold text-nike-black">Batas lulus 70 persen.</span> Skor di bawah itu ditandai berbeda, jadi kamu tahu perlu belajar lagi.
+                </p>
+              </li>
+            </ul>
+            <div className="mt-4 flex items-center gap-2 rounded-2xl bg-black/[0.03] px-4 py-3">
+              <span className="inline-flex items-center px-2.5 h-6 rounded-full bg-nike-green/10 text-nike-green text-[11px] font-semibold tabular-nums tracking-tight">
+                ≥ 70%
+              </span>
+              <span className="text-[12px] text-nike-grey-500 tracking-tight">lulus</span>
+              <span className="text-nike-grey-500/40">·</span>
+              <span className="inline-flex items-center px-2.5 h-6 rounded-full bg-nike-red/10 text-nike-red text-[11px] font-semibold tabular-nums tracking-tight">
+                &lt; 70%
+              </span>
+              <span className="text-[12px] text-nike-grey-500 tracking-tight">belum lulus</span>
             </div>
           </div>
         </div>

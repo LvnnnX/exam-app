@@ -18,6 +18,7 @@ export const STORAGE_KEYS = {
   SCORE: 'exam_score',
   EXAM_MODE: 'exam_exam_mode',
   DOUBT_FLAGS: 'exam_doubt_flags',
+  TUTORIAL_SEEN: 'exam_tutorial_seen',
 } as const;
 
 export const TIME_LIMIT_OPTIONS = [

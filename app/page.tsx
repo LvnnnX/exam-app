@@ -24,7 +24,8 @@ import ResultsFooter from '@/app/components/exam/ResultsFooter';
 import AppFallbackView from '@/app/components/exam/AppFallbackView';
 import { QUESTION_COUNTS } from '@/lib/questions';
 import useExamPageController from '@/app/hooks/useExamPageController';
-import { TIME_LIMIT_OPTIONS } from '@/app/hooks/examControllerConstants';
+import { TIME_LIMIT_OPTIONS, STORAGE_KEYS } from '@/app/hooks/examControllerConstants';
+import { secureLoad, secureSave } from '@/lib/security';
 
 export default function ExamPage() {
   const {
@@ -35,6 +36,22 @@ export default function ExamPage() {
   } = useExamPageController();
 
   const [isTutorialOpen, setIsTutorialOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!state.isRestored) {
+      return;
+    }
+    const seen = secureLoad<boolean>(STORAGE_KEYS.TUTORIAL_SEEN);
+    if (!seen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsTutorialOpen(true);
+    }
+  }, [state.isRestored]);
+
+  const closeTutorial = React.useCallback(() => {
+    setIsTutorialOpen(false);
+    secureSave(STORAGE_KEYS.TUTORIAL_SEEN, true);
+  }, []);
 
   if (!state.isRestored) {
     return <RestoringSessionView />;
@@ -256,7 +273,7 @@ export default function ExamPage() {
 
           <TutorialModal
             isOpen={isTutorialOpen}
-            onClose={() => setIsTutorialOpen(false)}
+            onClose={closeTutorial}
           />
 
         </div>
