@@ -6,14 +6,13 @@ import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
 import {
   listScheduledExamsAction,
   createScheduledExamAction,
-  publishScheduledExamAction,
-  closeScheduledExamAction,
   listScheduledExamAttemptsAction,
   getScheduledExamHistoryAction,
   type ScheduledExamRow,
   type ScheduledExamAttemptRow,
   type ScheduledExamHistoryRow,
 } from '@/app/actions/admin/scheduled-exam';
+import ScheduledExamDetailsModal from './ScheduledExamDetailsModal';
 import { fetchAllMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin } from '@/lib/questions';
 import type { BabInfo, SubBabInfo } from '@/lib/questions';
 import type { VisibilitySettings } from '@/lib/questions';
@@ -64,6 +63,15 @@ function formatDateTime(iso?: string | null): string {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
     timeZone: 'Asia/Makassar',
   });
+}
+
+function formatCategorySelectionLabel(value?: string | null): string {
+  if (!value) return '-';
+  return value
+    .split(',')[0]
+    .trim()
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
 }
 
 export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Props) {
@@ -227,9 +235,7 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
             <ManageTable
               exams={exams}
               theme={theme}
-              onRefresh={() => void loadExams()}
-              onViewAttempts={(examId, examTitle) => setView({ kind: 'attempts', examId, examTitle })}
-              onError={(msg) => setError(msg)}
+              formatCategorySelectionLabel={formatCategorySelectionLabel}
             />
           )}
 
@@ -249,141 +255,113 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
 
 /* ---------- Manage Table ---------- */
 
-function ManageTable({ exams, theme, onRefresh, onViewAttempts, onError }: {
+function ManageTable({ exams, theme, formatCategorySelectionLabel }: {
   exams: ScheduledExamRow[];
   theme: 'light' | 'dark';
-  onRefresh: () => void;
-  onViewAttempts: (examId: string, examTitle: string) => void;
-  onError: (msg: string) => void;
+  formatCategorySelectionLabel: (value?: string | null) => string;
 }) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [viewingExam, setViewingExam] = useState<ScheduledExamRow | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(exams.length / perPage));
   const paginated = exams.slice((page - 1) * perPage, page * perPage);
 
   return (
-    <div className={`rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
-      {exams.length > 0 && (
-        <div className={`mx-3 mt-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 sm:mx-6 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.03]' : 'border-nike-grey-200 bg-black/[0.02]'}`}>
-          <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
-            {exams.length} ujian terjadwal
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={perPage}
-              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
-              className={`h-8 rounded-full border px-3 text-[11px] font-semibold focus:outline-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-nike-grey-300 bg-white text-nike-black focus:border-dark-800'}`}
-            >
-              {[5, 10, 20, 50, 100].map(s => <option key={s} value={s}>{s} / page</option>)}
-            </select>
-            <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750' : 'border-nike-grey-300 bg-white'}`}>
-              <button type="button" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Prev</button>
-              <span className={`flex items-center border-x px-3 text-[11px] font-semibold ${theme === 'dark' ? 'border-dark-border-medium text-dark-text-tertiary' : 'border-nike-grey-200 text-dark-text-muted'}`}>{page}/{totalPages}</span>
-              <button type="button" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Next</button>
+    <>
+      <div className={`rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
+        {exams.length > 0 && (
+          <div className={`mx-3 mt-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 sm:mx-6 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.03]' : 'border-nike-grey-200 bg-black/[0.02]'}`}>
+            <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
+              {exams.length} ujian terjadwal
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={perPage}
+                onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+                className={`h-8 rounded-full border px-3 text-[11px] font-semibold focus:outline-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-nike-grey-300 bg-white text-nike-black focus:border-dark-800'}`}
+              >
+                {[5, 10, 20, 50, 100].map(s => <option key={s} value={s}>{s} / page</option>)}
+              </select>
+              <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750' : 'border-nike-grey-300 bg-white'}`}>
+                <button type="button" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Prev</button>
+                <span className={`flex items-center border-x px-3 text-[11px] font-semibold ${theme === 'dark' ? 'border-dark-border-medium text-dark-text-tertiary' : 'border-nike-grey-200 text-dark-text-muted'}`}>{page}/{totalPages}</span>
+                <button type="button" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Next</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      <div className="min-h-0 flex-1 overflow-auto">
-        <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-dark-border-subtle' : 'divide-surface-grey-100'}`}>
-          <thead className={theme === 'dark' ? 'bg-white/[0.02]' : 'bg-surface-grey-150'}>
-            <tr>
-              <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Judul</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Status</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Peserta</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Soal</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Durasi</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Window</th>
-              <th className={`px-4 py-3 text-right text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Actions</th>
-            </tr>
-          </thead>
-          <tbody className={`divide-y ${theme === 'dark' ? 'divide-dark-border-subtle bg-dark-800' : 'divide-surface-grey-100 bg-white'}`}>
-            {exams.length === 0 ? (
+        )}
+        <div className="min-h-0 flex-1 overflow-auto">
+          <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-dark-border-subtle' : 'divide-surface-grey-100'}`}>
+            <thead className={theme === 'dark' ? 'bg-white/[0.02]' : 'bg-surface-grey-150'}>
               <tr>
-                <td colSpan={7} className={`px-4 py-10 text-center text-sm font-medium sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
-                  <CalendarClock size={28} className="mx-auto mb-2 opacity-40" />
-                  Belum ada ujian terjadwal.
-                </td>
+                <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Judul</th>
+                <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Kode</th>
+                <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Status</th>
+                <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Peserta</th>
+                <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Soal</th>
+                <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Durasi</th>
+                <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Waktu Dibuat</th>
+                <th className={`px-4 py-3 text-right text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Action</th>
               </tr>
-            ) : paginated.map(exam => (
-              <tr key={exam.id} className={theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'}>
-                <td className={`whitespace-nowrap px-4 py-3 text-sm font-semibold sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
-                  <span className="block max-w-[200px] truncate" title={exam.title}>{exam.title}</span>
-                  {exam.access_code && (
-                    <span className={`mt-0.5 block text-[10px] font-mono ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>
-                      {exam.access_code}
+            </thead>
+            <tbody className={`divide-y ${theme === 'dark' ? 'divide-dark-border-subtle bg-dark-800' : 'divide-surface-grey-100 bg-white'}`}>
+              {exams.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className={`px-4 py-10 text-center text-sm font-medium sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                    <CalendarClock size={28} className="mx-auto mb-2 opacity-40" />
+                    Belum ada ujian terjadwal.
+                  </td>
+                </tr>
+              ) : paginated.map(exam => (
+                <tr key={exam.id} className={theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-black/[0.02]'}>
+                  <td className={`whitespace-nowrap px-4 py-3 text-sm font-semibold sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                    <span className="block max-w-[200px] truncate" title={exam.title}>{exam.title}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4">
+                    {exam.access_code && (
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold ${theme === 'dark' ? 'bg-accent-blue/15 text-accent-blue' : 'bg-blue-50 text-blue-700'}`}>
+                        {exam.access_code}
+                      </span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4">
+                    <StatusBadge status={exam.status} />
+                  </td>
+                  <td className={`whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
+                    <span className="flex items-center gap-1">
+                      <Users size={12} className={theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'} />
+                      <span className="font-medium">-</span>
                     </span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4">
-                  <StatusBadge status={exam.status} />
-                </td>
-                <td className={`whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
-                  <span className="flex items-center gap-1">
-                    <Users size={12} className={theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'} />
-                    <span className="font-medium">-</span>
-                  </span>
-                </td>
-                <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>{exam.question_count}</td>
-                <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>{exam.time_limit_minutes} min</td>
-                <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>
-                  <span className="block max-w-[140px] truncate" title={`${formatDateTime(exam.window_start)} - ${formatDateTime(exam.window_end)}`}>
-                    {formatDateTime(exam.window_start)} - {formatDateTime(exam.window_end)}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium sm:px-6 sm:py-4">
-                  <div className="flex items-center justify-end gap-2">
-                    {exam.status === 'draft' && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const token = await getAdminAccessToken();
-                            await publishScheduledExamAction(token, exam.id);
-                            onRefresh();
-                          } catch (e) {
-                            onError(e instanceof Error ? e.message : 'Gagal publish');
-                          }
-                        }}
-                        className={`h-8 rounded-full px-3 text-[11px] font-semibold transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-                      >
-                        Publish
-                      </button>
-                    )}
-                    {exam.status === 'published' && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const token = await getAdminAccessToken();
-                            await closeScheduledExamAction(token, exam.id);
-                            onRefresh();
-                          } catch (e) {
-                            onError(e instanceof Error ? e.message : 'Gagal tutup');
-                          }
-                        }}
-                        className={`h-8 rounded-full px-3 text-[11px] font-semibold transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red hover:bg-accent-red/25' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-                      >
-                        Tutup
-                      </button>
-                    )}
+                  </td>
+                  <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>{exam.question_count}</td>
+                  <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>{exam.time_limit_minutes} min</td>
+                  <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>
+                    {formatDateTime(exam.created_at)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium sm:px-6 sm:py-4">
                     <button
                       type="button"
-                      onClick={() => onViewAttempts(exam.id, exam.title)}
-                      className={`h-8 rounded-full px-3 text-[11px] font-semibold transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-600 hover:bg-black/10'}`}
+                      onClick={() => setViewingExam(exam)}
+                      className={`h-8 rounded-full px-3 text-[11px] font-semibold transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                     >
-                      <Users size={12} className="inline mr-1" />
-                      Peserta
+                      Lihat
                     </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      <ScheduledExamDetailsModal
+        exam={viewingExam}
+        formatCategorySelectionLabel={formatCategorySelectionLabel}
+        onClose={() => setViewingExam(null)}
+        theme={theme}
+      />
+    </>
   );
 }
 
