@@ -80,6 +80,7 @@ export default function ExamPage() {
     setters.setExamMode((navMode === 'standard' ? 'standard' : 'strict') as 'strict' | 'standard');
     setters.setIsScheduledExam(true);
     setters.setScheduledExamTitle(scheduledExamTitle);
+    setters.setScheduledTimeLimitMinutes(scheduledTimeLimitMinutes);
     setters.setMapels(scheduledMapels);
     setters.setBabs(scheduledBabs);
     setters.setSubBabs(scheduledSubBabs);
@@ -382,6 +383,7 @@ export default function ExamPage() {
             onOpenNavPopup={() => setters.setShowNavPopup(true)}
             isScheduledExam={state.isScheduledExam}
             scheduledExamTitle={state.scheduledExamTitle}
+            scheduledTimeLimitMinutes={state.scheduledTimeLimitMinutes}
           />
 
           <QuestionDisplay

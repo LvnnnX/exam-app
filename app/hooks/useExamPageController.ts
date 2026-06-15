@@ -95,6 +95,8 @@ export default function useExamPageController() {
     setScheduledExamTitle,
     isScheduledExam,
     setIsScheduledExam,
+    scheduledTimeLimitMinutes,
+    setScheduledTimeLimitMinutes,
   } = useExamControllerState();
 
   const clearStorage = useExamClearStorage();
@@ -366,6 +368,7 @@ export default function useExamPageController() {
       normalizedQuizCodeLength: joinState.normalizedQuizCodeLength,
       scheduledExamTitle,
       isScheduledExam,
+      scheduledTimeLimitMinutes,
     },
     setters: {
       setUserName,
@@ -396,6 +399,7 @@ export default function useExamPageController() {
       setSaved,
       setScheduledExamTitle,
       setIsScheduledExam,
+      setScheduledTimeLimitMinutes,
     },
     actions: {
       goToStep,

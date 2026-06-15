@@ -53,6 +53,7 @@ export default function useExamControllerState() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [scheduledExamTitle, setScheduledExamTitle] = useState('');
   const [isScheduledExam, setIsScheduledExam] = useState(false);
+  const [scheduledTimeLimitMinutes, setScheduledTimeLimitMinutes] = useState(0);
 
   return {
     userName,
@@ -128,5 +129,7 @@ export default function useExamControllerState() {
     setScheduledExamTitle,
     isScheduledExam,
     setIsScheduledExam,
+    scheduledTimeLimitMinutes,
+    setScheduledTimeLimitMinutes,
   };
 }

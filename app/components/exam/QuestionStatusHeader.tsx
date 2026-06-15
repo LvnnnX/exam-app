@@ -20,6 +20,7 @@ type QuestionStatusHeaderProps = {
   onOpenNavPopup: () => void;
   isScheduledExam?: boolean;
   scheduledExamTitle?: string;
+  scheduledTimeLimitMinutes?: number;
 };
 
 function splitLabel(joined: string): string[] {
@@ -60,10 +61,22 @@ export default function QuestionStatusHeader({
   onOpenNavPopup,
   isScheduledExam,
   scheduledExamTitle,
+  scheduledTimeLimitMinutes,
 }: QuestionStatusHeaderProps) {
   const mapelItems = splitLabel(mapelsLabel);
   const babItems = splitLabel(babsLabel);
   const subItems = splitLabel(subBabsLabel);
+
+  // Format duration for scheduled exam
+  const scheduledDurationLabel = scheduledTimeLimitMinutes && scheduledTimeLimitMinutes > 0
+    ? scheduledTimeLimitMinutes < 60
+      ? `${scheduledTimeLimitMinutes} menit`
+      : (() => {
+          const h = Math.floor(scheduledTimeLimitMinutes / 60);
+          const m = scheduledTimeLimitMinutes % 60;
+          return m > 0 ? `${h} jam ${m} menit` : `${h} jam`;
+        })()
+    : null;
 
   return (
     <>
@@ -76,7 +89,7 @@ export default function QuestionStatusHeader({
             {isScheduledExam && scheduledExamTitle ? (
               <>
                 <span className="inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-medium tracking-tight bg-amber-500/10 text-amber-600">
-                  Ujian Terjadwal
+                  Scheduled Exam
                 </span>
                 <span className="text-[13px] font-medium text-nike-black/70 tracking-tight truncate max-w-[200px] sm:max-w-none">
                   {scheduledExamTitle}
@@ -96,6 +109,12 @@ export default function QuestionStatusHeader({
             <TopicSegment items={babItems} />
             <span className="text-nike-grey-500/40">&middot;</span>
             <TopicSegment items={subItems} />
+            {isScheduledExam && scheduledDurationLabel && (
+              <>
+                <span className="text-nike-grey-500/40">&middot;</span>
+                <span className="text-nike-grey-500 font-medium">{scheduledDurationLabel}</span>
+              </>
+            )}
           </div>
         </div>
 
