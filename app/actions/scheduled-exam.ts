@@ -30,6 +30,7 @@ export type ScheduledExamStartResult = {
   resuming?: boolean;
   window_status?: string;
   window_start?: string;
+  nav_mode?: string;
 };
 
 export async function lookupScheduledExamAction(

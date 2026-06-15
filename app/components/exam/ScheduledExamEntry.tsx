@@ -15,6 +15,7 @@ type Props = {
     sessionId: string,
     questionCount: number,
     expiresAt: string,
+    navMode: string,
   ) => void;
   onClose: () => void;
 };
@@ -123,7 +124,12 @@ export default function ScheduledExamEntry({
         ua,
       );
       if (result.success && result.session_id && result.question_count && result.expires_at) {
-        onExamStarted(result.session_id, result.question_count, result.expires_at);
+        onExamStarted(
+          result.session_id,
+          result.question_count,
+          result.expires_at,
+          result.nav_mode || 'strict',
+        );
       } else {
         setView({
           kind: 'error',
@@ -168,8 +174,8 @@ export default function ScheduledExamEntry({
 
           {/* ── Lookup / Error ── */}
           {isLookupOrError && (
-            <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:gap-14">
-              <div className="flex flex-col justify-center space-y-5">
+            <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_420px] lg:gap-14">
+              <div className="order-1 flex flex-col space-y-5 lg:order-none lg:col-start-1 lg:row-start-1 lg:justify-center">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
                   Ujian terjadwal
                 </p>
@@ -179,19 +185,20 @@ export default function ScheduledExamEntry({
                 <p className="max-w-md text-[15px] leading-[1.6] tracking-tight text-white/65">
                   Masukkan kode akses dari pengawas ujian untuk masuk ke sesi ujian terjadwal.
                 </p>
-                <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                  <div className="rounded-[10px] bg-white/5 p-4">
-                    <p className="text-[12px] font-medium text-white/55">Jadwal ujian</p>
-                    <p className="mt-1 text-[13px] text-white/80">Ujian dibuka sesuai jadwal yang ditentukan pengawas.</p>
-                  </div>
-                  <div className="rounded-[10px] bg-white/5 p-4">
-                    <p className="text-[12px] font-medium text-white/55">Akses kode</p>
-                    <p className="mt-1 text-[13px] text-white/80">Kode diverifikasi otomatis sebelum masuk.</p>
-                  </div>
+              </div>
+
+              <div className="order-3 grid gap-3 sm:grid-cols-2 lg:order-none lg:col-start-1 lg:row-start-2">
+                <div className="rounded-[10px] bg-white/5 p-4">
+                  <p className="text-[12px] font-medium text-white/55">Jadwal ujian</p>
+                  <p className="mt-1 text-[13px] text-white/80">Ujian dibuka sesuai jadwal yang ditentukan pengawas.</p>
+                </div>
+                <div className="rounded-[10px] bg-white/5 p-4">
+                  <p className="text-[12px] font-medium text-white/55">Akses kode</p>
+                  <p className="mt-1 text-[13px] text-white/80">Kode diverifikasi otomatis sebelum masuk.</p>
                 </div>
               </div>
 
-              <div className="rounded-[18px] bg-white p-5 text-nike-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:p-6">
+              <div className="order-2 mx-auto w-full max-w-sm rounded-[18px] bg-white p-5 text-nike-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:p-6 lg:order-none lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:max-w-none lg:self-center">
                 <p className="mb-2 text-[10px] font-mono uppercase tracking-[0.12em] text-nike-grey-500">
                   Kode akses *
                 </p>

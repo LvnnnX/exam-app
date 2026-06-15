@@ -61,6 +61,7 @@ export default function ExamPage() {
     sessionId: string,
     questionCount: number,
     expiresAt: string,
+    navMode: string,
   ) => {
     setIsScheduledModalOpen(false);
     setters.setSessionId(sessionId);
@@ -71,7 +72,7 @@ export default function ExamPage() {
     setters.setExpiresAt(expiresAt);
     setters.setStartTime(Number(new Date()));
     setters.setGameMode('exam');
-    setters.setExamMode('strict');
+    setters.setExamMode((navMode === 'standard' ? 'standard' : 'strict') as 'strict' | 'standard');
     setters.setStep(3);
     try {
       const firstQ = await getSessionQuestionViaRpc(sessionId, 0);
@@ -316,8 +317,8 @@ export default function ExamPage() {
 
           <ScheduledExamEntry
             isOpen={isScheduledModalOpen}
-            onExamStarted={(sessionId, questionCount, expiresAt) => {
-              void handleScheduledExamStarted(sessionId, questionCount, expiresAt);
+            onExamStarted={(sessionId, questionCount, expiresAt, navMode) => {
+              void handleScheduledExamStarted(sessionId, questionCount, expiresAt, navMode);
             }}
             onClose={() => setIsScheduledModalOpen(false)}
           />
