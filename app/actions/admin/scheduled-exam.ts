@@ -21,6 +21,7 @@ export type ScheduledExamRow = {
   is_visible: boolean;
   nav_mode: string;
   sub_bab_percentages: Record<string, number> | null;
+  question_ids: number[] | null;  // fixed pool — same for all students
 };
 
 export type ScheduledExamAttemptRow = {
@@ -49,6 +50,7 @@ type CreateScheduledExamInput = {
   accessCode: string;
   navMode?: "strict" | "standard";
   subBabPercentages?: Record<string, number>;
+  questionIds?: number[];  // pre-selected question IDs (null = auto-select at creation)
 };
 
 export type ScheduledExamHistoryRow = {
@@ -133,6 +135,7 @@ export async function createScheduledExamAction(
     p_access_code: input.accessCode.trim(),
     p_nav_mode: input.navMode || 'strict',
     p_sub_bab_percentages: input.subBabPercentages ? JSON.stringify(input.subBabPercentages) : null,
+    p_question_ids: input.questionIds ?? null,
   });
 
   if (error) throw new Error(error.message);

@@ -597,7 +597,45 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
     setSaving(true); setError(null);
     try {
       const token = await getAdminAccessToken();
-      // Combine date + time into ISO string
+      // ─── Step 1: Select N random questions from the pool ───────────────────
+      // All students will get these exact IDs (same pool, same order).
+      // Only option order is shuffled per-student (client-side shuffleOptions).
+      const selectedMapels = mapels.length > 0 ? mapels : availMapels.map(m => m.value);
+      const selectedBabs = babs.length > 0 ? babs : availBabs.map(b => b.value);
+      const selectedSubBabs = subBabs.length > 0 ? subBabs : availSubBabs.map(s => s.value);
+
+      const { data: poolData, error: poolError } = await supabase
+        .from('questions')
+        .select('id')
+        .eq('is_hidden', false)
+        .or(
+          selectedMapels.map(m => `mapels.cs.{"${m}"}`).join(',') +
+          ',' +
+          selectedBabs.map(b => `babs.cs.{"${b}"}`).join(',') +
+          ',' +
+          selectedSubBabs.map(s => `sub_babs.cs.{"${s}"}`).join(',')
+        )
+        .limit(500);
+
+      if (poolError || !poolData || poolData.length === 0) {
+        throw new Error('Tidak ada soal yang tersedia untuk pilihan ini.');
+      }
+
+      // Fisher-Yates shuffle then take N
+      const shuffled = [...poolData];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      const questionIds = shuffled.slice(0, questionCount).map((q: { id: number }) => q.id);
+
+      if (questionIds.length < questionCount) {
+        throw new Error(
+          `Soal tidak cukup. Pilih ${questionCount} soal, tersedia ${questionIds.length} soal.`
+        );
+      }
+
+      // ─── Step 2: Create the exam with the pre-selected question pool ───────
       const ws = windowStart ? new Date(windowStart).toISOString() : '';
       const we = windowEnd ? new Date(windowEnd).toISOString() : '';
       await createScheduledExamAction(token, {
@@ -607,6 +645,7 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
         attemptMode,
         navMode,
         subBabPercentages: percentagesEnabled ? subBabPercentages : undefined,
+        questionIds,
       });
       onCreated();
     } catch (err) {
