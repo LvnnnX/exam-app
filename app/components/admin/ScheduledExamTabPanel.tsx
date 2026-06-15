@@ -32,7 +32,8 @@ type Props = {
 type ActiveView = 'create' | 'manage' | 'history';
 type ViewState =
   | { kind: 'list' }
-  | { kind: 'attempts'; examId: string; examTitle: string };
+  | { kind: 'attempts'; examId: string; examTitle: string }
+  | { kind: 'newly-created'; examId: string };
 
 const cardCls = (t: 'light' | 'dark') =>
   t === 'dark'
@@ -48,11 +49,11 @@ const inputCls = (t: 'light' | 'dark') =>
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { icon: React.ReactNode; cls: string }> = {
-    draft: { icon: <Clock size={12} />, cls: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' },
-    published: { icon: <CheckCircle2 size={12} />, cls: 'bg-green-500/15 text-green-600 dark:text-green-400' },
-    closed: { icon: <XCircle size={12} />, cls: 'bg-red-500/15 text-red-600 dark:text-red-400' },
+    active: { icon: <CheckCircle2 size={12} />, cls: 'bg-green-500/15 text-green-500 dark:text-green-400' },
+    scheduled: { icon: <Clock size={12} />, cls: 'bg-yellow-500/15 text-yellow-500 dark:text-yellow-400' },
+    expired: { icon: <XCircle size={12} />, cls: 'bg-red-500/15 text-red-500 dark:text-red-400' },
   };
-  const entry = map[status] || map.draft;
+  const entry = map[status] || map.scheduled;
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${entry.cls}`}>
       {entry.icon} {status}
@@ -227,7 +228,11 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
                 <CreateFormCard
                   theme={theme}
                   visibilitySettings={visibilitySettings}
-                  onCreated={() => void loadExams()}
+                  onCreated={(examId: string) => {
+                    setActiveView('manage');
+                    setView({ kind: 'newly-created', examId });
+                    void loadExams();
+                  }}
                 />
               </div>
             </div>
@@ -239,6 +244,7 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
               exams={exams}
               theme={theme}
               formatCategorySelectionLabel={formatCategorySelectionLabel}
+              newlyCreatedExamId={view.kind === 'newly-created' ? view.examId : null}
             />
           )}
 
@@ -265,10 +271,11 @@ async function fetchExamPoolQuestions(exam: ScheduledExamRow) {
   return fetchScheduledExamQuestionPoolAction(ids);
 }
 
-function ManageTable({ exams, theme, formatCategorySelectionLabel }: {
+function ManageTable({ exams, theme, formatCategorySelectionLabel, newlyCreatedExamId }: {
   exams: ScheduledExamRow[];
   theme: 'light' | 'dark';
   formatCategorySelectionLabel: (value?: string | null) => string;
+  newlyCreatedExamId: string | null;
 }) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -299,6 +306,18 @@ function ManageTable({ exams, theme, formatCategorySelectionLabel }: {
       setDetailLoading(false);
     }
   };
+
+  // Auto-open modal for newly created exam once exams list is loaded
+  useEffect(() => {
+    if (newlyCreatedExamId && exams.length > 0) {
+      const exam = exams.find(e => e.id === newlyCreatedExamId);
+      if (exam) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void handleViewExam(exam);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newlyCreatedExamId, exams.length]);
 
   const totalPages = Math.max(1, Math.ceil(exams.length / perPage));
   const paginated = exams.slice((page - 1) * perPage, page * perPage);
@@ -511,7 +530,7 @@ function HistoryTable({ history, theme, onViewAttempts }: {
 function CreateFormCard({ theme, visibilitySettings, onCreated }: {
   theme: 'light' | 'dark';
   visibilitySettings: VisibilitySettings;
-  onCreated: () => void;
+  onCreated: (examId: string) => void;
 }) {
   const [title, setTitle] = useState('');
   const [accessCode, setAccessCode] = useState('');
@@ -598,7 +617,7 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
       // ─── Step 2: Create the exam with the pre-selected question pool ───────
       const ws = windowStart ? new Date(windowStart).toISOString() : '';
       const we = windowEnd ? new Date(windowEnd).toISOString() : '';
-      await createScheduledExamAction(token, {
+      const newExamId = await createScheduledExamAction(token, {
         title, accessCode, mapels, babs, subBabs,
         mode: 'exam', questionCount, timeLimitMinutes: timeLimit,
         windowStart: ws, windowEnd: we,
@@ -607,7 +626,7 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
         subBabPercentages: percentagesEnabled ? subBabPercentages : undefined,
         questionIds,
       });
-      onCreated();
+      onCreated(newExamId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal membuat ujian');
     } finally { setSaving(false); }

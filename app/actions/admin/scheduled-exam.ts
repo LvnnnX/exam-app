@@ -106,7 +106,7 @@ export type ScheduledExamRow = {
   window_end: string;
   attempt_mode: string;
   access_code: string | null;
-  status: string;
+  status: 'active' | 'scheduled' | 'expired';
   is_visible: boolean;
   nav_mode: string;
   sub_bab_percentages: Record<string, number> | null;
@@ -156,7 +156,7 @@ export type ScheduledExamHistoryRow = {
   window_start: string;
   window_end: string;
   attempt_mode: string;
-  status: string;
+  status: 'active' | 'scheduled' | 'expired';
   access_code: string | null;
   participant_count: number;
   avg_score: number | null;
@@ -170,6 +170,7 @@ export async function listScheduledExamsAction(
   let query = supabase
     .from("scheduled_exams")
     .select("*")
+    .neq("status", "expired")
     .order("created_at", { ascending: false });
 
   if (scope === "own") {
@@ -302,7 +303,7 @@ export async function closeScheduledExamAction(
 
   const { error } = await supabase
     .from("scheduled_exams")
-    .update({ status: "closed", is_visible: false })
+    .update({ status: "expired", is_visible: false })
     .eq("id", examId);
 
   if (error) throw new Error(error.message);
@@ -317,7 +318,7 @@ export async function getScheduledExamHistoryAction(
   let query = supabase
     .from("scheduled_exams")
     .select("*")
-    .eq("status", "closed")
+    .eq("status", "expired")
     .order("created_at", { ascending: false });
 
   if (scope === "own") {

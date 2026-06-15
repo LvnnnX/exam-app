@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { type RawQuestion } from '@/lib/questions';
 import RichContent from '@/app/components/RichContent';
 
@@ -13,6 +14,11 @@ type ScheduledExamQuestionsModalProps = {
   onClose: () => void;
   theme?: 'light' | 'dark';
 };
+
+/** Strip all HTML tags, return plain text */
+function stripHtml(html: string): string {
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+}
 
 function OptionRow({
   label,
@@ -26,6 +32,7 @@ function OptionRow({
   theme: 'light' | 'dark';
 }) {
   const isDark = theme === 'dark';
+  const cleanText = stripHtml(text);
   return (
     <div
       className={`flex items-start gap-2 rounded-xl px-3 py-2 text-[12px] ${
@@ -62,7 +69,7 @@ function OptionRow({
             : 'text-gray-600'
         }`}
       >
-        {text}
+        {cleanText}
       </span>
     </div>
   );
@@ -152,7 +159,7 @@ export default function ScheduledExamQuestionsModal({
                             {idx + 1}
                           </span>
                           <span className={`text-[12px] font-medium leading-snug line-clamp-2 ${isDark ? 'text-dark-text-primary' : 'text-gray-900'}`}>
-                            {q.question_text.replace(/<[^>]+>/g, '').slice(0, 80)}{q.question_text.length > 80 ? '…' : ''}
+                            {stripHtml(q.question_text).slice(0, 80)}{stripHtml(q.question_text).length > 80 ? '…' : ''}
                           </span>
                         </div>
                         {isExp ? (
@@ -168,26 +175,41 @@ export default function ScheduledExamQuestionsModal({
                           <div className="pt-3">
                             <RichContent html={q.question_text} className="text-[12px] [&_p]:mb-1" />
                           </div>
-                          <div className="space-y-1.5">
-                            {labels.map((l) => (
-                              <OptionRow
-                                key={l}
-                                label={l}
-                                text={
-                                  l === 'a' ? q.option_a :
-                                  l === 'b' ? q.option_b :
-                                  l === 'c' ? q.option_c :
-                                  l === 'd' ? q.option_d :
-                                  q.option_e
-                                }
-                                isCorrect={l === correctLabel}
-                                theme={theme}
-                              />
-                            ))}
-                          </div>
-                          <div className={`mt-2 flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold ${isDark ? 'bg-accent-green/10 text-accent-green' : 'bg-green-50 text-green-700'}`}>
-                            Jawaban benar: {correctLabel.toUpperCase()} — {correctText}
-                          </div>
+
+                          {q.question_type === 'multiple_choice' ? (
+                            <>
+                              <div className="space-y-1.5">
+                                {labels.map((l) => (
+                                  <OptionRow
+                                    key={l}
+                                    label={l}
+                                    text={
+                                      l === 'a' ? q.option_a :
+                                      l === 'b' ? q.option_b :
+                                      l === 'c' ? q.option_c :
+                                      l === 'd' ? q.option_d :
+                                      q.option_e
+                                    }
+                                    isCorrect={l === correctLabel}
+                                    theme={theme}
+                                  />
+                                ))}
+                              </div>
+                              <div className={`mt-2 flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold ${isDark ? 'bg-accent-green/10 text-accent-green' : 'bg-green-50 text-green-700'}`}>
+                                Jawaban benar: {correctLabel.toUpperCase()} — {correctText}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className={`rounded-xl px-3 py-2 text-[12px] font-medium ${isDark ? 'bg-accent-purple/10 text-accent-purple' : 'bg-purple-50 text-purple-700'}`}>
+                                Tipe: Isian
+                              </div>
+                              <div className={`rounded-xl border px-3 py-2 text-[12px] ${isDark ? 'border-dark-border-subtle bg-white/[0.03] text-dark-text-secondary' : 'border-nike-grey-200 bg-black/[0.02] text-gray-700'}`}>
+                                <span className={`text-[10px] font-semibold uppercase tracking-wide ${isDark ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Jawaban singkat: </span>
+                                <span className="font-semibold">{q.short_answer ? stripHtml(q.short_answer) : '-'}</span>
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
