@@ -36,14 +36,19 @@ function assertQuestionPayload(payload: QuestionPayload) {
   }
 }
 
-export async function createQuestionAction(accessToken: string, payload: QuestionPayload) {
+export async function createQuestionAction(accessToken: string, payload: QuestionPayload): Promise<RawQuestion> {
   assertQuestionPayload(payload);
   const { supabase, user } = await requirePermission(accessToken, 'question:create');
-  const { error } = await supabase.from('questions').insert([{ ...payload, created_by: user.id }]);
+  const { data, error } = await supabase
+    .from('questions')
+    .insert([{ ...payload, created_by: user.id }])
+    .select('*')
+    .single();
   if (error) throw new Error(error.message);
+  return data as RawQuestion;
 }
 
-export async function updateQuestionAction(accessToken: string, id: number, payload: QuestionPayload) {
+export async function updateQuestionAction(accessToken: string, id: number, payload: QuestionPayload): Promise<RawQuestion> {
   if (!Number.isInteger(id)) throw new Error('Invalid question id');
   assertQuestionPayload(payload);
   const { supabase, admin } = await requireAdmin(accessToken);
@@ -52,8 +57,9 @@ export async function updateQuestionAction(accessToken: string, id: number, payl
   const createdBy = question?.created_by as string | null | undefined;
   const allowed = hasPermission(admin, 'question:update:any') || (createdBy === admin.userId && hasPermission(admin, 'question:update:own'));
   if (!allowed) throw new Error('Forbidden');
-  const { error } = await supabase.from('questions').update(payload).eq('id', id);
+  const { data, error } = await supabase.from('questions').update(payload).eq('id', id).select('*').single();
   if (error) throw new Error(error.message);
+  return data as RawQuestion;
 }
 
 export async function deleteQuestionAction(accessToken: string, id: number) {

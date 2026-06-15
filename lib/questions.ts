@@ -111,7 +111,7 @@ function normalizeQuestionType(value: string | null | undefined): QuestionType {
   return value === 'short_answer' ? 'short_answer' : 'multiple_choice';
 }
 
-function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
+export function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
   const hasShortAnswer = raw.short_answer !== null && raw.short_answer !== undefined && String(raw.short_answer).trim() !== '';
 
   return {
@@ -303,33 +303,26 @@ export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
 }
 
 export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('mapels, babs');
-
-  if (error || !data) return [];
-
+  // Server-side DISTINCT unnest via RPC (idx_questions_mapels_gin backs the overlap filter).
+  // Replaces the prior full-table scan + JS dedupe.
   const selectedMapels = (Array.isArray(mapel) ? mapel : mapel ? [mapel] : [])
     .filter(m => m !== 'Semua MAPEL' && m !== 'None')
-    .map(normalizeCategorySlug)
     .filter(Boolean);
 
-  const matchingRows = selectedMapels.length === 0
-    ? data
-    : data.filter((q) => {
-      const row = q as CategoryRow;
-      return toStringArray(row.mapels ?? row.mapel).some((raw) => selectedMapels.includes(normalizeCategorySlug(raw)));
-    });
+  const { data, error } = await supabase.rpc('get_distinct_babs', {
+    p_mapels: selectedMapels.length > 0 ? selectedMapels : null,
+  });
 
-  const rawBabs = matchingRows.flatMap((q) => {
-    const row = q as CategoryRow;
-    return toStringArray(row.babs);
-  }).filter(Boolean);
+  if (error || !data) {
+    if (error) console.error('get_distinct_babs failed:', error.message);
+    return [];
+  }
 
   const seen = new Map<string, string>();
-  for (const raw of rawBabs) {
-    const slug = normalizeCategorySlug(String(raw));
-    if (slug && !seen.has(slug)) {
-      seen.set(slug, String(raw));
-    }
+  for (const row of data as { value: string }[]) {
+    const raw = String(row.value);
+    const slug = normalizeCategorySlug(raw);
+    if (slug && !seen.has(slug)) seen.set(slug, raw);
   }
 
   return Array.from(seen.entries())
@@ -361,33 +354,26 @@ export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
 }
 
 export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('babs, sub_babs');
-
-  if (error || !data) return [];
-
+  // Server-side DISTINCT unnest via RPC (idx_questions_babs_gin backs the overlap filter).
+  // Replaces the prior full-table scan + JS dedupe.
   const selectedBabs = (Array.isArray(bab) ? bab : bab ? [bab] : [])
     .filter(b => b !== 'Semua BAB' && b !== 'None')
-    .map(normalizeCategorySlug)
     .filter(Boolean);
 
-  const matchingRows = selectedBabs.length === 0
-    ? data
-    : data.filter((q) => {
-      const row = q as CategoryRow;
-      return toStringArray(row.babs).some((raw) => selectedBabs.includes(normalizeCategorySlug(raw)));
-    });
+  const { data, error } = await supabase.rpc('get_distinct_sub_babs', {
+    p_babs: selectedBabs.length > 0 ? selectedBabs : null,
+  });
 
-  const rawSubBabs = matchingRows.flatMap((q) => {
-    const row = q as CategoryRow;
-    return toStringArray(row.sub_babs);
-  }).filter(Boolean);
+  if (error || !data) {
+    if (error) console.error('get_distinct_sub_babs failed:', error.message);
+    return [];
+  }
 
   const seen = new Map<string, string>();
-  for (const raw of rawSubBabs) {
-    const slug = normalizeCategorySlug(String(raw));
-    if (slug && !seen.has(slug)) {
-      seen.set(slug, String(raw));
-    }
+  for (const row of data as { value: string }[]) {
+    const raw = String(row.value);
+    const slug = normalizeCategorySlug(raw);
+    if (slug && !seen.has(slug)) seen.set(slug, raw);
   }
 
   return Array.from(seen.entries())

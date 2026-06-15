@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, CheckCircle2, Clock, XCircle, Users, CalendarClock, TrendingUp, Users2, Percent } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Users, CalendarClock, TrendingUp, Users2, Percent } from 'lucide-react';
 import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
 import {
   listScheduledExamsAction,
@@ -16,6 +16,9 @@ import {
 } from '@/app/actions/admin/scheduled-exam';
 import { fetchAllMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin, QUESTION_COUNTS } from '@/lib/questions';
 import type { BabInfo, SubBabInfo } from '@/lib/questions';
+import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
+
+const DURATION_OPTIONS = [30, 60, 90, 120, 150, 180];
 
 type Props = {
   theme: 'light' | 'dark';
@@ -24,7 +27,6 @@ type Props = {
 type ActiveView = 'create' | 'manage' | 'history';
 type ViewState =
   | { kind: 'list' }
-  | { kind: 'create' }
   | { kind: 'attempts'; examId: string; examTitle: string };
 
 const cardCls = (t: 'light' | 'dark') =>
@@ -123,16 +125,6 @@ export default function ScheduledExamTabPanel({ theme }: Props) {
     }
   }, [activeView, loadExams, loadHistory]);
 
-  if (view.kind === 'create') {
-    return (
-      <CreateExamForm
-        theme={theme}
-        onCreated={() => { setView({ kind: 'list' }); void loadExams(); }}
-        onCancel={() => setView({ kind: 'list' })}
-      />
-    );
-  }
-
   if (view.kind === 'attempts') {
     return (
       <AttemptsPanel
@@ -163,19 +155,6 @@ export default function ScheduledExamTabPanel({ theme }: Props) {
                 : 'Buat ujian dengan kode akses dan jendela waktu.'}
             </p>
           </div>
-          {activeView === 'create' && (
-            <button
-              type="button"
-              onClick={() => setView({ kind: 'create' })}
-              className={`inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-[13px] font-semibold transition-spring-fast active:scale-95 ${
-                t === 'dark'
-                  ? 'bg-accent-blue text-white hover:bg-accent-blue/80'
-                  : 'bg-[#111111] text-white hover:bg-[#333333]'
-              }`}
-            >
-              <Plus size={14} /> Buat ujian
-            </button>
-          )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <div className={`inline-flex h-9 rounded-full p-0.5 ${t === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
@@ -453,14 +432,14 @@ function CreateFormCard({ theme, onCreated }: {
 
   useEffect(() => {
     if (mapels.length > 0) {
-      void fetchBabsAdmin(mapels.length === 1 ? mapels[0] : undefined).then(setAvailBabs);
+      void fetchBabsAdmin(mapels).then(setAvailBabs);
     } else { setAvailBabs([]); }
     setBabs([]); setSubBabs([]);
   }, [mapels]);
 
   useEffect(() => {
     if (babs.length > 0) {
-      void fetchSubBabsAdmin(babs.length === 1 ? babs[0] : undefined).then(setAvailSubBabs);
+      void fetchSubBabsAdmin(babs).then(setAvailSubBabs);
     } else { setAvailSubBabs([]); }
     setSubBabs([]);
   }, [babs]);
@@ -485,16 +464,17 @@ function CreateFormCard({ theme, onCreated }: {
     } finally { setSaving(false); }
   };
 
-  const toggleItem = (arr: string[], setArr: (v: string[]) => void, val: string) => {
-    setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
+  const generateAccessCode = () => {
+    // Slug source: prefer title, fall back to first selected mapel, else "EXAM"
+    const source = title.trim() || (mapels[0] ?? '') || 'EXAM';
+    const slug = source
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '')
+      .slice(0, 8) || 'EXAM';
+    // 4-digit random suffix to keep codes unique
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    setAccessCode(`${slug}${suffix}`.slice(0, 20));
   };
-
-  const chipCls = (active: boolean) =>
-    `px-3 py-1.5 rounded-full text-[12px] font-medium transition-spring-fast ${
-      active
-        ? theme === 'dark' ? 'bg-accent-blue text-white' : 'bg-[#111111] text-white'
-        : theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'
-    }`;
 
   return (
     <div className={`overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
@@ -514,8 +494,22 @@ function CreateFormCard({ theme, onCreated }: {
 
           <div>
             <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Kode akses</label>
-            <input type="text" value={accessCode} onChange={(e) => setAccessCode(e.target.value.toUpperCase().slice(0, 20))} required
-              placeholder="Contoh: UAS2025EKO" className={inputCls(theme)} />
+            <div className="flex gap-2">
+              <input type="text" value={accessCode} onChange={(e) => setAccessCode(e.target.value.toUpperCase().slice(0, 20))} required
+                placeholder="Contoh: UAS2025EKO" className={inputCls(theme)} />
+              <button
+                type="button"
+                onClick={generateAccessCode}
+                title="Generate kode acak dari judul / mapel"
+                className={`shrink-0 h-10 px-3 rounded-xl text-[12px] font-semibold transition-spring-fast active:scale-95 inline-flex items-center gap-1.5 ${
+                  theme === 'dark'
+                    ? 'bg-dark-700 text-dark-text-primary border border-dark-border-medium hover:border-accent-blue'
+                    : 'bg-[#f5f5f5] text-[#111111] border border-[#e5e5e5] hover:border-[#111111]'
+                }`}
+              >
+                🎲 Random
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -537,7 +531,9 @@ function CreateFormCard({ theme, onCreated }: {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Batas waktu (menit)</label>
-              <input type="number" value={timeLimit} onChange={(e) => setTimeLimit(Number(e.target.value))} min={1} max={300} required className={inputCls(theme)} />
+              <select value={timeLimit} onChange={(e) => setTimeLimit(Number(e.target.value))} className={selectCls(theme)}>
+                {DURATION_OPTIONS.map((m) => <option key={m} value={m}>{m} menit</option>)}
+              </select>
             </div>
             <div>
               <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mode percobaan</label>
@@ -591,40 +587,41 @@ function CreateFormCard({ theme, onCreated }: {
 
           <div>
             <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mapel</label>
-            <div className="flex flex-wrap gap-1.5">
-              {availMapels.map((m) => (
-                <button key={m.value} type="button" onClick={() => toggleItem(mapels, setMapels, m.value)} className={chipCls(mapels.includes(m.value))}>
-                  {m.label}
-                </button>
-              ))}
-            </div>
+            <MultiSelectDropdown
+              label="Mapel"
+              theme={theme}
+              options={availMapels.map((m) => ({ value: m.value, label: m.label }))}
+              selectedValues={mapels}
+              onChange={setMapels}
+              placeholder="Pilih mapel"
+            />
           </div>
 
-          {availBabs.length > 0 && (
-            <div>
-              <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>BAB</label>
-              <div className="flex flex-wrap gap-1.5">
-                {availBabs.map((b) => (
-                  <button key={b.value} type="button" onClick={() => toggleItem(babs, setBabs, b.value)} className={chipCls(babs.includes(b.value))}>
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <div>
+            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Bab</label>
+            <MultiSelectDropdown
+              label="Bab"
+              theme={theme}
+              options={availBabs.map((b) => ({ value: b.value, label: b.label }))}
+              selectedValues={babs}
+              onChange={setBabs}
+              disabled={mapels.length === 0}
+              placeholder={mapels.length === 0 ? 'Pilih mapel dulu' : 'Pilih bab'}
+            />
+          </div>
 
-          {availSubBabs.length > 0 && (
-            <div>
-              <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Sub-bab</label>
-              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                {availSubBabs.map((s) => (
-                  <button key={s.value} type="button" onClick={() => toggleItem(subBabs, setSubBabs, s.value)} className={chipCls(subBabs.includes(s.value))}>
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <div>
+            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Sub-bab</label>
+            <MultiSelectDropdown
+              label="Sub-bab"
+              theme={theme}
+              options={availSubBabs.map((s) => ({ value: s.value, label: s.label }))}
+              selectedValues={subBabs}
+              onChange={setSubBabs}
+              disabled={babs.length === 0}
+              placeholder={babs.length === 0 ? 'Pilih bab dulu' : 'Pilih sub-bab'}
+            />
+          </div>
 
           {/* Persentase soal */}
           {(() => {
@@ -740,195 +737,6 @@ function CreateFormCard({ theme, onCreated }: {
           </button>
         </form>
       </div>
-    </div>
-  );
-}
-
-/* Create Exam Form (legacy sub-view, kept for back compat from list view) */
-
-function CreateExamForm({ theme, onCreated, onCancel }: {
-  theme: 'light' | 'dark'; onCreated: () => void; onCancel: () => void;
-}) {
-  const [title, setTitle] = useState('');
-  const [accessCode, setAccessCode] = useState('');
-  const [mode, setMode] = useState<'exam' | 'survival'>('exam');
-  const [questionCount, setQuestionCount] = useState(20);
-  const [timeLimit, setTimeLimit] = useState(60);
-  const [windowStart, setWindowStart] = useState('');
-  const [windowEnd, setWindowEnd] = useState('');
-  const [attemptMode, setAttemptMode] = useState<'single' | 'retake'>('single');
-  const [mapels, setMapels] = useState<string[]>([]);
-  const [babs, setBabs] = useState<string[]>([]);
-  const [subBabs, setSubBabs] = useState<string[]>([]);
-  const [availMapels, setAvailMapels] = useState<BabInfo[]>([]);
-  const [availBabs, setAvailBabs] = useState<BabInfo[]>([]);
-  const [availSubBabs, setAvailSubBabs] = useState<SubBabInfo[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => { void fetchAllMapelsAdmin().then(setAvailMapels); }, []);
-
-  useEffect(() => {
-    if (mapels.length > 0) {
-      void fetchBabsAdmin(mapels.length === 1 ? mapels[0] : undefined).then(setAvailBabs);
-    } else { setAvailBabs([]); }
-    setBabs([]); setSubBabs([]);
-  }, [mapels]);
-
-  useEffect(() => {
-    if (babs.length > 0) {
-      void fetchSubBabsAdmin(babs.length === 1 ? babs[0] : undefined).then(setAvailSubBabs);
-    } else { setAvailSubBabs([]); }
-    setSubBabs([]);
-  }, [babs]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true); setError(null);
-    try {
-      const token = await getAdminAccessToken();
-      await createScheduledExamAction(token, {
-        title, accessCode, mapels, babs, subBabs,
-        mode, questionCount, timeLimitMinutes: timeLimit,
-        windowStart: new Date(windowStart).toISOString(),
-        windowEnd: new Date(windowEnd).toISOString(),
-        attemptMode,
-      });
-      onCreated();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal membuat ujian');
-    } finally { setSaving(false); }
-  };
-
-  const toggleItem = (arr: string[], setArr: (v: string[]) => void, val: string) => {
-    setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
-  };
-
-  const chipCls = (active: boolean) =>
-    `px-3 py-1.5 rounded-full text-[12px] font-medium transition-spring-fast ${
-      active
-        ? theme === 'dark' ? 'bg-accent-blue text-white' : 'bg-[#111111] text-white'
-        : theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'
-    }`;
-
-  return (
-    <div className="max-w-xl">
-      <button type="button" onClick={onCancel} className={`mb-4 text-[13px] font-medium ${theme === 'dark' ? 'text-dark-text-secondary hover:text-dark-text-primary' : 'text-gray-500 hover:text-gray-900'}`}>
-        &larr; Kembali
-      </button>
-      <h2 className={`text-lg font-bold tracking-tight mb-4 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
-        Buat ujian terjadwal
-      </h2>
-
-      {error && (
-        <div className={`mb-4 rounded-2xl p-3 text-[13px] font-medium ${theme === 'dark' ? 'bg-accent-red/10 text-accent-red' : 'bg-red-50 text-red-600'}`}>
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-        <div>
-          <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Judul ujian</label>
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200}
-            placeholder="Contoh: Ujian Akhir Semester Genap" className={inputCls(theme)} />
-        </div>
-
-        <div>
-          <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Kode akses</label>
-          <input type="text" value={accessCode} onChange={(e) => setAccessCode(e.target.value.toUpperCase().slice(0, 20))} required
-            placeholder="Contoh: UAS2025EKO" className={inputCls(theme)} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mode</label>
-            <select value={mode} onChange={(e) => setMode(e.target.value as 'exam' | 'survival')} className={selectCls(theme)}>
-              <option value="exam">Exam</option>
-              <option value="survival">Survival</option>
-            </select>
-          </div>
-          <div>
-            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Jumlah soal</label>
-            <select value={questionCount} onChange={(e) => setQuestionCount(Number(e.target.value))} className={selectCls(theme)}>
-              {QUESTION_COUNTS.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Batas waktu (menit)</label>
-            <input type="number" value={timeLimit} onChange={(e) => setTimeLimit(Number(e.target.value))} min={1} max={300} required className={inputCls(theme)} />
-          </div>
-          <div>
-            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mode percobaan</label>
-            <select value={attemptMode} onChange={(e) => setAttemptMode(e.target.value as 'single' | 'retake')} className={selectCls(theme)}>
-              <option value="single">Sekali</option>
-              <option value="retake">Retake</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Window mulai</label>
-            <input type="datetime-local" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} required className={inputCls(theme)} />
-          </div>
-          <div>
-            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Window selesai</label>
-            <input type="datetime-local" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} required className={inputCls(theme)} />
-          </div>
-        </div>
-
-        <div>
-          <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mapel</label>
-          <div className="flex flex-wrap gap-1.5">
-            {availMapels.map((m) => (
-              <button key={m.value} type="button" onClick={() => toggleItem(mapels, setMapels, m.value)} className={chipCls(mapels.includes(m.value))}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {availBabs.length > 0 && (
-          <div>
-            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>BAB</label>
-            <div className="flex flex-wrap gap-1.5">
-              {availBabs.map((b) => (
-                <button key={b.value} type="button" onClick={() => toggleItem(babs, setBabs, b.value)} className={chipCls(babs.includes(b.value))}>
-                  {b.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {availSubBabs.length > 0 && (
-          <div>
-            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Sub-bab</label>
-            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-              {availSubBabs.map((s) => (
-                <button key={s.value} type="button" onClick={() => toggleItem(subBabs, setSubBabs, s.value)} className={chipCls(subBabs.includes(s.value))}>
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={saving}
-          className={`w-full h-11 rounded-2xl text-[14px] font-semibold transition-spring-fast active:scale-95 disabled:opacity-50 ${
-            theme === 'dark'
-              ? 'bg-accent-blue text-white hover:bg-accent-blue/80'
-              : 'bg-[#111111] text-white hover:bg-[#333333]'
-          }`}
-        >
-          {saving ? 'Menyimpan...' : 'Buat ujian'}
-        </button>
-      </form>
     </div>
   );
 }
