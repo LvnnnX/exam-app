@@ -598,6 +598,12 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
   const handleToggleSubBab = (val: string) => {
     setSubBabs(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
   };
+  const handleSelectAllBab = () => {
+    setBabs(availBabs.map(b => b.value));
+  };
+  const handleSelectAllSubBab = () => {
+    setSubBabs(availSubBabs.map(s => s.value));
+  };
 
   const closeAll = () => { setMapelOpen(false); setBabOpen(false); setSubBabOpen(false); setQcOpen(false); setDurOpen(false); };
 
@@ -701,7 +707,18 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
                   <div className={`absolute z-20 w-full mt-1.5 border rounded-xl max-h-[280px] overflow-y-auto shadow-lg ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-200'}`}>
                     {availBabs.length === 0 ? (
                       <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>No bab found</div>
-                    ) : availBabs.map(b => {
+                    ) : (
+                      <>
+                        <div
+                          onClick={handleSelectAllBab}
+                          className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border hover:bg-dark-750' : 'border-gray-100 hover:bg-gray-50'}`}
+                        >
+                          <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${babs.length === availBabs.length ? (theme === 'dark' ? 'bg-accent-red border-accent-red' : 'bg-red-500 border-red-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
+                            {babs.length === availBabs.length && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                          <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-accent-red' : 'text-red-600'}`}>Pilih Semua</span>
+                        </div>
+                        {availBabs.map(b => {
                       const isSelected = babs.includes(b.value);
                       return (
                         <div key={b.value} onClick={() => handleToggleBab(b.value)}
@@ -713,6 +730,8 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
                         </div>
                       );
                     })}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -739,18 +758,31 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
                   <div className={`absolute z-20 w-full mt-1.5 border rounded-xl max-h-[280px] overflow-y-auto shadow-lg ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-200'}`}>
                     {availSubBabs.length === 0 ? (
                       <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>No sub-bab found</div>
-                    ) : availSubBabs.map(s => {
-                      const isSelected = subBabs.includes(s.value);
-                      return (
-                        <div key={s.value} onClick={() => handleToggleSubBab(s.value)}
-                          className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border-subtle hover:bg-dark-750' : 'border-gray-50 hover:bg-gray-50'}`}>
-                          <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? (theme === 'dark' ? 'bg-accent-purple border-accent-purple' : 'bg-indigo-500 border-indigo-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
-                            {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                    ) : (
+                      <>
+                        <div
+                          onClick={handleSelectAllSubBab}
+                          className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border hover:bg-dark-750' : 'border-gray-100 hover:bg-gray-50'}`}
+                        >
+                          <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${subBabs.length === availSubBabs.length ? (theme === 'dark' ? 'bg-accent-purple border-accent-purple' : 'bg-indigo-500 border-indigo-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
+                            {subBabs.length === availSubBabs.length && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                           </div>
-                          <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{s.label}</span>
+                          <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-accent-purple' : 'text-indigo-600'}`}>Pilih Semua</span>
                         </div>
-                      );
-                    })}
+                        {availSubBabs.map(s => {
+                          const isSelected = subBabs.includes(s.value);
+                          return (
+                            <div key={s.value} onClick={() => handleToggleSubBab(s.value)}
+                              className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border-subtle hover:bg-dark-750' : 'border-gray-50 hover:bg-gray-50'}`}>
+                              <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isSelected ? (theme === 'dark' ? 'bg-accent-purple border-accent-purple' : 'bg-indigo-500 border-indigo-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
+                                {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                              </div>
+                              <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{s.label}</span>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
