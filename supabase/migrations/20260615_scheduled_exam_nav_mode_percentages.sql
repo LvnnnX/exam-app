@@ -1,18 +1,35 @@
 -- Scheduled Exam: nav_mode + sub_bab_percentages
 -- 2026-06-15
--- Run di Supabase Dashboard > SQL Editor
+--
+-- Adds navigation mode (strict/standard) and per-sub-bab percentage distribution
+-- to the scheduled exam system. The engine RPC start_exam_session already has an
+-- 11-arg overload (p_sub_bab_percentages jsonb, p_nav_mode text), so this fully
+-- wires percentage distribution + nav mode end-to-end.
 
 -- ═══════════════════════════════════════════
--- STEP 1: ADD COLUMNS
+-- STEP 1: ADD COLUMNS + CONSTRAINT
 -- ═══════════════════════════════════════════
 
 ALTER TABLE public.scheduled_exams ADD COLUMN IF NOT EXISTS nav_mode text NOT NULL DEFAULT 'strict';
 ALTER TABLE public.scheduled_exams ADD COLUMN IF NOT EXISTS sub_bab_percentages jsonb;
-ALTER TABLE public.scheduled_exams ADD CONSTRAINT IF NOT EXISTS scheduled_exams_nav_mode_check CHECK (nav_mode IN ('strict', 'standard'));
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'scheduled_exams_nav_mode_check') THEN
+    ALTER TABLE public.scheduled_exams
+      ADD CONSTRAINT scheduled_exams_nav_mode_check
+      CHECK (nav_mode IN ('strict', 'standard'));
+  END IF;
+END $$;
 
 -- ═══════════════════════════════════════════
--- STEP 2: UPDATE create_scheduled_exam RPC
+-- STEP 2: REPLACE create_scheduled_exam RPC
+-- Drop old 12-arg version first to avoid overload ambiguity with the new
+-- 14-arg version (last two params defaulted).
 -- ═══════════════════════════════════════════
+
+DROP FUNCTION IF EXISTS public.create_scheduled_exam(
+  text, uuid, text[], text[], text[], text, int, int, timestamptz, timestamptz, text, text
+);
 
 CREATE OR REPLACE FUNCTION public.create_scheduled_exam(
   p_title text, p_created_by uuid, p_mapels text[], p_babs text[],
@@ -34,7 +51,7 @@ BEGIN
     RAISE EXCEPTION 'nav_mode must be strict or standard';
   END IF;
 
-  IF v_safe_code IS NOT NULL AND EXISTS (SELECT 1 FROM scheduled_exams WHERE access_code = v_safe_code) THEN
+  IF EXISTS (SELECT 1 FROM scheduled_exams WHERE access_code = v_safe_code AND v_safe_code IS NOT NULL) THEN
     RAISE EXCEPTION 'Access code already exists';
   END IF;
   IF p_time_limit_minutes <= 0 THEN RAISE EXCEPTION 'time_limit_minutes must be positive'; END IF;
@@ -53,7 +70,9 @@ END;
 $fn$;
 
 -- ═══════════════════════════════════════════
--- STEP 3: UPDATE start_scheduled_exam RPC
+-- STEP 3: REPLACE start_scheduled_exam RPC
+-- Calls the 11-arg start_exam_session overload, threading sub_bab_percentages
+-- and nav_mode from the scheduled_exams row.
 -- ═══════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION public.start_scheduled_exam(
@@ -125,13 +144,13 @@ BEGIN
     v_exam.window_end
   );
 
-  -- start_exam_session signature: (p_name, p_mapels, p_babs, p_sub_babs, p_mode, p_count, p_time_limit, p_user_agent, p_secret)
-  -- Nav mode + percentages: stored in DB but applied at session start by start_exam_session.
-  -- If start_exam_session gains percentage/nav_mode params, add them here.
+  -- Engine 11-arg overload: (p_name, p_mapels, p_babs, p_sub_babs, p_mode, p_count,
+  --   p_time_limit_minutes, p_user_agent, p_secret, p_sub_bab_percentages, p_nav_mode)
   v_session_result := start_exam_session(
     p_name, v_exam.mapels, v_exam.babs, v_exam.sub_babs,
     v_exam.mode, v_exam.question_count,
-    999999, p_user_agent, p_secret
+    999999, p_user_agent, p_secret,
+    v_exam.sub_bab_percentages, COALESCE(v_exam.nav_mode, 'strict')
   );
 
   v_session_id := (v_session_result->>'session_id')::uuid;
