@@ -132,6 +132,9 @@ export default function useExamPageController() {
       timeLimit,
       examMode,
       doubtFlags,
+      isScheduledExam,
+      scheduledExamTitle,
+      scheduledTimeLimitMinutes,
     },
   });
 
@@ -189,6 +192,9 @@ export default function useExamPageController() {
       setCurrent,
       setStep,
       setCurrentQuestion,
+      setIsScheduledExam,
+      setScheduledExamTitle,
+      setScheduledTimeLimitMinutes,
     },
     categoryOptionsArgs: {
       mapels,

@@ -24,6 +24,9 @@ type StorageKeys = {
   SCORE: string;
   EXAM_MODE: string;
   DOUBT_FLAGS: string;
+  IS_SCHEDULED_EXAM: string;
+  SCHEDULED_EXAM_TITLE: string;
+  SCHEDULED_TIME_LIMIT: string;
 };
 
 type UseExamBootstrapArgs = {
@@ -50,6 +53,9 @@ type UseExamBootstrapArgs = {
   setCurrent: (value: number) => void;
   setStep: (value: number) => void;
   setCurrentQuestion: (value: ShuffledQuestion | null) => void;
+  setIsScheduledExam: (value: boolean) => void;
+  setScheduledExamTitle: (value: string) => void;
+  setScheduledTimeLimitMinutes: (value: number) => void;
 };
 
 export default function useExamBootstrap({
@@ -76,6 +82,9 @@ export default function useExamBootstrap({
   setCurrent,
   setStep,
   setCurrentQuestion,
+  setIsScheduledExam,
+  setScheduledExamTitle,
+  setScheduledTimeLimitMinutes,
 }: UseExamBootstrapArgs) {
   useEffect(() => {
     const restoreState = async () => {
@@ -97,6 +106,9 @@ export default function useExamBootstrap({
         score: secureLoad<number>(storageKeys.SCORE) || 0,
         examMode: secureLoad<ExamMode>(storageKeys.EXAM_MODE) || 'strict',
         doubtFlags: secureLoad<boolean[]>(storageKeys.DOUBT_FLAGS) || [],
+        isScheduledExam: secureLoad<boolean>(storageKeys.IS_SCHEDULED_EXAM) || false,
+        scheduledExamTitle: secureLoad<string>(storageKeys.SCHEDULED_EXAM_TITLE) || '',
+        scheduledTimeLimit: secureLoad<number>(storageKeys.SCHEDULED_TIME_LIMIT) || 0,
       };
 
       const loadMapels = async () => {
@@ -139,6 +151,9 @@ export default function useExamBootstrap({
           setLives(state.lives ?? stored.lives ?? 3);
           setScore(stored.score ?? 0);
           setDoubtFlags(stored.doubtFlags || Array(state.question_count).fill(false));
+          setIsScheduledExam(stored.isScheduledExam || false);
+          setScheduledExamTitle(stored.scheduledExamTitle || '');
+          setScheduledTimeLimitMinutes(stored.scheduledTimeLimit || 0);
           if (stored.startTime) setStartTime(stored.startTime);
           setExpiresAt(stored.expiresAt || null);
           setTimeLimit(stored.timeLimit || 0);
@@ -213,5 +228,8 @@ export default function useExamBootstrap({
     setCurrent,
     setStep,
     setCurrentQuestion,
+    setIsScheduledExam,
+    setScheduledExamTitle,
+    setScheduledTimeLimitMinutes,
   ]);
 }
