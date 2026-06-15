@@ -1,19 +1,34 @@
--- Migration: replace draft/published/closed status with active/scheduled/expired
+-- Migration: replace ALL create_scheduled_exam overloads with correct 15-param version
 -- 2026-06-16
 --
--- Old statuses: draft, published, closed
--- New statuses: active, scheduled, expired
+-- Root cause: 14-param version (hardcoded 'draft') coexists with 15-param version.
+-- PostgreSQL picks by positional args — the 14-param version shadows the 15-param one.
+-- This migration nukes ALL overloads and creates only the correct 15-param version.
 --
--- Business rules:
---   - New exam created by admin → status = 'active'
---   - If window_start is in the future → status = 'scheduled'
---   - After window_end passes → status = 'expired' (moved to history)
---
--- Auto-transition from active/scheduled → expired is handled by pg_cron job
--- close_expired_scheduled_exams() (see STEP 4).
+-- Status lifecycle:
+--   created → 'scheduled' (window_start > now) or 'active' (window_start <= now < window_end)
+--   cron every 1min: 'scheduled' → 'active' when window_start arrives
+--   cron every 5min: 'active' → 'expired' when window_end passes
 
 -- ═══════════════════════════════════════════════
--- STEP 1: Drop old status constraint, add new one
+-- STEP 1: Drop all existing overloads
+-- ═══════════════════════════════════════════════
+
+DROP FUNCTION IF EXISTS public.create_scheduled_exam(
+  text, uuid, text[], text[], text[], text, int, int, timestamptz, timestamptz, text, text
+);
+DROP FUNCTION IF EXISTS public.create_scheduled_exam(
+  text, uuid, text[], text[], text[], text, int, int, timestamptz, timestamptz, text, text, text
+);
+DROP FUNCTION IF EXISTS public.create_scheduled_exam(
+  text, uuid, text[], text[], text[], text, int, int, timestamptz, timestamptz, text, text, text, jsonb
+);
+DROP FUNCTION IF EXISTS public.create_scheduled_exam(
+  text, uuid, text[], text[], text[], text, int, int, timestamptz, timestamptz, text, text, text, jsonb, int[]
+);
+
+-- ═══════════════════════════════════════════════
+-- STEP 2: Status constraint — already done in previous migration, idempotent
 -- ═══════════════════════════════════════════════
 
 DO $$ BEGIN
@@ -27,13 +42,8 @@ ALTER TABLE public.scheduled_exams
   CHECK (status IN ('active', 'scheduled', 'expired'));
 
 -- ═══════════════════════════════════════════════
--- STEP 2: Update create_scheduled_exam to set status = 'active' or 'scheduled'
+-- STEP 3: Create ONLY the 15-param version with correct status logic
 -- ═══════════════════════════════════════════════
-
--- Replace the existing create_scheduled_exam function.
--- Previous version set status = 'draft'. Now:
---   - If window_start > now() → 'scheduled'
---   - Otherwise → 'active'
 
 CREATE OR REPLACE FUNCTION public.create_scheduled_exam(
   p_title text,
@@ -77,11 +87,14 @@ BEGIN
     RAISE EXCEPTION 'window_end must be after window_start';
   END IF;
 
-  -- Determine initial status based on window timing
+  -- Initial status: 'active' if window already started, else 'scheduled'
+  -- 'active' → visible to students immediately; 'scheduled' → hidden until cron activates
   IF p_window_start > NOW() THEN
     v_status := 'scheduled';
+    v_visible := false;
   ELSE
     v_status := 'active';
+    v_visible := true;
   END IF;
 
   INSERT INTO scheduled_exams (
@@ -91,7 +104,7 @@ BEGIN
   ) VALUES (
     v_safe_title, p_created_by, p_mapels, p_babs, p_sub_babs, p_mode,
     p_question_count, p_time_limit_minutes, p_window_start, p_window_end,
-    p_attempt_mode, v_safe_code, v_status, false,
+    p_attempt_mode, v_safe_code, v_status, v_visible,
     v_nav_mode, p_sub_bab_percentages, p_question_ids
   )
   RETURNING id INTO v_id;
@@ -101,27 +114,31 @@ END;
 $fn$;
 
 -- ═══════════════════════════════════════════════
--- STEP 3: Update publish_scheduled_exam RPC
--- Now just re-activates a paused exam. Kept for backward compat.
+-- STEP 4: Cron — activate scheduled exams when window starts
 -- ═══════════════════════════════════════════════
 
-CREATE OR REPLACE FUNCTION public.publish_scheduled_exam(
-  p_exam_id uuid
-) RETURNS void
+CREATE OR REPLACE FUNCTION public.activate_scheduled_exams()
+RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 AS $fn$
 BEGIN
   UPDATE scheduled_exams
-  SET status = 'active', is_visible = true
-  WHERE id = p_exam_id AND status IN ('scheduled', 'active');
+  SET status = 'active'
+  WHERE status = 'scheduled'
+    AND window_start <= NOW();
 END;
 $fn$;
 
+SELECT cron.schedule(
+  'activate-scheduled-exams',
+  '* * * * *',
+  $$SELECT public.activate_scheduled_exams()$$
+);
+
 -- ═══════════════════════════════════════════════
--- STEP 4: Auto-close expired exams via pg_cron
+-- STEP 5: Cron — expire exams whose window has closed
 -- ═══════════════════════════════════════════════
 
--- Function to expire exams whose window has passed
 CREATE OR REPLACE FUNCTION public.close_expired_scheduled_exams()
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
@@ -134,8 +151,6 @@ BEGIN
 END;
 $fn$;
 
--- Schedule: run every 5 minutes
--- Uses supabase.grants to allow pg_cron to call SECURITY DEFINER function
 SELECT cron.schedule(
   'close-expired-scheduled-exams',
   '*/5 * * * *',

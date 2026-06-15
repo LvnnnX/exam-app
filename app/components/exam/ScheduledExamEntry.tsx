@@ -152,6 +152,8 @@ export default function ScheduledExamEntry({
   const isUpcoming = exam?.window_status === 'upcoming';
   const isClosed = exam?.window_status === 'closed';
   const isWindowOpen = exam?.window_status === 'open';
+  const isScheduled = exam?.status === 'scheduled';
+  const isExpired = exam?.status === 'expired';
   const canStart = isWindowOpen && !starting;
 
   return (
@@ -277,7 +279,18 @@ export default function ScheduledExamEntry({
 
               <div className="rounded-[18px] bg-white p-5 text-nike-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:p-6">
                 {/* Window status banners */}
-                {isUpcoming && (
+                {isScheduled && (
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3 mb-5">
+                    <p className="text-[13px] font-semibold text-amber-400 tracking-tight">
+                      Ujian belum dimulai.
+                    </p>
+                    <p className="text-[12px] text-amber-300/80 tracking-tight mt-0.5">
+                      {countdown || formatCountdown(exam.window_start!)}
+                    </p>
+                  </div>
+                )}
+
+                {isUpcoming && !isScheduled && (
                   <div className="rounded-xl bg-black/[0.04] border border-black/[0.06] px-4 py-3 mb-5">
                     <p className="text-[13px] font-semibold text-nike-black tracking-tight">
                       Ujian belum dibuka.

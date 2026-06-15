@@ -16,7 +16,8 @@ export type ScheduledExamLookup = {
   window_start?: string;
   window_end?: string;
   attempt_mode?: string;
-  window_status?: string;
+  window_status?: 'upcoming' | 'open' | 'closed';
+  status?: 'active' | 'scheduled' | 'expired';
 };
 
 export type ScheduledExamStartResult = {
@@ -28,7 +29,7 @@ export type ScheduledExamStartResult = {
   deadline_at?: string;
   scheduled_exam_id?: string;
   resuming?: boolean;
-  window_status?: string;
+  window_status?: 'upcoming' | 'open' | 'closed';
   window_start?: string;
   nav_mode?: string;
 };
