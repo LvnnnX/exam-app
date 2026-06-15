@@ -149,6 +149,7 @@ export default function ExamPage() {
                 size="medium"
                 intent="secondary"
                 fullWidth
+                layoutId="scheduled-exam-expandable"
                 onClick={() => setIsScheduledModalOpen(true)}
               >
                 Ujian terjadwal
@@ -313,21 +314,13 @@ export default function ExamPage() {
             onClose={closeTutorial}
           />
 
-          {isScheduledModalOpen && (
-            <div className="fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
-              <div className="flex min-h-screen items-center justify-center px-5 py-10">
-                <div className="w-full max-w-2xl">
-                  <ScheduledExamEntry
-                    onExamStarted={(sessionId, questionCount, expiresAt) => {
-                      void handleScheduledExamStarted(sessionId, questionCount, expiresAt);
-                    }}
-                    theme="light"
-                    onClose={() => setIsScheduledModalOpen(false)}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          <ScheduledExamEntry
+            isOpen={isScheduledModalOpen}
+            onExamStarted={(sessionId, questionCount, expiresAt) => {
+              void handleScheduledExamStarted(sessionId, questionCount, expiresAt);
+            }}
+            onClose={() => setIsScheduledModalOpen(false)}
+          />
 
         </div>
       </div>
