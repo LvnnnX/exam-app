@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
-import NeumorphButton from '@/app/components/ui/neumorph-button';
 import { type RawQuestion } from '@/lib/questions';
 import { stripHtml } from '@/lib/rich-text';
 import { normalizeCategorySlug } from '@/lib/categories';
@@ -838,28 +837,22 @@ export default function QuestionsTabPanel({
               </div>
 
               <div className={`flex gap-2 px-4 py-3 border-t sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
-                <NeumorphButton
+                <button
                   type="button"
-                  intent="secondary"
-                  size="medium"
-                  fullWidth
                   onClick={() => {
                     setIsCreateMapelModalOpen(false);
                     setNewMapelName('');
                   }}
-                  className="h-11"
+                  className={`flex-1 h-11 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
                 >
                   Batal
-                </NeumorphButton>
-                <NeumorphButton
+                </button>
+                <button
                   type="submit"
-                  intent="primary"
-                  size="medium"
-                  fullWidth
-                  className="h-11"
+                  className={`flex-1 h-11 rounded-full shadow-ios-sm font-semibold text-[13px] transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white text-nike-black hover:bg-white/90' : 'bg-nike-black text-white hover:bg-nike-black/90'}`}
                 >
                   Buat mapel
-                </NeumorphButton>
+                </button>
               </div>
             </form>
           </motion.div>

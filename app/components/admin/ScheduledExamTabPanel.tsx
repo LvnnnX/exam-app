@@ -47,15 +47,16 @@ const inputCls = (t: 'light' | 'dark') =>
       : 'bg-nike-grey-100 text-nike-black border border-nike-grey-200 focus:border-dark-800 placeholder:text-gray-400'
   }`;
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { icon: React.ReactNode; cls: string }> = {
-    active: { icon: <CheckCircle2 size={12} />, cls: 'bg-green-500/15 text-green-500 dark:text-green-400' },
-    scheduled: { icon: <Clock size={12} />, cls: 'bg-yellow-500/15 text-yellow-500 dark:text-yellow-400' },
-    expired: { icon: <XCircle size={12} />, cls: 'bg-red-500/15 text-red-500 dark:text-red-400' },
+function StatusBadge({ status, theme = 'dark' }: { status: string; theme?: 'light' | 'dark' }) {
+  const isDark = theme === 'dark';
+  const map: Record<string, { icon: React.ReactNode; bg: string; text: string }> = {
+    active: { icon: <CheckCircle2 size={12} />, bg: isDark ? 'bg-accent-green/15' : 'bg-green-50', text: isDark ? 'text-accent-green' : 'text-green-600' },
+    scheduled: { icon: <Clock size={12} />, bg: isDark ? 'bg-accent-blue/15' : 'bg-blue-50', text: isDark ? 'text-accent-blue' : 'text-blue-600' },
+    expired: { icon: <XCircle size={12} />, bg: isDark ? 'bg-accent-red/15' : 'bg-red-50', text: isDark ? 'text-accent-red' : 'text-red-600' },
   };
   const entry = map[status] || map.scheduled;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${entry.cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${entry.bg} ${entry.text}`}>
       {entry.icon} {status}
     </span>
   );
@@ -381,7 +382,7 @@ function ManageTable({ exams, theme, formatCategorySelectionLabel, newlyCreatedE
                     )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4">
-                    <StatusBadge status={exam.status} />
+                    <StatusBadge status={exam.status} theme={theme} />
                   </td>
                   <td className={`whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
                     <span className="flex items-center gap-1">
@@ -492,7 +493,7 @@ function HistoryTable({ history, theme, onViewAttempts }: {
                   )}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4">
-                  <StatusBadge status={exam.status} />
+                  <StatusBadge status={exam.status} theme={theme} />
                 </td>
                 <td className={`whitespace-nowrap px-4 py-3 text-sm font-semibold tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-accent-green' : 'text-green-600'}`}>
                   {exam.avg_score != null ? exam.avg_score : '-'}

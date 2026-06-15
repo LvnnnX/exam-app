@@ -284,7 +284,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-xl p-2 sm:p-4" onClick={onClose}>
       <div className={`flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[32px] shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className={`relative flex items-center justify-center border-b p-4 ${theme === 'dark' ? 'border-dark-600 bg-dark-750' : 'border-slate-200 bg-white'}`}>
+        <div className={`relative flex items-center justify-center border-b p-4 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-slate-200 bg-white'}`}>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-xl">🏁</span>
@@ -299,7 +299,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
             {/* Timer Display */}
             {session.status !== 'waiting' && session.status !== 'finished' && (
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${session.status === 'paused' ? (theme === 'dark' ? 'bg-accent-orange/20 border-accent-orange/30' : 'bg-orange-50 border-orange-200') :
-                timeRemaining < 60000 ? (theme === 'dark' ? 'bg-accent-red/20 border-accent-red/30 animate-pulse' : 'bg-red-50 border-red-200 animate-pulse') : (theme === 'dark' ? 'bg-dark-700 border-dark-600' : 'bg-slate-50 border-slate-200')
+                timeRemaining < 60000 ? (theme === 'dark' ? 'bg-accent-red/20 border-accent-red/30 animate-pulse' : 'bg-red-50 border-red-200 animate-pulse') : (theme === 'dark' ? 'bg-dark-700 border-dark-border-subtle' : 'bg-slate-50 border-slate-200')
                 }`}>
                 <span className="text-base">⏱️</span>
                 <div className="flex flex-col">
@@ -335,7 +335,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
           ) : (
             <table className="w-full">
               <thead className={`sticky top-0 z-10 backdrop-blur-sm ${theme === 'dark' ? 'bg-dark-750/95' : 'bg-slate-50/95'}`}>
-                <tr className={`border-b ${theme === 'dark' ? 'border-dark-600' : 'border-slate-200'}`}>
+                <tr className={`border-b ${theme === 'dark' ? 'border-dark-border-subtle' : 'border-slate-200'}`}>
                   <th className={`w-14 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Rank</th>
                   <th className={`px-2 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
                     <div className="flex items-center justify-between pr-2">
@@ -360,7 +360,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
                       ? (theme === 'dark' ? 'bg-slate-500/20 text-slate-300 border-slate-500/30' : 'bg-slate-100 text-slate-600 border-slate-200')
                       : rank === 3
                         ? (theme === 'dark' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-orange-100 text-orange-700 border-orange-200')
-                        : (theme === 'dark' ? 'bg-dark-700 text-dark-text-tertiary border-dark-600' : 'bg-white text-slate-400 border-slate-100');
+                        : (theme === 'dark' ? 'bg-dark-700 text-dark-text-tertiary border-dark-border-subtle' : 'bg-white text-slate-400 border-slate-100');
 
                   return (
                     <tr key={player.id} className="transition-colors">
@@ -376,7 +376,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
 
                       {/* Race Track */}
                       <td className="px-2 py-1.5 overflow-hidden">
-                        <div className={`relative h-11 w-full overflow-visible rounded-2xl border ${theme === 'dark' ? 'border-dark-600 bg-dark-700/70' : 'border-slate-200/60 bg-slate-100/70'}`}>
+                        <div className={`relative h-11 w-full overflow-visible rounded-2xl border ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-700/70' : 'border-slate-200/60 bg-slate-100/70'}`}>
                           {/* Track stripes */}
                           <div className={`absolute inset-0 rounded-2xl opacity-30`} style={{ backgroundImage: theme === 'dark' ? 'repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 60px)' : 'repeating-linear-gradient(90deg, rgba(148,163,184,0.13) 0, rgba(148,163,184,0.13) 1px, transparent 1px, transparent 60px)' }} />
 
@@ -452,7 +452,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
         </div>
 
         {/* Footer */}
-        <div className={`border-t px-4 py-2 ${theme === 'dark' ? 'border-dark-600 bg-dark-750' : 'border-slate-200 bg-slate-50'}`}>
+        <div className={`border-t px-4 py-2 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-slate-200 bg-slate-50'}`}>
           <div className={`flex items-center justify-center text-[9px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
             <span>{fixedOrderPlayers.length} peserta</span>
           </div>

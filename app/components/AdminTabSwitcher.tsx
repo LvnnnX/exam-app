@@ -54,8 +54,8 @@ function NavButton({ tab, activeTab, onTabChange, theme = 'dark' }: {
       ? 'bg-white/10 text-dark-text-primary'
       : 'text-dark-text-secondary hover:bg-white/5'
     : isActive
-      ? 'bg-black/10 text-gray-900'
-      : 'text-gray-600 hover:bg-black/5';
+      ? 'bg-black/10 text-nike-black'
+      : 'text-black/60 hover:bg-black/5';
 
   return (
     <button
@@ -116,7 +116,7 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
                 <button
                   type="button"
                   onClick={onAddQuestion}
-                  className={`w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600 hover:border-dark-border-strong' : 'border-nike-grey-200 bg-nike-grey-100 text-nike-black hover:border-dark-800'}`}
+                  className={`w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600 hover:border-dark-border-strong' : 'border-nike-grey-200 bg-nike-grey-100 text-nike-black hover:border-nike-grey-200'}`}
                 >
                   Add Question
                 </button>
@@ -125,7 +125,7 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
                 <button
                   type="button"
                   onClick={onCreateQuiz}
-                  className={`w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600 hover:border-dark-border-strong' : 'border-nike-grey-200 bg-nike-grey-100 text-nike-black hover:border-dark-800'}`}
+                  className={`w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600 hover:border-dark-border-strong' : 'border-nike-grey-200 bg-nike-grey-100 text-nike-black hover:border-nike-grey-200'}`}
                 >
                   Create Quiz
                 </button>
@@ -142,7 +142,7 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
         <div className="flex-1" />
 
         {adminEmail && (
-          <div className={`mb-3 rounded-[24px] border p-5 shadow-ios-sm ${theme === 'dark' ? 'border-accent-blue bg-dark-800' : 'border-dark-800 bg-white'}`}>
+          <div className={`mb-3 rounded-[24px] border p-5 shadow-ios-sm ${theme === 'dark' ? 'border-accent-blue bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
             <p className={`mb-3 text-[10px] font-bold uppercase tracking-[0.22em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-dark-text-muted'}`}>Admin Identity</p>
             <div className="flex items-center gap-3">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold uppercase ${theme === 'dark' ? 'bg-accent-blue text-white' : 'bg-dark-800 text-white'}`}>
@@ -160,7 +160,7 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
           <button
             type="button"
             onClick={onToggleTheme}
-            className={`mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border px-5 text-xs font-semibold uppercase tracking-[0.12em] transition-spring-fast shadow-ios-sm hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600' : 'border-dark-800 bg-white text-nike-black hover:bg-nike-grey-100'}`}
+            className={`mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border px-5 text-xs font-semibold uppercase tracking-[0.12em] transition-spring-fast shadow-ios-sm hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600' : 'border-nike-grey-200 bg-white text-nike-black hover:bg-nike-grey-100'}`}
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             {theme === 'dark' ? 'Light' : 'Dark'} Mode
@@ -171,7 +171,7 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
           <button
             type="button"
             onClick={onLogout}
-            className={`h-12 rounded-2xl border px-5 text-xs font-semibold uppercase tracking-[0.12em] transition-spring-fast shadow-ios-sm hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-red bg-dark-800 text-accent-red hover:bg-accent-red hover:text-white' : 'border-dark-800 bg-white text-nike-black hover:bg-dark-800 hover:text-white'}`}
+            className={`h-12 rounded-2xl border px-5 text-xs font-semibold uppercase tracking-[0.12em] transition-spring-fast shadow-ios-sm hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-red bg-dark-800 text-accent-red hover:bg-accent-red hover:text-white' : 'border-nike-grey-200 bg-white text-nike-black hover:bg-dark-800 hover:text-white'}`}
           >
             Logout
           </button>
@@ -185,7 +185,7 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className={`fixed right-3 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-full transition-spring-fast active:scale-90 md:hidden ${theme === 'dark' ? 'bg-white/10 text-dark-text-primary backdrop-blur-md' : 'bg-black/5 text-gray-900 backdrop-blur-md'}`}
+        className={`fixed right-3 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-full transition-spring-fast active:scale-90 md:hidden ${theme === 'dark' ? 'bg-white/10 text-dark-text-primary backdrop-blur-md' : 'bg-black/5 text-nike-black backdrop-blur-md'}`}
         aria-label="Open menu"
       >
         <Menu size={18} />
@@ -208,14 +208,14 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center">
                   <Image src="/favicon.ico" alt="Smandapura Exam App" width={32} height={32} />
                 </div>
-                <div className={`text-[15px] font-semibold leading-tight tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                <div className={`text-[15px] font-semibold leading-tight tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>
                   Smandapura
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className={`flex h-9 w-9 items-center justify-center rounded-full transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-full transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-black/55 hover:bg-black/10'}`}
                 aria-label="Close menu"
               >
                 <X size={16} />
@@ -230,12 +230,12 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
 
             {(onAddQuestion || onCreateQuiz) && (
               <div className="mt-4 space-y-2">
-                <p className={`px-2 text-[10px] font-semibold uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-gray-400'}`}>Quick action</p>
+                <p className={`px-2 text-[10px] font-semibold uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-black/40'}`}>Quick action</p>
                 {onAddQuestion && (
                   <button
                     type="button"
                     onClick={() => { onAddQuestion(); setMobileOpen(false); }}
-                    className={`w-full rounded-2xl px-4 py-2.5 text-left text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-gray-900 hover:bg-black/10'}`}
+                    className={`w-full rounded-2xl px-4 py-2.5 text-left text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-nike-black hover:bg-black/10'}`}
                   >
                     Add question
                   </button>
@@ -244,7 +244,7 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
                   <button
                     type="button"
                     onClick={() => { onCreateQuiz(); setMobileOpen(false); }}
-                    className={`w-full rounded-2xl px-4 py-2.5 text-left text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-gray-900 hover:bg-black/10'}`}
+                    className={`w-full rounded-2xl px-4 py-2.5 text-left text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-nike-black hover:bg-black/10'}`}
                   >
                     Create quiz
                   </button>
@@ -261,8 +261,8 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
                     {adminEmail[0]}
                   </div>
                   <div className="min-w-0">
-                    <p className={`truncate text-[13px] font-medium tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`} title={adminEmail}>{adminEmail}</p>
-                    <p className={`mt-0.5 text-[11px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>{adminRole || 'Administrator'}</p>
+                    <p className={`truncate text-[13px] font-medium tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`} title={adminEmail}>{adminEmail}</p>
+                    <p className={`mt-0.5 text-[11px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-black/55'}`}>{adminRole || 'Administrator'}</p>
                   </div>
                 </div>
               </div>
@@ -272,7 +272,7 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
               <button
                 type="button"
                 onClick={onToggleTheme}
-                className={`mb-2 flex h-10 w-full items-center justify-center gap-2 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-gray-900 hover:bg-black/10'}`}
+                className={`mb-2 flex h-10 w-full items-center justify-center gap-2 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-nike-black hover:bg-black/10'}`}
               >
                 {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
                 {theme === 'dark' ? 'Light mode' : 'Dark mode'}

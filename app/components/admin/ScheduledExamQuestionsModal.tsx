@@ -155,7 +155,7 @@ export default function ScheduledExamQuestionsModal({
                         className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-spring-fast ${isDark ? 'bg-white/[0.02] hover:bg-white/[0.04]' : 'bg-black/[0.02] hover:bg-black/[0.04]'}`}
                       >
                         <div className="flex items-start gap-2 min-w-0 flex-1">
-                          <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-accent-blue/15 text-[10px] font-bold text-accent-blue ${isDark ? '' : 'bg-blue-50 text-blue-600'}`}>
+                          <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold ${isDark ? 'bg-accent-blue/15 text-accent-blue' : 'bg-blue-50 text-blue-600'}`}>
                             {idx + 1}
                           </span>
                           <span className={`text-[12px] font-medium leading-snug line-clamp-2 ${isDark ? 'text-dark-text-primary' : 'text-gray-900'}`}>

@@ -156,7 +156,7 @@ export default function ResultsTabPanel({
       </div>
 
       {!isLiveMode && paginationMeta && (
-        <div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[24px] border px-3 py-2 ${theme === 'dark' ? 'border-dark-600 bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
+        <div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[24px] border px-3 py-2 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
           <div className={`text-[11px] font-bold uppercase tracking-[0.1em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
             Showing {paginationMeta.total === 0 ? 0 : ((resultPage - 1) * itemsPerPage) + 1}-{Math.min(resultPage * itemsPerPage, paginationMeta.total)} of {paginationMeta.total}
           </div>
@@ -166,13 +166,13 @@ export default function ResultsTabPanel({
               onChange={(event) => {
                 onItemsPerPageChange(Number(event.target.value));
               }}
-              className={`h-8 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.08em] focus:outline-none ${theme === 'dark' ? 'border-dark-600 bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-nike-grey-300 bg-white text-nike-black focus:border-dark-800'}`}
+              className={`h-8 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.08em] focus:outline-none ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-nike-grey-300 bg-white text-nike-black focus:border-dark-800'}`}
             >
               {[5, 10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} / page</option>)}
             </select>
-            <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-600 bg-dark-750' : 'border-nike-grey-300 bg-white'}`}>
+            <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-nike-grey-300 bg-white'}`}>
               <button type="button" onClick={() => onPageChange(Math.max(1, resultPage - 1))} disabled={resultPage === 1} className={`px-3 text-[11px] font-bold uppercase disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Prev</button>
-              <span className={`flex items-center border-x px-3 text-[11px] font-bold ${theme === 'dark' ? 'border-dark-600 text-dark-text-tertiary' : 'border-nike-grey-200 text-dark-text-muted'}`}>{resultPage}/{paginationMeta.totalPages}</span>
+              <span className={`flex items-center border-x px-3 text-[11px] font-bold ${theme === 'dark' ? 'border-dark-border-subtle text-dark-text-tertiary' : 'border-nike-grey-200 text-dark-text-muted'}`}>{resultPage}/{paginationMeta.totalPages}</span>
               <button type="button" onClick={() => onPageChange(Math.min(paginationMeta.totalPages, resultPage + 1))} disabled={resultPage === paginationMeta.totalPages} className={`px-3 text-[11px] font-bold uppercase disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Next</button>
             </div>
           </div>
@@ -180,7 +180,7 @@ export default function ResultsTabPanel({
       )}
 
       {isLiveMode && liveSessionPaginationMeta && (
-        <div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[24px] border px-3 py-2 ${theme === 'dark' ? 'border-dark-600 bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
+        <div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[24px] border px-3 py-2 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
           <div className={`text-[11px] font-bold uppercase tracking-[0.1em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
             Showing {liveSessionPaginationMeta.total === 0 ? 0 : ((liveSessionPage - 1) * liveSessionItemsPerPage) + 1}-{Math.min(liveSessionPage * liveSessionItemsPerPage, liveSessionPaginationMeta.total)} of {liveSessionPaginationMeta.total}
           </div>
@@ -190,13 +190,13 @@ export default function ResultsTabPanel({
               onChange={(event) => {
                 onLiveSessionItemsPerPageChange(Number(event.target.value));
               }}
-              className={`h-8 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.08em] focus:outline-none ${theme === 'dark' ? 'border-dark-600 bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-nike-grey-300 bg-white text-nike-black focus:border-dark-800'}`}
+              className={`h-8 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.08em] focus:outline-none ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-nike-grey-300 bg-white text-nike-black focus:border-dark-800'}`}
             >
               {[5, 10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} / page</option>)}
             </select>
-            <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-600 bg-dark-750' : 'border-nike-grey-300 bg-white'}`}>
+            <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-nike-grey-300 bg-white'}`}>
               <button type="button" onClick={() => onLiveSessionPageChange(Math.max(1, liveSessionPage - 1))} disabled={liveSessionPage === 1} className={`px-3 text-[11px] font-bold uppercase disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Prev</button>
-              <span className={`flex items-center border-x px-3 text-[11px] font-bold ${theme === 'dark' ? 'border-dark-600 text-dark-text-tertiary' : 'border-nike-grey-200 text-dark-text-muted'}`}>{liveSessionPage}/{liveSessionPaginationMeta.totalPages}</span>
+              <span className={`flex items-center border-x px-3 text-[11px] font-bold ${theme === 'dark' ? 'border-dark-border-subtle text-dark-text-tertiary' : 'border-nike-grey-200 text-dark-text-muted'}`}>{liveSessionPage}/{liveSessionPaginationMeta.totalPages}</span>
               <button type="button" onClick={() => onLiveSessionPageChange(Math.min(liveSessionPaginationMeta.totalPages, liveSessionPage + 1))} disabled={liveSessionPage === liveSessionPaginationMeta.totalPages} className={`px-3 text-[11px] font-bold uppercase disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Next</button>
             </div>
           </div>

@@ -65,7 +65,7 @@ export default function ResultsStatsCards({ isLiveMode, statsData, theme = 'dark
             <div className={`text-[28px] font-semibold leading-none tracking-[-0.04em] tabular-nums ${statTheme.value}`}>
               {s.value}
             </div>
-            <div className={`mt-2 text-[12px] font-medium ${theme === 'dark' ? 'text-surface-mint-edge/75' : 'text-gray-700'}`}>
+            <div className={`mt-2 text-[12px] font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>
               {s.label}
             </div>
           </div>

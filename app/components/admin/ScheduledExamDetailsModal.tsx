@@ -44,15 +44,16 @@ function formatDateTime(iso?: string | null): string {
   });
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { icon: React.ReactNode; cls: string }> = {
-    draft: { icon: <Clock size={12} />, cls: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' },
-    published: { icon: <CheckCircle2 size={12} />, cls: 'bg-green-500/15 text-green-600 dark:text-green-400' },
-    closed: { icon: <XCircle size={12} />, cls: 'bg-red-500/15 text-red-600 dark:text-red-400' },
+function StatusBadge({ status, theme = 'dark' }: { status: string; theme?: 'light' | 'dark' }) {
+  const isDark = theme === 'dark';
+  const map: Record<string, { icon: React.ReactNode; bg: string; text: string }> = {
+    scheduled: { icon: <Clock size={12} />, bg: isDark ? 'bg-accent-blue/15' : 'bg-blue-50', text: isDark ? 'text-accent-blue' : 'text-blue-600' },
+    active: { icon: <CheckCircle2 size={12} />, bg: isDark ? 'bg-accent-green/15' : 'bg-green-50', text: isDark ? 'text-accent-green' : 'text-green-600' },
+    expired: { icon: <XCircle size={12} />, bg: isDark ? 'bg-accent-red/15' : 'bg-red-50', text: isDark ? 'text-accent-red' : 'text-red-600' },
   };
-  const entry = map[status] || map.draft;
+  const entry = map[status] || map.scheduled;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${entry.cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${entry.bg} ${entry.text}`}>
       {entry.icon} {status}
     </span>
   );
@@ -128,7 +129,7 @@ export default function ScheduledExamDetailsModal({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className={`rounded-[24px] shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden ${isDark ? 'bg-dark-800 border border-dark-border-subtle' : 'bg-white border border-nike-grey-200'}`}
+                className={`rounded-[24px] shadow-ios-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden ${isDark ? 'bg-dark-800 border border-dark-border-subtle' : 'bg-white border border-nike-grey-200'}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Header */}
@@ -138,7 +139,7 @@ export default function ScheduledExamDetailsModal({
                       {exam.title}
                     </h2>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <StatusBadge status={exam.status} />
+                      <StatusBadge status={exam.status} theme={theme} />
                       {exam.access_code && (
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold ${isDark ? 'bg-accent-blue/15 text-accent-blue' : 'bg-blue-50 text-blue-700'}`}>
                           {exam.access_code}

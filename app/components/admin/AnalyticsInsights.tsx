@@ -539,7 +539,7 @@ export default function AnalyticsInsights({
             <div
               className={`rounded-[16px] border-2 border-dashed p-6 text-center ${
                 theme === 'dark'
-                  ? 'border-dark-600 text-dark-text-tertiary'
+                  ? 'border-dark-border-subtle text-dark-text-tertiary'
                   : 'border-gray-300 text-gray-400'
               }`}
             >
@@ -557,7 +557,7 @@ export default function AnalyticsInsights({
               onClick={() => setShowAllQuestions(!showAllQuestions)}
               className={`w-full mt-3 h-10 rounded-full border px-4 text-xs font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${
                 theme === 'dark'
-                  ? 'border-dark-600 bg-dark-750 text-dark-text-primary hover:border-accent-blue hover:text-accent-blue'
+                  ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary hover:border-accent-blue hover:text-accent-blue'
                   : 'border-nike-grey-300 bg-white text-gray-900 hover:border-gray-900'
               }`}
             >
