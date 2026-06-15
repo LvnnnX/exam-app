@@ -14,8 +14,10 @@ import {
 } from '@/app/actions/admin/scheduled-exam';
 import ScheduledExamDetailsModal from './ScheduledExamDetailsModal';
 import { fetchAllMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin } from '@/lib/questions';
-import type { BabInfo, SubBabInfo } from '@/lib/questions';
+import type { BabInfo, SubBabInfo, RawQuestion } from '@/lib/questions';
 import type { VisibilitySettings } from '@/lib/questions';
+import { getCorrectOptionText } from '@/app/hooks/adminOptionText';
+import { supabase } from '@/lib/supabase';
 import { normalizeCategorySlug } from '@/lib/categories';
 
 const DURATION_OPTIONS = [30, 45, 60, 90, 120, 150, 180];
@@ -255,6 +257,30 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
 
 /* ---------- Manage Table ---------- */
 
+/* ---------- Fetch helper: question pool for a scheduled exam ---------- */
+async function fetchExamPoolQuestions(exam: ScheduledExamRow): Promise<RawQuestion[]> {
+  const mapels = exam.mapels ?? [];
+  const babs = exam.babs ?? [];
+  const subBabs = exam.sub_babs ?? [];
+
+  if (mapels.length === 0) return [];
+  const { data, error } = await supabase
+    .from('questions')
+    .select('id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, created_by, mapels, babs, sub_babs')
+    .eq('is_hidden', false)
+    .or(
+      mapels.map(m => `mapels.cs.{"${m}"}`).join(',') +
+      ',' +
+      babs.map(b => `babs.cs.{"${b}"}`).join(',') +
+      ',' +
+      subBabs.map(s => `sub_babs.cs.{"${s}"}`).join(',')
+    )
+    .limit(500);
+
+  if (error || !data) return [];
+  return data as RawQuestion[];
+}
+
 function ManageTable({ exams, theme, formatCategorySelectionLabel }: {
   exams: ScheduledExamRow[];
   theme: 'light' | 'dark';
@@ -263,6 +289,32 @@ function ManageTable({ exams, theme, formatCategorySelectionLabel }: {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [viewingExam, setViewingExam] = useState<ScheduledExamRow | null>(null);
+  const [attempts, setAttempts] = useState<ScheduledExamAttemptRow[]>([]);
+  const [attemptLoading, setAttemptLoading] = useState(false);
+  const [detailQuestions, setDetailQuestions] = useState<RawQuestion[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const handleViewExam = async (exam: ScheduledExamRow) => {
+    setViewingExam(exam);
+    setAttemptLoading(true);
+    setDetailLoading(true);
+    setAttempts([]);
+    setDetailQuestions([]);
+    try {
+      const token = await getAdminAccessToken();
+      const [attemptsData, questionsData] = await Promise.all([
+        listScheduledExamAttemptsAction(token, exam.id),
+        fetchExamPoolQuestions(exam),
+      ]);
+      setAttempts(attemptsData);
+      setDetailQuestions(questionsData);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAttemptLoading(false);
+      setDetailLoading(false);
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(exams.length / perPage));
   const paginated = exams.slice((page - 1) * perPage, page * perPage);
@@ -342,7 +394,7 @@ function ManageTable({ exams, theme, formatCategorySelectionLabel }: {
                   <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium sm:px-6 sm:py-4">
                     <button
                       type="button"
-                      onClick={() => setViewingExam(exam)}
+                      onClick={() => handleViewExam(exam)}
                       className={`h-8 rounded-full px-3 text-[11px] font-semibold transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                     >
                       Lihat
@@ -357,7 +409,12 @@ function ManageTable({ exams, theme, formatCategorySelectionLabel }: {
 
       <ScheduledExamDetailsModal
         exam={viewingExam}
+        attempts={attempts}
+        attemptLoading={attemptLoading}
+        detailQuestions={detailQuestions}
+        detailLoading={detailLoading}
         formatCategorySelectionLabel={formatCategorySelectionLabel}
+        getCorrectOptionText={getCorrectOptionText}
         onClose={() => setViewingExam(null)}
         theme={theme}
       />
