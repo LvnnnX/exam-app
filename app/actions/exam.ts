@@ -42,7 +42,7 @@ export async function startExamSessionAction(
     throw new Error(error?.message || 'Failed to start exam session');
   }
 
-  return data as { session_id: string; question_count: number; expires_at: string };
+  return data as { session_id: string; question_count: number; expires_at: string; nav_mode?: string };
 }
 
 /**

@@ -39,8 +39,8 @@ export default function JoinQuizModal({
           transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
           className="w-full max-w-5xl rounded-[24px] bg-[#151515] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-12"
         >
-          <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:gap-14">
-            <div className="flex flex-col justify-center space-y-5">
+          <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_420px] lg:gap-14">
+            <div className="order-1 flex flex-col space-y-5 lg:order-none lg:col-start-1 lg:row-start-1 lg:justify-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Join live quiz</p>
               <h2 className="font-display text-[42px] leading-[0.95] tracking-[-0.04em] text-white sm:text-[56px]">
                 Enter quiz code.
@@ -48,19 +48,20 @@ export default function JoinQuizModal({
               <p className="max-w-md text-[15px] leading-[1.6] tracking-tight text-white/65">
                 Masukkan {quizCodeLength}-digit code dari host untuk masuk ke sesi quiz real-time.
               </p>
-              <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                <div className="rounded-[10px] bg-white/5 p-4">
-                  <p className="text-[12px] font-medium text-white/55">Fast join</p>
-                  <p className="mt-1 text-[13px] text-white/80">Kode diverifikasi otomatis sebelum masuk.</p>
-                </div>
-                <div className="rounded-[10px] bg-white/5 p-4">
-                  <p className="text-[12px] font-medium text-white/55">Live session</p>
-                  <p className="mt-1 text-[13px] text-white/80">Leaderboard aktif saat quiz dimulai.</p>
-                </div>
+            </div>
+
+            <div className="order-3 grid gap-3 sm:grid-cols-2 lg:order-none lg:col-start-1 lg:row-start-2">
+              <div className="rounded-[10px] bg-white/5 p-4">
+                <p className="text-[12px] font-medium text-white/55">Fast join</p>
+                <p className="mt-1 text-[13px] text-white/80">Kode diverifikasi otomatis sebelum masuk.</p>
+              </div>
+              <div className="rounded-[10px] bg-white/5 p-4">
+                <p className="text-[12px] font-medium text-white/55">Live session</p>
+                <p className="mt-1 text-[13px] text-white/80">Leaderboard aktif saat quiz dimulai.</p>
               </div>
             </div>
 
-            <div className="rounded-[18px] bg-white p-5 text-nike-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:p-6">
+            <div className="order-2 mx-auto w-full max-w-sm rounded-[18px] bg-white p-5 text-nike-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:p-6 lg:order-none lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:max-w-none lg:self-center">
               <p className="mb-2 text-[10px] font-mono uppercase tracking-[0.12em] text-nike-grey-500">Quiz code *</p>
               <input
                 type="text"

@@ -618,6 +618,23 @@ body.exam-active textarea {
     color: #000000 !important;
   }
 
+  /* Dark modals (JoinQuizModal, ScheduledExamEntry) render on top of the
+     light-only homepage. The bare h1–h6 black-forcing rules above have no
+     .modal-dark-overlay exemption, so they paint the white modal title black
+     on mobile. Re-assert white for headings/white-text inside dark modals.
+     !important is required to beat the !important black rules above; the
+     mobile block is already !important-saturated (documented exception). */
+  html:not(.admin-dark-theme) .modal-dark-overlay h1,
+  html:not(.admin-dark-theme) .modal-dark-overlay h2,
+  html:not(.admin-dark-theme) .modal-dark-overlay h3,
+  html:not(.admin-dark-theme) .modal-dark-overlay h4,
+  html:not(.admin-dark-theme) .modal-dark-overlay h5,
+  html:not(.admin-dark-theme) .modal-dark-overlay h6,
+  html:not(.admin-dark-theme) .modal-dark-overlay .font-display,
+  html:not(.admin-dark-theme) .modal-dark-overlay [class*="text-white"] {
+    color: #ffffff !important;
+  }
+
   /* Step 3, 4, 5: Mobile Code Block Optimizations */
   .rich-content code {
     font-size: 0.7rem !important;

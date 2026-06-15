@@ -443,6 +443,9 @@ function CreateFormCard({ theme, onCreated }: {
   const [availMapels, setAvailMapels] = useState<BabInfo[]>([]);
   const [availBabs, setAvailBabs] = useState<BabInfo[]>([]);
   const [availSubBabs, setAvailSubBabs] = useState<SubBabInfo[]>([]);
+  const [navMode, setNavMode] = useState<'strict' | 'standard'>('strict');
+  const [percentagesEnabled, setPercentagesEnabled] = useState(false);
+  const [subBabPercentages, setSubBabPercentages] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -473,6 +476,8 @@ function CreateFormCard({ theme, onCreated }: {
         windowStart: new Date(windowStart).toISOString(),
         windowEnd: new Date(windowEnd).toISOString(),
         attemptMode,
+        navMode,
+        subBabPercentages: percentagesEnabled ? subBabPercentages : undefined,
       });
       onCreated();
     } catch (err) {
@@ -543,6 +548,36 @@ function CreateFormCard({ theme, onCreated }: {
             </div>
           </div>
 
+          {/* Mode navigasi */}
+          <div>
+            <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Mode navigasi</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setNavMode('strict')}
+                className={`h-[34px] rounded-xl text-[11px] font-bold transition-spring-fast border flex items-center justify-center gap-1.5 ${navMode === 'strict'
+                  ? (theme === 'dark' ? 'bg-dark-text-primary border-transparent text-dark-900' : 'bg-gray-900 border-transparent text-white')
+                  : (theme === 'dark' ? 'bg-dark-750 border-dark-border text-dark-text-secondary hover:border-dark-text-primary' : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-400')
+                  }`}
+              >
+                🔒 STRICT
+              </button>
+              <button
+                type="button"
+                onClick={() => setNavMode('standard')}
+                className={`h-[34px] rounded-xl text-[11px] font-bold transition-spring-fast border flex items-center justify-center gap-1.5 ${navMode === 'standard'
+                  ? (theme === 'dark' ? 'bg-accent-blue border-transparent text-white' : 'bg-blue-600 border-transparent text-white')
+                  : (theme === 'dark' ? 'bg-dark-750 border-dark-border text-dark-text-secondary hover:border-accent-blue' : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-blue-400')
+                  }`}
+              >
+                📋 STANDARD
+              </button>
+            </div>
+            <p className={`text-[9px] font-medium mt-1.5 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+              {navMode === 'strict' ? 'Soal harus dikerjakan berurutan, tidak bisa kembali.' : 'Peserta bisa bolak-balik soal dan menandai ragu-ragu.'}
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={`block text-[12px] font-semibold mb-1.5 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Window mulai</label>
@@ -590,6 +625,107 @@ function CreateFormCard({ theme, onCreated }: {
               </div>
             </div>
           )}
+
+          {/* Persentase soal */}
+          {(() => {
+            const effectiveSubBabs = subBabs.length > 0 ? subBabs : availSubBabs.map(s => s.value);
+            if (effectiveSubBabs.length === 0) return null;
+            return (
+              <div className={`p-3 rounded-xl border ${theme === 'dark' ? 'bg-dark-750 border-dark-border' : 'bg-gray-50 border-gray-100'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-6 h-6 rounded-md flex items-center justify-center border ${theme === 'dark' ? 'bg-accent-purple/20 border-accent-purple/30' : 'bg-[#FFF0F6] border-[#FED7E2]'}`}>
+                      <span className="text-sm">📊</span>
+                    </div>
+                    <label className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Persentase soal</label>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newState = !percentagesEnabled;
+                      setPercentagesEnabled(newState);
+                      if (newState) {
+                        const newPct: Record<string, number> = { ...subBabPercentages };
+                        const total = effectiveSubBabs.length;
+                        if (total > 0) {
+                          const equal = Math.floor(100 / total);
+                          let rem = 100 - (equal * total);
+                          effectiveSubBabs.forEach(v => {
+                            newPct[v] = equal + (rem > 0 ? 1 : 0);
+                            rem--;
+                          });
+                        }
+                        setSubBabPercentages(newPct);
+                      }
+                    }}
+                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${percentagesEnabled ? (theme === 'dark' ? 'bg-accent-blue focus:ring-accent-blue' : 'bg-[#4A90D9] focus:ring-[#4A90D9]') : (theme === 'dark' ? 'bg-dark-700' : 'bg-gray-200')}`}
+                    role="switch"
+                    aria-checked={percentagesEnabled}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${percentagesEnabled ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </button>
+                </div>
+                {percentagesEnabled && (
+                  <div className={`space-y-2.5 mt-3 p-3 rounded-xl border ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-100'}`}>
+                    {effectiveSubBabs.map(sub => {
+                      const label = availSubBabs.find(d => d.value === sub)?.label || sub;
+                      return (
+                        <div key={sub} className="flex items-center justify-between gap-3">
+                          <span className={`flex-1 truncate text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{label}</span>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={subBabPercentages[sub] || 0}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                setSubBabPercentages(prev => ({ ...prev, [sub]: val }));
+                              }}
+                              className={`w-14 h-7 text-center text-[11px] font-bold border rounded focus:outline-none ${theme === 'dark' ? 'bg-dark-800 border-dark-border text-dark-text-primary focus:border-accent-blue' : 'bg-white border-gray-300 text-gray-700 focus:border-[#4A90D9]'}`}
+                            />
+                            <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className={`pt-1.5 mt-1.5 border-t flex justify-between items-center ${theme === 'dark' ? 'border-dark-border' : 'border-gray-200'}`}>
+                      <button
+                        onClick={() => {
+                          const newPct: Record<string, number> = { ...subBabPercentages };
+                          const total = effectiveSubBabs.length;
+                          if (total > 0) {
+                            const equal = Math.floor(100 / total);
+                            let rem = 100 - (equal * total);
+                            effectiveSubBabs.forEach(v => {
+                              newPct[v] = equal + (rem > 0 ? 1 : 0);
+                              rem--;
+                            });
+                          }
+                          setSubBabPercentages(newPct);
+                        }}
+                        className={`flex items-center gap-1 text-[11px] font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'text-accent-purple hover:text-accent-purple/80' : 'text-indigo-500 hover:text-indigo-700'}`}
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Reset
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Total</span>
+                        <span className={`text-[11px] font-semibold tabular-nums ${effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0) === 100 ? (theme === 'dark' ? 'text-accent-green' : 'text-green-500') : (theme === 'dark' ? 'text-accent-red' : 'text-red-500')
+                          }`}>
+                          {effectiveSubBabs.reduce((a, b) => a + (subBabPercentages[b] || 0), 0)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <button
             type="submit"

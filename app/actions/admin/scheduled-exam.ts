@@ -19,6 +19,8 @@ export type ScheduledExamRow = {
   access_code: string | null;
   status: string;
   is_visible: boolean;
+  nav_mode: string;
+  sub_bab_percentages: Record<string, number> | null;
 };
 
 export type ScheduledExamAttemptRow = {
@@ -45,6 +47,8 @@ type CreateScheduledExamInput = {
   windowEnd: string;
   attemptMode: "single" | "retake";
   accessCode: string;
+  navMode?: "strict" | "standard";
+  subBabPercentages?: Record<string, number>;
 };
 
 export type ScheduledExamHistoryRow = {
@@ -97,6 +101,23 @@ export async function createScheduledExamAction(
   if (input.timeLimitMinutes <= 0) throw new Error("Time limit must be positive");
   if (new Date(input.windowEnd) <= new Date(input.windowStart)) throw new Error("Window end must be after start");
 
+  // Validate nav_mode
+  if (input.navMode && input.navMode !== 'strict' && input.navMode !== 'standard') {
+    throw new Error("navMode must be strict or standard");
+  }
+
+  // Validate sub-bab percentages total = 100 if provided
+  if (input.subBabPercentages) {
+    const pctEntries = Object.entries(input.subBabPercentages);
+    const total = pctEntries.reduce<number>((sum, [, v]) => sum + v, 0);
+    if (total !== 100) throw new Error(`Sub-bab percentages must total 100 (got ${total})`);
+    for (const [key] of pctEntries) {
+      if (!input.subBabs.includes(key)) {
+        throw new Error(`Percentage key "${key}" is not in selected sub-babs`);
+      }
+    }
+  }
+
   const { data, error } = await supabase.rpc("create_scheduled_exam", {
     p_title: input.title.trim(),
     p_created_by: user.id,
@@ -110,6 +131,8 @@ export async function createScheduledExamAction(
     p_window_end: input.windowEnd,
     p_attempt_mode: input.attemptMode,
     p_access_code: input.accessCode.trim(),
+    p_nav_mode: input.navMode || 'strict',
+    p_sub_bab_percentages: input.subBabPercentages ? JSON.stringify(input.subBabPercentages) : null,
   });
 
   if (error) throw new Error(error.message);
