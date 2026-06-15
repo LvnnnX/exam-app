@@ -4,9 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, Clock, XCircle, Users } from 'lucide-react';
 import { type ScheduledExamRow, type ScheduledExamAttemptRow } from '@/app/actions/admin/scheduled-exam';
+import { fetchAttemptAnswersAction, type AttemptDetailsResult } from '@/app/actions/admin/scheduled-exam-answers';
 import { type RawQuestion } from '@/lib/questions';
 import ResultDetailsModal from '@/app/components/admin/ResultDetailsModal';
 import ScheduledExamQuestionsModal from '@/app/components/admin/ScheduledExamQuestionsModal';
+import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
 
 type ScheduledExamDetailsModalProps = {
   exam: ScheduledExamRow | null;
@@ -85,6 +87,8 @@ export default function ScheduledExamDetailsModal({
 }: ScheduledExamDetailsModalProps) {
   const [questionsModalOpen, setQuestionsModalOpen] = useState(false);
   const [viewingAttempt, setViewingAttempt] = useState<ScheduledExamAttemptRow | null>(null);
+  const [attemptDetails, setAttemptDetails] = useState<AttemptDetailsResult | null>(null);
+  const [attemptDetailsLoading, setAttemptDetailsLoading] = useState(false);
 
   const isDark = theme === 'dark';
 
@@ -98,7 +102,25 @@ export default function ScheduledExamDetailsModal({
   }, [exam]);
 
   const handleCloseQuestions = () => setQuestionsModalOpen(false);
-  const handleCloseResult = () => setViewingAttempt(null);
+  const handleCloseResult = () => {
+    setViewingAttempt(null);
+    setAttemptDetails(null);
+  };
+
+  const handleViewAttempt = async (attempt: ScheduledExamAttemptRow) => {
+    setViewingAttempt(attempt);
+    setAttemptDetails(null);
+    setAttemptDetailsLoading(true);
+    try {
+      const token = await getAdminAccessToken();
+      const details = await fetchAttemptAnswersAction(token, attempt.id);
+      setAttemptDetails(details);
+    } catch (e) {
+      console.error('Failed to load attempt answers', e);
+    } finally {
+      setAttemptDetailsLoading(false);
+    }
+  };
 
   // Sort attempts: score DESC, time ASC
   const sortedAttempts = [...attempts].sort((a, b) => {
@@ -280,7 +302,7 @@ export default function ScheduledExamDetailsModal({
                                   <td className="py-2.5">
                                     <button
                                       type="button"
-                                      onClick={() => setViewingAttempt(attempt)}
+                                      onClick={() => void handleViewAttempt(attempt)}
                                       className={`h-7 rounded-full px-3 text-[11px] font-semibold transition-spring-fast active:scale-95 ${isDark ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-600 hover:bg-black/10'}`}
                                     >
                                       View Answers
@@ -318,10 +340,17 @@ export default function ScheduledExamDetailsModal({
             mapel: (exam.mapels ?? []).join(', '),
             bab: (exam.babs ?? []).join(', '),
             sub_bab: (exam.sub_babs ?? []).join(', '),
-            score: viewingAttempt.score ?? 0,
+            score: attemptDetails?.score ?? viewingAttempt.score ?? 0,
             total_questions: exam.question_count,
+            user_answers: attemptDetails?.user_answers?.map(a => ({
+              question_id: a.question_id,
+              user_answer: a.user_answer ?? '',
+              is_correct: a.is_correct,
+            })),
+            start_time: attemptDetails?.started_at ?? viewingAttempt.started_at,
+            end_time: attemptDetails?.submitted_at ?? viewingAttempt.submitted_at ?? undefined,
           }}
-          detailLoading={detailLoading}
+          detailLoading={attemptDetailsLoading}
           detailQuestions={detailQuestions}
           formatCategorySelectionLabel={formatCategorySelectionLabel}
           getCorrectOptionText={getCorrectOptionText}
