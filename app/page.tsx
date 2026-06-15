@@ -7,6 +7,7 @@ import MultiSelectDropdown from '@/app/components/exam/MultiSelectDropdown';
 import SingleSelectDropdown from '@/app/components/exam/SingleSelectDropdown';
 import NeumorphButton from '@/app/components/ui/neumorph-button';
 import JoinQuizModal from '@/app/components/exam/JoinQuizModal';
+import TutorialModal from '@/app/components/exam/TutorialModal';
 import ConfirmIdentityStep from '@/app/components/exam/ConfirmIdentityStep';
 import RestoringSessionView from '@/app/components/exam/RestoringSessionView';
 import PreparingQuestionView from '@/app/components/exam/PreparingQuestionView';
@@ -23,7 +24,8 @@ import ResultsFooter from '@/app/components/exam/ResultsFooter';
 import AppFallbackView from '@/app/components/exam/AppFallbackView';
 import { QUESTION_COUNTS } from '@/lib/questions';
 import useExamPageController from '@/app/hooks/useExamPageController';
-import { TIME_LIMIT_OPTIONS } from '@/app/hooks/examControllerConstants';
+import { TIME_LIMIT_OPTIONS, STORAGE_KEYS } from '@/app/hooks/examControllerConstants';
+import { secureLoad, secureSave } from '@/lib/security';
 
 export default function ExamPage() {
   const {
@@ -32,6 +34,24 @@ export default function ExamPage() {
     setters,
     actions,
   } = useExamPageController();
+
+  const [isTutorialOpen, setIsTutorialOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!state.isRestored) {
+      return;
+    }
+    const seen = secureLoad<boolean>(STORAGE_KEYS.TUTORIAL_SEEN);
+    if (!seen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsTutorialOpen(true);
+    }
+  }, [state.isRestored]);
+
+  const closeTutorial = React.useCallback(() => {
+    setIsTutorialOpen(false);
+    secureSave(STORAGE_KEYS.TUTORIAL_SEEN, true);
+  }, []);
 
   if (!state.isRestored) {
     return <RestoringSessionView />;
@@ -47,6 +67,16 @@ export default function ExamPage() {
               Take the exam.
             </h1>
             <p className="text-[14px] text-nike-grey-500 tracking-tight">Pick your mode, your topic, and start whenever you’re ready.</p>
+            <button
+              type="button"
+              onClick={() => setIsTutorialOpen(true)}
+              className="mt-3 inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-black/5 text-nike-black text-[13px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+              </svg>
+              Lihat tutorial
+            </button>
           </div>
           <div className="max-w-md w-full space-y-5">
             <div className="space-y-2">
@@ -239,6 +269,11 @@ export default function ExamPage() {
             onCodeChange={actions.handleQuizCodeChange}
             onJoin={actions.handleJoinQuiz}
             onClose={actions.closeJoinModal}
+          />
+
+          <TutorialModal
+            isOpen={isTutorialOpen}
+            onClose={closeTutorial}
           />
 
         </div>
