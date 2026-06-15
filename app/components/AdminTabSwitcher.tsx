@@ -2,9 +2,9 @@
 
 import Image from 'next/image';
 import React, { useEffect, useState } from 'react';
-import { FileQuestion, BarChart3, TrendingUp, Settings, PlayCircle, Shield, Sun, Moon, Menu, X } from 'lucide-react';
+import { FileQuestion, BarChart3, TrendingUp, Settings, PlayCircle, Shield, Sun, Moon, Menu, X, CalendarClock } from 'lucide-react';
 
-type AdminTab = 'questions' | 'results' | 'analytics' | 'settings' | 'quiz' | 'access';
+type AdminTab = 'questions' | 'results' | 'analytics' | 'settings' | 'quiz' | 'scheduled' | 'access';
 
 type AdminTabSwitcherProps = {
   activeTab: AdminTab;
@@ -25,6 +25,7 @@ const tabs: Array<{ id: AdminTab; label: string; icon: React.ComponentType<{ siz
   { id: 'results', label: 'Results', icon: BarChart3 },
   { id: 'analytics', label: 'Analytics', icon: TrendingUp },
   { id: 'quiz', label: 'Quiz', icon: PlayCircle },
+  { id: 'scheduled', label: 'Scheduled', icon: CalendarClock },
   { id: 'settings', label: 'Settings', icon: Settings, settingsOnly: true },
   { id: 'access', label: 'Access', icon: Shield, accessOnly: true },
 ];
@@ -34,6 +35,7 @@ const tips: Record<AdminTab, string> = {
   results: 'Use History for completed exams, Live for active users.',
   analytics: 'Find weak topics, difficult questions, and score trends.',
   quiz: 'Create sessions from curated topics, then track players live.',
+  scheduled: 'Schedule exams with access codes, time windows, and auto-submit.',
   settings: 'Save visibility changes after editing topic access.',
   access: 'Manage admin roles carefully; avoid removing your own access.',
 };
