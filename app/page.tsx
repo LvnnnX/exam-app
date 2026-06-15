@@ -8,6 +8,7 @@ import SingleSelectDropdown from '@/app/components/exam/SingleSelectDropdown';
 import NeumorphButton from '@/app/components/ui/neumorph-button';
 import JoinQuizModal from '@/app/components/exam/JoinQuizModal';
 import TutorialModal from '@/app/components/exam/TutorialModal';
+import ScheduledExamEntry from '@/app/components/exam/ScheduledExamEntry';
 import ConfirmIdentityStep from '@/app/components/exam/ConfirmIdentityStep';
 import RestoringSessionView from '@/app/components/exam/RestoringSessionView';
 import PreparingQuestionView from '@/app/components/exam/PreparingQuestionView';
@@ -22,7 +23,7 @@ import ResultsHeader from '@/app/components/exam/ResultsHeader';
 import ResultsRecapList from '@/app/components/exam/ResultsRecapList';
 import ResultsFooter from '@/app/components/exam/ResultsFooter';
 import AppFallbackView from '@/app/components/exam/AppFallbackView';
-import { QUESTION_COUNTS } from '@/lib/questions';
+import { QUESTION_COUNTS, getSessionQuestionViaRpc } from '@/lib/questions';
 import useExamPageController from '@/app/hooks/useExamPageController';
 import { TIME_LIMIT_OPTIONS, STORAGE_KEYS } from '@/app/hooks/examControllerConstants';
 import { secureLoad, secureSave } from '@/lib/security';
@@ -52,6 +53,33 @@ export default function ExamPage() {
     setIsTutorialOpen(false);
     secureSave(STORAGE_KEYS.TUTORIAL_SEEN, true);
   }, []);
+
+  const [isScheduledModalOpen, setIsScheduledModalOpen] = React.useState(false);
+
+  // When a scheduled exam session starts, initialize exam runtime and jump to step 3
+  const handleScheduledExamStarted = React.useCallback(async (
+    sessionId: string,
+    questionCount: number,
+    expiresAt: string,
+  ) => {
+    setIsScheduledModalOpen(false);
+    setters.setSessionId(sessionId);
+    setters.setTotalQuestions(questionCount);
+    setters.setAnswers(Array(questionCount).fill(null));
+    setters.setDoubtFlags(Array(questionCount).fill(false));
+    setters.setCurrent(0);
+    setters.setExpiresAt(expiresAt);
+    setters.setStartTime(Number(new Date()));
+    setters.setGameMode('exam');
+    setters.setExamMode('strict');
+    setters.setStep(3);
+    try {
+      const firstQ = await getSessionQuestionViaRpc(sessionId, 0);
+      setters.setCurrentQuestion(firstQ);
+    } catch {
+      setters.setCurrentQuestion(null);
+    }
+  }, [setters]);
 
   if (!state.isRestored) {
     return <RestoringSessionView />;
@@ -115,6 +143,15 @@ export default function ExamPage() {
                 onClick={() => setters.setIsJoinModalOpen(true)}
               >
                 Join with code
+              </NeumorphButton>
+              <NeumorphButton
+                type="button"
+                size="medium"
+                intent="secondary"
+                fullWidth
+                onClick={() => setIsScheduledModalOpen(true)}
+              >
+                Ujian terjadwal
               </NeumorphButton>
             </div>
 
@@ -275,6 +312,22 @@ export default function ExamPage() {
             isOpen={isTutorialOpen}
             onClose={closeTutorial}
           />
+
+          {isScheduledModalOpen && (
+            <div className="fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
+              <div className="flex min-h-screen items-center justify-center px-5 py-10">
+                <div className="w-full max-w-2xl">
+                  <ScheduledExamEntry
+                    onExamStarted={(sessionId, questionCount, expiresAt) => {
+                      void handleScheduledExamStarted(sessionId, questionCount, expiresAt);
+                    }}
+                    theme="light"
+                    onClose={() => setIsScheduledModalOpen(false)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

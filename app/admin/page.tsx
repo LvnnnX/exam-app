@@ -15,6 +15,7 @@ import AccessTabPanel from '@/app/components/admin/AccessTabPanel';
 import AnalyticsTabPanel from '@/app/components/admin/AnalyticsTabPanel';
 import useAdminPageController from '@/app/hooks/useAdminPageController';
 import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
+import ScheduledExamTabPanel from '@/app/components/admin/ScheduledExamTabPanel';
 import { createQuizSessionAction } from '@/app/actions/admin/quiz';
 import { exportQuestionsAction } from '@/app/actions/admin/export-questions';
 import { importQuestionsAction } from '@/app/actions/admin/import-questions';
@@ -23,13 +24,7 @@ import { getOptionText, getCorrectOptionText } from '@/app/hooks/adminOptionText
 import { useAdminTheme } from '@/app/hooks/useAdminTheme';
 import { ToastContainer } from '@/app/components/Toast';
 
-type AdminTab = 'questions' | 'quiz' | 'results' | 'analytics' | 'settings' | 'access';
-
-const adminTabs: AdminTab[] = ['questions', 'quiz', 'results', 'analytics', 'settings', 'access'];
-
-function isAdminTab(value: string | null): value is AdminTab {
-  return !!value && adminTabs.includes(value as AdminTab);
-}
+const VALID_ADMIN_TABS = new Set(['questions', 'quiz', 'results', 'analytics', 'settings', 'scheduled', 'access']);
 
 export default function AdminPage() {
   return (
@@ -151,8 +146,8 @@ function AdminPageInner() {
     if (auth.isAuthenticated !== true) return;
 
     const urlTab = searchParams.get('tab');
-    if (isAdminTab(urlTab)) {
-      tabs.handleTabChange(urlTab);
+    if (urlTab && VALID_ADMIN_TABS.has(urlTab)) {
+      tabs.handleTabChange(urlTab as Parameters<typeof tabs.handleTabChange>[0]);
     }
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,8 +159,8 @@ function AdminPageInner() {
 
     const handlePopState = () => {
       const urlTab = new URL(window.location.href).searchParams.get('tab');
-      if (isAdminTab(urlTab)) {
-        tabs.handleTabChange(urlTab);
+      if (urlTab && VALID_ADMIN_TABS.has(urlTab)) {
+        tabs.handleTabChange(urlTab as Parameters<typeof tabs.handleTabChange>[0]);
       }
     };
 
@@ -174,7 +169,7 @@ function AdminPageInner() {
   }, [auth.isAuthenticated, tabs]);
 
   // Wrapper for tab change that also updates URL
-  const handleTabChangeWithUrl = useCallback((tab: AdminTab) => {
+  const handleTabChangeWithUrl = useCallback((tab: Parameters<typeof tabs.handleTabChange>[0]) => {
     tabs.handleTabChange(tab);
 
     // Update URL and remove code parameter (code is specific to Quiz tab sessions)
@@ -477,6 +472,12 @@ function AdminPageInner() {
                 visibilitySettings={settings.visibilitySettings}
                 theme={theme}
               />
+              </div>
+            )}
+
+            {tabs.activeTab === 'scheduled' && (
+              <div className="h-full min-h-0 overflow-y-auto px-1 py-4">
+                <ScheduledExamTabPanel theme={theme} />
               </div>
             )}
 
