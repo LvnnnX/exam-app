@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type BatchDeleteConfirmModalProps = {
   isOpen: boolean;
@@ -19,13 +20,11 @@ export default function BatchDeleteConfirmModal({
   onConfirm,
   theme = 'dark',
 }: BatchDeleteConfirmModalProps) {
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[9999]">
-      <div className={`rounded-[24px] shadow-ios-xl max-w-md w-full overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[9999]">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }} className={`rounded-[24px] shadow-ios-xl max-w-md w-full overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
         <div className="px-4 pt-5 pb-4 sm:px-6 sm:pt-6">
           <div className="flex items-center gap-3 mb-4">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-500'}`}>
@@ -65,7 +64,9 @@ export default function BatchDeleteConfirmModal({
             {batchProcessing ? 'Menghapus…' : 'Hapus'}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

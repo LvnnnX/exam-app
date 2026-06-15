@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { type RawQuestion } from '@/lib/questions';
 import QuestionModalHeader from '@/app/components/admin/QuestionModalHeader';
 import QuestionModalFooter from '@/app/components/admin/QuestionModalFooter';
@@ -28,33 +29,44 @@ export default function QuestionModalShell({
   children,
   theme = 'dark',
 }: QuestionModalShellProps) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[9999]">
-      <div
-        className={`flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <QuestionModalHeader
-          isAdding={isAdding}
-          isEditing={isEditing}
-          selectedQuestion={selectedQuestion}
-          onClose={onClose}
-          theme={theme}
-        />
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[9999]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className={`flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <QuestionModalHeader
+              isAdding={isAdding}
+              isEditing={isEditing}
+              selectedQuestion={selectedQuestion}
+              onClose={onClose}
+              theme={theme}
+            />
 
-        {children}
+            {children}
 
-        <QuestionModalFooter
-          isAdding={isAdding}
-          isEditing={isEditing}
-          savingQuestion={savingQuestion}
-          onClose={onClose}
-          onSave={onSave}
-          theme={theme}
-        />
-      </div>
-    </div>
+            <QuestionModalFooter
+              isAdding={isAdding}
+              isEditing={isEditing}
+              savingQuestion={savingQuestion}
+              onClose={onClose}
+              onSave={onSave}
+              theme={theme}
+            />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

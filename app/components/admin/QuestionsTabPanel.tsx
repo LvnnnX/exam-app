@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 import { type RawQuestion } from '@/lib/questions';
 import { stripHtml } from '@/lib/rich-text';
@@ -549,15 +549,13 @@ export default function QuestionsTabPanel({
                 )}
               </div>
               {canCreateQuestion && (
-                <motion.button
-                  layoutId="create-mapel-expandable"
-                  transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
+                <button
                   onClick={() => setIsCreateMapelModalOpen(true)}
                   className={`h-11 w-11 rounded-full flex items-center justify-center text-xl font-semibold shadow-[0_10px_26px_rgba(0,0,0,0.18)] transition-spring-fast hover:scale-[1.04] active:scale-95 ${theme === 'dark' ? 'bg-[#2f4f43] text-[#d7eadf] hover:bg-[#395e4f]' : 'bg-[#dbe8df] text-[#1f3a30] hover:bg-[#cfddD3]'}`}
                   title="Buat mapel baru"
                 >
                   +
-                </motion.button>
+                </button>
               )}
             </div>
           </div>
@@ -759,11 +757,22 @@ export default function QuestionsTabPanel({
       </div>
 
       {/* Create MAPEL Modal */}
+      <AnimatePresence>
       {isCreateMapelModalOpen && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-[#070807]/80 backdrop-blur-2xl" onClick={() => setIsCreateMapelModalOpen(false)}>
+        <motion.div
+          key="create-mapel-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-[#070807]/80 backdrop-blur-2xl"
+          onClick={() => setIsCreateMapelModalOpen(false)}
+        >
           <motion.div
-            layoutId="create-mapel-expandable"
-            transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
+            key="create-mapel-panel"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             className={`w-full max-w-md overflow-hidden rounded-[30px] shadow-[0_30px_80px_rgba(0,0,0,0.35)] ${theme === 'dark' ? 'bg-[#171d1a] text-surface-mint-edge' : 'bg-[#f3f0e9] text-dark-olive-900'}`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -856,8 +865,9 @@ export default function QuestionsTabPanel({
               </div>
             </form>
           </motion.div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Confirm Redirect Modal */}
       {isConfirmRedirectModalOpen && existingMapelInfo && (

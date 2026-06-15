@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { type RawQuestion } from '@/lib/questions';
 import ResultDetailsHeader from '@/app/components/admin/ResultDetailsHeader';
 import ResultDetailsContent from '@/app/components/admin/ResultDetailsContent';
@@ -56,11 +57,11 @@ export default function ResultDetailsModal({
     onClose();
   };
 
-  if (!viewingResult) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={handleClose}>
-      <div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+    <AnimatePresence>
+      {viewingResult && (
+    <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={handleClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
         <ResultDetailsHeader
           viewingResult={viewingResult}
           formatCategorySelectionLabel={formatCategorySelectionLabel}
@@ -74,7 +75,9 @@ export default function ResultDetailsModal({
           getCorrectOptionText={getCorrectOptionText}
           theme={theme}
         />
-      </div>
-    </div>
+      </motion.div>
+      </motion.div>
+      )}
+      </AnimatePresence>
   );
 }

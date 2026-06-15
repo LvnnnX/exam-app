@@ -6,6 +6,7 @@ import { getHorseSkin } from '@/lib/horse-skins';
 import HorseAvatar from '@/app/components/HorseAvatar';
 import CrownIcon from '@/app/components/CrownIcon';
 import confetti from 'canvas-confetti';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type LeaderboardViewModalProps = {
   open: boolean;
@@ -278,11 +279,24 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, scoreFingerprint]);
 
-  if (!open || !session) return null;
-
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-xl p-2 sm:p-4" onClick={onClose}>
-      <div className={`flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[32px] shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+    <AnimatePresence>
+      {open && session && (
+        <motion.div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-xl p-2 sm:p-4"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className={`flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[32px] shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+          >
         {/* Header */}
         <div className={`relative flex items-center justify-center border-b p-4 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-slate-200 bg-white'}`}>
           <div className="flex items-center gap-4">
@@ -457,7 +471,9 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
             <span>{fixedOrderPlayers.length} peserta</span>
           </div>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
