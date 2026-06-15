@@ -24,7 +24,7 @@ html {
   --color-nike-blue: #1151FF;
 
   /* Dark Theme Colors */
-  --color-dark-900: #000000;
+  --color-dark-900: #0f1210;               /* iOS softer black (was #000000) */
   --color-dark-850: #0a0a0a;
   --color-dark-800: #111111;
   --color-dark-750: #1a1a1a;
@@ -52,6 +52,39 @@ html {
   --color-accent-red: #ff453a;
   --color-accent-teal: #64d2ff;
 
+  /* ── iOS refresh additive tokens (Fase 0, zero-conflict) ── */
+  --color-nike-black-hover: #333333;       /* absorbs ad-hoc #333333 */
+
+  /* Accent soft fills — solid pastel stat cards (not /10 alpha) */
+  --color-accent-blue-soft: #e8f1fb;
+  --color-accent-green-soft: #e8f4ed;
+  --color-accent-purple-soft: #f0eafb;
+  --color-accent-orange-soft: #f8eee5;
+  --color-accent-blue-soft-ink: #2563a8;   /* readable ink on soft fill */
+  --color-accent-green-soft-ink: #268353;
+  --color-accent-purple-soft-ink: #7c4fc2;
+  --color-accent-orange-soft-ink: #b8642e;
+
+  /* Semantic surface roles */
+  --color-bg-app: #f5f3ee;
+  --color-bg-card: #ffffff;
+
+  /* ── Fase 2: tokens for repeated hexes (value-exact, 2+ occurrences) ── */
+  --color-link-blue: #4a90d9;              /* link/accent blue (×10) */
+  --color-surface-grey-100: #f0f0f0;       /* light grey fill (×5) */
+  --color-surface-grey-150: #f8f8f8;       /* lighter grey fill (×3) */
+  --color-surface-grey-200: #f4f4f4;       /* grey fill */
+  --color-surface-mint-edge: #d9e0dc;      /* green-grey border (×4) */
+  --color-dark-olive-900: #20251f;         /* dark olive surface (×4) */
+  --color-surface-cream: #f7f7f2;          /* warm cream fill (×3) */
+  --color-status-green: #34c759;           /* iOS green (×3) */
+  --color-grey-mid: #8a8a8a;               /* mid grey text (×3) */
+  --color-status-red-warm: #ff4b35;        /* warm red-orange (×3) */
+  --color-dark-950: #151515;               /* near-black surface (×3) */
+  --color-pink-soft: #fff0f6;              /* soft pink fill (×2) */
+  --color-pink-edge: #fed7e2;              /* pink border (×2) */
+  --color-mint-soft: #f0fff4;              /* soft mint fill (×2) */
+
   /* Basic tokens mapped */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -71,7 +104,7 @@ body {
 html.admin-dark-theme,
 html.admin-dark-theme body,
 html.admin-dark-theme body main {
-  background-color: #000000 !important;
+  background-color: #0f1210 !important;
 }
 
 html.admin-dark-theme body {
@@ -708,17 +741,17 @@ body.exam-active textarea {
 
 /* ─── Admin Dark Theme ─── */
 html.admin-dark-theme {
-  background-color: #000000 !important;
+  background-color: #0f1210 !important;
   color: #ffffff;
 }
 
 html.admin-dark-theme body {
-  background-color: #000000 !important;
+  background-color: #0f1210 !important;
   color: #ffffff;
 }
 
 body.admin-dark-theme {
-  background-color: #000000 !important;
+  background-color: #0f1210 !important;
   color: #ffffff;
 }
 
@@ -726,7 +759,7 @@ body.admin-dark-theme {
    leave white gutters. Force it (and its children that don't set their own bg)
    to inherit the dark background. */
 body.admin-dark-theme [data-admin-page] {
-  background-color: #000000 !important;
+  background-color: #0f1210 !important;
   color: #ffffff;
 }
 
@@ -736,7 +769,7 @@ body.admin-dark-theme.bg-nike-white,
 body.admin-dark-theme.bg-white,
 html.admin-dark-theme body.bg-nike-white,
 html.admin-dark-theme body.bg-white {
-  background-color: #000000 !important;
+  background-color: #0f1210 !important;
 }
 
 /* ─── iOS-Style Utilities ─── */

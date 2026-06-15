@@ -32,12 +32,12 @@ export default function JoinQuizModal({
   }
 
   return (
-    <div className="modal-dark-overlay fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
+    <div className="modal-dark-overlay fixed inset-0 z-[100] overflow-hidden bg-dark-800 text-white animate-in fade-in duration-200">
       <div className="flex min-h-screen items-center justify-center px-5 py-10">
         <motion.div
           layoutId="join-quiz-expandable"
           transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
-          className="w-full max-w-5xl rounded-[24px] bg-[#151515] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-12"
+          className="w-full max-w-5xl rounded-[24px] bg-dark-950 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-12"
         >
           <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_420px] lg:gap-14">
             <div className="order-1 flex flex-col space-y-5 lg:order-none lg:col-start-1 lg:row-start-1 lg:justify-center">

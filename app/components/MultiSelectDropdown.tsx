@@ -48,7 +48,7 @@ const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disable
         type="button"
         disabled={disabled || options.length === 0}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between rounded-full border px-3 h-10 text-[13px] transition-spring-fast ${disabled || options.length === 0 ? (theme === 'dark' ? 'cursor-not-allowed border-dark-border-medium bg-dark-700 text-dark-text-tertiary' : 'cursor-not-allowed border-slate-300 bg-[#f5f5f5] text-[#9e9ea0]') : (theme === 'dark' ? 'border-dark-border-medium bg-dark-800 hover:border-dark-text-primary hover:scale-[1.02]' : 'border-slate-300 bg-white hover:border-[#111111] hover:scale-[1.02]')
+        className={`w-full flex items-center justify-between rounded-full border px-3 h-10 text-[13px] transition-spring-fast ${disabled || options.length === 0 ? (theme === 'dark' ? 'cursor-not-allowed border-dark-border-medium bg-dark-700 text-dark-text-tertiary' : 'cursor-not-allowed border-slate-300 bg-nike-grey-100 text-[#9e9ea0]') : (theme === 'dark' ? 'border-dark-border-medium bg-dark-800 hover:border-dark-text-primary hover:scale-[1.02]' : 'border-slate-300 bg-white hover:border-dark-800 hover:scale-[1.02]')
           }`}
       >
         <span className={`truncate font-medium ${selectedValues.length > 0 ? (theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400')}`}>
@@ -80,7 +80,7 @@ const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disable
                           onChange(options.map(o => o.value));
                         }
                       }}
-                      className={`w-full flex items-center gap-2 rounded-full px-3 py-2 text-left transition-spring-fast ${theme === 'dark' ? 'hover:bg-dark-750' : 'hover:bg-[#f5f5f5]'}`}
+                      className={`w-full flex items-center gap-2 rounded-full px-3 py-2 text-left transition-spring-fast ${theme === 'dark' ? 'hover:bg-dark-750' : 'hover:bg-nike-grey-100'}`}
                     >
                       <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-spring-fast ${selectedValues.length === options.length ? (theme === 'dark' ? 'bg-accent-blue border-accent-blue' : 'bg-nike-black border-nike-black') : (theme === 'dark' ? 'border-dark-border' : 'border-slate-300')
                         }`}>
@@ -90,7 +90,7 @@ const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disable
                           </svg>
                         )}
                       </div>
-                      <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Select All</span>
+                      <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Select All</span>
                     </button>
                     <div className={`h-[1px] my-1 ${theme === 'dark' ? 'bg-dark-border' : 'bg-slate-100'}`} />
                   </>
@@ -100,7 +100,7 @@ const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disable
                     key={option.value}
                     type="button"
                     onClick={() => toggleOption(option.value)}
-                    className={`w-full flex items-center gap-2 rounded-full px-3 py-2 text-left transition-spring-fast ${theme === 'dark' ? 'hover:bg-dark-750' : 'hover:bg-[#f5f5f5]'}`}
+                    className={`w-full flex items-center gap-2 rounded-full px-3 py-2 text-left transition-spring-fast ${theme === 'dark' ? 'hover:bg-dark-750' : 'hover:bg-nike-grey-100'}`}
                   >
                     <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-spring-fast ${selectedValues.includes(option.value) ? (theme === 'dark' ? 'bg-accent-blue border-accent-blue' : 'bg-nike-black border-nike-black') : (theme === 'dark' ? 'border-dark-border' : 'border-slate-300')
                       }`}>
@@ -117,7 +117,7 @@ const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disable
                 ))}
               </>
             ) : (
-              <div className={`p-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+              <div className={`p-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
                 No options
               </div>
             )}

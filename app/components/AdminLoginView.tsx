@@ -30,7 +30,7 @@ export default function AdminLoginView({
   const [showPassword, setShowPassword] = useState(false);
 
   const pageBg = isDark ? 'bg-black' : 'bg-white';
-  const cardBg = isDark ? 'bg-[#111111]' : 'bg-white';
+  const cardBg = isDark ? 'bg-dark-800' : 'bg-white';
   const cardShadow = isDark ? 'shadow-ios-lg' : 'shadow-ios-lg';
   const headlineColor = isDark ? 'text-white' : 'text-nike-black';
   const mutedText = isDark ? 'text-white/55' : 'text-black/55';

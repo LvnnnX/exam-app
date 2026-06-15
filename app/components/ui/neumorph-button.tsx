@@ -14,10 +14,10 @@ type NeumorphButtonProps = Omit<HTMLMotionProps<"button">, "children"> & {
 };
 
 const intentClasses = {
-  default: "border border-white/15 bg-[#2b2b2b] text-white hover:bg-[#333333]",
-  primary: "border border-white/15 bg-[#111111] text-white hover:bg-[#1f1f1f]",
-  secondary: "border border-black/10 bg-white text-[#2a2a2a] hover:bg-[#f4f4f4]",
-  danger: "border border-[#ff5a42] bg-[#ff4b35] text-white hover:bg-[#f0442f]",
+  default: "border border-white/15 bg-[#2b2b2b] text-white hover:bg-nike-black-hover",
+  primary: "border border-white/15 bg-dark-800 text-white hover:bg-[#1f1f1f]",
+  secondary: "border border-black/10 bg-white text-dark-600 hover:bg-surface-grey-200",
+  danger: "border border-[#ff5a42] bg-status-red-warm text-white hover:bg-[#f0442f]",
 };
 
 const sizeClasses = {

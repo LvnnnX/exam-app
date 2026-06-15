@@ -31,10 +31,10 @@ function getStatTheme(accent: StatAccent, theme: 'light' | 'dark') {
   } satisfies Record<StatAccent, { card: string; value: string }>;
 
   const light = {
-    blue: { card: 'bg-[#e8f1fb]', value: 'text-[#2563a8]' },
-    green: { card: 'bg-[#e8f4ed]', value: 'text-[#268353]' },
-    purple: { card: 'bg-[#f0eafb]', value: 'text-[#7c4fc2]' },
-    orange: { card: 'bg-[#f8eee5]', value: 'text-[#b8642e]' },
+    blue: { card: 'bg-accent-blue-soft', value: 'text-accent-blue-soft-ink' },
+    green: { card: 'bg-accent-green-soft', value: 'text-accent-green-soft-ink' },
+    purple: { card: 'bg-accent-purple-soft', value: 'text-accent-purple-soft-ink' },
+    orange: { card: 'bg-accent-orange-soft', value: 'text-accent-orange-soft-ink' },
   } satisfies Record<StatAccent, { card: string; value: string }>;
 
   return theme === 'dark' ? dark[accent] : light[accent];
@@ -65,7 +65,7 @@ export default function ResultsStatsCards({ isLiveMode, statsData, theme = 'dark
             <div className={`text-[28px] font-semibold leading-none tracking-[-0.04em] tabular-nums ${statTheme.value}`}>
               {s.value}
             </div>
-            <div className={`mt-2 text-[12px] font-medium ${theme === 'dark' ? 'text-[#d9e0dc]/75' : 'text-gray-700'}`}>
+            <div className={`mt-2 text-[12px] font-medium ${theme === 'dark' ? 'text-surface-mint-edge/75' : 'text-gray-700'}`}>
               {s.label}
             </div>
           </div>

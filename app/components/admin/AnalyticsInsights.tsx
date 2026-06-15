@@ -169,7 +169,7 @@ export default function AnalyticsInsights({
         className={`rounded-[28px] border p-6 shadow-ios-md ${
           theme === 'dark'
             ? 'border-dark-border-subtle bg-dark-800'
-            : 'border-[#E5E5E5] bg-white'
+            : 'border-nike-grey-200 bg-white'
         }`}
       >
         <div className="mb-4">
@@ -206,7 +206,7 @@ export default function AnalyticsInsights({
                       : 'border-blue-600/40 bg-blue-50 shadow-ios-sm'
                     : theme === 'dark'
                     ? 'border-dark-border-subtle bg-white/[0.03] hover:bg-white/[0.05]'
-                    : 'border-[#E5E5E5] bg-black/[0.02] hover:bg-black/[0.03]'
+                    : 'border-nike-grey-200 bg-black/[0.02] hover:bg-black/[0.03]'
                 }`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -298,7 +298,7 @@ export default function AnalyticsInsights({
         className={`rounded-[28px] border p-6 shadow-ios-md lg:col-span-2 ${
           theme === 'dark'
             ? 'border-dark-border-subtle bg-dark-800'
-            : 'border-[#E5E5E5] bg-white'
+            : 'border-nike-grey-200 bg-white'
         }`}
       >
         <div className="mb-4">
@@ -327,12 +327,12 @@ export default function AnalyticsInsights({
             className={`h-11 w-full rounded-2xl border px-4 text-sm font-medium transition-spring-fast focus:outline-none focus:ring-2 ${
               theme === 'dark'
                 ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary placeholder:text-dark-text-tertiary focus:border-accent-blue focus:ring-accent-blue/10'
-                : 'border-[#E5E5E5] bg-white text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-gray-900/10'
+                : 'border-nike-grey-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-gray-900/10'
             }`}
           />
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className={`inline-flex h-10 rounded-full border p-0.5 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
+            <div className={`inline-flex h-10 rounded-full border p-0.5 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
               <button
                 type="button"
                 onClick={() => setQuestionTypeFilter('all')}
@@ -340,10 +340,10 @@ export default function AnalyticsInsights({
                   questionTypeFilter === 'all'
                     ? theme === 'dark'
                       ? 'bg-accent-blue text-white'
-                      : 'bg-[#111111] text-white'
+                      : 'bg-dark-800 text-white'
                     : theme === 'dark'
                     ? 'text-dark-text-primary hover:bg-dark-700'
-                    : 'text-[#111111] hover:bg-[#f5f5f5]'
+                    : 'text-nike-black hover:bg-nike-grey-100'
                 }`}
               >
                 All
@@ -355,10 +355,10 @@ export default function AnalyticsInsights({
                   questionTypeFilter === 'multiple_choice'
                     ? theme === 'dark'
                       ? 'bg-accent-blue text-white'
-                      : 'bg-[#111111] text-white'
+                      : 'bg-dark-800 text-white'
                     : theme === 'dark'
                     ? 'text-dark-text-primary hover:bg-dark-700'
-                    : 'text-[#111111] hover:bg-[#f5f5f5]'
+                    : 'text-nike-black hover:bg-nike-grey-100'
                 }`}
               >
                 PG
@@ -370,10 +370,10 @@ export default function AnalyticsInsights({
                   questionTypeFilter === 'short_answer'
                     ? theme === 'dark'
                       ? 'bg-accent-blue text-white'
-                      : 'bg-[#111111] text-white'
+                      : 'bg-dark-800 text-white'
                     : theme === 'dark'
                     ? 'text-dark-text-primary hover:bg-dark-700'
-                    : 'text-[#111111] hover:bg-[#f5f5f5]'
+                    : 'text-nike-black hover:bg-nike-grey-100'
                 }`}
               >
                 Isian
@@ -386,7 +386,7 @@ export default function AnalyticsInsights({
               className={`h-10 min-w-[152px] cursor-pointer rounded-full border px-3.5 text-[11px] font-semibold transition-spring-fast focus:outline-none focus:ring-2 ${
                 theme === 'dark'
                   ? 'border-dark-border-medium bg-dark-800 text-dark-text-primary focus:border-accent-blue focus:ring-accent-blue/10'
-                  : 'border-[#e5e5e5] bg-white text-[#111111] focus:border-[#111111] focus:ring-[#111111]/10'
+                  : 'border-nike-grey-200 bg-white text-nike-black focus:border-dark-800 focus:ring-dark-800/10'
               }`}
             >
               <option value="wrongRate">Sort by wrong rate</option>
@@ -420,7 +420,7 @@ export default function AnalyticsInsights({
                 className={`w-full rounded-[20px] border p-3.5 text-left transition-spring hover:scale-[1.01] ${
                   theme === 'dark'
                     ? 'border-dark-border-subtle bg-white/[0.03] hover:bg-white/[0.05]'
-                    : 'border-[#E5E5E5] bg-black/[0.02] hover:bg-black/[0.03]'
+                    : 'border-nike-grey-200 bg-black/[0.02] hover:bg-black/[0.03]'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -539,7 +539,7 @@ export default function AnalyticsInsights({
             <div
               className={`rounded-[16px] border-2 border-dashed p-6 text-center ${
                 theme === 'dark'
-                  ? 'border-[#2a2a2a] text-dark-text-tertiary'
+                  ? 'border-dark-600 text-dark-text-tertiary'
                   : 'border-gray-300 text-gray-400'
               }`}
             >
@@ -557,8 +557,8 @@ export default function AnalyticsInsights({
               onClick={() => setShowAllQuestions(!showAllQuestions)}
               className={`w-full mt-3 h-10 rounded-full border px-4 text-xs font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${
                 theme === 'dark'
-                  ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:border-accent-blue hover:text-accent-blue'
-                  : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'
+                  ? 'border-dark-600 bg-dark-750 text-dark-text-primary hover:border-accent-blue hover:text-accent-blue'
+                  : 'border-nike-grey-300 bg-white text-gray-900 hover:border-gray-900'
               }`}
             >
               {showAllQuestions ? `Show Less` : `Show More (${displayedQuestions.length - 8} more)`}

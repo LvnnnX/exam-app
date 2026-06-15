@@ -155,12 +155,12 @@ export default function ScheduledExamEntry({
   const canStart = isWindowOpen && !starting;
 
   return (
-    <div className="modal-dark-overlay fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
+    <div className="modal-dark-overlay fixed inset-0 z-[100] overflow-hidden bg-dark-800 text-white animate-in fade-in duration-200">
       <div className="flex min-h-screen items-center justify-center px-5 py-10">
         <motion.div
           layoutId="scheduled-exam-expandable"
           transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
-          className="w-full max-w-5xl rounded-[24px] bg-[#151515] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-12"
+          className="w-full max-w-5xl rounded-[24px] bg-dark-950 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-12"
         >
           {/* ── Loading ── */}
           {view.kind === 'loading' && (

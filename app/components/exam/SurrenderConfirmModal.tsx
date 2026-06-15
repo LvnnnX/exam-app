@@ -20,14 +20,14 @@ export default function SurrenderConfirmModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#111111]/95 backdrop-blur-2xl px-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-800/95 backdrop-blur-2xl px-4 animate-in fade-in duration-200">
       <motion.div
         layoutId="surrender-expandable"
         transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
-        className="relative w-full max-w-3xl overflow-hidden rounded-[28px] bg-[#151515] p-6 text-white shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-10"
+        className="relative w-full max-w-3xl overflow-hidden rounded-[28px] bg-dark-950 p-6 text-white shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-10"
       >
-        <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-[#ff4b35]/25 blur-3xl" aria-hidden="true" />
-        <div className="absolute -bottom-24 -left-16 h-52 w-52 rounded-full bg-[#ff4b35]/15 blur-3xl" aria-hidden="true" />
+        <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-status-red-warm/25 blur-3xl" aria-hidden="true" />
+        <div className="absolute -bottom-24 -left-16 h-52 w-52 rounded-full bg-status-red-warm/15 blur-3xl" aria-hidden="true" />
 
         <div className="relative grid gap-8 lg:grid-cols-[1fr_320px] lg:items-center">
           <div className="space-y-4">

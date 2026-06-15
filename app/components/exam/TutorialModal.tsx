@@ -139,7 +139,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[150] bg-[#111111]/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[150] bg-dark-800/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-title"
