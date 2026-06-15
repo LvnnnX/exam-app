@@ -492,6 +492,8 @@ export default function ExamPage() {
             babsLabel={state.babsLabel}
             subBabsLabel={state.subBabsLabel}
             saved={state.saved}
+            isScheduledExam={state.isScheduledExam}
+            scheduledExamTitle={state.scheduledExamTitle}
           />
 
           <ResultsRecapList recapData={state.recapData} />
