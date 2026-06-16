@@ -70,10 +70,10 @@ export async function fetchAttemptAnswersAction(
   // Use service role to read questions (bypasses RLS)
   const supabaseService = getSupabaseServer();
   
-  // Fetch all question correct answers in one query
+  // Fetch all question correct answers + option texts in one query
   const { data: questions, error: qErr } = await supabaseService
     .from("questions")
-    .select("id, correct_answer, question_type, short_answer")
+    .select("id, correct_answer, question_type, short_answer, option_a, option_b, option_c, option_d, option_e")
     .in("id", questionIds);
 
   if (qErr || !questions) {
@@ -89,7 +89,16 @@ export async function fetchAttemptAnswersAction(
   const qMap = new Map(
     questions.map((q) => [
       q.id,
-      { correct_answer: q.correct_answer as string, question_type: q.question_type as string, short_answer: q.short_answer as string | null },
+      {
+        correct_answer: q.correct_answer as string,
+        question_type: q.question_type as string,
+        short_answer: q.short_answer as string | null,
+        option_a: q.option_a as string | null,
+        option_b: q.option_b as string | null,
+        option_c: q.option_c as string | null,
+        option_d: q.option_d as string | null,
+        option_e: q.option_e as string | null,
+      },
     ])
   );
 
@@ -98,14 +107,21 @@ export async function fetchAttemptAnswersAction(
     const q = qMap.get(qid);
     let isCorrect = false;
     if (q && userAnswer !== null) {
+      const cleaned = stripHtml(userAnswer).trim();
       if (q.question_type === "short_answer") {
         isCorrect =
-          stripHtml(userAnswer).toLowerCase() ===
+          cleaned.toLowerCase() ===
           stripHtml(q.short_answer ?? "").toLowerCase();
       } else {
-        isCorrect =
-          stripHtml(userAnswer).toUpperCase() ===
-          stripHtml(q.correct_answer ?? "").toUpperCase();
+        // Resolve the correct answer label (e.g. "A") to its option text
+        const label = (q.correct_answer ?? "").toUpperCase().trim();
+        const optionMap: Record<string, string | null> = {
+          A: q.option_a, B: q.option_b, C: q.option_c,
+          D: q.option_d, E: q.option_e,
+        };
+        const correctText = stripHtml(optionMap[label] ?? "").trim();
+        isCorrect = cleaned.toUpperCase() === correctText.toUpperCase()
+                  || cleaned.toUpperCase() === label;
       }
     }
     return {
