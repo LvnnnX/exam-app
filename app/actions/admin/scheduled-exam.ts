@@ -123,6 +123,8 @@ export type ScheduledExamAttemptRow = {
   submitted_at: string | null;
   auto_submitted: boolean;
   score: number | null;
+  current_question_index: number | null;
+  live_score: number | null;
 };
 
 type CreateScheduledExamInput = {

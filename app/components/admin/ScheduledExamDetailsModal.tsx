@@ -250,9 +250,19 @@ export default function ScheduledExamDetailsModal({
                           Player
                         </h3>
                         {!attemptLoading && (
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-white/5 text-dark-text-tertiary' : 'bg-black/5 text-gray-500'}`}>
-                            {attempts.length}
-                          </span>
+                          <>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-white/5 text-dark-text-tertiary' : 'bg-black/5 text-gray-500'}`}>
+                              {attempts.length}
+                            </span>
+                            {attempts.filter(a => !a.submitted_at).length > 0 && (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                isDark ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700'
+                              }`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                                {attempts.filter(a => !a.submitted_at).length} aktif
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
 
@@ -291,10 +301,16 @@ export default function ScheduledExamDetailsModal({
                                     {attempt.student_name}
                                   </td>
                                   <td className={`py-2.5 pr-3 text-[12px] tabular-nums ${isDark ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
-                                    -
+                                    {attempt.submitted_at
+                                      ? '-'
+                                      : attempt.current_question_index != null
+                                        ? `Q${attempt.current_question_index + 1}`
+                                        : 'Q1'}
                                   </td>
                                   <td className={`py-2.5 pr-3 text-[12px] font-semibold tabular-nums ${isDark ? 'text-accent-green' : 'text-green-600'}`}>
-                                    {attempt.score != null ? attempt.score : '-'}
+                                    {attempt.submitted_at
+                                      ? (attempt.score != null ? attempt.score : '-')
+                                      : (attempt.live_score != null ? attempt.live_score : '0')}
                                   </td>
                                   <td className={`py-2.5 pr-3 text-[12px] tabular-nums ${isDark ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
                                     {formatDuration(attempt.started_at, attempt.submitted_at, attempt.deadline_at, attempt.auto_submitted)}

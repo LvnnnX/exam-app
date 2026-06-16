@@ -8,6 +8,7 @@ import StudentWeaknessPanel from '@/app/components/admin/StudentWeaknessPanel';
 import RemedialQuizBuilder from '@/app/components/admin/RemedialQuizBuilder';
 import RemedialQuizSuccessModal from '@/app/components/admin/RemedialQuizSuccessModal';
 import { buildRemedialQuestionPool } from '@/app/lib/remedialQuizSelection';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type AnalyticsSource = 'exam' | 'quiz' | 'scheduled';
 type AnalyticsDateRange = { start: string; end: string };
@@ -426,10 +427,11 @@ export default function AnalyticsTabPanel({
           theme={theme}
         />
       )}
-
+      {/* Session Picker Modal */}
+      <AnimatePresence>
       {sessionPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-2xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" role="dialog" aria-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`w-full max-w-2xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Quiz session scope</p>
@@ -480,13 +482,15 @@ export default function AnalyticsTabPanel({
               <button type="button" onClick={() => setSessionPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary' : 'border-nike-grey-300 bg-white text-gray-900'}`}>Cancel</button>
               <button type="button" onClick={() => { setSelectedRemedialIds([]); onQuizSessionsChange(draftQuizSessionKeys); setSessionPickerOpen(false); }} className={`h-9 rounded-full px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'bg-accent-blue' : 'bg-gray-900'}`}>Apply</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {participantPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" role="dialog" aria-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`w-full max-w-xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Participant scope</p>
@@ -514,13 +518,15 @@ export default function AnalyticsTabPanel({
               <button type="button" onClick={() => setParticipantPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary' : 'border-nike-grey-300 bg-white text-gray-900'}`}>Cancel</button>
               <button type="button" onClick={() => { setSelectedRemedialIds([]); onParticipantsChange(draftParticipantKeys); setParticipantPickerOpen(false); }} className={`h-9 rounded-full px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'bg-accent-blue' : 'bg-gray-900'}`}>Apply</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {selectedQuestion && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm`} role="dialog" aria-modal="true">
-          <div className={`max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[24px] p-4 shadow-2xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+        <motion.div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm`} role="dialog" aria-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[24px] p-4 shadow-2xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
@@ -600,9 +606,10 @@ export default function AnalyticsTabPanel({
                 )}
               </div>
             ) : <div className={`rounded-[24px] border p-4 text-sm font-semibold ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-tertiary' : 'border-nike-grey-200 bg-nike-grey-100 text-dark-text-muted'}`}>Question data not found. It may have been deleted.</div>}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
