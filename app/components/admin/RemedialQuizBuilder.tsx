@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { buildRemedialQuestionPool, type RemedialQuestionLike } from '@/app/lib/remedialQuizSelection';
 
 type RemedialCandidate = RemedialQuestionLike;
@@ -63,17 +64,25 @@ export default function RemedialQuizBuilder({
   };
 
   return (
-    <div
+    <AnimatePresence>
+    <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xl"
       role="dialog"
       aria-modal="true"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
     >
-      <div
+      <motion.div
         className={`max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[32px] border p-7 shadow-ios-xl ${
           theme === 'dark'
             ? 'border-dark-border-subtle bg-dark-800 remedial-modal-scroll-dark'
-            : 'border-[#E5E5E5] bg-white remedial-modal-scroll-light'
+            : 'border-nike-grey-200 bg-white remedial-modal-scroll-light'
         }`}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
@@ -98,7 +107,7 @@ export default function RemedialQuizBuilder({
             className={`h-10 rounded-full border px-4 text-[11px] font-semibold transition-spring-fast hover:scale-[1.02] ${
               theme === 'dark'
                 ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary hover:border-dark-text-primary'
-                : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'
+                : 'border-nike-grey-300 bg-white text-gray-900 hover:border-gray-900'
             }`}
           >
             Cancel
@@ -172,7 +181,7 @@ export default function RemedialQuizBuilder({
                 className={`h-11 w-full cursor-pointer rounded-2xl border px-4 text-sm font-medium transition-spring-fast focus:outline-none focus:ring-2 ${
                   theme === 'dark'
                     ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue focus:ring-accent-blue/10'
-                    : 'border-[#E5E5E5] bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
+                    : 'border-nike-grey-200 bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
                 }`}
               >
                 <option value={30}>30 minutes</option>
@@ -197,7 +206,7 @@ export default function RemedialQuizBuilder({
                 className={`h-11 w-full cursor-pointer rounded-2xl border px-4 text-sm font-medium transition-spring-fast focus:outline-none focus:ring-2 ${
                   theme === 'dark'
                     ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue focus:ring-accent-blue/10'
-                    : 'border-[#E5E5E5] bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
+                    : 'border-nike-grey-200 bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
                 }`}
               >
                 {questionOptions.map((value) => (
@@ -232,7 +241,7 @@ export default function RemedialQuizBuilder({
                         : 'border-blue-600/40 bg-blue-50 shadow-ios-sm'
                       : theme === 'dark'
                       ? 'border-dark-border-subtle bg-white/[0.03] hover:bg-white/[0.05]'
-                      : 'border-[#E5E5E5] bg-black/[0.02] hover:bg-black/[0.03]'
+                      : 'border-nike-grey-200 bg-black/[0.02] hover:bg-black/[0.03]'
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -281,7 +290,7 @@ export default function RemedialQuizBuilder({
             className={`rounded-2xl border p-4 ${
               theme === 'dark'
                 ? 'border-dark-border-subtle bg-white/[0.03]'
-                : 'border-[#E5E5E5] bg-black/[0.02]'
+                : 'border-nike-grey-200 bg-black/[0.02]'
             }`}
           >
             <p
@@ -309,7 +318,7 @@ export default function RemedialQuizBuilder({
             className={`rounded-2xl border p-4 ${
               theme === 'dark'
                 ? 'border-dark-border-subtle bg-white/[0.03]'
-                : 'border-[#E5E5E5] bg-black/[0.02]'
+                : 'border-nike-grey-200 bg-black/[0.02]'
             }`}
           >
             <p
@@ -343,7 +352,7 @@ export default function RemedialQuizBuilder({
             className={`h-12 flex-1 rounded-full border text-sm font-semibold transition-spring hover:scale-[1.02] ${
               theme === 'dark'
                 ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary hover:border-dark-text-primary'
-                : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'
+                : 'border-nike-grey-300 bg-white text-gray-900 hover:border-gray-900'
             }`}
           >
             Cancel
@@ -361,7 +370,8 @@ export default function RemedialQuizBuilder({
             Create quiz
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+    </AnimatePresence>
   );
 }

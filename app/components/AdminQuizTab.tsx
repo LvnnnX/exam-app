@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from 'framer-motion';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
@@ -12,8 +13,10 @@ import RichContent from '@/app/components/RichContent';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 import LeaderboardViewModal from '@/app/components/LeaderboardViewModal';
 import { ToastContainer, type ToastMessage } from '@/app/components/Toast';
+import AdminTutorialModal from '@/app/components/admin/AdminTutorialModal';
 
 export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: { mapels: string[], babs: string[], subBabs: { label: string, value: string }[], theme?: 'light' | 'dark' }) {
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
@@ -903,14 +906,23 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
             </p>
           </div>
           {(activeView !== 'create' || activeSession) && (
-            <button
-              type="button"
-              onClick={() => void handleRefresh()}
-              disabled={refreshing}
-              className={`h-9 rounded-full px-4 text-[12px] font-medium transition-spring-fast active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsTutorialOpen(true)}
+                className={`h-9 rounded-full px-4 text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+              >
+                Tutorial
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRefresh()}
+                disabled={refreshing}
+                className={`h-9 rounded-full px-4 text-[12px] font-medium transition-spring-fast active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -943,21 +955,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       {activeView === 'create' && (
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
           <div className="mx-auto max-w-2xl px-3 py-3 md:px-0 md:py-4">
-          {/* Header Card - Compact */}
-          <div className={`mb-3 rounded-[20px] border p-4 shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-9 w-9 items-center justify-center rounded-2xl ${theme === 'dark' ? 'bg-accent-blue/15' : 'bg-blue-50'}`}>
-                <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-accent-blue' : 'text-blue-600'}`}>Q</span>
-              </div>
-              <div>
-                <h3 className={`text-sm font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Buat kuis baru</h3>
-                <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Sesi kuis live dari topik pilihan.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Form Card */}
-          <div className={`overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
+            
+            {/* Form Card */}
+            <div className={`overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
             {/* MAPEL & BAB & Sub-bab */}
             <div className="p-3 md:p-4 flex flex-col md:flex-row gap-3">
               <div className="flex-1">
@@ -1259,7 +1259,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 <div className={`p-3 md:p-4 py-3 border-b ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-100'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center border ${theme === 'dark' ? 'bg-accent-purple/20 border-accent-purple/30' : 'bg-[#FFF0F6] border-[#FED7E2]'}`}>
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center border ${theme === 'dark' ? 'bg-accent-purple/20 border-accent-purple/30' : 'bg-pink-soft border-pink-edge'}`}>
                         <span className="text-sm">📊</span>
                       </div>
                       <label className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Persentase soal</label>
@@ -1282,7 +1282,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                           setSubBabPercentages(newPct);
                         }
                       }}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${percentagesEnabled ? (theme === 'dark' ? 'bg-accent-blue focus:ring-accent-blue' : 'bg-[#4A90D9] focus:ring-[#4A90D9]') : (theme === 'dark' ? 'bg-dark-700' : 'bg-gray-200')
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${percentagesEnabled ? (theme === 'dark' ? 'bg-accent-blue focus:ring-accent-blue' : 'bg-link-blue focus:ring-link-blue') : (theme === 'dark' ? 'bg-dark-700' : 'bg-gray-200')
                         }`}
                       role="switch"
                       aria-checked={percentagesEnabled}
@@ -1311,7 +1311,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                                   const val = parseInt(e.target.value) || 0;
                                   setSubBabPercentages(prev => ({ ...prev, [sub]: val }));
                                 }}
-                                className={`w-14 h-7 text-center text-[11px] font-bold border rounded focus:outline-none ${theme === 'dark' ? 'bg-dark-800 border-dark-border text-dark-text-primary focus:border-accent-blue' : 'bg-white border-gray-300 text-gray-700 focus:border-[#4A90D9]'}`}
+                                className={`w-14 h-7 text-center text-[11px] font-bold border rounded focus:outline-none ${theme === 'dark' ? 'bg-dark-800 border-dark-border text-dark-text-primary focus:border-accent-blue' : 'bg-white border-gray-300 text-gray-700 focus:border-link-blue'}`}
                               />
                               <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>%</span>
                             </div>
@@ -1491,9 +1491,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
         </div>
       )}
 
+      <AnimatePresence>
       {activeSession && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={handleCloseSession}>
-          <div className={`rounded-[28px] shadow-ios-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={handleCloseSession} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[28px] shadow-ios-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className={`shrink-0 flex items-center justify-between px-7 py-4 border-b ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
               <h2 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Session Details</h2>
               <button onClick={handleCloseSession} className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}>
@@ -1638,9 +1639,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                     </button>
                   )}
 
+                  <AnimatePresence>
                   {editingSchedule && (
-                    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl" onClick={() => setEditingSchedule(false)}>
-                      <div className={`w-full max-w-xs rounded-[24px] shadow-ios-xl p-5 ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+                    <motion.div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl" onClick={() => setEditingSchedule(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <motion.div className={`w-full max-w-xs rounded-[24px] shadow-ios-xl p-5 ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
                         <div className="flex items-center justify-between mb-5">
                           <h4 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Set schedule</h4>
                           <button onClick={() => setEditingSchedule(false)} className={`w-7 h-7 rounded-full flex items-center justify-center transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}>
@@ -1681,9 +1683,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                             )}
                           </div>
                         </div>
-                      </div>
-                    </div>
+                      </motion.div>
+                    </motion.div>
                   )}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
@@ -1784,18 +1787,19 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </motion.div>
+  </motion.div>
   )}
+      </AnimatePresence>
   <div className="min-h-0 flex-1 overflow-hidden">
           {activeView === 'manage' && (
-            <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
-              <div className={`shrink-0 border-b px-4 py-3 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.02]' : 'border-[#e5e5e5] bg-[#f8f8f8]'}`}>
+            <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
+              <div className={`shrink-0 border-b px-4 py-3 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.02]' : 'border-nike-grey-200 bg-surface-grey-150'}`}>
                 <h3 className={`text-sm font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Active sessions ({activeSessions.length})</h3>
               </div>
               {activeSessions.length > 0 && (
-                <div className={`mx-3 mt-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 sm:mx-6 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.03]' : 'border-[#E5E5E5] bg-black/[0.02]'}`}>
-                  <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                <div className={`mx-3 mt-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 sm:mx-6 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.03]' : 'border-nike-grey-200 bg-black/[0.02]'}`}>
+                  <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
                     Showing {activeSessions.length === 0 ? 0 : ((activePage - 1) * manageItemsPerPage) + 1}-{Math.min(activePage * manageItemsPerPage, activeSessions.length)} of {activeSessions.length}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1805,21 +1809,21 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                         setManageItemsPerPage(Number(event.target.value));
                         setActivePage(1);
                       }}
-                      className={`h-8 rounded-full border px-3 text-[11px] font-semibold focus:outline-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-[#CACACB] bg-white text-[#111111] focus:border-[#111111]'}`}
+                      className={`h-8 rounded-full border px-3 text-[11px] font-semibold focus:outline-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-nike-grey-300 bg-white text-nike-black focus:border-dark-800'}`}
                     >
                       {[5, 10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} / page</option>)}
                     </select>
-                    <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750' : 'border-[#CACACB] bg-white'}`}>
-                      <button type="button" onClick={() => setActivePage(Math.max(1, activePage - 1))} disabled={activePage === 1} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Prev</button>
-                      <span className={`flex items-center border-x px-3 text-[11px] font-semibold ${theme === 'dark' ? 'border-dark-border-medium text-dark-text-tertiary' : 'border-[#E5E5E5] text-[#707072]'}`}>{activePage}/{Math.ceil(activeSessions.length / manageItemsPerPage)}</span>
-                      <button type="button" onClick={() => setActivePage(Math.min(Math.ceil(activeSessions.length / manageItemsPerPage), activePage + 1))} disabled={activePage === Math.ceil(activeSessions.length / manageItemsPerPage)} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Next</button>
+                    <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750' : 'border-nike-grey-300 bg-white'}`}>
+                      <button type="button" onClick={() => setActivePage(Math.max(1, activePage - 1))} disabled={activePage === 1} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Prev</button>
+                      <span className={`flex items-center border-x px-3 text-[11px] font-semibold ${theme === 'dark' ? 'border-dark-border-medium text-dark-text-tertiary' : 'border-nike-grey-200 text-dark-text-muted'}`}>{activePage}/{Math.ceil(activeSessions.length / manageItemsPerPage)}</span>
+                      <button type="button" onClick={() => setActivePage(Math.min(Math.ceil(activeSessions.length / manageItemsPerPage), activePage + 1))} disabled={activePage === Math.ceil(activeSessions.length / manageItemsPerPage)} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Next</button>
                     </div>
                   </div>
                 </div>
               )}
               <div className="min-h-0 flex-1 overflow-auto">
-                <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-dark-border-subtle' : 'divide-[#f0f0f0]'}`}>
-                  <thead className={theme === 'dark' ? 'bg-white/[0.02]' : 'bg-[#f8f8f8]'}>
+                <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-dark-border-subtle' : 'divide-surface-grey-100'}`}>
+                  <thead className={theme === 'dark' ? 'bg-white/[0.02]' : 'bg-surface-grey-150'}>
                     <tr>
                       <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Join code</th>
                       <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Status</th>
@@ -1830,7 +1834,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                       <th className={`px-4 py-3 text-right text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Action</th>
                     </tr>
                   </thead>
-                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-dark-border-subtle bg-dark-800' : 'divide-[#f0f0f0] bg-white'}`}>
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-dark-border-subtle bg-dark-800' : 'divide-surface-grey-100 bg-white'}`}>
                     {activeSessions.length === 0 ? (
                       <tr>
                         <td colSpan={7} className={`px-4 py-10 text-center text-sm font-medium sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>No active sessions found.</td>
@@ -1921,10 +1925,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
 
             return (
               <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-                <div className={`shrink-0 rounded-[24px] border p-5 shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
+                <div className={`shrink-0 rounded-[24px] border p-5 shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
                   <div className="mb-3">
                     <h3 className={`text-sm font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Quiz history</h3>
-                    <p className={`mt-0.5 text-xs font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>Filter by topic to inspect completed sessions.</p>
+                    <p className={`mt-0.5 text-xs font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>Filter by topic to inspect completed sessions.</p>
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div className="space-y-1.5">
@@ -1975,10 +1979,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                   </div>
                 </div>
 
-                <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
+                <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
                   {filteredHistory.length > 0 && (
-                    <div className={`mx-3 mt-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 sm:mx-6 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.03]' : 'border-[#E5E5E5] bg-black/[0.02]'}`}>
-                      <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                    <div className={`mx-3 mt-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 sm:mx-6 ${theme === 'dark' ? 'border-dark-border-subtle bg-white/[0.03]' : 'border-nike-grey-200 bg-black/[0.02]'}`}>
+                      <div className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
                         Showing {filteredHistory.length === 0 ? 0 : ((historyPage - 1) * historyItemsPerPage) + 1}-{Math.min(historyPage * historyItemsPerPage, filteredHistory.length)} of {filteredHistory.length}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -1988,21 +1992,21 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                             setHistoryItemsPerPage(Number(event.target.value));
                             setHistoryPage(1);
                           }}
-                          className={`h-8 rounded-full border px-3 text-[11px] font-semibold focus:outline-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-[#CACACB] bg-white text-[#111111] focus:border-[#111111]'}`}
+                          className={`h-8 rounded-full border px-3 text-[11px] font-semibold focus:outline-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-nike-grey-300 bg-white text-nike-black focus:border-dark-800'}`}
                         >
                           {[5, 10, 20, 50, 100].map((size) => <option key={size} value={size}>{size} / page</option>)}
                         </select>
-                        <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750' : 'border-[#CACACB] bg-white'}`}>
-                          <button type="button" onClick={() => setHistoryPage(Math.max(1, historyPage - 1))} disabled={historyPage === 1} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Prev</button>
-                          <span className={`flex items-center border-x px-3 text-[11px] font-semibold ${theme === 'dark' ? 'border-dark-border-medium text-dark-text-tertiary' : 'border-[#E5E5E5] text-[#707072]'}`}>{historyPage}/{Math.ceil(filteredHistory.length / historyItemsPerPage)}</span>
-                          <button type="button" onClick={() => setHistoryPage(Math.min(Math.ceil(filteredHistory.length / historyItemsPerPage), historyPage + 1))} disabled={historyPage === Math.ceil(filteredHistory.length / historyItemsPerPage)} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Next</button>
+                        <div className={`flex h-8 overflow-hidden rounded-full border ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750' : 'border-nike-grey-300 bg-white'}`}>
+                          <button type="button" onClick={() => setHistoryPage(Math.max(1, historyPage - 1))} disabled={historyPage === 1} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Prev</button>
+                          <span className={`flex items-center border-x px-3 text-[11px] font-semibold ${theme === 'dark' ? 'border-dark-border-medium text-dark-text-tertiary' : 'border-nike-grey-200 text-dark-text-muted'}`}>{historyPage}/{Math.ceil(filteredHistory.length / historyItemsPerPage)}</span>
+                          <button type="button" onClick={() => setHistoryPage(Math.min(Math.ceil(filteredHistory.length / historyItemsPerPage), historyPage + 1))} disabled={historyPage === Math.ceil(filteredHistory.length / historyItemsPerPage)} className={`px-3 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Next</button>
                         </div>
                       </div>
                     </div>
                   )}
                   <div className="min-h-0 flex-1 overflow-auto">
-                    <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-dark-border-subtle' : 'divide-[#f0f0f0]'}`}>
-                      <thead className={theme === 'dark' ? 'bg-white/[0.02]' : 'bg-[#f8f8f8]'}>
+                    <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-dark-border-subtle' : 'divide-surface-grey-100'}`}>
+                      <thead className={theme === 'dark' ? 'bg-white/[0.02]' : 'bg-surface-grey-150'}>
                         <tr>
                           <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Join code</th>
                           <th className={`px-4 py-3 text-left text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Topik</th>
@@ -2014,7 +2018,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                           <th className={`px-4 py-3 text-right text-[11px] font-semibold sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Action</th>
                         </tr>
                       </thead>
-                      <tbody className={`divide-y ${theme === 'dark' ? 'divide-dark-border-subtle bg-dark-800' : 'divide-[#f0f0f0] bg-white'}`}>
+                      <tbody className={`divide-y ${theme === 'dark' ? 'divide-dark-border-subtle bg-dark-800' : 'divide-surface-grey-100 bg-white'}`}>
                         {filteredHistory.length === 0 ? (
                           <tr>
                             <td colSpan={8} className={`px-4 py-10 text-center text-sm font-medium sm:px-6 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>No history found.</td>
@@ -2065,9 +2069,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       />
 
       {/* Player Answers Modal */}
+      <AnimatePresence>
       {viewingPlayer && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)}>
-          <div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             {/* Header */}
             <div className={`shrink-0 flex items-start justify-between gap-3 px-4 py-3 border-b sm:gap-4 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
               <div className="flex flex-col gap-2 min-w-0">
@@ -2252,14 +2257,16 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* View Questions Modal */}
+      <AnimatePresence>
       {showViewQuestions && activeSession && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowViewQuestions(false)}>
-          <div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowViewQuestions(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             {/* Header */}
             <div className={`shrink-0 flex items-start justify-between gap-3 px-4 py-3 border-b sm:gap-4 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
               <div className="flex flex-col gap-2 min-w-0">
@@ -2397,14 +2404,16 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* End Quiz Confirmation Modal */}
+      <AnimatePresence>
       {showEndConfirm && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowEndConfirm(false)}>
-          <div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowEndConfirm(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-500'}`}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -2429,14 +2438,16 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 Akhiri
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Cancel Quiz Confirmation Modal */}
+      <AnimatePresence>
       {showCancelConfirm && activeSession && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowCancelConfirm(false)}>
-          <div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowCancelConfirm(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-500'}`}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -2467,13 +2478,15 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 Ya, batalkan
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {createErrorModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 backdrop-blur-2xl px-4">
-          <div className={`w-full max-w-md rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary' : 'bg-white text-gray-900'}`}>
+        <motion.div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 backdrop-blur-2xl px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`w-full max-w-md rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary' : 'bg-white text-gray-900'}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className="mb-4 flex items-center gap-3">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-600'}`}>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2508,11 +2521,13 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
             >
               Mengerti
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} theme={theme} />
+      <AdminTutorialModal isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} type="quiz" />
     </div>
   );
 }

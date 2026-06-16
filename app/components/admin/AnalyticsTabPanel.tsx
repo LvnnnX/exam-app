@@ -8,6 +8,7 @@ import StudentWeaknessPanel from '@/app/components/admin/StudentWeaknessPanel';
 import RemedialQuizBuilder from '@/app/components/admin/RemedialQuizBuilder';
 import RemedialQuizSuccessModal from '@/app/components/admin/RemedialQuizSuccessModal';
 import { buildRemedialQuestionPool } from '@/app/lib/remedialQuizSelection';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type AnalyticsSource = 'exam' | 'quiz' | 'scheduled';
 type AnalyticsDateRange = { start: string; end: string };
@@ -109,10 +110,10 @@ function TopicBadge({ label, value, theme = 'dark' }: { label: string; value: st
   return (
     <span className={`inline-flex max-w-[130px] items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
       theme === 'dark'
-        ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-tertiary'
-        : 'border-[#e5e5e5] bg-white text-[#707072]'
+        ? 'border-dark-border-subtle bg-dark-750 text-dark-text-tertiary'
+        : 'border-nike-grey-200 bg-white text-dark-text-muted'
     }`}>
-      <span className={theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}>{label}</span>
+      <span className={theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}>{label}</span>
       <span className="truncate">{value}</span>
     </span>
   );
@@ -125,15 +126,15 @@ function QuestionOption({ label, html, active, theme = 'dark' }: { label: string
       active
         ? theme === 'dark'
           ? 'border-accent-green/30 bg-accent-green/10'
-          : 'border-[#34C759] bg-[#F0FFF4]'
+          : 'border-status-green bg-mint-soft'
         : theme === 'dark'
-        ? 'border-[#2a2a2a] bg-dark-750'
-        : 'border-[#e5e5e5] bg-[#f5f5f5]'
+        ? 'border-dark-border-subtle bg-dark-750'
+        : 'border-nike-grey-200 bg-nike-grey-100'
     }`}>
-      <div className={`mb-1 text-[10px] font-black uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+      <div className={`mb-1 text-[10px] font-black uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
         Option {label}
       </div>
-      <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+      <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>
         <RichContent html={html} />
       </div>
     </div>
@@ -355,15 +356,15 @@ export default function AnalyticsTabPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <div className="mb-4 grid grid-cols-1 gap-4 px-3 py-1 sm:grid-cols-2">
-          <button type="button" onClick={() => { if (analyticsSource !== 'quiz') return; setDraftQuizSessionKeys(activeQuizSessionKeys); setSessionPickerOpen(true); }} disabled={analyticsSource !== 'quiz'} className={`rounded-2xl border px-4 py-3 text-left shadow-ios-sm transition-spring hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-blue bg-dark-800 hover:bg-dark-750 disabled:border-dark-border-medium disabled:text-dark-text-muted disabled:hover:bg-dark-800 disabled:hover:scale-100' : 'border-[#111111] bg-white hover:bg-[#f5f5f5] disabled:border-[#e5e5e5] disabled:text-[#9a9a9a] disabled:hover:bg-white disabled:hover:scale-100'}`}>
-            <div className="flex items-center justify-between gap-2"><span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Sessions</span><span className={`text-[10px] font-black uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Change</span></div>
-            <p className={`mt-1 truncate text-sm font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>{sessionCardTitle}</p>
-            <p className={`mt-0.5 text-[10px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#8a8a8a]'}`}>{analyticsSource === 'quiz' ? `${quizSessions.length} available in date range` : 'Active only for Quiz source'}</p>
+          <button type="button" onClick={() => { if (analyticsSource !== 'quiz') return; setDraftQuizSessionKeys(activeQuizSessionKeys); setSessionPickerOpen(true); }} disabled={analyticsSource !== 'quiz'} className={`rounded-2xl border px-4 py-3 text-left shadow-ios-sm transition-spring hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-blue bg-dark-800 hover:bg-dark-750 disabled:border-dark-border-medium disabled:text-dark-text-muted disabled:hover:bg-dark-800 disabled:hover:scale-100' : 'border-dark-800 bg-white hover:bg-nike-grey-100 disabled:border-nike-grey-200 disabled:text-[#9a9a9a] disabled:hover:bg-white disabled:hover:scale-100'}`}>
+            <div className="flex items-center justify-between gap-2"><span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-dark-text-muted'}`}>Sessions</span><span className={`text-[10px] font-black uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Change</span></div>
+            <p className={`mt-1 truncate text-sm font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>{sessionCardTitle}</p>
+            <p className={`mt-0.5 text-[10px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-grey-mid'}`}>{analyticsSource === 'quiz' ? `${quizSessions.length} available in date range` : 'Active only for Quiz source'}</p>
           </button>
-          <button type="button" onClick={() => { setDraftParticipantKeys(activeParticipantKeys); setParticipantPickerOpen(true); }} className={`rounded-2xl border px-4 py-3 text-left shadow-ios-sm transition-spring hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-blue bg-dark-800 hover:bg-dark-750' : 'border-[#111111] bg-white hover:bg-[#f5f5f5]'}`}>
-            <div className="flex items-center justify-between gap-2"><span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Participants</span><span className={`text-[10px] font-black uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Change</span></div>
-            <p className={`mt-1 truncate text-sm font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>{participantCardTitle}</p>
-            <p className={`mt-0.5 text-[10px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#8a8a8a]'}`}>{participantCardMeta}</p>
+          <button type="button" onClick={() => { setDraftParticipantKeys(activeParticipantKeys); setParticipantPickerOpen(true); }} className={`rounded-2xl border px-4 py-3 text-left shadow-ios-sm transition-spring hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-blue bg-dark-800 hover:bg-dark-750' : 'border-dark-800 bg-white hover:bg-nike-grey-100'}`}>
+            <div className="flex items-center justify-between gap-2"><span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-dark-text-muted'}`}>Participants</span><span className={`text-[10px] font-black uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>Change</span></div>
+            <p className={`mt-1 truncate text-sm font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>{participantCardTitle}</p>
+            <p className={`mt-0.5 text-[10px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-grey-mid'}`}>{participantCardMeta}</p>
           </button>
         </div>
 
@@ -372,9 +373,9 @@ export default function AnalyticsTabPanel({
         </div>
 
         {analyticsLoading && summary.attempts === 0 ? (
-          <p className={`py-8 text-center text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Loading analytics...</p>
+          <p className={`py-8 text-center text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-muted' : 'text-dark-text-muted'}`}>Loading analytics...</p>
         ) : summary.attempts === 0 ? (
-          <div className={`rounded-[24px] border-2 border-dashed p-6 text-center text-sm font-semibold ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800 text-dark-text-muted' : 'border-[#e5e5e5] bg-white text-[#707072]'}`}>No analytics data for current filters.</div>
+          <div className={`rounded-[24px] border-2 border-dashed p-6 text-center text-sm font-semibold ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800 text-dark-text-muted' : 'border-nike-grey-200 bg-white text-dark-text-muted'}`}>No analytics data for current filters.</div>
         ) : (
           <div className="space-y-6">
             <AnalyticsInsights
@@ -426,21 +427,22 @@ export default function AnalyticsTabPanel({
           theme={theme}
         />
       )}
-
+      {/* Session Picker Modal */}
+      <AnimatePresence>
       {sessionPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xl p-4" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-2xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" role="dialog" aria-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`w-full max-w-2xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Quiz session scope</p>
                 <h3 className={`mt-1 text-xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Choose sessions</h3>
                 <p className={`mt-1 text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Pilih satu/lebih quiz untuk menghitung soal tersulit hanya dari sesi itu.</p>
               </div>
-              <button type="button" onClick={() => setSessionPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:border-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'}`}>Close</button>
+              <button type="button" onClick={() => setSessionPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary hover:border-dark-text-primary' : 'border-nike-grey-300 bg-white text-gray-900 hover:border-gray-900'}`}>Close</button>
             </div>
             <div className="mb-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setDraftQuizSessionKeys([])} className={`h-8 rounded-full border px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900'}`}>All</button>
-              {[1, 2, 5].map((count) => <button key={count} type="button" onClick={() => setDraftQuizSessionKeys(quizSessions.slice(0, count).map((session) => session.key))} className={`h-8 rounded-full border px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900'}`}>Latest {count}</button>)}
+              <button type="button" onClick={() => setDraftQuizSessionKeys([])} className={`h-8 rounded-full border px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary' : 'border-nike-grey-300 bg-white text-gray-900'}`}>All</button>
+              {[1, 2, 5].map((count) => <button key={count} type="button" onClick={() => setDraftQuizSessionKeys(quizSessions.slice(0, count).map((session) => session.key))} className={`h-8 rounded-full border px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary' : 'border-nike-grey-300 bg-white text-gray-900'}`}>Latest {count}</button>)}
             </div>
             <div className={`grid max-h-[56vh] gap-2 overflow-y-auto sm:grid-cols-2 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
               {quizSessions.map((session) => {
@@ -448,7 +450,7 @@ export default function AnalyticsTabPanel({
                 const topics = [session.mapel, session.bab, session.subBab].filter(Boolean);
                 const timeAgo = formatTimeAgo(session.createdAt || session.finishedAt);
                 return (
-                  <button key={session.key} type="button" onClick={() => toggleDraftSession(session.key)} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${active ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
+                  <button key={session.key} type="button" onClick={() => toggleDraftSession(session.key)} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${active ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-black">{session.label}</p>
                       <span className={`text-[10px] font-black ${active ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{active ? 'Selected' : 'Select'}</span>
@@ -477,33 +479,35 @@ export default function AnalyticsTabPanel({
               {quizSessions.length === 0 && <p className={`rounded-[16px] p-4 text-sm font-semibold ${theme === 'dark' ? 'bg-dark-750 text-dark-text-tertiary' : 'bg-gray-50 text-gray-500'}`}>No quiz sessions in current date/filter scope.</p>}
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setSessionPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900'}`}>Cancel</button>
+              <button type="button" onClick={() => setSessionPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary' : 'border-nike-grey-300 bg-white text-gray-900'}`}>Cancel</button>
               <button type="button" onClick={() => { setSelectedRemedialIds([]); onQuizSessionsChange(draftQuizSessionKeys); setSessionPickerOpen(false); }} className={`h-9 rounded-full px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'bg-accent-blue' : 'bg-gray-900'}`}>Apply</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {participantPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xl p-4" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" role="dialog" aria-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`w-full max-w-xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Participant scope</p>
                 <h3 className={`mt-1 text-xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Choose participants</h3>
                 <p className={`mt-1 text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Pilih satu/lebih peserta. Kosong berarti semua peserta.</p>
               </div>
-              <button type="button" onClick={() => setParticipantPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:border-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'}`}>Close</button>
+              <button type="button" onClick={() => setParticipantPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary hover:border-dark-text-primary' : 'border-nike-grey-300 bg-white text-gray-900 hover:border-gray-900'}`}>Close</button>
             </div>
             <div className={`grid max-h-[60vh] gap-2 overflow-y-auto sm:grid-cols-2 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
-              <button type="button" onClick={() => setDraftParticipantKeys([])} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${draftParticipantKeys.length === 0 ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
+              <button type="button" onClick={() => setDraftParticipantKeys([])} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${draftParticipantKeys.length === 0 ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
                 <p className="truncate text-sm font-black">All participants</p>
                 <p className={`mt-1 text-[10px] font-semibold ${draftParticipantKeys.length === 0 ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{participants.length} participants included</p>
               </button>
               {participants.map((participant) => {
                 const active = draftParticipantKeys.includes(participant.key);
                 return (
-                  <button key={participant.key} type="button" onClick={() => toggleDraftParticipant(participant.key)} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${active ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
+                  <button key={participant.key} type="button" onClick={() => toggleDraftParticipant(participant.key)} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${active ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
                     <div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-black">{participant.name}</p><span className={`text-[10px] font-black ${active ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{active ? 'Selected' : 'Select'}</span></div>
                     <p className={`mt-1 text-[10px] font-semibold ${active ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{participant.attempts} attempts</p>
                   </button>
@@ -511,22 +515,24 @@ export default function AnalyticsTabPanel({
               })}
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setParticipantPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900'}`}>Cancel</button>
+              <button type="button" onClick={() => setParticipantPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-primary' : 'border-nike-grey-300 bg-white text-gray-900'}`}>Cancel</button>
               <button type="button" onClick={() => { setSelectedRemedialIds([]); onParticipantsChange(draftParticipantKeys); setParticipantPickerOpen(false); }} className={`h-9 rounded-full px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'bg-accent-blue' : 'bg-gray-900'}`}>Apply</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {selectedQuestion && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/60' : 'bg-black/40'}`} role="dialog" aria-modal="true">
-          <div className={`max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[24px] p-4 shadow-2xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+        <motion.div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm`} role="dialog" aria-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[24px] p-4 shadow-2xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
                   Question #{selectedQuestion.questionId}
                 </p>
-                <h3 className={`mt-1 text-xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+                <h3 className={`mt-1 text-xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>
                   Question Detail
                 </h3>
               </div>
@@ -535,57 +541,57 @@ export default function AnalyticsTabPanel({
                 onClick={() => setSelectedQuestion(null)}
                 className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${
                   theme === 'dark'
-                    ? 'border-[#2a2a2a] text-dark-text-primary hover:border-dark-text-primary'
-                    : 'border-[#cacacb] text-[#111111] hover:border-[#111111]'
+                    ? 'border-dark-border-subtle text-dark-text-primary hover:border-dark-text-primary'
+                    : 'border-nike-grey-300 text-nike-black hover:border-dark-800'
                 }`}
               >
                 Close
               </button>
             </div>
             <div className="mb-3 grid grid-cols-3 gap-2">
-              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-[#e5e5e5] bg-[#f5f5f5]'}`}>
+              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-nike-grey-200 bg-nike-grey-100'}`}>
                 <div className={`text-2xl font-black ${theme === 'dark' ? 'text-accent-red' : 'text-[#FF3B30]'}`}>
                   {selectedQuestion.wrongRate}%
                 </div>
-                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
                   Wrong Rate
                 </div>
               </div>
-              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-[#e5e5e5] bg-[#f5f5f5]'}`}>
-                <div className={`text-2xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-nike-grey-200 bg-nike-grey-100'}`}>
+                <div className={`text-2xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>
                   {selectedQuestion.incorrect}/{selectedQuestion.attempts}
                 </div>
-                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
                   Incorrect
                 </div>
               </div>
-              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-[#e5e5e5] bg-[#f5f5f5]'}`}>
-                <div className={`text-2xl font-black ${theme === 'dark' ? 'text-accent-green' : 'text-[#34C759]'}`}>
+              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-nike-grey-200 bg-nike-grey-100'}`}>
+                <div className={`text-2xl font-black ${theme === 'dark' ? 'text-accent-green' : 'text-status-green'}`}>
                   {selectedQuestion.correct}
                 </div>
-                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
                   Correct
                 </div>
               </div>
             </div>
             {selectedQuestion.question ? (
               <div className="space-y-2">
-                <div className={`rounded-[24px] border p-3 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-[#e5e5e5] bg-white'}`}>
+                <div className={`rounded-[24px] border p-3 ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750' : 'border-nike-grey-200 bg-white'}`}>
                   <div className="mb-2 flex flex-wrap gap-1">
                     {selectedQuestion.question.mapels.map((value) => <TopicBadge key={`m-${value}`} label="M" value={formatCategorySelectionLabel(value)} theme={theme} />)}
                     {selectedQuestion.question.babs.map((value) => <TopicBadge key={`b-${value}`} label="B" value={formatCategorySelectionLabel(value)} theme={theme} />)}
                     {selectedQuestion.question.sub_babs.map((value) => <TopicBadge key={`s-${value}`} label="S" value={formatCategorySelectionLabel(value)} theme={theme} />)}
                   </div>
-                  <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+                  <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>
                     <RichContent html={selectedQuestion.question.question_text} />
                   </div>
                 </div>
                 {selectedQuestion.question.question_type === 'short_answer' ? (
-                  <div className={`rounded-[14px] border p-3 ${theme === 'dark' ? 'border-accent-green/30 bg-accent-green/10' : 'border-[#34C759] bg-[#F0FFF4]'}`}>
-                    <div className={`mb-1 text-[10px] font-black uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                  <div className={`rounded-[14px] border p-3 ${theme === 'dark' ? 'border-accent-green/30 bg-accent-green/10' : 'border-status-green bg-mint-soft'}`}>
+                    <div className={`mb-1 text-[10px] font-black uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-dark-text-muted'}`}>
                       Correct Answer
                     </div>
-                    <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+                    <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>
                       {selectedQuestion.question.short_answer || '-'}
                     </div>
                   </div>
@@ -599,10 +605,11 @@ export default function AnalyticsTabPanel({
                   </div>
                 )}
               </div>
-            ) : <div className={`rounded-[24px] border p-4 text-sm font-semibold ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-tertiary' : 'border-[#e5e5e5] bg-[#f5f5f5] text-[#707072]'}`}>Question data not found. It may have been deleted.</div>}
-          </div>
-        </div>
+            ) : <div className={`rounded-[24px] border p-4 text-sm font-semibold ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-750 text-dark-text-tertiary' : 'border-nike-grey-200 bg-nike-grey-100 text-dark-text-muted'}`}>Question data not found. It may have been deleted.</div>}
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

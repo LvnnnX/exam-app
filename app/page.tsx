@@ -62,8 +62,15 @@ export default function ExamPage() {
     questionCount: number,
     expiresAt: string,
     navMode: string,
+    scheduledExamTitle: string,
+    scheduledMapels: string[],
+    scheduledBabs: string[],
+    scheduledSubBabs: string[],
+    scheduledTimeLimitMinutes: number,
+    studentName: string,
   ) => {
     setIsScheduledModalOpen(false);
+    setters.setUserName(studentName);
     setters.setSessionId(sessionId);
     setters.setTotalQuestions(questionCount);
     setters.setAnswers(Array(questionCount).fill(null));
@@ -73,6 +80,18 @@ export default function ExamPage() {
     setters.setStartTime(Number(new Date()));
     setters.setGameMode('exam');
     setters.setExamMode((navMode === 'standard' ? 'standard' : 'strict') as 'strict' | 'standard');
+    setters.setIsScheduledExam(true);
+    setters.setScheduledExamTitle(scheduledExamTitle);
+    setters.setScheduledTimeLimitMinutes(scheduledTimeLimitMinutes);
+    setters.setMapels(scheduledMapels);
+    setters.setBabs(scheduledBabs);
+    setters.setSubBabs(scheduledSubBabs);
+    // Seed available lookup arrays so mapelsLabel/babsLabel/subBabsLabel resolve immediately
+    // (useExamDerivedValues needs available* to map slugs → display labels)
+    setters.setAvailableMapels(scheduledMapels.map(m => ({ value: m, label: m })));
+    setters.setAvailableBabs(scheduledBabs.map(b => ({ value: b, label: b })));
+    setters.setAvailableSubBabs(scheduledSubBabs.map(s => ({ value: s, label: s })));
+    setters.setTimeLimit(scheduledTimeLimitMinutes);
     setters.setStep(3);
     try {
       const firstQ = await getSessionQuestionViaRpc(sessionId, 0);
@@ -317,8 +336,8 @@ export default function ExamPage() {
 
           <ScheduledExamEntry
             isOpen={isScheduledModalOpen}
-            onExamStarted={(sessionId, questionCount, expiresAt, navMode) => {
-              void handleScheduledExamStarted(sessionId, questionCount, expiresAt, navMode);
+            onExamStarted={(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes, studentName) => {
+              void handleScheduledExamStarted(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes, studentName);
             }}
             onClose={() => setIsScheduledModalOpen(false)}
           />
@@ -369,6 +388,9 @@ export default function ExamPage() {
             timeLeftDisplay={state.timeLeftDisplay}
             hasAnswerSelected={state.hasAnswerSelected}
             onOpenNavPopup={() => setters.setShowNavPopup(true)}
+            isScheduledExam={state.isScheduledExam}
+            scheduledExamTitle={state.scheduledExamTitle}
+            scheduledTimeLimitMinutes={state.scheduledTimeLimitMinutes}
           />
 
           <QuestionDisplay
@@ -472,6 +494,8 @@ export default function ExamPage() {
             babsLabel={state.babsLabel}
             subBabsLabel={state.subBabsLabel}
             saved={state.saved}
+            isScheduledExam={state.isScheduledExam}
+            scheduledExamTitle={state.scheduledExamTitle}
           />
 
           <ResultsRecapList recapData={state.recapData} />

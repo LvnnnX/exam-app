@@ -4,7 +4,8 @@ import { useEffect } from 'react';
 import { secureLoad } from '@/lib/security';
 import { getSessionQuestionViaRpc, getSessionStateViaRpc, type BabInfo, type ShuffledQuestion } from '@/lib/questions';
 import { getSafeMapels } from '@/app/actions/categories';
-import type { Answer, GameMode, ExamMode } from '@/app/hooks/examTypes';
+import { getScheduledExamRecapAction } from '@/app/actions/scheduled-exam';
+import type { Answer, GameMode, ExamMode, RecapItem } from '@/app/hooks/examTypes';
 
 type StorageKeys = {
   NAME: string;
@@ -24,6 +25,9 @@ type StorageKeys = {
   SCORE: string;
   EXAM_MODE: string;
   DOUBT_FLAGS: string;
+  IS_SCHEDULED_EXAM: string;
+  SCHEDULED_EXAM_TITLE: string;
+  SCHEDULED_TIME_LIMIT: string;
 };
 
 type UseExamBootstrapArgs = {
@@ -44,12 +48,18 @@ type UseExamBootstrapArgs = {
   setScore: (value: number) => void;
   setDoubtFlags: (value: boolean[]) => void;
   setStartTime: (value: number | null) => void;
+  setEndTime: (value: number | null) => void;
   setExpiresAt: (value: string | null) => void;
   setTimeLimit: (value: number) => void;
   setAnswers: (value: Answer[]) => void;
   setCurrent: (value: number) => void;
   setStep: (value: number) => void;
   setCurrentQuestion: (value: ShuffledQuestion | null) => void;
+  setIsScheduledExam: (value: boolean) => void;
+  setScheduledExamTitle: (value: string) => void;
+  setScheduledTimeLimitMinutes: (value: number) => void;
+  setRecapData: (value: RecapItem[]) => void;
+  setSaved: (value: boolean) => void;
 };
 
 export default function useExamBootstrap({
@@ -70,12 +80,18 @@ export default function useExamBootstrap({
   setScore,
   setDoubtFlags,
   setStartTime,
+  setEndTime,
   setExpiresAt,
   setTimeLimit,
   setAnswers,
   setCurrent,
   setStep,
   setCurrentQuestion,
+  setIsScheduledExam,
+  setScheduledExamTitle,
+  setScheduledTimeLimitMinutes,
+  setRecapData,
+  setSaved,
 }: UseExamBootstrapArgs) {
   useEffect(() => {
     const restoreState = async () => {
@@ -97,6 +113,9 @@ export default function useExamBootstrap({
         score: secureLoad<number>(storageKeys.SCORE) || 0,
         examMode: secureLoad<ExamMode>(storageKeys.EXAM_MODE) || 'strict',
         doubtFlags: secureLoad<boolean[]>(storageKeys.DOUBT_FLAGS) || [],
+        isScheduledExam: secureLoad<boolean>(storageKeys.IS_SCHEDULED_EXAM) || false,
+        scheduledExamTitle: secureLoad<string>(storageKeys.SCHEDULED_EXAM_TITLE) || '',
+        scheduledTimeLimit: secureLoad<number>(storageKeys.SCHEDULED_TIME_LIMIT) || 0,
       };
 
       const loadMapels = async () => {
@@ -124,6 +143,31 @@ export default function useExamBootstrap({
 
           if (!state || state.is_finished) {
             if (stored.name) setUserName(stored.name);
+
+            // For scheduled exams, check if there's a stored recap in DB to show performance
+            if (stored.isScheduledExam && stored.sessionId) {
+              const recapData = await getScheduledExamRecapAction(stored.sessionId);
+              if (recapData) {
+                setUserName(recapData.name || stored.name || '');
+                setSessionId(stored.sessionId);
+                setIsScheduledExam(true);
+                setScheduledExamTitle(stored.scheduledExamTitle || '');
+                setTotalQuestions(recapData.total || stored.total || 0);
+                setScore(recapData.score || 0);
+                setRecapData(recapData.recap as RecapItem[]);
+                setSaved(true);
+                setStep(6);
+                setMapels(stored.mapels || []);
+                setBabs(stored.babs || []);
+                setSubBabs(stored.subBabs || []);
+                setGameMode(stored.mode || 'exam');
+                setStartTime(new Date(recapData.started_at).getTime() || stored.startTime || null);
+                setEndTime(new Date(recapData.submitted_at).getTime() || null);
+                setIsRestored(true);
+                return;
+              }
+            }
+
             setIsRestored(true);
             return;
           }
@@ -139,6 +183,9 @@ export default function useExamBootstrap({
           setLives(state.lives ?? stored.lives ?? 3);
           setScore(stored.score ?? 0);
           setDoubtFlags(stored.doubtFlags || Array(state.question_count).fill(false));
+          setIsScheduledExam(stored.isScheduledExam || false);
+          setScheduledExamTitle(stored.scheduledExamTitle || '');
+          setScheduledTimeLimitMinutes(stored.scheduledTimeLimit || 0);
           if (stored.startTime) setStartTime(stored.startTime);
           setExpiresAt(stored.expiresAt || null);
           setTimeLimit(stored.timeLimit || 0);
@@ -213,5 +260,8 @@ export default function useExamBootstrap({
     setCurrent,
     setStep,
     setCurrentQuestion,
+    setIsScheduledExam,
+    setScheduledExamTitle,
+    setScheduledTimeLimitMinutes,
   ]);
 }

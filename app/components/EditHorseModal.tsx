@@ -73,11 +73,11 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111111]/95 backdrop-blur-2xl p-3 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark-800/95 backdrop-blur-2xl p-3 animate-in fade-in duration-200">
       <motion.div
         layoutId="edit-horse-expandable"
         transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
-        className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-[32px] bg-[#f7f7f2] shadow-[0_30px_80px_rgba(0,0,0,0.42)] flex flex-col"
+        className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-[32px] bg-surface-cream shadow-[0_30px_80px_rgba(0,0,0,0.42)] flex flex-col"
       >
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-5 border-b border-black/[0.06]">
@@ -103,7 +103,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
             {/* Preview */}
             <div className="rounded-[28px] bg-white px-6 py-8 shadow-[0_18px_45px_rgba(0,0,0,0.10)] lg:sticky lg:top-0 lg:self-start">
               <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.18em] text-nike-grey-500/70">Preview</p>
-              <div className="flex min-h-[300px] items-center justify-center rounded-[24px] bg-[#f7f7f2]">
+              <div className="flex min-h-[300px] items-center justify-center rounded-[24px] bg-surface-cream">
                 <div className="flex h-28 w-28 items-center justify-center">
                   <HorseAvatar
                     colors={{ jersey, pants, saddle }}
@@ -114,7 +114,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                   />
                 </div>
               </div>
-              <div className="mt-5 rounded-[20px] bg-[#f7f7f2] px-4 py-3">
+              <div className="mt-5 rounded-[20px] bg-surface-cream px-4 py-3">
                 <p className="text-[11px] font-medium text-nike-grey-500">Pilihan aktif</p>
                 <p className="mt-1 text-[14px] font-semibold tracking-tight text-nike-black">
                   {matchedPresetId ? HORSE_SKINS.find((s) => s.id === matchedPresetId)?.name ?? matchedPresetId : 'Custom'} · {MOUNT_OPTIONS.find((m) => m.id === mount)?.name ?? 'Kuda'}
@@ -147,7 +147,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                           title={skin.name}
                           className={`group shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast hover:scale-[1.03] active:scale-95 ${
                             isActive
-                              ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-[#f7f7f2] shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
+                              ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-surface-cream shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
                               : 'bg-white/70 hover:bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)]'
                           }`}
                         >
@@ -179,7 +179,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                           title={opt.name}
                           className={`shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast hover:scale-[1.03] active:scale-95 ${
                             isActive
-                              ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-[#f7f7f2] shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
+                              ? 'bg-white ring-2 ring-nike-black ring-offset-2 ring-offset-surface-cream shadow-[0_10px_24px_rgba(0,0,0,0.10)]'
                               : 'bg-white/70 hover:bg-white shadow-[0_8px_20px_rgba(0,0,0,0.06)]'
                           }`}
                         >

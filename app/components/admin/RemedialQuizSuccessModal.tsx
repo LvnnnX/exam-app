@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type RemedialQuizSuccessModalProps = {
   quizCode: string;
@@ -18,16 +19,24 @@ export default function RemedialQuizSuccessModal({
   theme = 'dark',
 }: RemedialQuizSuccessModalProps) {
   return (
-    <div
-      className="fixed inset-0 bg-black/30 backdrop-blur-2xl z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className={`w-full max-w-md rounded-[24px] shadow-ios-xl p-6 ${
-          theme === 'dark' ? 'bg-dark-800' : 'bg-white'
-        }`}
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 bg-black/30 backdrop-blur-2xl z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
       >
+        <motion.div
+          className={`w-full max-w-md rounded-[24px] shadow-ios-xl p-6 ${
+            theme === 'dark' ? 'bg-dark-800' : 'bg-white'
+          }`}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
         {/* Success Icon */}
         <div className="mb-4 flex justify-center">
           <div
@@ -108,7 +117,8 @@ export default function RemedialQuizSuccessModal({
             Go to quiz
           </button>
         </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

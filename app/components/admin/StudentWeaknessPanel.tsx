@@ -126,7 +126,7 @@ export default function StudentWeaknessPanel({
         className={`rounded-[24px] border p-5 shadow-ios-sm ${
           theme === 'dark'
             ? 'border-dark-border-subtle bg-dark-800'
-            : 'border-[#E5E5E5] bg-white'
+            : 'border-nike-grey-200 bg-white'
         }`}
       >
         <h2
@@ -149,10 +149,10 @@ export default function StudentWeaknessPanel({
         className={`space-y-3 rounded-[24px] border p-5 shadow-ios-sm ${
           theme === 'dark'
             ? 'border-dark-border-subtle bg-dark-800'
-            : 'border-[#E5E5E5] bg-white'
+            : 'border-nike-grey-200 bg-white'
         }`}
       >
-        <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#8a8a8a]'}`}>
+        <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-grey-mid'}`}>
           Filter & actions
         </p>
         {/* Search */}
@@ -164,14 +164,14 @@ export default function StudentWeaknessPanel({
           className={`h-11 w-full rounded-2xl border px-4 text-sm font-medium transition-spring-fast focus:outline-none focus:ring-2 ${
             theme === 'dark'
               ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary placeholder:text-dark-text-tertiary focus:border-accent-blue focus:ring-accent-blue/10'
-              : 'border-[#E5E5E5] bg-white text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-gray-900/10'
+              : 'border-nike-grey-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-gray-900/10'
           }`}
         />
 
         <div className="flex flex-wrap items-center gap-2.5">
           <div
             className={`inline-flex h-10 rounded-full border p-0.5 ${
-              theme === 'dark' ? 'border-dark-border-medium bg-dark-800' : 'border-[#e5e5e5] bg-white'
+              theme === 'dark' ? 'border-dark-border-medium bg-dark-800' : 'border-nike-grey-200 bg-white'
             }`}
           >
             {(['all', 'critical', 'high', 'medium', 'low'] as const).map((severity) => (
@@ -200,7 +200,7 @@ export default function StudentWeaknessPanel({
             className={`h-10 min-w-[156px] cursor-pointer rounded-full border px-3.5 text-[11px] font-semibold transition-spring-fast focus:outline-none focus:ring-2 ${
               theme === 'dark'
                 ? 'border-dark-border-medium bg-dark-800 text-dark-text-primary focus:border-accent-blue focus:ring-accent-blue/10'
-                : 'border-[#e5e5e5] bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
+                : 'border-nike-grey-200 bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
             }`}
           >
             <option value="totalWrong">Sort by total wrong</option>
@@ -214,7 +214,7 @@ export default function StudentWeaknessPanel({
             className={`h-10 rounded-full border px-3.5 text-[11px] font-semibold transition-spring-fast ${
               theme === 'dark'
                 ? 'border-dark-border-medium bg-dark-800 text-dark-text-primary hover:border-accent-blue hover:text-accent-blue'
-                : 'border-[#e5e5e5] bg-white text-gray-900 hover:border-gray-900'
+                : 'border-nike-grey-200 bg-white text-gray-900 hover:border-gray-900'
             }`}
           >
             {selectedStudents.size === filteredStudents.length ? 'Deselect all' : 'Select all'}

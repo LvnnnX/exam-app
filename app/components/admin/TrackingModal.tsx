@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { type RawQuestion } from '@/lib/questions';
 import TrackingModalHeader from '@/app/components/admin/TrackingModalHeader';
 import TrackingCurrentQuestionPanel from '@/app/components/admin/TrackingCurrentQuestionPanel';
@@ -62,11 +63,11 @@ export default function TrackingModal({
     onClose();
   };
 
-  if (!isOpen || !trackingSession) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[10000]" onClick={handleClose}>
-      <div className={`rounded-[24px] sm:rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+    <AnimatePresence>
+      {isOpen && trackingSession && (
+    <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[10000]" onClick={handleClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className={`rounded-[24px] sm:rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
         <TrackingModalHeader
           trackingSession={trackingSession}
           formatCategorySelectionLabel={formatCategorySelectionLabel}
@@ -126,7 +127,9 @@ export default function TrackingModal({
             />
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

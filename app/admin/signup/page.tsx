@@ -54,7 +54,7 @@ export default function AdminSignupPage() {
   };
 
   const pageBg = isDark ? 'bg-black' : 'bg-white';
-  const cardBg = isDark ? 'bg-[#111111]' : 'bg-white';
+  const cardBg = isDark ? 'bg-dark-800' : 'bg-white';
   const headlineColor = isDark ? 'text-white' : 'text-nike-black';
   const mutedText = isDark ? 'text-white/55' : 'text-black/55';
   const subtleText = isDark ? 'text-white/35' : 'text-black/35';

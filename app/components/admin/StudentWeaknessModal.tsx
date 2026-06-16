@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type StudentWeaknessTopic = {
   topic: string;
@@ -38,16 +39,24 @@ export default function StudentWeaknessModal({
   const totalWrong = student.totalQuestionsWrong;
 
   return (
-    <div
-      className="fixed inset-0 bg-black/30 backdrop-blur-2xl z-50 flex items-center justify-center p-2 sm:p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className={`max-h-[95vh] sm:max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[24px] sm:rounded-[28px] shadow-ios-xl flex flex-col ${
-          theme === 'dark' ? 'bg-dark-800' : 'bg-white'
-        }`}
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 bg-black/30 backdrop-blur-2xl z-50 flex items-center justify-center p-2 sm:p-4"
+        role="dialog"
+        aria-modal="true"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
       >
+        <motion.div
+          className={`max-h-[95vh] sm:max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[24px] sm:rounded-[28px] shadow-ios-xl flex flex-col ${
+            theme === 'dark' ? 'bg-dark-800' : 'bg-white'
+          }`}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
         {/* Header */}
         <div className={`shrink-0 flex items-start justify-between gap-3 px-4 py-3 border-b sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
           <div className="min-w-0">
@@ -146,7 +155,8 @@ export default function StudentWeaknessModal({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

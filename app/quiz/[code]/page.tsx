@@ -672,7 +672,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
         {/* Standard Mode: Navigation Popup */}
         {isStandard && showNavPopup && (
-          <div className="fixed inset-0 z-[100] bg-[#111111]/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-[100] bg-dark-800/95 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
             <motion.div
               layoutId="quiz-question-nav-expandable"
               transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}

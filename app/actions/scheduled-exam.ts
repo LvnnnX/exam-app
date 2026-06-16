@@ -16,7 +16,8 @@ export type ScheduledExamLookup = {
   window_start?: string;
   window_end?: string;
   attempt_mode?: string;
-  window_status?: string;
+  window_status?: 'upcoming' | 'open' | 'closed';
+  status?: 'active' | 'scheduled' | 'expired';
 };
 
 export type ScheduledExamStartResult = {
@@ -28,9 +29,15 @@ export type ScheduledExamStartResult = {
   deadline_at?: string;
   scheduled_exam_id?: string;
   resuming?: boolean;
-  window_status?: string;
+  window_status?: 'upcoming' | 'open' | 'closed';
   window_start?: string;
   nav_mode?: string;
+  // Exam metadata for UI display
+  scheduled_exam_title?: string;
+  scheduled_mapels?: string[];
+  scheduled_babs?: string[];
+  scheduled_sub_babs?: string[];
+  scheduled_time_limit_minutes?: number;
 };
 
 export async function lookupScheduledExamAction(
@@ -74,4 +81,64 @@ export async function startScheduledExamAction(
   }
 
   return data as unknown as ScheduledExamStartResult;
+}
+
+/**
+ * Mark a scheduled exam attempt as submitted (stamp submitted_at + score + recap).
+ * Called after submit_session_exam succeeds for a scheduled exam.
+ */
+export async function finalizeScheduledExamAttemptAction(
+  sessionId: string,
+  score: number,
+  recap: unknown[],
+): Promise<void> {
+  // Validate and sanitize recap array
+  const sanitizedRecap = recap.map((item) => {
+    const entry = item as any;
+    return {
+      question_id: entry.question_id ?? 0,
+      user_answer: entry.user_answer ?? null,
+      is_correct: !!entry.is_correct,
+    };
+  });
+
+  console.log('Finalizing attempt with sanitized recap length:', sanitizedRecap.length);
+  const supabase = getSupabaseServer();
+  const { error } = await supabase.rpc('finalize_scheduled_exam_attempt', {
+    p_session_id: sessionId,
+    p_score: score,
+    p_recap: sanitizedRecap,
+  });
+  if (error) {
+    console.error('finalizeScheduledExamAttemptAction error details:', JSON.stringify(error, null, 2));
+    throw new Error(`RPC finalize_scheduled_exam_attempt failed: ${error.message}`);
+  }
+}
+
+/**
+ * Fetch stored recap + score for a finished scheduled exam attempt.
+ * Returns null if attempt was not yet submitted or has no recap.
+ */
+export type ScheduledExamRecap = {
+  recap: unknown[];
+  score: number;
+  total: number;
+  name: string;
+  started_at: string;
+  submitted_at: string;
+};
+
+export async function getScheduledExamRecapAction(
+  sessionId: string,
+): Promise<ScheduledExamRecap | null> {
+  const supabase = getSupabaseServer();
+  const { data, error } = await supabase.rpc('get_scheduled_exam_recap', {
+    p_session_id: sessionId,
+  });
+  if (error) {
+    console.error('getScheduledExamRecapAction error:', error.message);
+    return null;
+  }
+  if (!data) return null;
+  return data as unknown as ScheduledExamRecap;
 }

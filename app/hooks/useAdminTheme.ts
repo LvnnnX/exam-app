@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 export type AdminTheme = 'light' | 'dark';
 
-const DARK_BG = '#000000';
+const DARK_BG = '#0f1210';
 const DARK_FG = '#ffffff';
 
 function readStoredTheme(): AdminTheme {

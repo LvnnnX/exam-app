@@ -240,7 +240,7 @@ function AdminPageInner() {
   }
 
   return (
-    <div data-admin-page className={`relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-screen h-full w-screen overflow-hidden md:flex ${theme === 'dark' ? 'bg-[#0f1210] text-[#d9e0dc]' : 'bg-[#f5f3ee] text-[#20251f]'}`}>
+    <div data-admin-page className={`relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-screen h-full w-screen overflow-hidden md:flex ${theme === 'dark' ? 'bg-dark-900 text-surface-mint-edge' : 'bg-bg-app text-dark-olive-900'}`}>
       <AdminTabSwitcher
         activeTab={tabs.activeTab}
         onTabChange={handleTabChangeWithUrl}
@@ -477,7 +477,7 @@ function AdminPageInner() {
 
             {tabs.activeTab === 'scheduled' && (
               <div className="h-full min-h-0 overflow-y-auto px-1 py-4">
-                <ScheduledExamTabPanel theme={theme} />
+                <ScheduledExamTabPanel theme={theme} visibilitySettings={settings.visibilitySettings} />
               </div>
             )}
 

@@ -29,17 +29,17 @@ export default function AdminLoginView({
   const isDark = theme === 'dark';
   const [showPassword, setShowPassword] = useState(false);
 
-  const pageBg = isDark ? 'bg-black' : 'bg-white';
-  const cardBg = isDark ? 'bg-[#111111]' : 'bg-white';
+  const pageBg = isDark ? 'bg-dark-900' : 'bg-white';
+  const cardBg = isDark ? 'bg-dark-800' : 'bg-white';
   const cardShadow = isDark ? 'shadow-ios-lg' : 'shadow-ios-lg';
   const headlineColor = isDark ? 'text-white' : 'text-nike-black';
-  const mutedText = isDark ? 'text-white/55' : 'text-black/55';
-  const subtleText = isDark ? 'text-white/35' : 'text-black/35';
+  const mutedText = isDark ? 'text-dark-text-tertiary' : 'text-black/55';
+  const subtleText = isDark ? 'text-dark-text-muted' : 'text-black/35';
   const iconBubble = isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-nike-black';
   const inputClass = isDark
     ? 'w-full h-12 rounded-2xl bg-white/5 px-5 text-sm font-medium text-white placeholder:text-white/30 focus:outline-none focus:bg-white/10 focus:ring-2 focus:ring-white/20 transition-spring-fast'
     : 'w-full h-12 rounded-2xl bg-black/5 px-5 text-sm font-medium text-nike-black placeholder:text-black/30 focus:outline-none focus:bg-white focus:ring-2 focus:ring-nike-black/15 transition-spring-fast';
-  const labelClass = isDark ? 'text-white/55' : 'text-black/55';
+  const labelClass = isDark ? 'text-dark-text-tertiary' : 'text-black/55';
   const primaryBtn = isDark
     ? 'w-full h-12 rounded-full bg-white text-nike-black text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
     : 'w-full h-12 rounded-full bg-nike-black text-white text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100';

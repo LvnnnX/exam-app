@@ -1,6 +1,95 @@
 "use server";
 
 import { requirePermissionAnyOf } from "@/lib/admin-server";
+import { getSupabaseServer } from "@/lib/supabase";
+import { normalizeCategorySlug } from "@/lib/categories";
+
+/**
+ * Fetches the full question data for a scheduled exam question pool.
+ * Uses service role (bypasses RLS) — called when admin clicks "Lihat".
+ */
+export async function fetchScheduledExamQuestionsAction(
+  questionIds: number[]
+): Promise<number[]> {
+  return questionIds; // IDs passed from exam row; questions fetched via getSessionQuestionViaRpc client-side
+}
+
+/**
+ * Fetches full question objects for a scheduled exam pool.
+ * Uses service role key (bypasses RLS).
+ */
+export async function fetchScheduledExamQuestionPoolAction(
+  questionIds: number[]
+): Promise<import("@/lib/questions").RawQuestion[]> {
+  if (!questionIds || questionIds.length === 0) return [];
+  const supabase = getSupabaseServer();
+  const { data, error } = await supabase
+    .from('questions')
+    .select(
+      'id, question_text, option_a, option_b, option_c, option_d, option_e, correct_answer, question_type, short_answer, is_hidden, created_by, mapels, babs, sub_babs'
+    )
+    .in('id', questionIds);
+
+  if (error || !data) return [];
+  return data as import("@/lib/questions").RawQuestion[];
+}
+
+/**
+ * Selects a random pool of visible question IDs for a scheduled exam.
+ * Uses the service role key (bypasses RLS) — called by CreateFormCard
+ * after admin authentication.
+ *
+ * All students in the same exam get the SAME question IDs in the SAME
+ * order. Only option order is shuffled per-student (client-side).
+ */
+export async function selectRandomQuestionsAction(params: {
+  mapels: string[];
+  babs: string[];
+  subBabs: string[];
+  count: number;
+}): Promise<number[]> {
+  const { mapels, babs, subBabs, count } = params;
+  const supabase = getSupabaseServer();
+
+  const safeMapels = mapels.map(normalizeCategorySlug);
+  const safeBabs = babs.map(normalizeCategorySlug);
+  const safeSubBabs = subBabs.map(normalizeCategorySlug);
+
+  // Build OR filter: question must match at least one of mapel, bab, or subbab
+  const orConditions: string[] = [
+    ...safeMapels.map(m => `mapels.cs.{"${m}"}`),
+    ...safeBabs.map(b => `babs.cs.{"${b}"}`),
+    ...safeSubBabs.map(s => `sub_babs.cs.{"${s}"}`),
+  ];
+
+  const { data, error } = await supabase
+    .from('questions')
+    .select('id')
+    .eq('is_hidden', false)
+    .or(orConditions.join(','))
+    .limit(500);
+
+  if (error || !data || data.length === 0) {
+    throw new Error('Tidak ada soal yang tersedia untuk pilihan ini.');
+  }
+
+  // Fisher-Yates shuffle
+  const shuffled = [...data];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const ids = shuffled.slice(0, count).map(q => q.id as number);
+
+  if (ids.length < count) {
+    throw new Error(
+      `Soal tidak cukup. Butuh ${count} soal, tersedia ${ids.length} soal.`
+    );
+  }
+
+  return ids;
+}
 
 export type ScheduledExamRow = {
   id: string;
@@ -17,10 +106,12 @@ export type ScheduledExamRow = {
   window_end: string;
   attempt_mode: string;
   access_code: string | null;
-  status: string;
+  status: 'active' | 'scheduled' | 'expired';
   is_visible: boolean;
   nav_mode: string;
   sub_bab_percentages: Record<string, number> | null;
+  question_ids: number[] | null;  // fixed pool — same for all students
+  participant_count: number;  // students who have started this exam
 };
 
 export type ScheduledExamAttemptRow = {
@@ -33,6 +124,8 @@ export type ScheduledExamAttemptRow = {
   submitted_at: string | null;
   auto_submitted: boolean;
   score: number | null;
+  current_question_index: number | null;
+  live_score: number | null;
 };
 
 type CreateScheduledExamInput = {
@@ -49,6 +142,7 @@ type CreateScheduledExamInput = {
   accessCode: string;
   navMode?: "strict" | "standard";
   subBabPercentages?: Record<string, number>;
+  questionIds?: number[];  // pre-selected question IDs (null = auto-select at creation)
 };
 
 export type ScheduledExamHistoryRow = {
@@ -65,7 +159,7 @@ export type ScheduledExamHistoryRow = {
   window_start: string;
   window_end: string;
   attempt_mode: string;
-  status: string;
+  status: 'active' | 'scheduled' | 'expired';
   access_code: string | null;
   participant_count: number;
   avg_score: number | null;
@@ -79,6 +173,7 @@ export async function listScheduledExamsAction(
   let query = supabase
     .from("scheduled_exams")
     .select("*")
+    .neq("status", "expired")
     .order("created_at", { ascending: false });
 
   if (scope === "own") {
@@ -87,7 +182,28 @@ export async function listScheduledExamsAction(
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data || []) as ScheduledExamRow[];
+
+  const exams = (data || []) as ScheduledExamRow[];
+  const examIds = exams.map((e) => e.id);
+  if (examIds.length === 0) return exams;
+
+  // Aggregate participant count per exam (students who have started)
+  const { data: attempts, error: attemptsError } = await supabase
+    .from("scheduled_exam_attempts")
+    .select("scheduled_exam_id")
+    .in("scheduled_exam_id", examIds);
+
+  if (attemptsError) throw new Error(attemptsError.message);
+
+  const countMap = new Map<string, number>();
+  for (const a of (attempts || []) as { scheduled_exam_id: string }[]) {
+    countMap.set(a.scheduled_exam_id, (countMap.get(a.scheduled_exam_id) ?? 0) + 1);
+  }
+
+  return exams.map((exam) => ({
+    ...exam,
+    participant_count: countMap.get(exam.id) ?? 0,
+  }));
 }
 
 export async function createScheduledExamAction(
@@ -133,6 +249,7 @@ export async function createScheduledExamAction(
     p_access_code: input.accessCode.trim(),
     p_nav_mode: input.navMode || 'strict',
     p_sub_bab_percentages: input.subBabPercentages ? JSON.stringify(input.subBabPercentages) : null,
+    p_question_ids: input.questionIds ?? null,
   });
 
   if (error) throw new Error(error.message);
@@ -210,7 +327,7 @@ export async function closeScheduledExamAction(
 
   const { error } = await supabase
     .from("scheduled_exams")
-    .update({ status: "closed", is_visible: false })
+    .update({ status: "expired", is_visible: false })
     .eq("id", examId);
 
   if (error) throw new Error(error.message);
@@ -225,7 +342,7 @@ export async function getScheduledExamHistoryAction(
   let query = supabase
     .from("scheduled_exams")
     .select("*")
-    .eq("status", "closed")
+    .eq("status", "expired")
     .order("created_at", { ascending: false });
 
   if (scope === "own") {

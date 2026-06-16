@@ -16,6 +16,12 @@ type Props = {
     questionCount: number,
     expiresAt: string,
     navMode: string,
+    scheduledExamTitle: string,
+    scheduledMapels: string[],
+    scheduledBabs: string[],
+    scheduledSubBabs: string[],
+    scheduledTimeLimitMinutes: number,
+    studentName: string,
   ) => void;
   onClose: () => void;
 };
@@ -129,6 +135,12 @@ export default function ScheduledExamEntry({
           result.question_count,
           result.expires_at,
           result.nav_mode || 'strict',
+          result.scheduled_exam_title || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.title || 'Ujian',
+          result.scheduled_mapels || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.mapels || [],
+          result.scheduled_babs || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.babs || [],
+          result.scheduled_sub_babs || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.sub_babs || [],
+          result.scheduled_time_limit_minutes || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.time_limit_minutes || 0,
+          studentName.trim(),
         );
       } else {
         setView({
@@ -152,15 +164,17 @@ export default function ScheduledExamEntry({
   const isUpcoming = exam?.window_status === 'upcoming';
   const isClosed = exam?.window_status === 'closed';
   const isWindowOpen = exam?.window_status === 'open';
+  const isScheduled = exam?.status === 'scheduled';
+  const isExpired = exam?.status === 'expired';
   const canStart = isWindowOpen && !starting;
 
   return (
-    <div className="modal-dark-overlay fixed inset-0 z-[100] overflow-hidden bg-[#111111] text-white animate-in fade-in duration-200">
+    <div className="modal-dark-overlay fixed inset-0 z-[100] overflow-hidden bg-dark-800 text-white animate-in fade-in duration-200">
       <div className="flex min-h-screen items-center justify-center px-5 py-10">
         <motion.div
           layoutId="scheduled-exam-expandable"
           transition={{ type: 'spring', stiffness: 180, damping: 24, mass: 0.9 }}
-          className="w-full max-w-5xl rounded-[24px] bg-[#151515] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-12"
+          className="w-full max-w-5xl rounded-[24px] bg-dark-950 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] sm:p-8 lg:p-12"
         >
           {/* ── Loading ── */}
           {view.kind === 'loading' && (
@@ -277,7 +291,18 @@ export default function ScheduledExamEntry({
 
               <div className="rounded-[18px] bg-white p-5 text-nike-black shadow-[0_18px_50px_rgba(0,0,0,0.28)] sm:p-6">
                 {/* Window status banners */}
-                {isUpcoming && (
+                {isScheduled && (
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3 mb-5">
+                    <p className="text-[13px] font-semibold text-amber-400 tracking-tight">
+                      Ujian belum dimulai.
+                    </p>
+                    <p className="text-[12px] text-amber-300/80 tracking-tight mt-0.5">
+                      {countdown || formatCountdown(exam.window_start!)}
+                    </p>
+                  </div>
+                )}
+
+                {isUpcoming && !isScheduled && (
                   <div className="rounded-xl bg-black/[0.04] border border-black/[0.06] px-4 py-3 mb-5">
                     <p className="text-[13px] font-semibold text-nike-black tracking-tight">
                       Ujian belum dibuka.
