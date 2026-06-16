@@ -98,11 +98,14 @@ DECLARE
   v_elem jsonb;
   v_idx integer := 0;
 BEGIN
-  -- Reconstruct user_answers map from the incoming recap array (for compatibility)
+  -- Reconstruct user_answers map from the incoming recap array
+  -- Use coalesce/null handling to avoid errors if p_recap elements are malformed
   FOR v_elem IN SELECT * FROM jsonb_array_elements(p_recap)
   LOOP
     IF v_elem->>'user_answer' IS NOT NULL THEN
       v_user_answers := v_user_answers || jsonb_build_object(v_idx::text, v_elem->>'user_answer');
+    ELSE
+      v_user_answers := v_user_answers || jsonb_build_object(v_idx::text, 'skipped');
     END IF;
     v_idx := v_idx + 1;
   END LOOP;
@@ -111,7 +114,6 @@ BEGIN
   SET submitted_at = now(),
       score = p_score,
       user_answers = v_user_answers
-  WHERE session_id = p_session_id
-    AND submitted_at IS NULL;
+  WHERE session_id = p_session_id;
 END;
 $function$;

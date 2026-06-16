@@ -92,16 +92,26 @@ export async function finalizeScheduledExamAttemptAction(
   score: number,
   recap: unknown[],
 ): Promise<void> {
-  console.log('Finalizing attempt with recap length:', recap.length);
+  // Validate and sanitize recap array
+  const sanitizedRecap = recap.map((item) => {
+    const entry = item as any;
+    return {
+      question_id: entry.question_id ?? 0,
+      user_answer: entry.user_answer ?? null,
+      is_correct: !!entry.is_correct,
+    };
+  });
+
+  console.log('Finalizing attempt with sanitized recap length:', sanitizedRecap.length);
   const supabase = getSupabaseServer();
   const { error } = await supabase.rpc('finalize_scheduled_exam_attempt', {
     p_session_id: sessionId,
     p_score: score,
-    p_recap: recap as unknown[],
+    p_recap: sanitizedRecap,
   });
   if (error) {
     console.error('finalizeScheduledExamAttemptAction error details:', JSON.stringify(error, null, 2));
-    throw new Error(error.message);
+    throw new Error(`RPC finalize_scheduled_exam_attempt failed: ${error.message}`);
   }
 }
 
