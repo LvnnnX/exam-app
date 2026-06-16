@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from 'framer-motion';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
@@ -1491,9 +1492,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
         </div>
       )}
 
+      <AnimatePresence>
       {activeSession && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={handleCloseSession}>
-          <div className={`rounded-[28px] shadow-ios-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={handleCloseSession} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[28px] shadow-ios-xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className={`shrink-0 flex items-center justify-between px-7 py-4 border-b ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
               <h2 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Session Details</h2>
               <button onClick={handleCloseSession} className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}>
@@ -1638,9 +1640,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                     </button>
                   )}
 
+                  <AnimatePresence>
                   {editingSchedule && (
-                    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl" onClick={() => setEditingSchedule(false)}>
-                      <div className={`w-full max-w-xs rounded-[24px] shadow-ios-xl p-5 ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+                    <motion.div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl" onClick={() => setEditingSchedule(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <motion.div className={`w-full max-w-xs rounded-[24px] shadow-ios-xl p-5 ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
                         <div className="flex items-center justify-between mb-5">
                           <h4 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Set schedule</h4>
                           <button onClick={() => setEditingSchedule(false)} className={`w-7 h-7 rounded-full flex items-center justify-center transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}>
@@ -1681,9 +1684,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                             )}
                           </div>
                         </div>
-                      </div>
-                    </div>
+                      </motion.div>
+                    </motion.div>
                   )}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
@@ -1784,9 +1788,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </motion.div>
+  </motion.div>
   )}
+      </AnimatePresence>
   <div className="min-h-0 flex-1 overflow-hidden">
           {activeView === 'manage' && (
             <div className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
@@ -2065,9 +2070,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       />
 
       {/* Player Answers Modal */}
+      <AnimatePresence>
       {viewingPlayer && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)}>
-          <div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setViewingPlayer(null)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             {/* Header */}
             <div className={`shrink-0 flex items-start justify-between gap-3 px-4 py-3 border-b sm:gap-4 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
               <div className="flex flex-col gap-2 min-w-0">
@@ -2252,14 +2258,16 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* View Questions Modal */}
+      <AnimatePresence>
       {showViewQuestions && activeSession && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowViewQuestions(false)}>
-          <div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowViewQuestions(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             {/* Header */}
             <div className={`shrink-0 flex items-start justify-between gap-3 px-4 py-3 border-b sm:gap-4 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
               <div className="flex flex-col gap-2 min-w-0">
@@ -2397,14 +2405,16 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* End Quiz Confirmation Modal */}
+      <AnimatePresence>
       {showEndConfirm && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowEndConfirm(false)}>
-          <div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowEndConfirm(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-500'}`}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -2429,14 +2439,16 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 Akhiri
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Cancel Quiz Confirmation Modal */}
+      <AnimatePresence>
       {showCancelConfirm && activeSession && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowCancelConfirm(false)}>
-          <div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+        <motion.div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={() => setShowCancelConfirm(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`rounded-[24px] max-w-sm w-full p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-500'}`}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -2467,13 +2479,15 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 Ya, batalkan
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {createErrorModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 backdrop-blur-2xl px-4">
-          <div className={`w-full max-w-md rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary' : 'bg-white text-gray-900'}`}>
+        <motion.div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 backdrop-blur-2xl px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`w-full max-w-md rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary' : 'bg-white text-gray-900'}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             <div className="mb-4 flex items-center gap-3">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-600'}`}>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2508,9 +2522,10 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
             >
               Mengerti
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} theme={theme} />
     </div>
