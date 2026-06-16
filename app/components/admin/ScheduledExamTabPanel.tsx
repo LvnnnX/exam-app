@@ -79,11 +79,14 @@ function formatCategorySelectionLabel(value?: string | null): string {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
+import ScheduledExamDetailsModal from './ScheduledExamDetailsModal';
+import AdminTutorialModal from './AdminTutorialModal';
 export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Props) {
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_scheduled_active_view');
-      if (saved === 'create' || saved === 'manage' || saved === 'history') return saved;
+      if (saved === 'create' || saved === 'manage' || saved === 'history') return saved as ActiveView;
     }
     return 'create';
   });
@@ -157,13 +160,21 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
             <h2 className={`text-[20px] font-semibold tracking-tight ${t === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
               Ujian terjadwal
             </h2>
-            <p className={`mt-0.5 text-[12px] ${t === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
-              {activeView === 'history'
-                ? 'Review riwayat ujian yang sudah ditutup.'
-                : activeView === 'manage'
-                ? 'Kelola ujian terjadwal, publish, dan pantau peserta.'
-                : 'Buat ujian dengan kode akses dan jendela waktu.'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className={`mt-0.5 text-[12px] ${t === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                {activeView === 'history'
+                  ? 'Review riwayat ujian yang sudah ditutup.'
+                  : activeView === 'manage'
+                  ? 'Kelola ujian terjadwal, publish, dan pantau peserta.'
+                  : 'Buat ujian dengan kode akses dan jendela waktu.'}
+              </p>
+              <button 
+                onClick={() => setIsTutorialOpen(true)} 
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${t === 'dark' ? 'bg-white/10 text-white' : 'bg-black/10 text-black'}`}
+              >
+                Tutorial
+              </button>
+            </div>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -259,6 +270,7 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
           )}
         </>
       )}
+      <AdminTutorialModal isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} type="scheduled" />
     </div>
   );
 }

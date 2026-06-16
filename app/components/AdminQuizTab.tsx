@@ -13,8 +13,10 @@ import RichContent from '@/app/components/RichContent';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 import LeaderboardViewModal from '@/app/components/LeaderboardViewModal';
 import { ToastContainer, type ToastMessage } from '@/app/components/Toast';
+import AdminTutorialModal from '@/app/components/admin/AdminTutorialModal';
 
 export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: { mapels: string[], babs: string[], subBabs: { label: string, value: string }[], theme?: 'light' | 'dark' }) {
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
@@ -904,14 +906,23 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
             </p>
           </div>
           {(activeView !== 'create' || activeSession) && (
-            <button
-              type="button"
-              onClick={() => void handleRefresh()}
-              disabled={refreshing}
-              className={`h-9 rounded-full px-4 text-[12px] font-medium transition-spring-fast active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsTutorialOpen(true)}
+                className={`h-9 rounded-full px-4 text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+              >
+                Tutorial
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRefresh()}
+                disabled={refreshing}
+                className={`h-9 rounded-full px-4 text-[12px] font-medium transition-spring-fast active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -944,15 +955,6 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       {activeView === 'create' && (
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
           <div className="mx-auto max-w-2xl px-3 py-3 md:px-0 md:py-4">
-          {/* Header Card - Compact */}
-          <div className={`mb-3 rounded-[20px] border p-4 shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-9 w-9 items-center justify-center rounded-2xl ${theme === 'dark' ? 'bg-accent-blue/15' : 'bg-blue-50'}`}>
-                <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-accent-blue' : 'text-blue-600'}`}>Q</span>
-              </div>
-              <div>
-                <h3 className={`text-sm font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Buat kuis baru</h3>
-                <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Sesi kuis live dari topik pilihan.</p>
               </div>
             </div>
           </div>
@@ -2528,6 +2530,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       </AnimatePresence>
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} theme={theme} />
+      <AdminTutorialModal isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} type="quiz" />
     </div>
   );
 }
