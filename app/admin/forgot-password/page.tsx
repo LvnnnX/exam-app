@@ -32,7 +32,7 @@ export default function AdminForgotPasswordPage() {
     }
   };
 
-  const pageBg = isDark ? 'bg-black' : 'bg-white';
+  const pageBg = isDark ? 'bg-dark-900' : 'bg-white';
   const cardBg = isDark ? 'bg-dark-800' : 'bg-white';
   const headlineColor = isDark ? 'text-white' : 'text-nike-black';
   const mutedText = isDark ? 'text-white/55' : 'text-black/55';

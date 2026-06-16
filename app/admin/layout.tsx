@@ -1,11 +1,11 @@
-import { Geist } from 'next/font/google';
+import { Inter } from 'next/font/google';
 
-const geist = Geist({
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-admin-geist',
+  variable: '--font-admin-inter',
   display: 'swap',
 });
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`${geist.variable} font-[var(--font-admin-geist)]`}>{children}</div>;
+  return <div className={`${inter.variable} font-[var(--font-admin-inter)]`}>{children}</div>;
 }
