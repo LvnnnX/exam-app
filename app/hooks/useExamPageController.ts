@@ -186,6 +186,7 @@ export default function useExamPageController() {
       setScore,
       setDoubtFlags,
       setStartTime,
+      setEndTime,
       setExpiresAt,
       setTimeLimit,
       setAnswers,

@@ -48,6 +48,7 @@ type UseExamBootstrapArgs = {
   setScore: (value: number) => void;
   setDoubtFlags: (value: boolean[]) => void;
   setStartTime: (value: number | null) => void;
+  setEndTime: (value: number | null) => void;
   setExpiresAt: (value: string | null) => void;
   setTimeLimit: (value: number) => void;
   setAnswers: (value: Answer[]) => void;
@@ -79,6 +80,7 @@ export default function useExamBootstrap({
   setScore,
   setDoubtFlags,
   setStartTime,
+  setEndTime,
   setExpiresAt,
   setTimeLimit,
   setAnswers,
