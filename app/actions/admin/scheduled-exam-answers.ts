@@ -2,6 +2,7 @@
 
 import { requirePermissionAnyOf } from "@/lib/admin-server";
 import { getSupabaseServer } from "@/lib/supabase";
+import { stripHtml } from "@/lib/questions";
 
 export type AttemptAnswerRow = {
   question_id: number;
@@ -99,12 +100,12 @@ export async function fetchAttemptAnswersAction(
     if (q && userAnswer !== null) {
       if (q.question_type === "short_answer") {
         isCorrect =
-          userAnswer.trim().toLowerCase() ===
-          (q.short_answer ?? "").trim().toLowerCase();
+          stripHtml(userAnswer).toLowerCase() ===
+          stripHtml(q.short_answer ?? "").toLowerCase();
       } else {
         isCorrect =
-          userAnswer.trim().toUpperCase() ===
-          (q.correct_answer ?? "").trim().toUpperCase();
+          stripHtml(userAnswer).toUpperCase() ===
+          stripHtml(q.correct_answer ?? "").toUpperCase();
       }
     }
     return {

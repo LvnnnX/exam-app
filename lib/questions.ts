@@ -3,6 +3,10 @@ import { ensureHtmlDocument } from './rich-text';
 import { isSafeCategorySlug, normalizeCategorySlug } from './categories';
 import { getCache, setCache, CACHE_TTL } from './cache';
 
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').trim();
+}
+
 const getUA = () => typeof window !== 'undefined' ? window.navigator.userAgent : 'server';
 
 export type BabInfo = {
