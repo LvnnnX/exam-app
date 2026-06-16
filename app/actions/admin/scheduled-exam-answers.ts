@@ -33,10 +33,10 @@ export async function fetchAttemptAnswersAction(
     "quiz:manage:own",
   ]);
 
-  // Fetch the attempt row (has session_id, score, etc.)
+  // Fetch the attempt row (has session_id, score, recap, etc.)
   const { data: attempt, error: attemptErr } = await adminClient
     .from("scheduled_exam_attempts")
-    .select("id, session_id, score, started_at, submitted_at, scheduled_exam_id")
+    .select("id, session_id, score, started_at, submitted_at, scheduled_exam_id, recap")
     .eq("id", attemptId)
     .single();
 
@@ -70,8 +70,18 @@ export async function fetchAttemptAnswersAction(
     .single();
 
   if (logErr || !log || !log.question_ids || !log.user_answers) {
+    // exam_logs was deleted on submit — fall back to the stored recap on the attempt row
+    const recapRows = (attempt as unknown as { recap?: { question_id?: number; user_answer?: string | null; is_correct?: boolean }[] }).recap ?? [];
+    const recapAnswers: AttemptAnswerRow[] = recapRows
+      .filter((r) => r.question_id != null)
+      .map((r, idx) => ({
+        question_id: r.question_id!,
+        question_index: idx,
+        user_answer: r.user_answer ?? null,
+        is_correct: r.is_correct ?? false,
+      }));
     return {
-      user_answers: [],
+      user_answers: recapAnswers,
       score: attempt.score ?? 0,
       total_questions: exam.question_count,
       started_at: attempt.started_at,

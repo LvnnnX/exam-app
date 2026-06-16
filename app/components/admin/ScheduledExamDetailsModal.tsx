@@ -62,6 +62,9 @@ function StatusBadge({ status, theme = 'dark' }: { status: string; theme?: 'ligh
 }
 
 function formatDuration(startedAt: string, endedAt: string | null, deadlineAt: string | null, autoSubmitted: boolean): string {
+  // If we have an explicit end time (submitted), use it.
+  // Otherwise, if auto-submitted by sweeper, use deadline.
+  // Fallback to now for in-progress.
   const end = endedAt ?? (autoSubmitted && deadlineAt ? deadlineAt : new Date().toISOString());
   const start = new Date(startedAt).getTime();
   const endMs = new Date(end).getTime();
