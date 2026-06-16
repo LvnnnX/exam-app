@@ -15,6 +15,7 @@ import {
   type ScheduledExamHistoryRow,
 } from '@/app/actions/admin/scheduled-exam';
 import ScheduledExamDetailsModal from './ScheduledExamDetailsModal';
+import AdminTutorialModal from './AdminTutorialModal';
 import { fetchAllMapelsAdmin, fetchBabsAdmin, fetchSubBabsAdmin } from '@/lib/questions';
 import type { BabInfo, SubBabInfo, RawQuestion } from '@/lib/questions';
 import type { VisibilitySettings } from '@/lib/questions';
@@ -79,8 +80,6 @@ function formatCategorySelectionLabel(value?: string | null): string {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-import ScheduledExamDetailsModal from './ScheduledExamDetailsModal';
-import AdminTutorialModal from './AdminTutorialModal';
 export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Props) {
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>(() => {

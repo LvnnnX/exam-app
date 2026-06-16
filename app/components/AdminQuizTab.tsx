@@ -955,12 +955,9 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       {activeView === 'create' && (
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
           <div className="mx-auto max-w-2xl px-3 py-3 md:px-0 md:py-4">
-              </div>
-            </div>
-          </div>
-
-          {/* Form Card */}
-          <div className={`overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
+            
+            {/* Form Card */}
+            <div className={`overflow-hidden rounded-[24px] border shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-nike-grey-200 bg-white'}`}>
             {/* MAPEL & BAB & Sub-bab */}
             <div className="p-3 md:p-4 flex flex-col md:flex-row gap-3">
               <div className="flex-1">
