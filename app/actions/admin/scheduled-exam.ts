@@ -111,6 +111,7 @@ export type ScheduledExamRow = {
   nav_mode: string;
   sub_bab_percentages: Record<string, number> | null;
   question_ids: number[] | null;  // fixed pool — same for all students
+  participant_count: number;  // students who have started this exam
 };
 
 export type ScheduledExamAttemptRow = {
@@ -181,7 +182,28 @@ export async function listScheduledExamsAction(
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data || []) as ScheduledExamRow[];
+
+  const exams = (data || []) as ScheduledExamRow[];
+  const examIds = exams.map((e) => e.id);
+  if (examIds.length === 0) return exams;
+
+  // Aggregate participant count per exam (students who have started)
+  const { data: attempts, error: attemptsError } = await supabase
+    .from("scheduled_exam_attempts")
+    .select("scheduled_exam_id")
+    .in("scheduled_exam_id", examIds);
+
+  if (attemptsError) throw new Error(attemptsError.message);
+
+  const countMap = new Map<string, number>();
+  for (const a of (attempts || []) as { scheduled_exam_id: string }[]) {
+    countMap.set(a.scheduled_exam_id, (countMap.get(a.scheduled_exam_id) ?? 0) + 1);
+  }
+
+  return exams.map((exam) => ({
+    ...exam,
+    participant_count: countMap.get(exam.id) ?? 0,
+  }));
 }
 
 export async function createScheduledExamAction(

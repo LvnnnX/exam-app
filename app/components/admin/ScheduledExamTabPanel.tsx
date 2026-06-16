@@ -387,7 +387,7 @@ function ManageTable({ exams, theme, formatCategorySelectionLabel, newlyCreatedE
                   <td className={`whitespace-nowrap px-4 py-3 text-sm sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
                     <span className="flex items-center gap-1">
                       <Users size={12} className={theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'} />
-                      <span className="font-medium">-</span>
+                      <span className="font-medium">{exam.participant_count ?? '-'}</span>
                     </span>
                   </td>
                   <td className={`whitespace-nowrap px-4 py-3 text-sm tabular-nums sm:px-6 sm:py-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500'}`}>{exam.question_count}</td>
