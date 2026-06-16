@@ -21,6 +21,7 @@ type Props = {
     scheduledBabs: string[],
     scheduledSubBabs: string[],
     scheduledTimeLimitMinutes: number,
+    studentName: string,
   ) => void;
   onClose: () => void;
 };
@@ -139,6 +140,7 @@ export default function ScheduledExamEntry({
           result.scheduled_babs || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.babs || [],
           result.scheduled_sub_babs || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.sub_babs || [],
           result.scheduled_time_limit_minutes || (view as { kind: 'info'; exam: ScheduledExamLookup }).exam.time_limit_minutes || 0,
+          studentName.trim(),
         );
       } else {
         setView({

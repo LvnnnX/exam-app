@@ -82,3 +82,52 @@ export async function startScheduledExamAction(
 
   return data as unknown as ScheduledExamStartResult;
 }
+
+/**
+ * Mark a scheduled exam attempt as submitted (stamp submitted_at + score + recap).
+ * Called after submit_session_exam succeeds for a scheduled exam.
+ */
+export async function finalizeScheduledExamAttemptAction(
+  sessionId: string,
+  score: number,
+  recap: unknown[],
+): Promise<void> {
+  const supabase = getSupabaseServer();
+  const { error } = await supabase.rpc('finalize_scheduled_exam_attempt', {
+    p_session_id: sessionId,
+    p_score: score,
+    p_recap: recap as unknown[],
+  });
+  if (error) {
+    console.error('finalizeScheduledExamAttemptAction error:', error.message);
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Fetch stored recap + score for a finished scheduled exam attempt.
+ * Returns null if attempt was not yet submitted or has no recap.
+ */
+export type ScheduledExamRecap = {
+  recap: unknown[];
+  score: number;
+  total: number;
+  name: string;
+  started_at: string;
+  submitted_at: string;
+};
+
+export async function getScheduledExamRecapAction(
+  sessionId: string,
+): Promise<ScheduledExamRecap | null> {
+  const supabase = getSupabaseServer();
+  const { data, error } = await supabase.rpc('get_scheduled_exam_recap', {
+    p_session_id: sessionId,
+  });
+  if (error) {
+    console.error('getScheduledExamRecapAction error:', error.message);
+    return null;
+  }
+  if (!data) return null;
+  return data as unknown as ScheduledExamRecap;
+}

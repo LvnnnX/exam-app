@@ -195,6 +195,8 @@ export default function useExamPageController() {
       setIsScheduledExam,
       setScheduledExamTitle,
       setScheduledTimeLimitMinutes,
+      setRecapData,
+      setSaved,
     },
     categoryOptionsArgs: {
       mapels,
@@ -223,12 +225,14 @@ export default function useExamPageController() {
       saved,
       sessionId,
       gameMode,
+      isScheduledExam,
       setSaving,
       setScore,
       setTotalQuestions,
       setRecapData,
       setSaved,
       setSaveFailed,
+      setExpiresAt,
       clearStorage,
     },
     lifecycleArgs: {

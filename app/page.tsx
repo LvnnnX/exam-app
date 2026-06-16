@@ -67,8 +67,10 @@ export default function ExamPage() {
     scheduledBabs: string[],
     scheduledSubBabs: string[],
     scheduledTimeLimitMinutes: number,
+    studentName: string,
   ) => {
     setIsScheduledModalOpen(false);
+    setters.setUserName(studentName);
     setters.setSessionId(sessionId);
     setters.setTotalQuestions(questionCount);
     setters.setAnswers(Array(questionCount).fill(null));
@@ -334,8 +336,8 @@ export default function ExamPage() {
 
           <ScheduledExamEntry
             isOpen={isScheduledModalOpen}
-            onExamStarted={(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes) => {
-              void handleScheduledExamStarted(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes);
+            onExamStarted={(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes, studentName) => {
+              void handleScheduledExamStarted(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes, studentName);
             }}
             onClose={() => setIsScheduledModalOpen(false)}
           />

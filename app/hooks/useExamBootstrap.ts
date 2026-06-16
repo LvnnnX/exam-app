@@ -4,7 +4,8 @@ import { useEffect } from 'react';
 import { secureLoad } from '@/lib/security';
 import { getSessionQuestionViaRpc, getSessionStateViaRpc, type BabInfo, type ShuffledQuestion } from '@/lib/questions';
 import { getSafeMapels } from '@/app/actions/categories';
-import type { Answer, GameMode, ExamMode } from '@/app/hooks/examTypes';
+import { getScheduledExamRecapAction } from '@/app/actions/scheduled-exam';
+import type { Answer, GameMode, ExamMode, RecapItem } from '@/app/hooks/examTypes';
 
 type StorageKeys = {
   NAME: string;
@@ -56,6 +57,8 @@ type UseExamBootstrapArgs = {
   setIsScheduledExam: (value: boolean) => void;
   setScheduledExamTitle: (value: string) => void;
   setScheduledTimeLimitMinutes: (value: number) => void;
+  setRecapData: (value: RecapItem[]) => void;
+  setSaved: (value: boolean) => void;
 };
 
 export default function useExamBootstrap({
@@ -85,6 +88,8 @@ export default function useExamBootstrap({
   setIsScheduledExam,
   setScheduledExamTitle,
   setScheduledTimeLimitMinutes,
+  setRecapData,
+  setSaved,
 }: UseExamBootstrapArgs) {
   useEffect(() => {
     const restoreState = async () => {
@@ -136,6 +141,30 @@ export default function useExamBootstrap({
 
           if (!state || state.is_finished) {
             if (stored.name) setUserName(stored.name);
+
+            // For scheduled exams, check if there's a stored recap in DB to show performance
+            if (stored.isScheduledExam && stored.sessionId) {
+              const recapData = await getScheduledExamRecapAction(stored.sessionId);
+              if (recapData) {
+                setUserName(recapData.name || stored.name || '');
+                setSessionId(stored.sessionId);
+                setIsScheduledExam(true);
+                setScheduledExamTitle(stored.scheduledExamTitle || '');
+                setTotalQuestions(recapData.total || stored.total || 0);
+                setScore(recapData.score || 0);
+                setRecapData(recapData.recap as RecapItem[]);
+                setSaved(true);
+                setStep(6);
+                setMapels(stored.mapels || []);
+                setBabs(stored.babs || []);
+                setSubBabs(stored.subBabs || []);
+                setGameMode(stored.mode || 'exam');
+                setStartTime(new Date(recapData.started_at).getTime() || stored.startTime || null);
+                setIsRestored(true);
+                return;
+              }
+            }
+
             setIsRestored(true);
             return;
           }
