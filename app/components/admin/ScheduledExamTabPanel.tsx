@@ -627,8 +627,9 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
       });
 
       // ─── Step 2: Create the exam with the pre-selected question pool ───────
-      const ws = windowStart ? new Date(windowStart).toISOString() : '';
-      const we = windowEnd ? new Date(windowEnd).toISOString() : '';
+      if (!windowStart || !windowEnd) throw new Error("Waktu mulai dan berakhir harus diisi");
+      const ws = new Date(windowStart).toISOString();
+      const we = new Date(windowEnd).toISOString();
       const newExamId = await createScheduledExamAction(token, {
         title, accessCode, mapels, babs, subBabs,
         mode: 'exam', questionCount, timeLimitMinutes: timeLimit,
