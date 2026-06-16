@@ -92,6 +92,7 @@ export async function finalizeScheduledExamAttemptAction(
   score: number,
   recap: unknown[],
 ): Promise<void> {
+  console.log('Finalizing attempt with recap length:', recap.length);
   const supabase = getSupabaseServer();
   const { error } = await supabase.rpc('finalize_scheduled_exam_attempt', {
     p_session_id: sessionId,
@@ -99,7 +100,7 @@ export async function finalizeScheduledExamAttemptAction(
     p_recap: recap as unknown[],
   });
   if (error) {
-    console.error('finalizeScheduledExamAttemptAction error:', error.message);
+    console.error('finalizeScheduledExamAttemptAction error details:', JSON.stringify(error, null, 2));
     throw new Error(error.message);
   }
 }
