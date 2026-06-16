@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { buildRemedialQuestionPool, type RemedialQuestionLike } from '@/app/lib/remedialQuizSelection';
 
 type RemedialCandidate = RemedialQuestionLike;
@@ -63,17 +64,25 @@ export default function RemedialQuizBuilder({
   };
 
   return (
-    <div
+    <AnimatePresence>
+    <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xl"
       role="dialog"
       aria-modal="true"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
     >
-      <div
+      <motion.div
         className={`max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[32px] border p-7 shadow-ios-xl ${
           theme === 'dark'
             ? 'border-dark-border-subtle bg-dark-800 remedial-modal-scroll-dark'
             : 'border-nike-grey-200 bg-white remedial-modal-scroll-light'
         }`}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
@@ -361,7 +370,8 @@ export default function RemedialQuizBuilder({
             Create quiz
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+    </AnimatePresence>
   );
 }
