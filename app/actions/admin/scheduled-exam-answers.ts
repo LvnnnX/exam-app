@@ -20,8 +20,7 @@ export type AttemptDetailsResult = {
 
 /**
  * Fetches the per-question answer breakdown for a single scheduled exam attempt.
- * Joins exam_logs (user_answers + question_ids) with questions (correct_answer)
- * using the service role to bypass RLS.
+ * Now reads directly from scheduled_exam_attempts.question_ids and user_answers.
  */
 export async function fetchAttemptAnswersAction(
   accessToken: string,
@@ -33,10 +32,10 @@ export async function fetchAttemptAnswersAction(
     "quiz:manage:own",
   ]);
 
-  // Fetch the attempt row (has session_id, score, recap, etc.)
+  // Fetch the attempt row (has question_ids, user_answers, score, etc.)
   const { data: attempt, error: attemptErr } = await adminClient
     .from("scheduled_exam_attempts")
-    .select("id, session_id, score, started_at, submitted_at, scheduled_exam_id, recap")
+    .select("id, question_ids, user_answers, score, started_at, submitted_at, scheduled_exam_id")
     .eq("id", attemptId)
     .single();
 
@@ -51,7 +50,13 @@ export async function fetchAttemptAnswersAction(
 
   if (examErr || !exam) return null;
 
-  if (!attempt.session_id) {
+  const questionIds: number[] = attempt.question_ids ?? [];
+  const rawAnswers: Record<string, string> =
+    typeof attempt.user_answers === "object" && !Array.isArray(attempt.user_answers)
+      ? (attempt.user_answers as Record<string, string>)
+      : {};
+
+  if (questionIds.length === 0) {
     return {
       user_answers: [],
       score: attempt.score ?? 0,
@@ -61,41 +66,9 @@ export async function fetchAttemptAnswersAction(
     };
   }
 
-  // Use service role to read exam_logs (bypasses RLS)
+  // Use service role to read questions (bypasses RLS)
   const supabaseService = getSupabaseServer();
-  const { data: log, error: logErr } = await supabaseService
-    .from("exam_logs")
-    .select("user_answers, question_ids")
-    .eq("session_id", attempt.session_id)
-    .single();
-
-  if (logErr || !log || !log.question_ids || !log.user_answers) {
-    // exam_logs was deleted on submit — fall back to the stored recap on the attempt row
-    const recapRows = (attempt as unknown as { recap?: { question_id?: number; user_answer?: string | null; is_correct?: boolean }[] }).recap ?? [];
-    const recapAnswers: AttemptAnswerRow[] = recapRows
-      .filter((r) => r.question_id != null)
-      .map((r, idx) => ({
-        question_id: r.question_id!,
-        question_index: idx,
-        user_answer: r.user_answer ?? null,
-        is_correct: r.is_correct ?? false,
-      }));
-    return {
-      user_answers: recapAnswers,
-      score: attempt.score ?? 0,
-      total_questions: exam.question_count,
-      started_at: attempt.started_at,
-      submitted_at: attempt.submitted_at,
-    };
-  }
-
-  const questionIds: number[] = log.question_ids;
-  // user_answers is a JSONB object keyed by string index: { "0": "A", "1": "C", ... }
-  const rawAnswers: Record<string, string> =
-    typeof log.user_answers === "object" && !Array.isArray(log.user_answers)
-      ? (log.user_answers as Record<string, string>)
-      : {};
-
+  
   // Fetch all question correct answers in one query
   const { data: questions, error: qErr } = await supabaseService
     .from("questions")

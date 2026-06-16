@@ -160,6 +160,7 @@ export default function useExamBootstrap({
                 setSubBabs(stored.subBabs || []);
                 setGameMode(stored.mode || 'exam');
                 setStartTime(new Date(recapData.started_at).getTime() || stored.startTime || null);
+                setEndTime(new Date(recapData.submitted_at).getTime() || null);
                 setIsRestored(true);
                 return;
               }
