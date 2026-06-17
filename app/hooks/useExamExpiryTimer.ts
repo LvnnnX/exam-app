@@ -94,6 +94,7 @@ export default function useExamExpiryTimer({
       const now = Date.now() + serverOffsetMs.current;
 
       // BUG-H4 fix: guard against NaN from corrupt localStorage/expiresAt values.
+      // Without this, NaN - Date.now() = NaN, and `NaN <= 0` is false → timer never expires.
       if (!Number.isFinite(expiry)) {
         clearInterval(interval);
         setTimeLeftDisplay('TIME EXPIRED');
