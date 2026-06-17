@@ -3,7 +3,6 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitSessionExamViaRpc } from '@/lib/questions';
-import { finalizeScheduledExamAttemptAction } from '@/app/actions/scheduled-exam';
 import type { GameMode, RecapItem } from '@/app/hooks/examTypes';
 
 type UseExamAutoSaveArgs = {
@@ -50,14 +49,10 @@ export default function useExamAutoSave({
       const finalEndTime = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
       const result = await submitSessionExamViaRpc(sessionId, finalEndTime);
 
-      // If scheduled, seal the attempt record in DB
-      if (isScheduledExam) {
-        try {
-          await finalizeScheduledExamAttemptAction(sessionId, result.score, result.recap);
-        } catch (finalizeErr) {
-          console.error('Failed to finalize scheduled attempt:', finalizeErr);
-        }
-      }
+      // BUG-S2 fix: removed redundant finalizeScheduledExamAttemptAction call.
+      // submit_session_exam(uuid, timestamptz) already atomically seals
+      // scheduled_exam_attempts (recap, score, user_answers, submitted_at) in PR #27 migration.
+      // The old finalize call was overwriting 5-field recap with sanitized 3-field data.
 
       setScore(result.score);
       if (gameMode === 'survival') setTotalQuestions(result.total_attempted);
