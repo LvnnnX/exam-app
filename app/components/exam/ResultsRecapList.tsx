@@ -2,13 +2,7 @@
 
 import React from 'react';
 import RichContent from '@/app/components/RichContent';
-
-type RecapItem = {
-  user_answer: string | null;
-  correct_text: string;
-  is_correct: boolean;
-  question_text: string;
-};
+import type { RecapItem } from '@/app/hooks/examTypes';
 
 type ResultsRecapListProps = {
   recapData: RecapItem[];
@@ -24,7 +18,7 @@ export default function ResultsRecapList({ recapData }: ResultsRecapListProps) {
           const isSkipped = !userAnswer;
 
           return (
-            <div key={idx} className="bg-black/[0.03] p-5 sm:p-6 rounded-3xl">
+            <div key={item.question_id} className="bg-black/[0.03] p-5 sm:p-6 rounded-3xl">
               <div className="flex gap-3 mb-3">
                 <span className="text-[12px] font-medium text-nike-grey-500 tabular-nums shrink-0 mt-0.5 tracking-tight">{(idx + 1).toString().padStart(2, '0')}</span>
                 <RichContent html={item.question_text} className="text-[14px] sm:text-[15px] font-medium text-nike-black leading-snug flex-1 min-w-0 tracking-tight" />
