@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useCallback } from 'react';
-import { saveSessionAnswerViaRpc, submitSessionExamViaRpc } from '@/lib/questions';
+import { useEffect, useCallback, useRef } from 'react';
+import { saveSessionAnswerViaRpc, submitSessionExamViaRpc, getServerTimeOffsetMs } from '@/lib/questions';
 import type { Answer, GameMode, RecapItem } from '@/app/hooks/examTypes';
 
 type UseExamExpiryTimerArgs = {
@@ -41,6 +41,10 @@ export default function useExamExpiryTimer({
   setTimeLeftDisplay,
   clearStorage,
 }: UseExamExpiryTimerArgs) {
+  // BUG-H1 fix: server-time offset to defeat client-clock manipulation.
+  // Refreshed when timer mounts. Uses ref so changing the value doesn't trigger re-render.
+  const serverOffsetMs = useRef<number>(0);
+
   const handleTimerExpiry = useCallback(async () => {
     if (!sessionId) return;
 
@@ -76,9 +80,18 @@ export default function useExamExpiryTimer({
   useEffect(() => {
     if (step !== 3 || !expiresAt) return;
 
+    // BUG-H1: refresh server-time offset when timer becomes active.
+    // Fire-and-forget — if it fails, we keep the previous offset (initially 0).
+    void getServerTimeOffsetMs().then((offset) => {
+      serverOffsetMs.current = offset;
+    });
+
     const interval = setInterval(() => {
       const expiry = new Date(expiresAt).getTime();
-      const now = Date.now();
+      // BUG-H1: use server-time-adjusted client clock instead of raw Date.now().
+      // If user backdates their OS clock, serverOffsetMs becomes positive enough that
+      // (Date.now() + offset) still tracks server time, so timer can't be extended.
+      const now = Date.now() + serverOffsetMs.current;
 
       // BUG-H4 fix: guard against NaN from corrupt localStorage/expiresAt values.
       // Without this, NaN - Date.now() = NaN, and `NaN <= 0` is false → timer never expires.

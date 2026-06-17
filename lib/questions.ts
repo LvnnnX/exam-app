@@ -575,6 +575,30 @@ export async function submitSessionExamViaRpc(
   return data as SubmitSessionExamRpcRow;
 }
 
+// ==================== Server time sync (BUG-H1) ====================
+// Fetch server NOW() to compute clientOffset = serverNow - clientNow.
+// Returns offset in milliseconds. Positive offset means server is ahead of client.
+// Used by timers to compute expiry against server clock instead of client clock,
+// so users can't extend exam time by setting their system clock backward.
+export async function getServerTimeOffsetMs(): Promise<number> {
+  const clientNowBefore = Date.now();
+  const { data, error } = await supabase.rpc('get_server_now');
+  const clientNowAfter = Date.now();
+
+  if (error || !data || typeof (data as { server_now?: string }).server_now !== 'string') {
+    return 0; // graceful fallback — no offset, use client clock
+  }
+
+  const serverNow = new Date((data as { server_now: string }).server_now).getTime();
+  if (!Number.isFinite(serverNow)) return 0;
+
+  // Estimate "server time at the moment we received the response" by adding half RTT
+  const rttHalf = Math.floor((clientNowAfter - clientNowBefore) / 2);
+  const adjustedClientNow = clientNowBefore + rttHalf;
+
+  return serverNow - adjustedClientNow;
+}
+
 // ==================== Fetch specific questions by IDs ====================
 
 export async function fetchQuestionsByIds(ids: number[]): Promise<RawQuestion[]> {
