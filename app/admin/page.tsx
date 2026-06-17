@@ -251,13 +251,6 @@ function AdminPageInner() {
         canViewSettings={canSaveSettings || canDeleteTopic}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onAddQuestion={canCreateQuestion ? () => {
-          handleTabChangeWithUrl('questions');
-          questions.startAddNew();
-        } : undefined}
-        onCreateQuiz={() => {
-          handleTabChangeWithUrl('quiz');
-        }}
       />
 
       <main className="h-full min-w-0 flex-1 overflow-hidden px-2 pt-14 pb-3 md:ml-[228px] md:px-4 md:py-4 md:pt-4">
