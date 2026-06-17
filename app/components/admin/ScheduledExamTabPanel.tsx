@@ -277,10 +277,10 @@ export default function ScheduledExamTabPanel({ theme, visibilitySettings }: Pro
 /* ---------- Manage Table ---------- */
 
 /* ---------- Fetch helper: question pool for a scheduled exam ---------- */
-async function fetchExamPoolQuestions(exam: ScheduledExamRow) {
+async function fetchExamPoolQuestions(exam: ScheduledExamRow, accessToken: string) {
   const ids = exam.question_ids ?? [];
   if (ids.length === 0) return [];
-  return fetchScheduledExamQuestionPoolAction(ids);
+  return fetchScheduledExamQuestionPoolAction(accessToken, ids);
 }
 
 function ManageTable({ exams, theme, formatCategorySelectionLabel, newlyCreatedExamId }: {
@@ -307,7 +307,7 @@ function ManageTable({ exams, theme, formatCategorySelectionLabel, newlyCreatedE
       const token = await getAdminAccessToken();
       const [attemptsData, questionsData] = await Promise.all([
         listScheduledExamAttemptsAction(token, exam.id),
-        fetchExamPoolQuestions(exam),
+        fetchExamPoolQuestions(exam, token),
       ]);
       setAttempts(attemptsData);
       setDetailQuestions(questionsData);
@@ -619,7 +619,7 @@ function CreateFormCard({ theme, visibilitySettings, onCreated }: {
       const selectedBabs = babs.length > 0 ? babs : availBabs.map(b => b.value);
       const selectedSubBabs = subBabs.length > 0 ? subBabs : availSubBabs.map(s => s.value);
 
-      const questionIds = await selectRandomQuestionsAction({
+      const questionIds = await selectRandomQuestionsAction(token, {
         mapels: selectedMapels,
         babs: selectedBabs,
         subBabs: selectedSubBabs,

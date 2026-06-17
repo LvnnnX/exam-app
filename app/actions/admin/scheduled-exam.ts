@@ -1,7 +1,6 @@
 "use server";
 
 import { requirePermissionAnyOf } from "@/lib/admin-server";
-import { getSupabaseServer } from "@/lib/supabase";
 import { normalizeCategorySlug } from "@/lib/categories";
 
 /**
@@ -19,10 +18,11 @@ export async function fetchScheduledExamQuestionsAction(
  * Uses service role key (bypasses RLS).
  */
 export async function fetchScheduledExamQuestionPoolAction(
+  accessToken: string,
   questionIds: number[]
 ): Promise<import("@/lib/questions").RawQuestion[]> {
+  const { supabase } = await requirePermissionAnyOf(accessToken, ["quiz:manage:any", "quiz:manage:own"]);
   if (!questionIds || questionIds.length === 0) return [];
-  const supabase = getSupabaseServer();
   const { data, error } = await supabase
     .from('questions')
     .select(
@@ -42,14 +42,17 @@ export async function fetchScheduledExamQuestionPoolAction(
  * All students in the same exam get the SAME question IDs in the SAME
  * order. Only option order is shuffled per-student (client-side).
  */
-export async function selectRandomQuestionsAction(params: {
-  mapels: string[];
-  babs: string[];
-  subBabs: string[];
-  count: number;
-}): Promise<number[]> {
+export async function selectRandomQuestionsAction(
+  accessToken: string,
+  params: {
+    mapels: string[];
+    babs: string[];
+    subBabs: string[];
+    count: number;
+  }
+): Promise<number[]> {
+  const { supabase } = await requirePermissionAnyOf(accessToken, ["quiz:manage:any", "quiz:manage:own"]);
   const { mapels, babs, subBabs, count } = params;
-  const supabase = getSupabaseServer();
 
   const safeMapels = mapels.map(normalizeCategorySlug);
   const safeBabs = babs.map(normalizeCategorySlug);
