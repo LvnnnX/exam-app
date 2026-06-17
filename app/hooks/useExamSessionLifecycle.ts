@@ -138,6 +138,11 @@ export default function useExamSessionLifecycle({
       if (!skipSave && answers[current]) {
         const result = await saveSessionAnswerViaRpc(sessionId!, current, answers[current]);
         if (result && result.error === 'time_expired') {
+          // BUG-H3 fix: time_expired path triggers autoSave AND falls through to step 6.
+          // To avoid double-submit, set step + endTime here and return — autoSaveToSupabase
+          // has its own `saved` guard so subsequent calls are no-op.
+          setEndTime(Number(new Date()));
+          setStep(6);
           await autoSaveToSupabase();
           return;
         }
@@ -145,6 +150,8 @@ export default function useExamSessionLifecycle({
     } catch (e) {
       console.error(e);
       if (e instanceof Error && e.message === 'time_expired') {
+        setEndTime(Number(new Date()));
+        setStep(6);
         await autoSaveToSupabase();
         return;
       }
