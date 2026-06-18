@@ -1,7 +1,6 @@
 "use server";
 
 import { requirePermissionAnyOf } from "@/lib/admin-server";
-import { normalizeCategorySlug } from "@/lib/categories";
 
 /**
  * Fetches the full question data for a scheduled exam question pool.
@@ -54,15 +53,14 @@ export async function selectRandomQuestionsAction(
   const { supabase } = await requirePermissionAnyOf(accessToken, ["quiz:manage:any", "quiz:manage:own"]);
   const { mapels, babs, subBabs, count } = params;
 
-  const safeMapels = mapels.map(normalizeCategorySlug);
-  const safeBabs = babs.map(normalizeCategorySlug);
-  const safeSubBabs = subBabs.map(normalizeCategorySlug);
-
-  // Build OR filter: question must match at least one of mapel, bab, or subbab
+  // questions stores RAW category labels (e.g. 'EKONOMI', 'Makroekonomi'), NOT
+  // slugs. Do NOT normalize — match the working quiz-create path which filters
+  // on the raw selected values via array-overlap. Normalizing here produced
+  // zero matches (case + separator mismatch) and broke scheduled-exam create.
   const orConditions: string[] = [
-    ...safeMapels.map(m => `mapels.cs.{"${m}"}`),
-    ...safeBabs.map(b => `babs.cs.{"${b}"}`),
-    ...safeSubBabs.map(s => `sub_babs.cs.{"${s}"}`),
+    ...mapels.map(m => `mapels.cs.{"${m}"}`),
+    ...babs.map(b => `babs.cs.{"${b}"}`),
+    ...subBabs.map(s => `sub_babs.cs.{"${s}"}`),
   ];
 
   const { data, error } = await supabase
