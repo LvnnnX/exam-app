@@ -1078,6 +1078,21 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                         </div>
                         <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>None Selected</span>
                       </div>
+                      {selectedMapels.length > 0 && !loadingBabs && displayBabs.length > 0 && (
+                        <div
+                          className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border hover:bg-dark-750' : 'border-gray-100 hover:bg-gray-50'}`}
+                          onClick={() => {
+                            setSelectedBabs([...displayBabs]);
+                            setSelectedSubBabs([]);
+                            setIsBabOpen(false);
+                          }}
+                        >
+                          <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedBabs.length === displayBabs.length ? (theme === 'dark' ? 'bg-accent-red border-accent-red' : 'bg-red-500 border-red-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
+                            {selectedBabs.length === displayBabs.length && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                          <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-accent-red' : 'text-red-700'}`}>Pilih Semua</span>
+                        </div>
+                      )}
                       {selectedMapels.length === 0 ? (
                         <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Pilih MAPEL terlebih dahulu</div>
                       ) : loadingBabs ? (
@@ -1162,6 +1177,36 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                         </div>
                         <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>None Selected</span>
                       </div>
+
+                      {selectedBabs.length > 0 && !loadingSubBabs && displaySubBabs.length > 0 && (
+                        <div
+                          className={`p-2.5 border-b cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'border-dark-border hover:bg-dark-750' : 'border-gray-100 hover:bg-gray-50'}`}
+                          onClick={() => {
+                            const next = displaySubBabs.map(sb => sb.value);
+                            setSelectedSubBabs(next);
+
+                            if (percentagesEnabled) {
+                              const newPct: Record<string, number> = {};
+                              const total = next.length;
+                              if (total > 0) {
+                                const equal = Math.floor(100 / total);
+                                let rem = 100 - (equal * total);
+                                next.forEach(v => {
+                                  newPct[v] = equal + (rem > 0 ? 1 : 0);
+                                  rem--;
+                                });
+                              }
+                              setSubBabPercentages(newPct);
+                            }
+                            setIsSubBabOpen(false);
+                          }}
+                        >
+                          <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selectedSubBabs.length === displaySubBabs.length ? (theme === 'dark' ? 'bg-accent-purple border-accent-purple' : 'bg-indigo-500 border-indigo-500') : (theme === 'dark' ? 'border-dark-border' : 'border-gray-300')}`}>
+                            {selectedSubBabs.length === displaySubBabs.length && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                          <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-accent-purple' : 'text-indigo-700'}`}>Pilih Semua</span>
+                        </div>
+                      )}
 
                       {selectedBabs.length === 0 ? (
                         <div className={`p-2.5 text-center text-xs ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Pilih BAB terlebih dahulu</div>
