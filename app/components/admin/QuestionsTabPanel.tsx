@@ -834,7 +834,7 @@ export default function QuestionsTabPanel({
                     onChange={(e) => setNewMapelName(e.target.value)}
                     placeholder="Contoh: Matematika, Fisika, Biologi"
                     autoFocus
-                    className={`neumorph-pulse-control w-full h-12 rounded-[18px] border-0 px-4 text-[13px] font-medium shadow-[0_10px_24px_rgba(0,0,0,0.16)] transition-spring-fast focus:outline-none ${theme === 'dark' ? 'bg-[#202820] text-surface-mint-edge placeholder:text-[#79867d] focus:bg-[#263028]' : 'bg-white text-dark-olive-900 placeholder:text-[#8c9288] focus:bg-white'}`}
+                    className={`w-full h-12 rounded-2xl px-4 text-[13px] font-medium transition-spring-fast focus:outline-none focus:ring-2 ${theme === 'dark' ? 'bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10 focus:ring-white/20' : 'bg-black/5 text-nike-black placeholder:text-black/40 focus:bg-white focus:ring-nike-black/20 shadow-ios-sm'}`}
                   />
                 </div>
 

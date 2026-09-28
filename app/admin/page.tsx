@@ -79,7 +79,7 @@ function AdminPageInner() {
       if (result.errors.length > 0) {
         const errorPreviews = result.errors.slice(0, 5).map(e => `Baris ${e.row}: ${e.message}`).join('\n');
         const extra = result.errors.length > 5 ? `\n... dan ${result.errors.length - 5} error lainnya` : '';
-        questions.showToast(`${summary} — ${result.errors.length} error:\n${errorPreviews}${extra}`, 'warning');
+        questions.showToast(`${summary}, ${result.errors.length} error:\n${errorPreviews}${extra}`, 'warning');
       } else {
         questions.showToast(`Import berhasil: ${summary}.`, 'success');
       }
@@ -240,7 +240,7 @@ function AdminPageInner() {
   }
 
   return (
-    <div data-admin-page className={`relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-screen h-full w-screen overflow-hidden md:flex ${theme === 'dark' ? 'bg-dark-900 text-surface-mint-edge' : 'bg-bg-app text-dark-olive-900'}`}>
+    <div data-admin-page className={`min-h-dvh h-dvh w-full overflow-hidden flex flex-col md:flex-row ${theme === 'dark' ? 'bg-dark-900 text-dark-text-primary' : 'bg-[#f7f7f8] text-nike-black'}`}>
       <AdminTabSwitcher
         activeTab={tabs.activeTab}
         onTabChange={handleTabChangeWithUrl}
@@ -253,7 +253,7 @@ function AdminPageInner() {
         onToggleTheme={toggleTheme}
       />
 
-      <main className="h-full min-w-0 flex-1 overflow-hidden px-2 pt-14 pb-3 md:ml-[228px] md:px-4 md:py-4 md:pt-4">
+      <main className="h-full min-w-0 flex-1 overflow-hidden px-3 pt-16 pb-3 md:ml-[240px] md:px-6 md:py-6 md:pt-6">
         <div className="flex h-full min-h-0 flex-col">
           <div className="min-h-0 flex-1 overflow-hidden pr-1">
             {tabs.activeTab === 'questions' && (

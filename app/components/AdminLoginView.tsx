@@ -29,32 +29,25 @@ export default function AdminLoginView({
   const isDark = theme === 'dark';
   const [showPassword, setShowPassword] = useState(false);
 
-  const pageBg = isDark ? 'bg-dark-900' : 'bg-white';
+  const pageBg = isDark ? 'bg-dark-900' : 'bg-[#fafafa]';
   const cardBg = isDark ? 'bg-dark-800' : 'bg-white';
-  const cardShadow = isDark ? 'shadow-ios-lg' : 'shadow-ios-lg';
+  const cardShadow = isDark ? 'shadow-ios-xl border border-white/5' : 'shadow-ios-xl border border-black/5';
   const headlineColor = isDark ? 'text-white' : 'text-nike-black';
-  const mutedText = isDark ? 'text-dark-text-tertiary' : 'text-black/55';
-  const subtleText = isDark ? 'text-dark-text-muted' : 'text-black/35';
+  const mutedText = isDark ? 'text-dark-text-tertiary' : 'text-black/60';
   const iconBubble = isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-nike-black';
   const inputClass = isDark
-    ? 'w-full h-12 rounded-2xl bg-white/5 px-5 text-sm font-medium text-white placeholder:text-white/30 focus:outline-none focus:bg-white/10 focus:ring-2 focus:ring-white/20 transition-spring-fast'
-    : 'w-full h-12 rounded-2xl bg-black/5 px-5 text-sm font-medium text-nike-black placeholder:text-black/30 focus:outline-none focus:bg-white focus:ring-2 focus:ring-nike-black/15 transition-spring-fast';
-  const labelClass = isDark ? 'text-dark-text-tertiary' : 'text-black/55';
+    ? 'w-full h-12 rounded-2xl bg-white/5 px-5 text-sm font-medium text-white placeholder:text-white/40 focus:outline-none focus:bg-white/10 focus:ring-2 focus:ring-white/30 transition-spring-fast'
+    : 'w-full h-12 rounded-2xl bg-black/5 px-5 text-sm font-medium text-nike-black placeholder:text-black/40 focus:outline-none focus:bg-white focus:ring-2 focus:ring-nike-black/20 transition-spring-fast';
+  const labelClass = isDark ? 'text-dark-text-secondary' : 'text-black/70';
   const primaryBtn = isDark
-    ? 'w-full h-12 rounded-full bg-white text-nike-black text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
-    : 'w-full h-12 rounded-full bg-nike-black text-white text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100';
-  const ghostBtn = isDark
-    ? 'h-11 rounded-full bg-white/5 text-xs font-semibold text-white hover:bg-white/10 transition-spring-fast'
-    : 'h-11 rounded-full bg-black/5 text-xs font-semibold text-nike-black hover:bg-black/10 transition-spring-fast';
-  const linkBtn = isDark
-    ? 'w-full h-11 rounded-full text-xs font-semibold text-white/50 hover:text-white hover:bg-white/5 transition-spring-fast'
-    : 'w-full h-11 rounded-full text-xs font-semibold text-black/50 hover:text-nike-black hover:bg-black/5 transition-spring-fast';
+    ? 'w-full h-12 rounded-full bg-white text-nike-black text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-white transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
+    : 'w-full h-12 rounded-full bg-nike-black text-white text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-nike-black transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100';
   const togglePill = isDark
-    ? 'inline-flex items-center gap-2 h-10 px-4 rounded-full bg-white/5 text-xs font-semibold text-white hover:bg-white/10 transition-spring-fast'
-    : 'inline-flex items-center gap-2 h-10 px-4 rounded-full bg-black/5 text-xs font-semibold text-nike-black hover:bg-black/10 transition-spring-fast';
+    ? 'inline-flex items-center gap-2 h-10 px-4 rounded-full bg-white/5 text-xs font-semibold text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white transition-spring-fast'
+    : 'inline-flex items-center gap-2 h-10 px-4 rounded-full bg-black/5 text-xs font-semibold text-nike-black hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-nike-black transition-spring-fast';
 
   return (
-    <div className={`min-h-screen flex items-center justify-center px-4 py-10 ${pageBg}`}>
+    <div className={`min-h-dvh flex items-center justify-center px-4 py-10 ${pageBg}`}>
       <div className="w-full max-w-md">
         <div className="flex justify-end mb-3">
           <button
@@ -103,7 +96,7 @@ export default function AdminLoginView({
               Admin login.
             </h1>
             <p className={`mt-2 text-sm font-medium ${mutedText}`}>
-              Masuk untuk mengelola dashboard.
+              Masuk untuk mengelola dashboard ujian dan kuis.
             </p>
           </div>
 
@@ -135,19 +128,19 @@ export default function AdminLoginView({
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition-spring-fast ${isDark ? 'text-white/55 hover:bg-white/10 hover:text-white' : 'text-black/50 hover:bg-black/5 hover:text-nike-black'}`}
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition-spring-fast active:scale-95 ${
+                    isDark ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-nike-black'
+                  }`}
                 >
                   {showPassword ? (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
-                      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.7 21.7 0 0 1 5.17-6.17" />
-                      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.7 21.7 0 0 1-3.17 4.19" />
-                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4" aria-hidden>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
                       <line x1="1" y1="1" x2="23" y2="23" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4" aria-hidden>
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                       <circle cx="12" cy="12" r="3" />
                     </svg>
@@ -159,46 +152,23 @@ export default function AdminLoginView({
             {authError && (
               <div
                 role="alert"
-                className="rounded-2xl bg-accent-red/10 px-4 py-3 text-xs font-semibold text-accent-red"
+                className={`p-3.5 rounded-2xl text-xs font-medium ${
+                  isDark ? 'bg-accent-red/15 text-accent-red border border-accent-red/20' : 'bg-red-50 text-red-700 border border-red-200'
+                }`}
               >
                 {authError}
               </div>
             )}
 
-            <button type="submit" disabled={authLoading} className={primaryBtn}>
-              {authLoading ? 'Memverifikasi...' : 'Masuk ke dashboard'}
-            </button>
-
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => (window.location.href = '/admin/forgot-password')}
-                className={ghostBtn}
-              >
-                Lupa password
-              </button>
-              <button
-                type="button"
-                onClick={() => (window.location.href = '/admin/signup')}
-                className={ghostBtn}
-              >
-                Minta akses
-              </button>
-            </div>
-
             <button
-              type="button"
-              onClick={() => (window.location.href = '/')}
-              className={linkBtn}
+              type="submit"
+              disabled={authLoading}
+              className={primaryBtn}
             >
-              Kembali ke beranda
+              {authLoading ? 'Memverifikasi…' : 'Masuk'}
             </button>
           </form>
         </div>
-
-        <p className={`text-center mt-6 text-xs font-medium ${subtleText}`}>
-          OSN Smandapura · Secure admin access.
-        </p>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { createAdminSignupRequestAction } from '@/app/actions/admin/access';
 import { type AdminRole } from '@/lib/admin-permissions';
@@ -53,16 +54,15 @@ export default function AdminSignupPage() {
     }
   };
 
-  const pageBg = isDark ? 'bg-black' : 'bg-white';
+  const pageBg = isDark ? 'bg-dark-900' : 'bg-[#fafafa]';
   const cardBg = isDark ? 'bg-dark-800' : 'bg-white';
   const headlineColor = isDark ? 'text-white' : 'text-nike-black';
-  const mutedText = isDark ? 'text-white/55' : 'text-black/55';
-  const subtleText = isDark ? 'text-white/35' : 'text-black/35';
-  const labelClass = isDark ? 'text-white/55' : 'text-black/55';
+  const mutedText = isDark ? 'text-dark-text-tertiary' : 'text-black/60';
+  const labelClass = isDark ? 'text-dark-text-secondary' : 'text-black/70';
   const iconBubble = isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-nike-black';
   const inputClass = isDark
-    ? 'w-full h-12 rounded-2xl bg-white/5 px-5 text-sm font-medium text-white placeholder:text-white/30 focus:outline-none focus:bg-white/10 focus:ring-2 focus:ring-white/20 transition-spring-fast'
-    : 'w-full h-12 rounded-2xl bg-black/5 px-5 text-sm font-medium text-nike-black placeholder:text-black/30 focus:outline-none focus:bg-white focus:ring-2 focus:ring-nike-black/15 transition-spring-fast';
+    ? 'w-full h-12 rounded-2xl bg-white/5 px-5 text-sm font-medium text-white placeholder:text-white/40 focus:outline-none focus:bg-white/10 focus:ring-2 focus:ring-white/20 transition-spring-fast'
+    : 'w-full h-12 rounded-2xl bg-black/5 px-5 text-sm font-medium text-nike-black placeholder:text-black/40 focus:outline-none focus:bg-white focus:ring-2 focus:ring-nike-black/15 transition-spring-fast';
   const selectClass = isDark
     ? 'w-full h-12 rounded-2xl bg-white/5 px-5 text-sm font-semibold text-white focus:outline-none focus:bg-white/10 focus:ring-2 focus:ring-white/20 transition-spring-fast appearance-none'
     : 'w-full h-12 rounded-2xl bg-black/5 px-5 text-sm font-semibold text-nike-black focus:outline-none focus:bg-white focus:ring-2 focus:ring-nike-black/15 transition-spring-fast appearance-none';
@@ -70,14 +70,14 @@ export default function AdminSignupPage() {
     ? 'w-full h-12 rounded-full bg-white text-nike-black text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
     : 'w-full h-12 rounded-full bg-nike-black text-white text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100';
   const ghostBtn = isDark
-    ? 'w-full h-11 rounded-full bg-white/5 text-xs font-semibold text-white hover:bg-white/10 transition-spring-fast'
-    : 'w-full h-11 rounded-full bg-black/5 text-xs font-semibold text-nike-black hover:bg-black/10 transition-spring-fast';
+    ? 'w-full h-11 flex items-center justify-center rounded-full bg-white/5 text-xs font-semibold text-white hover:bg-white/10 transition-spring-fast'
+    : 'w-full h-11 flex items-center justify-center rounded-full bg-black/5 text-xs font-semibold text-nike-black hover:bg-black/10 transition-spring-fast';
   const togglePill = isDark
     ? 'inline-flex items-center gap-2 h-10 px-4 rounded-full bg-white/5 text-xs font-semibold text-white hover:bg-white/10 transition-spring-fast'
     : 'inline-flex items-center gap-2 h-10 px-4 rounded-full bg-black/5 text-xs font-semibold text-nike-black hover:bg-black/10 transition-spring-fast';
 
   return (
-    <div className={`min-h-screen flex items-center justify-center px-4 py-10 ${pageBg}`}>
+    <div className={`min-h-dvh flex items-center justify-center px-4 py-10 ${pageBg}`}>
       <div className="w-full max-w-md">
         <div className="flex justify-end mb-3">
           <button
@@ -105,7 +105,7 @@ export default function AdminSignupPage() {
           </button>
         </div>
 
-        <div className={`${cardBg} rounded-3xl p-8 md:p-10 shadow-ios-lg`}>
+        <div className={`${cardBg} rounded-3xl p-8 md:p-10 shadow-ios-xl border ${isDark ? 'border-white/5' : 'border-black/5'}`}>
           <div className="flex flex-col items-center text-center mb-8">
             <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-5 ${iconBubble}`}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6" aria-hidden>
@@ -116,14 +116,27 @@ export default function AdminSignupPage() {
               </svg>
             </div>
             <h1 className={`text-2xl md:text-[28px] font-semibold tracking-tight ${headlineColor}`}>
-              Minta akses admin.
+              Daftar admin.
             </h1>
             <p className={`mt-2 text-sm font-medium ${mutedText}`}>
-              Buat akun, lalu tunggu approval super admin.
+              Ajukan akun baru untuk ditinjau oleh super admin.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block">
+              <span className={`block text-xs font-semibold mb-2 ml-1 ${labelClass}`}>Username</span>
+              <input
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="nama_pengguna"
+                className={inputClass}
+                required
+              />
+            </label>
+
             <label className="block">
               <span className={`block text-xs font-semibold mb-2 ml-1 ${labelClass}`}>Email</span>
               <input
@@ -138,20 +151,6 @@ export default function AdminSignupPage() {
             </label>
 
             <label className="block">
-              <span className={`block text-xs font-semibold mb-2 ml-1 ${labelClass}`}>Username</span>
-              <input
-                type="text"
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                pattern="[a-zA-Z0-9_.-]{3,32}"
-                placeholder="username"
-                className={inputClass}
-                required
-              />
-            </label>
-
-            <label className="block">
               <span className={`block text-xs font-semibold mb-2 ml-1 ${labelClass}`}>Password</span>
               <div className="relative">
                 <input
@@ -159,26 +158,26 @@ export default function AdminSignupPage() {
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  minLength={8}
-                  placeholder="••••••••"
+                  placeholder="Minimal 6 karakter"
                   className={`${inputClass} pr-12`}
+                  minLength={6}
                   required
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition-spring-fast ${isDark ? 'text-white/55 hover:bg-white/10 hover:text-white' : 'text-black/50 hover:bg-black/5 hover:text-nike-black'}`}
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition-spring-fast active:scale-95 ${
+                    isDark ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-nike-black'
+                  }`}
                 >
                   {showPassword ? (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
-                      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.7 21.7 0 0 1 5.17-6.17" />
-                      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.7 21.7 0 0 1-3.17 4.19" />
-                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4" aria-hidden>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
                       <line x1="1" y1="1" x2="23" y2="23" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4" aria-hidden>
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                       <circle cx="12" cy="12" r="3" />
                     </svg>
@@ -188,59 +187,59 @@ export default function AdminSignupPage() {
             </label>
 
             <label className="block">
-              <span className={`block text-xs font-semibold mb-2 ml-1 ${labelClass}`}>Peran yang diminta</span>
-              <div className="relative">
-                <select
-                  value={requestedRole}
-                  onChange={(e) => setRequestedRole(e.target.value as SignupRole)}
-                  className={selectClass}
-                >
-                  <option value="teacher">Teacher</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={`pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-white/55' : 'text-black/55'}`}
-                  aria-hidden
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </div>
+              <span className={`block text-xs font-semibold mb-2 ml-1 ${labelClass}`}>Peran yang diajukan</span>
+              <select
+                value={requestedRole}
+                onChange={(e) => setRequestedRole(e.target.value as SignupRole)}
+                className={selectClass}
+              >
+                <option value="teacher" className={isDark ? 'bg-dark-800 text-white' : 'bg-white text-nike-black'}>
+                  Teacher (Guru / Pembuat Soal)
+                </option>
+                <option value="curator" className={isDark ? 'bg-dark-800 text-white' : 'bg-white text-nike-black'}>
+                  Curator (Kurator Konten)
+                </option>
+                <option value="admin" className={isDark ? 'bg-dark-800 text-white' : 'bg-white text-nike-black'}>
+                  Admin (Pengelola Penuh)
+                </option>
+              </select>
             </label>
 
             {message && (
-              <div role="status" className="rounded-2xl bg-accent-green/10 px-4 py-3 text-xs font-semibold text-accent-green">
+              <div
+                role="status"
+                className={`p-3.5 rounded-2xl text-xs font-medium ${
+                  isDark ? 'bg-accent-green/15 text-accent-green border border-accent-green/20' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                }`}
+              >
                 {message}
               </div>
             )}
+
             {error && (
-              <div role="alert" className="rounded-2xl bg-accent-red/10 px-4 py-3 text-xs font-semibold text-accent-red">
+              <div
+                role="alert"
+                className={`p-3.5 rounded-2xl text-xs font-medium ${
+                  isDark ? 'bg-accent-red/15 text-accent-red border border-accent-red/20' : 'bg-red-50 text-red-700 border border-red-200'
+                }`}
+              >
                 {error}
               </div>
             )}
 
-            <button type="submit" disabled={loading} className={primaryBtn}>
-              {loading ? 'Mengirim...' : 'Kirim permintaan akses'}
+            <button
+              type="submit"
+              disabled={loading}
+              className={primaryBtn}
+            >
+              {loading ? 'Mengirim permintaan…' : 'Ajukan pendaftaran'}
             </button>
 
-            <button
-              type="button"
-              onClick={() => (window.location.href = '/admin')}
-              className={ghostBtn}
-            >
-              Kembali ke login
-            </button>
+            <Link href="/admin" className={ghostBtn}>
+              Sudah punya akun? Masuk
+            </Link>
           </form>
         </div>
-
-        <p className={`text-center mt-6 text-xs font-medium ${subtleText}`}>
-          OSN Smandapura · Secure admin access.
-        </p>
       </div>
     </div>
   );

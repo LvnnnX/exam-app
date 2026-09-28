@@ -7,11 +7,15 @@ type AdminAuthLoadingViewProps = {
 };
 
 export default function AdminAuthLoadingView({ theme = 'dark' }: AdminAuthLoadingViewProps) {
+  const isDark = theme === 'dark';
+
   return (
-    <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-dark-900' : 'bg-white'}`}>
+    <div className={`min-h-dvh flex items-center justify-center ${isDark ? 'bg-dark-900 text-dark-text-primary' : 'bg-white text-nike-black'}`}>
       <div className="flex flex-col items-center gap-4">
-        <div className={`w-12 h-12 border-4 rounded-full animate-spin ${theme === 'dark' ? 'border-dark-700 border-t-accent-blue' : 'border-blue-100 border-t-link-blue'}`}></div>
-        <p className={`text-sm font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Verifying Admin Session...</p>
+        <div className={`w-10 h-10 border-3 rounded-full animate-spin ${isDark ? 'border-white/15 border-t-white' : 'border-black/10 border-t-nike-black'}`} />
+        <p className={`text-sm font-medium tracking-tight ${isDark ? 'text-dark-text-tertiary' : 'text-black/60'}`}>
+          Memverifikasi sesi admin…
+        </p>
       </div>
     </div>
   );

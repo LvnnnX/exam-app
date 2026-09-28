@@ -972,7 +972,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                         <span className={`text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>None Selected</span>
                       ) : (
                         selectedMapels.map(m => (
-                          <span key={m} className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold flex items-center gap-1 ${theme === 'dark' ? 'bg-accent-blue/20 text-accent-blue' : 'bg-blue-100 text-blue-700'}`}>
+                          <span key={m} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${theme === 'dark' ? 'bg-accent-blue/20 text-accent-blue' : 'bg-blue-100 text-blue-700'}`}>
                             {m}
                             <button onClick={(e) => {
                               e.stopPropagation();
@@ -1304,8 +1304,12 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                 <div className={`p-3 md:p-4 py-3 border-b ${theme === 'dark' ? 'bg-dark-800 border-dark-border' : 'bg-white border-gray-100'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center border ${theme === 'dark' ? 'bg-accent-purple/20 border-accent-purple/30' : 'bg-pink-soft border-pink-edge'}`}>
-                        <span className="text-sm">📊</span>
+                      <div className={`w-6 h-6 rounded-2xl flex items-center justify-center border ${theme === 'dark' ? 'bg-accent-purple/20 border-accent-purple/30 text-accent-purple' : 'bg-pink-soft border-pink-edge text-pink-600'}`}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5" aria-hidden>
+                          <line x1="18" y1="20" x2="18" y2="10" />
+                          <line x1="12" y1="20" x2="12" y2="4" />
+                          <line x1="6" y1="20" x2="6" y2="14" />
+                        </svg>
                       </div>
                       <label className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Persentase soal</label>
                     </div>
@@ -1513,21 +1517,13 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                     Creating...
                   </span>
                 ) : selectedMapels.length === 0 ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span>❌</span> Pilih MAPEL dulu
-                  </span>
+                  <span>Pilih mapel terlebih dahulu</span>
                 ) : selectedBabs.length === 0 ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span>❌</span> Pilih BAB dulu
-                  </span>
+                  <span>Pilih bab terlebih dahulu</span>
                 ) : selectedSubBabs.length === 0 ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span>❌</span> Pilih Sub-bab dulu
-                  </span>
+                  <span>Pilih sub-bab terlebih dahulu</span>
                 ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <span>🚀</span> Buat Kuis
-                  </span>
+                  <span>Buat kuis</span>
                 )}
               </button>
             </div>

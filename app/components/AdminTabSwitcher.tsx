@@ -1,10 +1,23 @@
 "use client";
 
 import Image from 'next/image';
-import React, { useEffect, useState } from 'react';
-import { FileQuestion, BarChart3, TrendingUp, Settings, PlayCircle, Shield, Sun, Moon, Menu, X, CalendarClock } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  FileQuestion,
+  BarChart3,
+  TrendingUp,
+  Settings,
+  PlayCircle,
+  Shield,
+  Sun,
+  Moon,
+  Menu,
+  X,
+  CalendarClock,
+  LogOut,
+} from 'lucide-react';
 
-type AdminTab = 'questions' | 'results' | 'analytics' | 'settings' | 'quiz' | 'scheduled' | 'access';
+export type AdminTab = 'questions' | 'results' | 'analytics' | 'settings' | 'quiz' | 'scheduled' | 'access';
 
 type AdminTabSwitcherProps = {
   activeTab: AdminTab;
@@ -18,17 +31,28 @@ type AdminTabSwitcherProps = {
   onToggleTheme?: () => void;
 };
 
-const tabs: Array<{ id: AdminTab; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; accessOnly?: boolean; settingsOnly?: boolean }> = [
-  { id: 'questions', label: 'Questions', icon: FileQuestion },
-  { id: 'results', label: 'Results', icon: BarChart3 },
-  { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-  { id: 'quiz', label: 'Quiz', icon: PlayCircle },
-  { id: 'scheduled', label: 'Scheduled', icon: CalendarClock },
-  { id: 'settings', label: 'Settings', icon: Settings, settingsOnly: true },
-  { id: 'access', label: 'Access', icon: Shield, accessOnly: true },
+const tabs: Array<{
+  id: AdminTab;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  accessOnly?: boolean;
+  settingsOnly?: boolean;
+}> = [
+  { id: 'questions', label: 'Soal', icon: FileQuestion },
+  { id: 'quiz', label: 'Kuis live', icon: PlayCircle },
+  { id: 'results', label: 'Hasil ujian', icon: BarChart3 },
+  { id: 'analytics', label: 'Analitik', icon: TrendingUp },
+  { id: 'scheduled', label: 'Jadwal ujian', icon: CalendarClock },
+  { id: 'settings', label: 'Pengaturan', icon: Settings, settingsOnly: true },
+  { id: 'access', label: 'Akses admin', icon: Shield, accessOnly: true },
 ];
 
-function NavButton({ tab, activeTab, onTabChange, theme = 'dark' }: {
+function NavButton({
+  tab,
+  activeTab,
+  onTabChange,
+  theme = 'dark',
+}: {
   tab: typeof tabs[number];
   activeTab: AdminTab;
   onTabChange: (tab: AdminTab) => void;
@@ -37,42 +61,65 @@ function NavButton({ tab, activeTab, onTabChange, theme = 'dark' }: {
   const isActive = activeTab === tab.id;
   const Icon = tab.icon;
 
-  // Per LOGIKA-08 §3.6 Nav Button Anatomy:
-  //   Active dark: bg-white/10 text-dark-text-primary shadow-ios-sm
-  //   Default dark: text-dark-text-secondary hover:bg-white/5
-  //   Active light: bg-black/10 text-gray-900
-  //   Default light: text-gray-600 hover:bg-black/5
-  const styles = theme === 'dark'
-    ? isActive
-      ? 'bg-white/10 text-dark-text-primary shadow-ios-sm'
-      : 'text-dark-text-secondary hover:bg-white/5'
-    : isActive
-      ? 'bg-black/10 text-gray-900'
-      : 'text-gray-600 hover:bg-black/5';
+  const styles =
+    theme === 'dark'
+      ? isActive
+        ? 'bg-white text-dark-900 font-semibold shadow-ios-sm'
+        : 'text-white/70 hover:text-white hover:bg-white/5 font-medium'
+      : isActive
+        ? 'bg-nike-black text-white font-semibold shadow-ios-sm'
+        : 'text-black/70 hover:text-nike-black hover:bg-black/5 font-medium';
 
   return (
     <button
       type="button"
       onClick={() => onTabChange(tab.id)}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-left text-[13px] rounded-full font-medium transition-spring-fast active:scale-95 ${styles}`}
+      role="tab"
+      aria-selected={isActive}
+      className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-[13.5px] rounded-2xl transition-spring-fast active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 ${
+        theme === 'dark' ? 'focus-visible:ring-white/40' : 'focus-visible:ring-nike-black/30'
+      } ${styles}`}
     >
-      <Icon size={16} className="shrink-0" />
-      {tab.label}
+      <Icon size={17} className="shrink-0" />
+      <span className="truncate">{tab.label}</span>
     </button>
   );
 }
 
-export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, adminEmail, adminRole, canAccessManage, canViewSettings, theme = 'dark', onToggleTheme }: AdminTabSwitcherProps) {
-  const visibleTabs = tabs.filter((tab) => (!tab.accessOnly || canAccessManage) && (!tab.settingsOnly || canViewSettings));
+export default function AdminTabSwitcher({
+  activeTab,
+  onTabChange,
+  onLogout,
+  adminEmail,
+  adminRole,
+  canAccessManage,
+  canViewSettings,
+  theme = 'dark',
+  onToggleTheme,
+}: AdminTabSwitcherProps) {
+  const isDark = theme === 'dark';
+  const visibleTabs = tabs.filter(
+    (tab) => (!tab.accessOnly || canAccessManage) && (!tab.settingsOnly || canViewSettings)
+  );
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && mobileOpen) {
+      setMobileOpen(false);
+    }
+  }, [mobileOpen]);
 
   useEffect(() => {
     if (mobileOpen) {
       const previous = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = previous; };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = previous;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     }
-  }, [mobileOpen]);
+  }, [mobileOpen, handleKeyDown]);
 
   const handleMobileTab = (tab: AdminTab) => {
     onTabChange(tab);
@@ -81,148 +128,242 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, adm
 
   return (
     <>
-      {/* Desktop sidebar — per LOGIKA-08 §3.6: w-[228px], gap-1 nav, brand top, theme + account bottom */}
-      <aside className={`fixed inset-y-0 left-0 z-40 hidden h-screen w-[228px] shrink-0 flex-col overflow-hidden border-r px-3 py-4 md:flex ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-850' : 'border-black/10 bg-white'}`}>
-        <div className="px-1 pb-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center">
-              <Image src="/favicon.ico" alt="Smandapura Exam App" width={44} height={44} priority />
+      {/* Desktop sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 hidden h-dvh w-[240px] shrink-0 flex-col overflow-hidden border-r px-3.5 py-4 md:flex ${
+          isDark
+            ? 'border-white/10 bg-dark-900 text-dark-text-primary'
+            : 'border-black/10 bg-white text-nike-black'
+        }`}
+      >
+        {/* Brand header */}
+        <div className="px-2 pb-4 pt-1">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 p-1.5">
+              <Image src="/favicon.ico" alt="Smandapura Exam App" width={32} height={32} priority />
             </div>
             <div className="min-w-0">
-              <div className={`text-xl font-bold leading-none tracking-[-0.03em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>
-                Smandapura<br />Exam App
+              <div className="text-[15px] font-bold leading-tight tracking-tight">
+                Smandapura
+              </div>
+              <div className={`text-[11px] font-medium ${isDark ? 'text-white/50' : 'text-black/50'}`}>
+                Admin console
               </div>
             </div>
           </div>
         </div>
 
-        <nav className="flex flex-col gap-1">
+        {/* Navigation list */}
+        <nav className="flex flex-col gap-1 py-1" role="tablist" aria-label="Menu navigasi admin">
           {visibleTabs.map((tab) => (
-            <NavButton key={tab.id} tab={tab} activeTab={activeTab} onTabChange={onTabChange} theme={theme} />
+            <NavButton
+              key={tab.id}
+              tab={tab}
+              activeTab={activeTab}
+              onTabChange={onTabChange}
+              theme={theme}
+            />
           ))}
         </nav>
 
         <div className="flex-1" />
 
-        {/* Bottom row: theme toggle + account chip */}
-        {adminEmail && (
-          <div className={`mb-3 rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold uppercase ${theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-gray-900 text-white'}`}>
-                {adminEmail[0]}
-              </div>
-              <div className="min-w-0">
-                <p className={`truncate text-[13px] font-medium tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`} title={adminEmail}>{adminEmail}</p>
-                <p className={`mt-0.5 text-[11px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-black/55'}`}>{adminRole || 'Administrator'}</p>
+        {/* Account card & Actions */}
+        <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/5">
+          {adminEmail && (
+            <div
+              className={`rounded-2xl px-3 py-2.5 ${
+                isDark ? 'bg-white/[0.04]' : 'bg-black/[0.03]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold uppercase ${
+                    isDark ? 'bg-white/15 text-white' : 'bg-nike-black text-white'
+                  }`}
+                >
+                  {adminEmail[0]}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="truncate text-[12.5px] font-medium tracking-tight"
+                    title={adminEmail}
+                  >
+                    {adminEmail}
+                  </p>
+                  <p
+                    className={`truncate text-[11px] ${
+                      isDark ? 'text-white/50' : 'text-black/50'
+                    }`}
+                  >
+                    {adminRole || 'Administrator'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {onToggleTheme && (
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className={`mb-2 flex h-10 w-full items-center justify-center gap-2 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-nike-black hover:bg-black/10'}`}
-          >
-            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
-        )}
-
-        {onLogout && (
-          <button
-            type="button"
-            onClick={onLogout}
-            className={`h-10 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red hover:bg-accent-red/25' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-          >
-            Logout
-          </button>
-        )}
-      </aside>
-
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className={`fixed right-3 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-full transition-spring-fast active:scale-90 md:hidden ${theme === 'dark' ? 'bg-white/10 text-dark-text-primary backdrop-blur-md' : 'bg-black/5 text-nike-black backdrop-blur-md'}`}
-        aria-label="Open menu"
-      >
-        <Menu size={18} />
-      </button>
-
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-50 md:hidden"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-
-          <aside className={`absolute inset-y-0 right-0 flex h-full w-[280px] max-w-[85vw] flex-col overflow-y-auto px-4 py-4 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-850' : 'bg-white'}`}>
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-                  <Image src="/favicon.ico" alt="Smandapura Exam App" width={32} height={32} />
-                </div>
-                <div className={`text-[15px] font-semibold leading-tight tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`}>
-                  Smandapura
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className={`flex h-9 w-9 items-center justify-center rounded-full transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-black/55 hover:bg-black/10'}`}
-                aria-label="Close menu"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <nav className="flex flex-col gap-1">
-              {visibleTabs.map((tab) => (
-                <NavButton key={tab.id} tab={tab} activeTab={activeTab} onTabChange={handleMobileTab} theme={theme} />
-              ))}
-            </nav>
-
-            <div className="flex-1" />
-
-            {adminEmail && (
-              <div className={`mt-4 mb-3 rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold uppercase ${theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-gray-900 text-white'}`}>
-                    {adminEmail[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`truncate text-[13px] font-medium tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black'}`} title={adminEmail}>{adminEmail}</p>
-                    <p className={`mt-0.5 text-[11px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-black/55'}`}>{adminRole || 'Administrator'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
+          <div className="flex items-center gap-1.5">
             {onToggleTheme && (
               <button
                 type="button"
                 onClick={onToggleTheme}
-                className={`mb-2 flex h-10 w-full items-center justify-center gap-2 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-nike-black hover:bg-black/10'}`}
+                aria-label={isDark ? 'Beralih ke mode terang' : 'Beralih ke mode gelap'}
+                className={`flex-1 flex h-9 items-center justify-center gap-2 rounded-2xl text-[12px] font-medium transition-spring-fast active:scale-95 focus-visible:outline-none focus-visible:ring-2 ${
+                  isDark
+                    ? 'bg-white/5 text-white hover:bg-white/10 focus-visible:ring-white/40'
+                    : 'bg-black/5 text-nike-black hover:bg-black/10 focus-visible:ring-nike-black/30'
+                }`}
               >
-                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                {isDark ? <Sun size={14} /> : <Moon size={14} />}
+                <span>{isDark ? 'Terang' : 'Gelap'}</span>
               </button>
             )}
 
             {onLogout && (
               <button
                 type="button"
-                onClick={() => { onLogout(); setMobileOpen(false); }}
-                className={`h-10 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red hover:bg-accent-red/25' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                onClick={onLogout}
+                aria-label="Keluar dari akun admin"
+                className={`flex h-9 px-3 items-center justify-center gap-1.5 rounded-2xl text-[12px] font-medium transition-spring-fast active:scale-95 focus-visible:outline-none focus-visible:ring-2 ${
+                  isDark
+                    ? 'bg-accent-red/15 text-accent-red hover:bg-accent-red/25 focus-visible:ring-accent-red/40'
+                    : 'bg-red-50 text-red-600 hover:bg-red-100 focus-visible:ring-red-500/30'
+                }`}
               >
-                Logout
+                <LogOut size={14} />
+                <span>Keluar</span>
               </button>
             )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile top navigation bar */}
+      <div
+        className={`fixed top-0 inset-x-0 z-30 flex h-14 items-center justify-between px-4 border-b md:hidden backdrop-blur-xl ${
+          isDark
+            ? 'border-white/10 bg-dark-900/90 text-dark-text-primary'
+            : 'border-black/10 bg-white/90 text-nike-black'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <Image src="/favicon.ico" alt="Smandapura" width={24} height={24} />
+          <span className="text-[14px] font-bold tracking-tight">Smandapura Admin</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className={`flex h-9 w-9 items-center justify-center rounded-full transition-spring-fast active:scale-90 focus-visible:ring-2 ${
+            isDark
+              ? 'bg-white/10 text-white focus-visible:ring-white/40'
+              : 'bg-black/5 text-nike-black focus-visible:ring-nike-black/30'
+          }`}
+          aria-label="Buka menu admin"
+        >
+          <Menu size={18} />
+        </button>
+      </div>
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu navigasi admin"
+        >
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
+
+          <aside
+            className={`absolute inset-y-0 right-0 flex h-full w-[280px] max-w-[85vw] flex-col overflow-y-auto p-4 shadow-ios-xl ${
+              isDark ? 'bg-dark-900 text-dark-text-primary' : 'bg-white text-nike-black'
+            }`}
+          >
+            <div className="mb-4 flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+              <div className="flex items-center gap-2">
+                <Image src="/favicon.ico" alt="Smandapura" width={28} height={28} />
+                <span className="text-[15px] font-bold tracking-tight">Menu admin</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className={`flex h-8 w-8 items-center justify-center rounded-full transition-spring-fast active:scale-90 ${
+                  isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-nike-black'
+                }`}
+                aria-label="Tutup menu"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <nav className="flex flex-col gap-1 py-2" role="tablist">
+              {visibleTabs.map((tab) => (
+                <NavButton
+                  key={tab.id}
+                  tab={tab}
+                  activeTab={activeTab}
+                  onTabChange={handleMobileTab}
+                  theme={theme}
+                />
+              ))}
+            </nav>
+
+            <div className="flex-1" />
+
+            <div className="space-y-2 pt-3 border-t border-black/5 dark:border-white/5">
+              {adminEmail && (
+                <div
+                  className={`rounded-2xl px-3 py-2.5 ${
+                    isDark ? 'bg-white/[0.04]' : 'bg-black/[0.03]'
+                  }`}
+                >
+                  <p className="truncate text-[12px] font-medium tracking-tight" title={adminEmail}>
+                    {adminEmail}
+                  </p>
+                  <p className={`text-[11px] ${isDark ? 'text-white/50' : 'text-black/50'}`}>
+                    {adminRole || 'Administrator'}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                {onToggleTheme && (
+                  <button
+                    type="button"
+                    onClick={onToggleTheme}
+                    className={`flex-1 flex h-9 items-center justify-center gap-2 rounded-2xl text-[12px] font-medium transition-spring-fast active:scale-95 ${
+                      isDark ? 'bg-white/5 text-white' : 'bg-black/5 text-nike-black'
+                    }`}
+                  >
+                    {isDark ? <Sun size={14} /> : <Moon size={14} />}
+                    <span>{isDark ? 'Terang' : 'Gelap'}</span>
+                  </button>
+                )}
+
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onLogout();
+                      setMobileOpen(false);
+                    }}
+                    className={`flex h-9 px-3 items-center justify-center gap-1.5 rounded-2xl text-[12px] font-medium transition-spring-fast active:scale-95 ${
+                      isDark
+                        ? 'bg-accent-red/15 text-accent-red'
+                        : 'bg-red-50 text-red-600'
+                    }`}
+                  >
+                    <LogOut size={14} />
+                    <span>Keluar</span>
+                  </button>
+                )}
+              </div>
+            </div>
           </aside>
         </div>
       )}
