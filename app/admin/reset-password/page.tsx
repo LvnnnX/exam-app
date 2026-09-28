@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 export default function AdminResetPasswordPage() {
@@ -88,9 +89,9 @@ export default function AdminResetPasswordPage() {
               {loading ? 'Updating...' : 'Update password'}
             </button>
 
-            <button type="button" onClick={() => window.location.href = '/admin'} className="well well-hover h-11 w-full rounded-xl text-[13px] font-medium text-fg transition-calm">
+            <Link href="/admin" className="well well-hover flex h-11 w-full items-center justify-center rounded-xl text-[13px] font-medium text-fg transition-calm">
               Back to login
-            </button>
+            </Link>
           </form>
         </div>
       </div>
