@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import RichContent from '@/app/components/RichContent';
 import { type RawQuestion } from '@/lib/questions';
 import { stripHtml } from '@/lib/rich-text';
 
@@ -24,20 +23,22 @@ export default function TrackingSessionHistoryPanel({
   detailQuestions,
   trackingSession,
   getCorrectOptionText,
-  theme = 'dark',
 }: TrackingSessionHistoryPanelProps) {
   return (
     <div className="space-y-3">
-      <h3 className={`text-[12px] font-medium tracking-tight ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+      <h3 className="text-[13px] font-semibold text-fg-muted">
         Session history
       </h3>
 
       {detailLoading ? (
-        <div className={`text-center py-8 text-[12px] font-medium animate-pulse ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Loading history…</div>
+        <div className="flex items-center justify-center gap-2 py-8 text-[13px] font-medium text-fg-muted" role="status">
+          <span className="spinner-calm h-4 w-4" aria-hidden="true" />
+          Loading history…
+        </div>
       ) : detailQuestions.length === 0 ? (
-        <div className={`text-center py-8 text-[12px] font-medium rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03] text-dark-text-tertiary' : 'bg-black/[0.025] text-gray-400'}`}>No history yet</div>
+        <div className="well rounded-2xl py-8 text-center text-[13px] font-medium text-fg-muted">No history yet</div>
       ) : (
-        <div className={`rounded-2xl ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+        <div className="well overflow-hidden rounded-2xl">
           {trackingSession.question_ids
             .slice(0, trackingSession.current_index + 1)
             .filter(qId => detailQuestions.some(q => q.id === qId))
@@ -55,19 +56,19 @@ export default function TrackingSessionHistoryPanel({
             return (
               <div
                 key={qId}
-                className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.02]' : 'hover:bg-black/[0.02]'}`}
+                className="flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0"
               >
-                <span className={`text-[12px] font-semibold tabular-nums shrink-0 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>
-                  Q{idx + 1}
+                <span className="clay inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg px-1.5 text-[12px] font-bold tabular-nums">
+                  {idx + 1}
                 </span>
-                <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${
+                <span className={`inline-flex h-7 items-center rounded-lg px-2.5 text-[12px] font-semibold ${
                   isSkipped
-                    ? theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary' : 'bg-black/5 text-gray-400'
+                    ? 'well text-fg-muted'
                     : isCorrect
-                    ? theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700'
-                    : theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700'
+                    ? 'bg-primary/12 text-primary'
+                    : 'bg-danger/12 text-danger'
                 }`}>
-                  {isSkipped ? 'Skipped' : isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                  {isSkipped ? 'Skipped' : isCorrect ? 'Correct' : 'Incorrect'}
                 </span>
               </div>
             );

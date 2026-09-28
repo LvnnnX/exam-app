@@ -24,25 +24,34 @@ function splitLabel(joined: string): string[] {
 function TopicChip({ label, items }: { label: string; items: string[] }) {
   if (items.length === 0) {
     return (
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">{label}</span>
-        <span className="text-[13px] font-medium text-nike-grey-500 tracking-tight">None</span>
+      <div className="flex items-baseline gap-2">
+        <span className="w-11 shrink-0 text-[12px] font-medium text-fg-muted">{label}</span>
+        <span className="text-[14px] font-medium text-fg-subtle">None</span>
       </div>
     );
   }
   const [first, ...rest] = items;
   return (
-    <div className="flex items-baseline gap-1.5">
-      <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">{label}</span>
-      <span className="text-[13px] font-medium text-nike-black tracking-tight truncate">{first}</span>
+    <div className="flex min-w-0 items-baseline gap-2">
+      <span className="w-11 shrink-0 text-[12px] font-medium text-fg-muted">{label}</span>
+      <span className="truncate text-[14px] font-semibold text-fg">{first}</span>
       {rest.length > 0 && (
         <span
           title={items.join(', ')}
-          className="inline-flex items-center px-1.5 h-5 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums tracking-tight shrink-0"
+          className="well inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-semibold tabular-nums text-fg-muted"
         >
           +{rest.length}
         </span>
       )}
+    </div>
+  );
+}
+
+function Detail({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1 text-[12px] font-medium text-fg-muted">{label}</p>
+      {children}
     </div>
   );
 }
@@ -61,72 +70,67 @@ export default function ConfirmIdentityStep({
   onStart,
 }: ConfirmIdentityStepProps) {
   return (
-    <div className="flex-1 flex flex-col pt-10 md:pt-16 px-5 sm:px-6 pb-10">
-      <div className="max-w-2xl mx-auto w-full">
-        <div className="mb-7 md:mb-10">
-          <p className="text-[12px] font-medium text-nike-grey-500 mb-2 tracking-tight">Step 2 of 2</p>
-          <h2 className="font-display text-[36px] sm:text-[48px] text-nike-black leading-[1.05] tracking-[-0.02em] mb-2">
+    <div className="flex-1 flex flex-col px-4 pt-8 pb-12 sm:px-6 md:pt-14">
+      <div className="mx-auto w-full max-w-xl">
+        <div className="mb-6 md:mb-8">
+          <p className="mb-2 text-[13px] font-medium text-fg-muted">Step 2 of 2</p>
+          <h2 className="mb-2 text-[34px] font-bold leading-[1.05] tracking-[-0.02em] text-fg sm:text-[44px]">
             Confirm identity.
           </h2>
-          <p className="text-[14px] text-nike-grey-500 tracking-tight">Review your details before starting.</p>
+          <p className="text-[15px] text-fg-muted">Review your details before starting.</p>
         </div>
 
-        <div className="max-w-md w-full">
-          <div className="rounded-3xl bg-black/[0.03] p-5 mb-6 space-y-5">
-            <div>
-              <p className="text-[11px] font-medium text-nike-grey-500 mb-1 tracking-tight">Candidate</p>
-              <p className="text-[20px] font-semibold text-nike-black tracking-tight">{userName}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-              <div>
-                <p className="text-[11px] font-medium text-nike-grey-500 mb-1 tracking-tight">Mode</p>
-                <p className={`text-[14px] font-semibold tracking-tight ${isSurvival ? 'text-nike-red' : 'text-nike-black'}`}>{isSurvival ? 'Survival' : 'Exam'}</p>
-              </div>
-              {!isSurvival && (
-                <div>
-                  <p className="text-[11px] font-medium text-nike-grey-500 mb-1 tracking-tight">Navigation</p>
-                  <p className="text-[14px] font-semibold text-nike-black tracking-tight">
-                    {examMode === 'standard' ? 'Standard' : 'Strict'}
-                  </p>
-                </div>
-              )}
-              <div className={isSurvival ? '' : 'col-span-2'}>
-                <p className="text-[11px] font-medium text-nike-grey-500 mb-2 tracking-tight">Topic</p>
-                <div className="space-y-1">
-                  <TopicChip label="Mapel" items={splitLabel(mapelsLabel)} />
-                  <TopicChip label="Bab" items={splitLabel(babsLabel)} />
-                  <TopicChip label="Sub" items={splitLabel(subBabsLabel)} />
-                </div>
-              </div>
-              <div>
-                <p className="text-[11px] font-medium text-nike-grey-500 mb-1 tracking-tight">Questions</p>
-                <p className="text-[14px] font-semibold text-nike-black tabular-nums tracking-tight">{isSurvival ? 'All' : questionCount}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-medium text-nike-grey-500 mb-1 tracking-tight">Time limit</p>
-                <p className="text-[14px] font-semibold text-nike-black tabular-nums tracking-tight">{timeLimitLabel}</p>
-              </div>
-              {isSurvival && (
-                <div>
-                  <p className="text-[11px] font-medium text-nike-grey-500 mb-1 tracking-tight">Lives</p>
-                  <p className="text-[14px] font-semibold text-nike-red tracking-tight">3 lives</p>
-                </div>
-              )}
-            </div>
+        <div className="glass rounded-3xl p-5 md:p-6">
+          <div className="mb-5 border-b border-line pb-5">
+            <p className="mb-1 text-[12px] font-medium text-fg-muted">Candidate</p>
+            <p className="break-words text-[22px] font-bold tracking-tight text-fg">{userName}</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+            <Detail label="Mode">
+              <p className={`text-[15px] font-semibold ${isSurvival ? 'text-danger' : 'text-fg'}`}>{isSurvival ? 'Survival' : 'Exam'}</p>
+            </Detail>
+            {!isSurvival && (
+              <Detail label="Navigation">
+                <p className="text-[15px] font-semibold text-fg">
+                  {examMode === 'standard' ? 'Standard' : 'Strict'}
+                </p>
+              </Detail>
+            )}
+            <div className={isSurvival ? '' : 'col-span-2'}>
+              <p className="mb-2 text-[12px] font-medium text-fg-muted">Topic</p>
+              <div className="well space-y-1.5 rounded-2xl px-3.5 py-3">
+                <TopicChip label="Mapel" items={splitLabel(mapelsLabel)} />
+                <TopicChip label="Bab" items={splitLabel(babsLabel)} />
+                <TopicChip label="Sub" items={splitLabel(subBabsLabel)} />
+              </div>
+            </div>
+            <Detail label="Questions">
+              <p className="text-[15px] font-semibold tabular-nums text-fg">{isSurvival ? 'All' : questionCount}</p>
+            </Detail>
+            <Detail label="Time limit">
+              <p className="text-[15px] font-semibold tabular-nums text-fg">{timeLimitLabel}</p>
+            </Detail>
+            {isSurvival && (
+              <Detail label="Lives">
+                <p className="text-[15px] font-semibold text-danger">3 lives</p>
+              </Detail>
+            )}
+          </div>
+
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             <button
+              type="button"
               onClick={onEdit}
-              className="w-full sm:flex-1 h-12 rounded-full bg-black/5 text-nike-black text-[14px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+              className="well well-hover h-12 w-full rounded-xl text-[14px] font-medium text-fg transition-calm sm:flex-1"
             >
               Edit
             </button>
             <button
+              type="button"
               onClick={onStart}
               disabled={isLoading}
-              className="w-full sm:flex-1 h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 tracking-tight shadow-ios-sm"
+              className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold sm:flex-1"
             >
               {isLoading ? 'Preparing…' : 'Start exam'}
             </button>

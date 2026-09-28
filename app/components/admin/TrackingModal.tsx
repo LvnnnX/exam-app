@@ -62,11 +62,32 @@ export default function TrackingModal({
     onClose();
   };
 
+  useEffect(() => {
+    if (!isOpen || !trackingSession) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        document.body.style.overflow = '';
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, trackingSession, onClose]);
+
   if (!isOpen || !trackingSession) return null;
 
+  const tabClass = (active: boolean) =>
+    `h-11 md:h-10 flex-1 rounded-lg text-[13px] font-semibold transition-calm ${active ? 'clay' : 'text-fg-muted hover:text-fg'}`;
+
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[10000]" onClick={handleClose}>
-      <div className={`rounded-[24px] sm:rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4" onClick={handleClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Live tracking ${trackingSession.name}`}
+        className="glass-sheet animate-in flex max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-4xl text-fg sm:max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <TrackingModalHeader
           trackingSession={trackingSession}
           formatCategorySelectionLabel={formatCategorySelectionLabel}
@@ -75,38 +96,28 @@ export default function TrackingModal({
         />
 
         {/* Tab Switcher */}
-        <div className={`shrink-0 flex gap-1 px-4 py-2 border-b sm:px-6 sm:py-3 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
-          <button
-            onClick={() => setActiveTab('current')}
-            className={`flex-1 h-9 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${
-              activeTab === 'current'
-                ? theme === 'dark'
-                  ? 'bg-white/10 text-dark-text-primary'
-                  : 'bg-black/10 text-gray-900'
-                : theme === 'dark'
-                ? 'text-dark-text-tertiary hover:bg-white/5'
-                : 'text-gray-500 hover:bg-black/5'
-            }`}
-          >
-            Current question
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 h-9 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${
-              activeTab === 'history'
-                ? theme === 'dark'
-                  ? 'bg-white/10 text-dark-text-primary'
-                  : 'bg-black/10 text-gray-900'
-                : theme === 'dark'
-                ? 'text-dark-text-tertiary hover:bg-white/5'
-                : 'text-gray-500 hover:bg-black/5'
-            }`}
-          >
-            History · {Object.keys(trackingSession.user_answers || {}).length}
-          </button>
+        <div className="shrink-0 border-b border-line px-4 py-2.5 sm:px-6 sm:py-3">
+          <div className="well flex gap-1 rounded-xl p-1" role="group" aria-label="Tracking view">
+            <button
+              type="button"
+              aria-pressed={activeTab === 'current'}
+              onClick={() => setActiveTab('current')}
+              className={tabClass(activeTab === 'current')}
+            >
+              Current question
+            </button>
+            <button
+              type="button"
+              aria-pressed={activeTab === 'history'}
+              onClick={() => setActiveTab('history')}
+              className={tabClass(activeTab === 'history')}
+            >
+              History · {Object.keys(trackingSession.user_answers || {}).length}
+            </button>
+          </div>
         </div>
 
-        <div className={`flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
+        <div className="result-details-scroll-light flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
           {activeTab === 'current' ? (
             <TrackingCurrentQuestionPanel
               key="current-question"

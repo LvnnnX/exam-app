@@ -13,6 +13,21 @@ interface MultiSelectDropdownProps {
   theme?: 'light' | 'dark';
 }
 
+function CheckBox({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md transition-calm ${checked ? 'bg-primary text-on-primary' : 'border border-line-strong'}`}
+    >
+      {checked && (
+        <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
 const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disabled, placeholder, hideSelectAll, theme = 'dark' }: MultiSelectDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -42,31 +57,42 @@ const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disable
     return selectedValues.map(v => options.find(o => o.value === v)?.label || v).join(', ');
   };
 
+  const isDisabled = disabled || options.length === 0;
+
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div
+      data-theme={theme}
+      className="relative"
+      ref={dropdownRef}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setIsOpen(false);
+      }}
+    >
       <button
         type="button"
-        disabled={disabled || options.length === 0}
+        disabled={isDisabled}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between rounded-full border px-3 h-10 text-[13px] transition-spring-fast ${disabled || options.length === 0 ? (theme === 'dark' ? 'cursor-not-allowed border-dark-border-medium bg-dark-700 text-dark-text-tertiary' : 'cursor-not-allowed border-slate-300 bg-[#f5f5f5] text-[#9e9ea0]') : (theme === 'dark' ? 'border-dark-border-medium bg-dark-800 hover:border-dark-text-primary hover:scale-[1.02]' : 'border-slate-300 bg-white hover:border-[#111111] hover:scale-[1.02]')
-          }`}
+        className={`well flex h-11 w-full items-center justify-between gap-2 rounded-xl px-3.5 text-[14px] transition-calm ${isDisabled ? 'cursor-not-allowed opacity-60' : 'well-hover'}`}
       >
-        <span className={`truncate font-medium ${selectedValues.length > 0 ? (theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400')}`}>
+        <span className={`truncate font-medium ${selectedValues.length > 0 ? 'text-fg' : 'text-fg-subtle'}`}>
           {getDisplayText()}
         </span>
         <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}
+          className={`h-4 w-4 shrink-0 text-fg-subtle transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className={`absolute z-[110] mt-2 w-full overflow-hidden rounded-2xl border shadow-ios-md animate-in fade-in zoom-in-95 duration-150 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800' : 'border-slate-300 bg-white'}`}>
-          <div className="max-h-[220px] overflow-y-auto p-1.5 space-y-0.5">
+        <div className="glass-strong animate-in absolute z-[110] mt-2 w-full min-w-[200px] overflow-hidden rounded-2xl">
+          <div className="max-h-[240px] space-y-0.5 overflow-y-auto p-1.5" role="listbox" aria-multiselectable="true" aria-label={label}>
             {options.length > 0 ? (
               <>
                 {!hideSelectAll && (
@@ -80,44 +106,35 @@ const MultiSelectDropdown = ({ label, options, selectedValues, onChange, disable
                           onChange(options.map(o => o.value));
                         }
                       }}
-                      className={`w-full flex items-center gap-2 rounded-full px-3 py-2 text-left transition-spring-fast ${theme === 'dark' ? 'hover:bg-dark-750' : 'hover:bg-[#f5f5f5]'}`}
+                      className="well-hover flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-calm"
                     >
-                      <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-spring-fast ${selectedValues.length === options.length ? (theme === 'dark' ? 'bg-accent-blue border-accent-blue' : 'bg-nike-black border-nike-black') : (theme === 'dark' ? 'border-dark-border' : 'border-slate-300')
-                        }`}>
-                        {selectedValues.length === options.length && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Select All</span>
+                      <CheckBox checked={selectedValues.length === options.length} />
+                      <span className="text-[14px] font-semibold text-fg">Select all</span>
                     </button>
-                    <div className={`h-[1px] my-1 ${theme === 'dark' ? 'bg-dark-border' : 'bg-slate-100'}`} />
+                    <div className="my-1 h-px bg-line" />
                   </>
                 )}
-                {options.map(option => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => toggleOption(option.value)}
-                    className={`w-full flex items-center gap-2 rounded-full px-3 py-2 text-left transition-spring-fast ${theme === 'dark' ? 'hover:bg-dark-750' : 'hover:bg-[#f5f5f5]'}`}
-                  >
-                    <div className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-spring-fast ${selectedValues.includes(option.value) ? (theme === 'dark' ? 'bg-accent-blue border-accent-blue' : 'bg-nike-black border-nike-black') : (theme === 'dark' ? 'border-dark-border' : 'border-slate-300')
-                      }`}>
-                      {selectedValues.includes(option.value) && (
-                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className={`text-[13px] font-medium ${selectedValues.includes(option.value) ? (theme === 'dark' ? 'text-dark-text-primary' : 'text-nike-black') : (theme === 'dark' ? 'text-dark-text-secondary' : 'text-slate-500')}`}>
-                      {option.label}
-                    </span>
-                  </button>
-                ))}
+                {options.map(option => {
+                  const checked = selectedValues.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="option"
+                      aria-selected={checked}
+                      onClick={() => toggleOption(option.value)}
+                      className="well-hover flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-calm"
+                    >
+                      <CheckBox checked={checked} />
+                      <span className={`text-[14px] font-medium ${checked ? 'text-fg' : 'text-fg-muted'}`}>
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                })}
               </>
             ) : (
-              <div className={`p-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+              <div className="p-3 text-center text-[13px] font-medium text-fg-muted">
                 No options
               </div>
             )}

@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { type RawQuestion } from '@/lib/questions';
 import QuestionModalHeader from '@/app/components/admin/QuestionModalHeader';
 import QuestionModalFooter from '@/app/components/admin/QuestionModalFooter';
@@ -28,12 +28,27 @@ export default function QuestionModalShell({
   children,
   theme = 'dark',
 }: QuestionModalShellProps) {
+  const isFormMode = isAdding || isEditing;
+
+  // Escape closes the read-only preview; the edit form keeps its draft safe.
+  useEffect(() => {
+    if (!isOpen || isFormMode) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isFormMode, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[9999]">
+    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
       <div
-        className={`flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={isAdding ? 'Add question' : isEditing ? 'Edit question' : 'Question'}
+        className="glass-sheet animate-in flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-4xl text-fg"
         onClick={(e) => e.stopPropagation()}
       >
         <QuestionModalHeader

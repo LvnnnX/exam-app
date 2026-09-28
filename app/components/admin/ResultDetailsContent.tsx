@@ -32,7 +32,6 @@ export default function ResultDetailsContent({
   viewingResult,
   detailQuestions,
   getCorrectOptionText,
-  theme = 'dark',
 }: ResultDetailsContentProps) {
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
 
@@ -51,7 +50,8 @@ export default function ResultDetailsContent({
   if (detailLoading) {
     return (
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className={`text-center py-20 text-[12px] font-medium animate-pulse ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>
+        <div className="flex items-center justify-center gap-2 py-20 text-[13px] font-medium text-fg-muted" role="status">
+          <span className="spinner-calm h-4 w-4" aria-hidden="true" />
           Loading result history...
         </div>
       </div>
@@ -64,62 +64,62 @@ export default function ResultDetailsContent({
   const percentage = userAnswers.length > 0 ? Math.round((correctCount / userAnswers.length) * 100) : 0;
 
   return (
-    <div className={`flex-1 overflow-y-auto px-6 py-6 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
+    <div className="result-details-scroll-light flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
       <div className="space-y-6">
         {/* Summary */}
         <div className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-              <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className="clay rounded-2xl px-4 py-3">
+              <p className="text-[24px] font-bold tabular-nums tracking-tight text-fg">
                 {userAnswers.length}
               </p>
-              <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+              <p className="text-[12px] font-medium text-fg-muted">
                 Total
               </p>
             </div>
-            <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50'}`}>
-              <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-accent-green' : 'text-green-700'}`}>
+            <div className="clay rounded-2xl px-4 py-3">
+              <p className="text-[24px] font-bold tabular-nums tracking-tight text-primary">
                 {correctCount}
               </p>
-              <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-accent-green/80' : 'text-green-600'}`}>
+              <p className="text-[12px] font-medium text-fg-muted">
                 Correct
               </p>
             </div>
-            <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-red/10' : 'bg-red-50'}`}>
-              <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-accent-red' : 'text-red-700'}`}>
+            <div className="clay rounded-2xl px-4 py-3">
+              <p className="text-[24px] font-bold tabular-nums tracking-tight text-danger">
                 {incorrectCount}
               </p>
-              <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-accent-red/80' : 'text-red-600'}`}>
+              <p className="text-[12px] font-medium text-fg-muted">
                 Incorrect
               </p>
             </div>
-            <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-blue/10' : 'bg-blue-50'}`}>
-              <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-accent-blue' : 'text-blue-700'}`}>
+            <div className="clay rounded-2xl px-4 py-3">
+              <p className="text-[24px] font-bold tabular-nums tracking-tight text-fg">
                 {percentage}%
               </p>
-              <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-accent-blue/80' : 'text-blue-600'}`}>
+              <p className="text-[12px] font-medium text-fg-muted">
                 Score
               </p>
             </div>
           </div>
           {(viewingResult.duration_seconds != null || viewingResult.start_time) && (
-            <div className={`rounded-2xl px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+            <div className="well flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl px-4 py-3">
               {viewingResult.start_time && (
-                <div className="flex items-center justify-between gap-3 flex-1 min-w-[140px]">
-                  <span className={`text-[12px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                <div className="flex min-w-[140px] flex-1 items-center justify-between gap-3">
+                  <span className="text-[13px] font-medium text-fg-muted">
                     Start
                   </span>
-                  <span className={`text-[13px] font-semibold tabular-nums font-mono ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                  <span className="text-[14px] font-semibold tabular-nums text-fg">
                     {new Date(viewingResult.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>
               )}
               {viewingResult.duration_seconds != null && (
-                <div className="flex items-center justify-between gap-3 flex-1 min-w-[140px]">
-                  <span className={`text-[12px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                <div className="flex min-w-[140px] flex-1 items-center justify-between gap-3">
+                  <span className="text-[13px] font-medium text-fg-muted">
                     Duration
                   </span>
-                  <span className={`text-[13px] font-semibold tabular-nums font-mono ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+                  <span className="text-[14px] font-semibold tabular-nums text-fg">
                     {Math.floor(viewingResult.duration_seconds / 60)}m {viewingResult.duration_seconds % 60}s
                   </span>
                 </div>
@@ -127,6 +127,12 @@ export default function ResultDetailsContent({
             </div>
           )}
         </div>
+
+        {userAnswers.length === 0 && (
+          <div className="well rounded-2xl py-10 text-center text-[13px] font-medium text-fg-muted">
+            Tidak ada jawaban tercatat untuk hasil ini.
+          </div>
+        )}
 
         {/* Questions Accordion */}
         <div className="space-y-2">
@@ -142,63 +148,65 @@ export default function ResultDetailsContent({
             return (
               <div
                 key={answer.question_id}
-                className={`rounded-2xl overflow-hidden transition-spring-fast ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}
+                className="well overflow-hidden rounded-2xl"
               >
                 <button
+                  type="button"
+                  aria-expanded={isExpanded}
                   onClick={() => toggleQuestion(answer.question_id)}
-                  className={`w-full px-4 py-3 flex items-center justify-between gap-3 transition-colors ${theme === 'dark' ? 'hover:bg-white/[0.02]' : 'hover:bg-black/[0.02]'}`}
+                  className="well-hover flex min-h-12 w-full items-center justify-between gap-3 px-4 py-2.5 transition-calm"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className={`text-[12px] font-semibold tabular-nums shrink-0 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>
-                      Q{idx + 1}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="clay inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg px-1.5 text-[12px] font-bold tabular-nums">
+                      {idx + 1}
                     </span>
-                    <span className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${answer.is_correct ? (theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700') : (theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700')}`}>
-                      <span className="text-[14px] leading-none">{answer.is_correct ? '✓' : '✗'}</span>
+                    <span className={`inline-flex h-7 items-center rounded-lg px-2.5 text-[12px] font-semibold ${answer.is_correct ? 'bg-primary/12 text-primary' : 'bg-danger/12 text-danger'}`}>
                       {answer.is_correct ? 'Correct' : 'Incorrect'}
                     </span>
                   </div>
                   <svg
-                    className={`w-4 h-4 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}
+                    className={`h-4 w-4 shrink-0 text-fg-subtle transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                     strokeWidth={2}
+                    aria-hidden="true"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
 
                 {isExpanded && (
-                  <div className={`px-4 pb-4 space-y-4 border-t ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+                  <div className="space-y-4 border-t border-line px-4 pb-4">
                     <div className="pt-4">
-                      <p className={`text-[11px] font-medium mb-2 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
+                      <p className="mb-2 text-[12px] font-medium text-fg-muted">
                         Question
                       </p>
                       <RichContent
                         html={question.question_text}
-                        className={`text-[13px] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}
+                        className="text-[14px] text-fg"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className={`rounded-2xl px-4 py-3 ${answer.is_correct ? (theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50') : (theme === 'dark' ? 'bg-accent-red/10' : 'bg-red-50')}`}>
-                        <p className={`text-[11px] font-medium mb-1.5 ${answer.is_correct ? (theme === 'dark' ? 'text-accent-green/80' : 'text-green-600') : (theme === 'dark' ? 'text-accent-red/80' : 'text-red-600')}`}>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className={`rounded-2xl px-4 py-3 ${answer.is_correct ? 'bg-primary/10' : 'bg-danger/10'}`}>
+                        <p className={`mb-1.5 text-[12px] font-semibold ${answer.is_correct ? 'text-primary' : 'text-danger'}`}>
                           User answer
                         </p>
                         <RichContent
                           html={answer.user_answer}
-                          className={`text-[13px] font-medium ${answer.is_correct ? (theme === 'dark' ? 'text-accent-green' : 'text-green-800') : (theme === 'dark' ? 'text-accent-red' : 'text-red-800')}`}
+                          className="text-[14px] font-medium text-fg"
                         />
                       </div>
 
                       {!answer.is_correct && (
-                        <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50'}`}>
-                          <p className={`text-[11px] font-medium mb-1.5 ${theme === 'dark' ? 'text-accent-green/80' : 'text-green-600'}`}>
+                        <div className="rounded-2xl bg-primary/10 px-4 py-3">
+                          <p className="mb-1.5 text-[12px] font-semibold text-primary">
                             Correct answer{isShortAnswer ? '' : ` (${question.correct_answer})`}
                           </p>
                           <RichContent
                             html={correctText}
-                            className={`text-[13px] font-medium ${theme === 'dark' ? 'text-accent-green' : 'text-green-800'}`}
+                            className="text-[14px] font-medium text-fg"
                           />
                         </div>
                       )}

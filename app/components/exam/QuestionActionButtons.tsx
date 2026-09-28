@@ -20,6 +20,8 @@ type QuestionActionButtonsProps = {
   onSkip: () => void;
 };
 
+const secondary = 'well well-hover h-12 w-full rounded-xl text-[14px] font-medium text-fg transition-calm disabled:cursor-not-allowed disabled:opacity-40 sm:flex-1';
+
 export default function QuestionActionButtons({
   isStandard,
   current,
@@ -38,26 +40,30 @@ export default function QuestionActionButtons({
   onSkip,
 }: QuestionActionButtonsProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-2 border-t border-black/[0.06] pt-6">
+    <div className="mt-5 flex flex-col items-center gap-2 border-t border-line pt-5 sm:flex-row">
       {isStandard ? (
         <>
           <button
+            type="button"
             onClick={onGoPrev}
             disabled={current === 0 || isLoading}
-            className="w-full sm:flex-1 h-12 rounded-full bg-black/5 text-nike-black text-[13px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed tracking-tight"
+            className={secondary}
           >
             Back
           </button>
           <button
+            type="button"
+            aria-pressed={Boolean(doubtFlags[current])}
             onClick={onToggleDoubt}
-            className={`w-full sm:flex-1 h-12 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 tracking-tight ${doubtFlags[current]
-              ? 'bg-yellow-400 text-nike-black shadow-ios-sm'
-              : 'bg-black/5 text-nike-grey-500 hover:bg-black/10'
+            className={`h-12 w-full rounded-xl text-[14px] font-semibold transition-calm sm:flex-1 ${doubtFlags[current]
+              ? 'clay-highlight'
+              : 'well well-hover text-fg-muted'
               }`}
           >
             Ragu-ragu
           </button>
           <button
+            type="button"
             onClick={() => {
               if (current >= total - 1) {
                 onOpenSubmitConfirm();
@@ -66,7 +72,7 @@ export default function QuestionActionButtons({
               }
             }}
             disabled={isLoading}
-            className="w-full sm:flex-1 h-12 rounded-full bg-nike-black text-white text-[13px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight shadow-ios-sm"
+            className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold sm:flex-1"
           >
             {current >= total - 1 ? 'Finish' : 'Next'}
           </button>
@@ -74,23 +80,26 @@ export default function QuestionActionButtons({
       ) : (
         <>
           <button
+            type="button"
             onClick={onStrictNext}
             disabled={!hasAnswerSelected || feedbackResult !== null}
-            className="w-full sm:flex-1 h-12 rounded-full bg-nike-black text-white text-[13px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight shadow-ios-sm"
+            className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold sm:flex-1"
           >
             Next question
           </button>
           {isSurvival ? (
             <button
+              type="button"
               onClick={onOpenSurrenderConfirm}
-              className="w-full sm:w-auto sm:px-6 h-12 rounded-full bg-nike-red/10 text-nike-red text-[13px] font-medium hover:bg-nike-red/15 transition-spring-fast active:scale-95 tracking-tight"
+              className="h-12 w-full rounded-xl bg-danger/10 px-6 text-[14px] font-semibold text-danger transition-calm hover:bg-danger/15 sm:w-auto"
             >
               Surrender
             </button>
           ) : (
             <button
+              type="button"
               onClick={onSkip}
-              className="w-full sm:w-auto sm:px-6 h-12 rounded-full bg-black/5 text-nike-grey-500 text-[13px] font-medium hover:bg-black/10 hover:text-nike-black transition-spring-fast active:scale-95 tracking-tight"
+              className="well well-hover h-12 w-full rounded-xl px-6 text-[14px] font-medium text-fg-muted transition-calm hover:text-fg sm:w-auto"
             >
               Skip
             </button>

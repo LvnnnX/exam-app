@@ -32,39 +32,19 @@ export default function AdminForgotPasswordPage() {
     }
   };
 
-  const pageBg = isDark ? 'bg-black' : 'bg-white';
-  const cardBg = isDark ? 'bg-[#111111]' : 'bg-white';
-  const headlineColor = isDark ? 'text-white' : 'text-nike-black';
-  const mutedText = isDark ? 'text-white/55' : 'text-black/55';
-  const subtleText = isDark ? 'text-white/35' : 'text-black/35';
-  const labelClass = isDark ? 'text-white/55' : 'text-black/55';
-  const iconBubble = isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-nike-black';
-  const inputClass = isDark
-    ? 'w-full h-12 rounded-2xl bg-white/5 px-5 text-sm font-medium text-white placeholder:text-white/30 focus:outline-none focus:bg-white/10 focus:ring-2 focus:ring-white/20 transition-spring-fast'
-    : 'w-full h-12 rounded-2xl bg-black/5 px-5 text-sm font-medium text-nike-black placeholder:text-black/30 focus:outline-none focus:bg-white focus:ring-2 focus:ring-nike-black/15 transition-spring-fast';
-  const primaryBtn = isDark
-    ? 'w-full h-12 rounded-full bg-white text-nike-black text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
-    : 'w-full h-12 rounded-full bg-nike-black text-white text-sm font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100';
-  const ghostBtn = isDark
-    ? 'w-full h-11 rounded-full bg-white/5 text-xs font-semibold text-white hover:bg-white/10 transition-spring-fast'
-    : 'w-full h-11 rounded-full bg-black/5 text-xs font-semibold text-nike-black hover:bg-black/10 transition-spring-fast';
-  const togglePill = isDark
-    ? 'inline-flex items-center gap-2 h-10 px-4 rounded-full bg-white/5 text-xs font-semibold text-white hover:bg-white/10 transition-spring-fast'
-    : 'inline-flex items-center gap-2 h-10 px-4 rounded-full bg-black/5 text-xs font-semibold text-nike-black hover:bg-black/10 transition-spring-fast';
-
   return (
-    <div className={`min-h-screen flex items-center justify-center px-4 py-10 ${pageBg}`}>
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="flex justify-end mb-3">
+        <div className="mb-3 flex justify-end">
           <button
             type="button"
             onClick={toggleTheme}
             aria-label={isDark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'}
-            className={togglePill}
+            className="well well-hover inline-flex h-11 items-center gap-2 rounded-xl px-4 text-[13px] font-medium text-fg transition-calm"
           >
             {isDark ? (
               <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
                   <circle cx="12" cy="12" r="4" />
                   <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
                 </svg>
@@ -72,7 +52,7 @@ export default function AdminForgotPasswordPage() {
               </>
             ) : (
               <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden>
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
                 Gelap
@@ -81,64 +61,64 @@ export default function AdminForgotPasswordPage() {
           </button>
         </div>
 
-        <div className={`${cardBg} rounded-3xl p-8 md:p-10 shadow-ios-lg`}>
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-5 ${iconBubble}`}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6" aria-hidden>
+        <div className="glass rounded-4xl p-7 md:p-9">
+          <div className="mb-7 flex flex-col items-center text-center">
+            <div className="clay mb-5 flex h-14 w-14 items-center justify-center rounded-2xl">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
                 <circle cx="12" cy="12" r="10" />
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
-            <h1 className={`text-2xl md:text-[28px] font-semibold tracking-tight ${headlineColor}`}>
+            <h1 className="text-[26px] font-bold tracking-tight text-fg md:text-[28px]">
               Lupa password.
             </h1>
-            <p className={`mt-2 text-sm font-medium ${mutedText}`}>
+            <p className="mt-2 text-[14px] font-medium text-fg-muted">
               Masukkan email akun admin untuk menerima link reset.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <label className="block">
-              <span className={`block text-xs font-semibold mb-2 ml-1 ${labelClass}`}>Email</span>
+              <span className="mb-2 ml-0.5 block text-[13px] font-medium text-fg-muted">Email</span>
               <input
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@example.com"
-                className={inputClass}
+                className="well h-12 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
                 required
               />
             </label>
 
             {message && (
-              <div role="status" className="rounded-2xl bg-accent-green/10 px-4 py-3 text-xs font-semibold text-accent-green">
+              <div role="status" className="rounded-xl bg-primary/12 px-4 py-3 text-[13px] font-semibold text-primary">
                 {message}
               </div>
             )}
             {error && (
-              <div role="alert" className="rounded-2xl bg-accent-red/10 px-4 py-3 text-xs font-semibold text-accent-red">
+              <div role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-[13px] font-semibold text-danger">
                 {error}
               </div>
             )}
 
-            <button type="submit" disabled={loading} className={primaryBtn}>
+            <button type="submit" disabled={loading} className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold">
               {loading ? 'Mengirim...' : 'Kirim link reset'}
             </button>
 
             <button
               type="button"
               onClick={() => (window.location.href = '/admin')}
-              className={ghostBtn}
+              className="well well-hover h-11 w-full rounded-xl text-[13px] font-medium text-fg transition-calm"
             >
               Kembali ke login
             </button>
           </form>
         </div>
 
-        <p className={`text-center mt-6 text-xs font-medium ${subtleText}`}>
-          OSN Smandapura · Secure admin access.
+        <p className="mt-6 text-center text-[12px] font-medium text-fg-muted">
+          OSK Smandapura 2026
         </p>
       </div>
     </div>

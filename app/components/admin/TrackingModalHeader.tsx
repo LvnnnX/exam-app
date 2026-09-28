@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { LivesIndicator } from '@/app/components/QuestionDisplay';
 
 type TrackingSessionHeaderData = {
   name: string;
@@ -42,7 +43,6 @@ export default function TrackingModalHeader({
   trackingSession,
   formatCategorySelectionLabel,
   onClose,
-  theme = 'dark',
 }: TrackingModalHeaderProps) {
   const mapelChip = formatCategoryChip(trackingSession.mapel, formatCategorySelectionLabel);
   const babChip = formatCategoryChip(trackingSession.bab, formatCategorySelectionLabel);
@@ -52,64 +52,64 @@ export default function TrackingModalHeader({
   const babTitle = formatCategoryTitle(trackingSession.bab, formatCategorySelectionLabel);
   const subBabTitle = formatCategoryTitle(trackingSession.sub_bab, formatCategorySelectionLabel);
 
+  const chip = 'well inline-flex h-7 items-center rounded-lg px-2.5 text-[12px] font-semibold text-fg-muted';
+  const progress = Math.round(((trackingSession.current_index + 1) / trackingSession.question_count) * 100);
+
   return (
-    <div className={`shrink-0 flex flex-col gap-3 px-4 py-3 border-b sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+    <div className="flex shrink-0 flex-col gap-3 border-b border-line px-4 py-3 sm:px-6 sm:py-4">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-          </span>
-          <h2 className={`text-[15px] font-semibold tracking-tight truncate ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-label="Live" />
+          <h2 className="truncate text-[18px] font-bold tracking-tight text-fg">
             {trackingSession.name}
           </h2>
         </div>
         <button
+          type="button"
           onClick={onClose}
-          className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 shrink-0 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
+          aria-label="Close"
+          className="well well-hover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg transition-calm"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${trackingSession.mode === 'survival' ? (theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700') : (theme === 'dark' ? 'bg-accent-blue/15 text-accent-blue' : 'bg-blue-50 text-blue-700')}`}>
+        <span className={`inline-flex h-7 items-center rounded-lg px-2.5 text-[12px] font-semibold ${trackingSession.mode === 'survival' ? 'bg-danger/12 text-danger' : 'bg-primary/12 text-primary'}`}>
           {trackingSession.mode === 'survival' ? 'Survival' : 'Exam'}
         </span>
         {mapelChip !== '-' && (
-          <span title={`Mapel: ${mapelTitle}`} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-            <span className="max-w-[140px] truncate inline-block align-bottom">{mapelChip}</span>
+          <span title={`Mapel: ${mapelTitle}`} className={chip}>
+            <span className="inline-block max-w-[140px] truncate align-bottom">{mapelChip}</span>
           </span>
         )}
         {babChip !== '-' && (
-          <span title={`Bab: ${babTitle}`} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-            <span className="max-w-[140px] truncate inline-block align-bottom">{babChip}</span>
+          <span title={`Bab: ${babTitle}`} className={chip}>
+            <span className="inline-block max-w-[140px] truncate align-bottom">{babChip}</span>
           </span>
         )}
         {subBabChip !== '-' && (
-          <span title={`Sub-bab: ${subBabTitle}`} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-            <span className="max-w-[140px] truncate inline-block align-bottom">{subBabChip}</span>
+          <span title={`Sub-bab: ${subBabTitle}`} className={chip}>
+            <span className="inline-block max-w-[140px] truncate align-bottom">{subBabChip}</span>
           </span>
         )}
-        <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tabular-nums ${theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary' : 'bg-black/5 text-gray-500'}`}>
+        <span className={`${chip} tabular-nums`}>
           {new Date(trackingSession.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
 
-      {/* Progress Stats Row */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tabular-nums ${theme === 'dark' ? 'bg-accent-blue/15 text-accent-blue' : 'bg-blue-50 text-blue-700'}`}>
+      {/* Progress */}
+      <div className="flex items-center gap-3">
+        <span className="clay inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2.5 text-[13px] font-bold tabular-nums">
           {trackingSession.current_index + 1}/{trackingSession.question_count}
         </span>
+        <div className="well h-2 flex-1 overflow-hidden rounded-full" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label="Progress">
+          <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${progress}%` }} />
+        </div>
+        <span className="text-[13px] font-semibold tabular-nums text-fg-muted">{progress}%</span>
         {trackingSession.mode === 'survival' && trackingSession.lives != null && (
-          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium tabular-nums ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700'}`}>
-            <span>♥</span>
-            {trackingSession.lives}
-          </span>
+          <LivesIndicator lives={trackingSession.lives} />
         )}
-        <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tabular-nums ${theme === 'dark' ? 'bg-accent-purple/15 text-accent-purple' : 'bg-purple-50 text-purple-700'}`}>
-          {Math.round(((trackingSession.current_index + 1) / trackingSession.question_count) * 100)}%
-        </span>
       </div>
     </div>
   );

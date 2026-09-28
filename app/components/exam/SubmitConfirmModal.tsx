@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 type SubmitConfirmModalProps = {
   isOpen: boolean;
@@ -13,27 +13,45 @@ export default function SubmitConfirmModal({
   onCancel,
   onConfirm,
 }: SubmitConfirmModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onCancel]);
+
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl animate-in fade-in duration-200">
-      <div className="bg-white rounded-[28px] p-6 max-w-sm w-full shadow-ios-xl animate-in zoom-in-95 duration-300">
-        <h3 className="text-[17px] font-semibold tracking-tight text-nike-black mb-1">Selesai ujian?</h3>
-        <p className="text-[13px] text-nike-grey-500 mb-5 tracking-tight">
+    <div className="glass-scrim fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={onCancel}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="submit-confirm-title"
+        aria-describedby="submit-confirm-desc"
+        className="glass-sheet animate-in w-full max-w-sm rounded-4xl p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 id="submit-confirm-title" className="mb-1.5 text-[20px] font-bold tracking-tight text-fg">Selesai ujian?</h3>
+        <p id="submit-confirm-desc" className="mb-6 text-[14px] leading-relaxed text-fg-muted">
           Pastikan jawaban kamu sudah dicek sebelum menyelesaikan ujian.
         </p>
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={onCancel}
-            className="flex-1 h-11 rounded-full text-[13px] font-medium text-nike-black bg-black/5 hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+            className="well well-hover h-11 flex-1 rounded-xl text-[14px] font-medium text-fg transition-calm"
           >
             Batal
           </button>
           <button
+            type="button"
             onClick={onConfirm}
-            className="flex-1 h-11 rounded-full text-[13px] font-medium text-white bg-nike-black hover:bg-nike-grey-500 transition-spring-fast active:scale-95 tracking-tight"
+            className="clay-primary h-11 flex-1 rounded-xl text-[14px] font-semibold"
           >
             Selesai
           </button>

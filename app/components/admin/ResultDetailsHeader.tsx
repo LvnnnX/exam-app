@@ -40,7 +40,6 @@ export default function ResultDetailsHeader({
   viewingResult,
   formatCategorySelectionLabel,
   onClose,
-  theme = 'dark',
 }: ResultDetailsHeaderProps) {
   const mapelChip = formatCategoryChip(viewingResult.mapel, formatCategorySelectionLabel);
   const babChip = formatCategoryChip(viewingResult.bab, formatCategorySelectionLabel);
@@ -50,43 +49,47 @@ export default function ResultDetailsHeader({
   const babTitle = formatCategoryTitle(viewingResult.bab, formatCategorySelectionLabel);
   const subBabTitle = formatCategoryTitle(viewingResult.sub_bab, formatCategorySelectionLabel);
 
+  const chip = 'well inline-flex h-7 items-center rounded-lg px-2.5 text-[12px] font-semibold text-fg-muted';
+
   return (
-    <div className={`shrink-0 flex items-start justify-between gap-3 px-4 py-3 border-b sm:gap-4 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
-      <div className="flex flex-col gap-2 min-w-0">
-        <h2 className={`text-[15px] font-semibold tracking-tight truncate ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+    <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+      <div className="flex min-w-0 flex-col gap-2">
+        <h2 className="truncate text-[18px] font-bold tracking-tight text-fg">
           {viewingResult.name}
         </h2>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${viewingResult.mode === 'survival' ? (theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700') : (theme === 'dark' ? 'bg-accent-blue/15 text-accent-blue' : 'bg-blue-50 text-blue-700')}`}>
+          <span className={`inline-flex h-7 items-center rounded-lg px-2.5 text-[12px] font-semibold ${viewingResult.mode === 'survival' ? 'bg-danger/12 text-danger' : 'bg-primary/12 text-primary'}`}>
             {viewingResult.mode === 'survival' ? 'Survival' : 'Exam'}
           </span>
           {mapelChip !== '-' && (
-            <span title={`Mapel: ${mapelTitle}`} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-              <span className="max-w-[140px] truncate inline-block align-bottom">{mapelChip}</span>
+            <span title={`Mapel: ${mapelTitle}`} className={chip}>
+              <span className="inline-block max-w-[140px] truncate align-bottom">{mapelChip}</span>
             </span>
           )}
           {babChip !== '-' && (
-            <span title={`Bab: ${babTitle}`} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-              <span className="max-w-[140px] truncate inline-block align-bottom">{babChip}</span>
+            <span title={`Bab: ${babTitle}`} className={chip}>
+              <span className="inline-block max-w-[140px] truncate align-bottom">{babChip}</span>
             </span>
           )}
           {subBabChip !== '-' && (
-            <span title={`Sub-bab: ${subBabTitle}`} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-              <span className="max-w-[140px] truncate inline-block align-bottom">{subBabChip}</span>
+            <span title={`Sub-bab: ${subBabTitle}`} className={chip}>
+              <span className="inline-block max-w-[140px] truncate align-bottom">{subBabChip}</span>
             </span>
           )}
           {viewingResult.start_time && viewingResult.end_time && (
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium tabular-nums ${theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary' : 'bg-black/5 text-gray-500'}`}>
+            <span className={`${chip} tabular-nums`}>
               {new Date(viewingResult.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} – {new Date(viewingResult.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
         </div>
       </div>
       <button
+        type="button"
         onClick={onClose}
-        className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 shrink-0 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
+        aria-label="Close"
+        className="well well-hover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg transition-calm"
       >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
       </button>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 type DeleteTopicError = {
   message: string;
@@ -14,39 +14,55 @@ type DeleteTopicErrorModalProps = {
 };
 
 export default function DeleteTopicErrorModal({ error, onClose, theme = 'dark' }: DeleteTopicErrorModalProps) {
+  useEffect(() => {
+    if (!error) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [error, onClose]);
+
   if (!error) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-2 sm:p-4 z-[9999]">
-      <div className={`rounded-[24px] shadow-ios-xl max-w-md w-full overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
-        <div className="px-4 pt-5 pb-4 sm:px-6 sm:pt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${theme === 'dark' ? 'bg-accent-red/15' : 'bg-red-50'}`}>
-              <svg className={`w-4 h-4 ${theme === 'dark' ? 'text-accent-red' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4" onClick={onClose}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-topic-error-title"
+        className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-danger/12 text-danger" aria-hidden="true">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h3 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Tidak dapat menghapus</h3>
+            <h3 id="delete-topic-error-title" className="text-[18px] font-bold tracking-tight text-fg">Tidak dapat menghapus</h3>
           </div>
-          <p className={`text-[13px] leading-relaxed mb-4 ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>{error.message}</p>
-          <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-            <p className={`text-[11px] font-medium mb-2 ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>ID soal terdampak</p>
+          <p className="mb-4 text-[14px] leading-relaxed text-fg-muted">{error.message}</p>
+          <div className="well rounded-2xl px-4 py-3">
+            <p className="mb-2 text-[12px] font-medium text-fg-muted">ID soal terdampak</p>
             <div className="flex flex-wrap gap-1.5">
               {error.questionIds.map(id => (
-                <span key={id} className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono tabular-nums ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700'}`}>
+                <span key={id} className="rounded-md bg-danger/12 px-2 py-1 text-[12px] font-semibold tabular-nums text-danger">
                   #{id}
                 </span>
               ))}
             </div>
           </div>
         </div>
-        <div className={`flex justify-end px-4 py-3 border-t sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
+        <div className="flex justify-end border-t border-line px-5 py-4 sm:px-6">
           <button
             type="button"
             onClick={onClose}
-            className={`px-4 h-9 rounded-full text-[13px] font-medium text-white transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-blue hover:bg-accent-blue/90' : 'bg-blue-500 hover:bg-blue-600'}`}
+            autoFocus
+            className="clay-primary h-11 rounded-xl px-6 text-[14px] font-semibold"
           >
             Tutup
           </button>

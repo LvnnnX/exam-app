@@ -8,11 +8,11 @@ export default function SiteHeader() {
   if (pathname.startsWith('/admin')) return null;
 
   return (
-    <header className="sticky top-0 z-50 bg-nike-white border-b border-nike-grey-200">
-      <div className="max-w-[1440px] mx-auto px-4 md:px-12 h-[60px] flex items-center justify-center">
-        <div className="font-display text-2xl font-bold tracking-[0.04em] uppercase">
-          OSK SMANDAPURA 2026
-        </div>
+    <header className="global-site-header sticky top-0 z-50 px-3 pt-3 md:px-6">
+      <div className="glass mx-auto flex h-14 max-w-[1440px] items-center rounded-3xl px-4 md:px-6">
+        <span className="text-[15px] font-bold tracking-tight text-fg">
+          OSK Smandapura 2026
+        </span>
       </div>
     </header>
   );

@@ -48,7 +48,7 @@ export default function SettingsTabPanel({
 }: SettingsTabPanelProps) {
   return (
     <div className="mx-auto max-w-4xl">
-      <div className={`overflow-hidden rounded-3xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+      <div className="glass overflow-hidden rounded-3xl">
         <SettingsIntroCard theme={theme} />
 
         {settingsLoading ? (

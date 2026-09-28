@@ -7,43 +7,22 @@ type AdminHeaderProps = {
   theme?: 'light' | 'dark';
 };
 
-export default function AdminHeader({ onLogout, theme = 'dark' }: AdminHeaderProps) {
+export default function AdminHeader({ onLogout }: AdminHeaderProps) {
   return (
-    <header
-      className={`mb-4 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-end sm:justify-between ${
-        theme === 'dark' ? 'border-dark-border-subtle' : 'border-[#e5e5e5]'
-      }`}
-    >
+    <header className="glass mb-4 flex flex-col gap-3 rounded-3xl px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p
-          className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${
-            theme === 'dark' ? 'text-dark-text-muted' : 'text-[#8a8a8a]'
-          }`}
-        >
-          Control center
-        </p>
-        <h1
-          className={`mt-1 text-[26px] font-semibold tracking-tight sm:text-[30px] ${
-            theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'
-          }`}
-        >
-          Admin Panel
+        <p className="text-[12px] font-medium text-fg-muted">Control center</p>
+        <h1 className="mt-1 text-[26px] font-bold tracking-tight text-fg sm:text-[30px]">
+          Admin panel
         </h1>
-        <p
-          className={`text-xs font-medium ${
-            theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'
-          }`}
-        >
+        <p className="text-[13px] font-medium text-fg-muted">
           Questions, results, settings, and live quizzes.
         </p>
       </div>
       <button
+        type="button"
         onClick={onLogout}
-        className={`h-10 rounded-full border px-5 text-xs font-semibold transition-spring-fast hover:scale-[1.02] ${
-          theme === 'dark'
-            ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary hover:border-dark-text-primary'
-            : 'border-[#111111] bg-white text-[#111111] hover:bg-[#111111] hover:text-white'
-        }`}
+        className="h-11 rounded-xl bg-danger/10 px-5 text-[13px] font-semibold text-danger transition-calm hover:bg-danger/15"
       >
         Logout
       </button>

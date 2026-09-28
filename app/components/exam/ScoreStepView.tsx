@@ -23,21 +23,21 @@ function splitLabel(joined: string): string[] {
 function TopicChip({ label, items }: { label: string; items: string[] }) {
   if (items.length === 0) {
     return (
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
-        <span className="text-[13px] font-medium text-nike-grey-500 tracking-tight">None</span>
+      <div className="flex items-baseline gap-2">
+        <span className="w-11 shrink-0 text-left text-[12px] font-medium text-fg-muted">{label}</span>
+        <span className="text-[14px] font-medium text-fg-subtle">None</span>
       </div>
     );
   }
   const [first, ...rest] = items;
   return (
-    <div className="flex items-baseline gap-1.5 min-w-0">
-      <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
-      <span className="text-[13px] font-medium text-nike-black tracking-tight truncate">{first}</span>
+    <div className="flex min-w-0 items-baseline gap-2">
+      <span className="w-11 shrink-0 text-left text-[12px] font-medium text-fg-muted">{label}</span>
+      <span className="truncate text-[14px] font-semibold text-fg">{first}</span>
       {rest.length > 0 && (
         <span
           title={items.join(', ')}
-          className="inline-flex items-center px-1.5 h-5 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums tracking-tight shrink-0"
+          className="well inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-semibold tabular-nums text-fg-muted"
         >
           +{rest.length}
         </span>
@@ -60,47 +60,66 @@ export default function ScoreStepView({
 }: ScoreStepViewProps) {
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
   const tone = isSurvival
-    ? 'text-nike-black'
+    ? 'text-fg'
     : percentage >= 70
-      ? 'text-nike-green'
+      ? 'text-primary'
       : percentage >= 50
-        ? 'text-nike-black'
-        : 'text-nike-red';
+        ? 'text-fg'
+        : 'text-danger';
+  const ringColor = isSurvival
+    ? 'var(--fg-muted)'
+    : percentage >= 70
+      ? 'var(--primary)'
+      : percentage >= 50
+        ? 'var(--fg-muted)'
+        : 'var(--danger)';
+  const radius = 84;
+  const circumference = 2 * Math.PI * radius;
+  const ringProgress = isSurvival ? 1 : Math.min(1, Math.max(0, percentage / 100));
 
   return (
-    <div className="flex-1 flex flex-col pt-10 md:pt-16 px-5 sm:px-6 pb-10">
-      <div className="max-w-md mx-auto w-full">
-        <div className="text-center mb-6">
-          <p className="text-[11px] font-medium text-nike-grey-500 mb-3 tracking-tight uppercase">
+    <div className="flex-1 flex flex-col px-4 pt-8 pb-12 sm:px-6 md:pt-14">
+      <div className="mx-auto w-full max-w-md">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <p className="mb-5 text-[13px] font-medium text-fg-muted">
             {isSurvival ? 'Survival selesai' : 'Ujian selesai'}
           </p>
 
-          {isSurvival ? (
-            <>
-              <h2 className={`font-display text-[64px] sm:text-[80px] leading-[1] tracking-[-0.03em] tabular-nums ${tone}`}>
-                {score}
-              </h2>
-              <p className="mt-1 text-[13px] font-semibold text-nike-black tracking-tight">
-                Skor akhir
-              </p>
-              <p className="mt-0.5 text-[12px] font-medium text-nike-grey-500 tracking-tight tabular-nums">
-                {total} soal terjawab
-              </p>
-            </>
-          ) : (
-            <>
-              <h2 className={`font-display text-[64px] sm:text-[80px] leading-[1] tracking-[-0.03em] tabular-nums ${tone}`}>
-                {percentage}%
-              </h2>
-              <p className="mt-2 text-[13px] font-medium text-nike-grey-500 tracking-tight">
-                {score} dari {total} benar
-              </p>
-            </>
+          <div className="clay relative flex h-48 w-48 items-center justify-center rounded-full sm:h-52 sm:w-52">
+            <svg className="absolute inset-3 h-[calc(100%-1.5rem)] w-[calc(100%-1.5rem)] -rotate-90" viewBox="0 0 184 184" aria-hidden="true">
+              <circle cx="92" cy="92" r={radius} fill="none" stroke="var(--line)" strokeWidth="6" />
+              <circle
+                cx="92"
+                cy="92"
+                r={radius}
+                fill="none"
+                stroke={ringColor}
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={circumference * (1 - ringProgress)}
+                style={{ transition: 'stroke-dashoffset 320ms var(--ease-calm)' }}
+              />
+            </svg>
+            <div className="relative flex flex-col items-center">
+              <span className={`text-[48px] font-bold leading-none tracking-[-0.03em] tabular-nums sm:text-[52px] ${tone}`}>
+                {isSurvival ? score : `${percentage}%`}
+              </span>
+              <span className="mt-1.5 text-[13px] font-medium text-fg-muted">
+                {isSurvival ? 'Skor akhir' : `${score} dari ${total} benar`}
+              </span>
+            </div>
+          </div>
+
+          {isSurvival && (
+            <p className="mt-4 text-[13px] font-medium tabular-nums text-fg-muted">
+              {total} soal terjawab
+            </p>
           )}
         </div>
 
-        <div className="rounded-3xl bg-black/[0.03] px-5 py-4 mb-4">
-          <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase mb-2.5">Topik</p>
+        <div className="glass mb-4 rounded-3xl px-5 py-4">
+          <p className="mb-2.5 text-[12px] font-medium text-fg-muted">Topik</p>
           <div className="space-y-1.5">
             <TopicChip label="Mapel" items={splitLabel(mapelsLabel)} />
             <TopicChip label="Bab" items={splitLabel(babsLabel)} />
@@ -108,29 +127,30 @@ export default function ScoreStepView({
           </div>
         </div>
 
-        <div className="flex items-center justify-center mb-5 h-7">
+        <div className="mb-5 flex h-8 items-center justify-center" role="status" aria-live="polite">
           {saving && (
-            <span className="inline-flex items-center gap-1.5 px-3 h-6 rounded-full bg-black/5 text-nike-grey-500 text-[11px] font-medium tracking-tight">
-              <span className="w-1.5 h-1.5 rounded-full bg-nike-grey-500 animate-pulse" />
+            <span className="well inline-flex h-7 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-fg-muted">
+              <span className="spinner-calm h-3 w-3" aria-hidden="true" />
               Menyimpan…
             </span>
           )}
           {saved && (
-            <span className="inline-flex items-center gap-1.5 px-3 h-6 rounded-full bg-nike-green/10 text-nike-green text-[11px] font-medium tracking-tight">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-primary/12 px-3 text-[12px] font-semibold text-primary">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
               Tersimpan
             </span>
           )}
           {saveFailed && (
-            <span className="inline-flex items-center gap-1.5 px-3 h-6 rounded-full bg-nike-red/10 text-nike-red text-[11px] font-medium tracking-tight">
+            <span className="inline-flex h-7 items-center rounded-lg bg-danger/12 px-3 text-[12px] font-semibold text-danger">
               Gagal menyimpan
             </span>
           )}
         </div>
 
         <button
+          type="button"
           onClick={onViewBreakdown}
-          className="w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] tracking-tight shadow-ios-sm"
+          className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold"
         >
           Lihat ringkasan
         </button>
@@ -138,4 +158,3 @@ export default function ScoreStepView({
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission } from '@/lib/admin-server';
+import { hasPermission, requireAdmin, requirePermission } from '@/lib/admin-server';
 import { QUIZ_CODE_LENGTH, type KuisLog, type KuisStatus } from '@/lib/quiz';
 import { isSafeCategorySlug, normalizeCategorySlug } from '@/lib/categories';
 
@@ -74,7 +74,7 @@ function isValidId(value: string): boolean {
   return /^[0-9a-f-]{8,80}$/i.test(value);
 }
 
-async function buildSelectedQuestionIds(supabase: Awaited<ReturnType<typeof requirePermission>>['supabase'], ids: number[]) {
+async function buildSelectedQuestionIds(supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'], ids: number[]) {
   const selectedIds = Array.from(new Set(ids.filter((id) => Number.isInteger(id) && id > 0))).slice(0, 100);
   if (selectedIds.length === 0) throw new Error('No valid remedial questions selected');
 
@@ -173,7 +173,10 @@ export async function createQuizSessionAction(accessToken: string, input: Create
     bab: normalizeQuizCategoryList(input.bab, 'Semua BAB'),
     subBabs: normalizeQuizCategoryList(input.subBabs, 'Semua Sub-bab'),
   };
-  const { supabase } = await requirePermission(accessToken, 'quiz:manage:any');
+  const { supabase, admin, user } = await requireAdmin(accessToken);
+  if (!hasPermission(admin, 'quiz:manage:any') && !hasPermission(admin, 'quiz:manage:own')) {
+    throw new Error('Forbidden');
+  }
   const questionIds = safeInput.selectedQuestionIds?.length
     ? await buildSelectedQuestionIds(supabase, safeInput.selectedQuestionIds)
     : await buildQuestionIds(supabase, safeInput);
@@ -194,6 +197,7 @@ export async function createQuizSessionAction(accessToken: string, input: Create
     question_ids: questionIds,
     quiz_mode: safeInput.quizMode || 'strict',
     allow_join_mid_game: safeInput.allowJoinMidGame ?? true,
+    created_by: user.id,
   };
   if (safeInput.scheduledAt) insertData.scheduled_at = safeInput.scheduledAt;
 
@@ -244,7 +248,20 @@ export async function updateQuizStatusAction(accessToken: string, id: string, st
 
 export async function deleteQuizSessionAction(accessToken: string, id: string): Promise<boolean> {
   if (!isValidId(id)) throw new Error('Invalid quiz id');
-  const { supabase } = await requirePermission(accessToken, 'quiz:manage:any');
+  const { supabase, admin } = await requireAdmin(accessToken);
+
+  if (!hasPermission(admin, 'quiz:manage:any')) {
+    if (!hasPermission(admin, 'quiz:manage:own')) throw new Error('Forbidden');
+    const { data: session, error: fetchError } = await supabase
+      .from('kuis_logs')
+      .select('created_by')
+      .eq('id', id)
+      .maybeSingle();
+    if (fetchError) throw new Error(fetchError.message);
+    const createdBy = session?.created_by as string | null | undefined;
+    if (!createdBy || createdBy !== admin.userId) throw new Error('Forbidden');
+  }
+
   const { error } = await supabase.from('kuis_logs').delete().eq('id', id);
   if (error) throw new Error(error.message);
   return true;

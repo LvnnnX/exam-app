@@ -36,45 +36,46 @@ export default function ExamPage() {
   }
 
   if (state.step === 1) {
+    const segmentBase = 'flex-1 h-11 rounded-lg text-[14px] font-semibold transition-calm';
+    const segmentIdle = 'text-fg-muted hover:text-fg';
     return (
-      <div className="flex-1 flex flex-col pt-10 md:pt-16 px-5 sm:px-6 pb-10">
-        <div className="max-w-2xl mx-auto w-full">
-          <div className="mb-7 md:mb-10">
-            <p className="text-[12px] font-medium text-nike-grey-500 mb-2 tracking-tight">Smandapura Exam</p>
-            <h1 className="font-display text-[36px] sm:text-[48px] text-nike-black leading-[1.05] tracking-[-0.02em] mb-2">
+      <div className="flex-1 flex flex-col px-4 pt-8 pb-12 sm:px-6 md:pt-14">
+        <div className="mx-auto w-full max-w-xl">
+          <div className="mb-6 md:mb-8">
+            <p className="mb-2 text-[13px] font-medium text-fg-muted">Smandapura Exam</p>
+            <h1 className="mb-2 text-[36px] font-bold leading-[1.05] tracking-[-0.02em] text-fg sm:text-[44px]">
               Take the exam.
             </h1>
-            <p className="text-[14px] text-nike-grey-500 tracking-tight">Pick your mode, your topic, and start whenever you’re ready.</p>
+            <p className="text-[15px] text-fg-muted">Pick your mode, your topic, and start whenever you’re ready.</p>
           </div>
-          <div className="max-w-md w-full space-y-5">
+          <div className="glass w-full space-y-5 rounded-3xl p-5 md:p-6">
             <div className="space-y-2">
-              <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+              <span className="flex items-center text-[13px] font-medium text-fg-muted">
                 Mode
                 <HelpTooltip text="Pilih mode ujian: Exam (biasa) atau Survival (nyawa terbatas)." />
               </span>
-              <div className="inline-flex w-full h-10 rounded-full bg-black/5 p-0.5">
+              <div className="well flex w-full gap-1 rounded-xl p-1" role="group" aria-label="Mode">
                 <button
+                  type="button"
+                  aria-pressed={state.gameMode === 'exam'}
                   onClick={() => setters.setGameMode('exam')}
-                  className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.gameMode === 'exam'
-                    ? 'bg-white text-nike-black shadow-ios-sm'
-                    : 'text-nike-grey-500'
-                    }`}
+                  className={`${segmentBase} ${state.gameMode === 'exam' ? 'clay' : segmentIdle}`}
                 >
                   Exam
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={state.gameMode === 'survival'}
                   onClick={() => { setters.setGameMode('survival'); setters.setExamMode('strict'); }}
-                  className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.gameMode === 'survival'
-                    ? 'bg-nike-red text-white shadow-ios-sm'
-                    : 'text-nike-grey-500'
-                    }`}
+                  className={`${segmentBase} ${state.gameMode === 'survival' ? 'clay-danger' : segmentIdle}`}
                 >
                   Survival
                 </button>
               </div>
               <button
+                type="button"
                 onClick={() => setters.setIsJoinModalOpen(true)}
-                className="w-full h-10 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 bg-nike-black text-white hover:bg-nike-grey-500"
+                className="well well-hover flex h-11 w-full items-center justify-center rounded-xl text-[14px] font-medium text-fg transition-calm"
               >
                 Join with code
               </button>
@@ -82,53 +83,52 @@ export default function ExamPage() {
 
             {!state.isSurvival && (
               <div className="space-y-2">
-                <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+                <span className="flex items-center text-[13px] font-medium text-fg-muted">
                   Navigation
                   <HelpTooltip text="Strict: Soal berurutan, tidak bisa kembali. Standard: Bebas navigasi dan bisa menandai ragu-ragu." />
                 </span>
-                <div className="inline-flex w-full h-10 rounded-full bg-black/5 p-0.5">
+                <div className="well flex w-full gap-1 rounded-xl p-1" role="group" aria-label="Navigation">
                   <button
+                    type="button"
+                    aria-pressed={state.examMode === 'strict'}
                     onClick={() => setters.setExamMode('strict')}
-                    className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.examMode === 'strict'
-                      ? 'bg-white text-nike-black shadow-ios-sm'
-                      : 'text-nike-grey-500'
-                      }`}
+                    className={`${segmentBase} ${state.examMode === 'strict' ? 'clay' : segmentIdle}`}
                   >
                     Strict
                   </button>
                   <button
+                    type="button"
+                    aria-pressed={state.examMode === 'standard'}
                     onClick={() => setters.setExamMode('standard')}
-                    className={`flex-1 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 ${state.examMode === 'standard'
-                      ? 'bg-white text-nike-black shadow-ios-sm'
-                      : 'text-nike-grey-500'
-                      }`}
+                    className={`${segmentBase} ${state.examMode === 'standard' ? 'clay' : segmentIdle}`}
                   >
                     Standard
                   </button>
                 </div>
-                <p className="text-[12px] text-nike-grey-500 tracking-tight">
+                <p className="text-[13px] text-fg-muted">
                   {state.examMode === 'strict' ? 'Sequential only, no going back.' : 'Free navigation, mark as doubtful.'}
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
-              <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+              <label htmlFor="exam-user-name" className="flex items-center text-[13px] font-medium text-fg-muted">
                 Your name
                 <HelpTooltip text="Nama yang akan ditampilkan pada papan skor (leaderboard)." />
-              </span>
+              </label>
               <input
+                id="exam-user-name"
                 type="text"
                 value={state.userName}
                 onChange={(e) => setters.setUserName(e.target.value)}
                 placeholder="Enter name"
-                className="w-full h-11 rounded-2xl bg-black/5 px-4 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none focus:bg-black/10 transition-spring-fast"
+                className="well h-11 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div className="space-y-2">
-                <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+                <span className="flex items-center text-[13px] font-medium text-fg-muted">
                   Mapel
                   <HelpTooltip text="Mata pelajaran yang ingin diujikan." />
                 </span>
@@ -142,7 +142,7 @@ export default function ExamPage() {
               </div>
 
               <div className="space-y-2">
-                <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+                <span className="flex items-center text-[13px] font-medium text-fg-muted">
                   Bab
                   <HelpTooltip text="Bab materi yang ingin diujikan." />
                 </span>
@@ -157,7 +157,7 @@ export default function ExamPage() {
               </div>
 
               <div className="space-y-2">
-                <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+                <span className="flex items-center text-[13px] font-medium text-fg-muted">
                   Sub-bab
                   <HelpTooltip text="Sub-bab materi yang ingin diujikan." />
                 </span>
@@ -174,25 +174,27 @@ export default function ExamPage() {
 
             <div className={`grid gap-3 ${state.isSurvival ? 'grid-cols-1' : 'grid-cols-2'}`}>
               <div className="space-y-2">
-                <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+                <label htmlFor="exam-time-limit" className="flex items-center text-[13px] font-medium text-fg-muted">
                   Time limit
                   <HelpTooltip text="Batas waktu maksimal untuk menyelesaikan seluruh soal." />
-                </span>
+                </label>
                 <div className="relative">
                   <select
+                    id="exam-time-limit"
                     value={state.timeLimit}
                     onChange={(e) => setters.setTimeLimit(Number(e.target.value))}
-                    className="w-full appearance-none bg-black/5 hover:bg-black/10 rounded-2xl pl-4 pr-10 h-11 text-[13px] font-medium text-nike-black tracking-tight focus:outline-none focus:bg-black/10 transition-spring-fast cursor-pointer"
+                    className="well well-hover h-11 w-full cursor-pointer appearance-none rounded-xl pl-4 pr-10 text-[14px] font-medium text-fg transition-calm"
                   >
                     {TIME_LIMIT_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                   <svg
-                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-nike-grey-500"
+                    className="pointer-events-none absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -201,25 +203,27 @@ export default function ExamPage() {
 
               {!state.isSurvival && (
                 <div className="space-y-2">
-                  <span className="flex items-center text-[12px] font-medium text-nike-grey-500 tracking-tight">
+                  <label htmlFor="exam-question-count" className="flex items-center text-[13px] font-medium text-fg-muted">
                     Question count
                     <HelpTooltip text="Jumlah soal yang ingin dikerjakan." />
-                  </span>
+                  </label>
                   <div className="relative">
                     <select
+                      id="exam-question-count"
                       value={state.questionCount}
                       onChange={(e) => setters.setQuestionCount(Number(e.target.value) as typeof state.questionCount)}
-                      className="w-full appearance-none bg-black/5 hover:bg-black/10 rounded-2xl pl-4 pr-10 h-11 text-[13px] font-medium text-nike-black tabular-nums tracking-tight focus:outline-none focus:bg-black/10 transition-spring-fast cursor-pointer"
+                      className="well well-hover h-11 w-full cursor-pointer appearance-none rounded-xl pl-4 pr-10 text-[14px] font-medium tabular-nums text-fg transition-calm"
                     >
                       {QUESTION_COUNTS.map((count) => (
                         <option key={count} value={count}>{count} questions</option>
                       ))}
                     </select>
                     <svg
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-nike-grey-500"
+                      className="pointer-events-none absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
+                      aria-hidden="true"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -229,6 +233,7 @@ export default function ExamPage() {
             </div>
 
             <button
+              type="button"
               onClick={() => setters.setStep(2)}
               disabled={
                 !state.userName.trim() ||
@@ -236,7 +241,7 @@ export default function ExamPage() {
                 state.babs.length === 0 ||
                 state.subBabs.length === 0
               }
-              className="w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight shadow-ios-sm"
+              className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold"
             >
               Begin session
             </button>
@@ -283,7 +288,7 @@ export default function ExamPage() {
 
   if (state.step >= 3 && state.step <= 5 && state.currentQuestion) {
     return (
-      <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16">
+      <div className="flex-1 flex flex-col px-4 pt-5 pb-12 sm:px-6 md:pt-8 md:pb-16">
         <div className="max-w-6xl mx-auto w-full">
           <QuestionStatusHeader
             isSurvival={state.isSurvival}
@@ -388,7 +393,7 @@ export default function ExamPage() {
 
   if (state.step === 7) {
     return (
-      <div className="flex-1 flex flex-col px-6 pt-6 pb-12 md:pt-8 md:pb-16">
+      <div className="flex-1 flex flex-col px-4 pt-5 pb-12 sm:px-6 md:pt-8 md:pb-16">
         <div className="max-w-3xl mx-auto w-full">
           <ResultsHeader
             startTime={state.startTime}

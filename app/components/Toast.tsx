@@ -38,30 +38,45 @@ export function Toast({ toast, onDismiss, theme = 'dark' }: ToastProps) {
   };
 
   const typeStyles = {
-    error: theme === 'dark' ? 'bg-accent-red/90 text-white' : 'bg-red-500 text-white',
-    success: theme === 'dark' ? 'bg-accent-green/90 text-white' : 'bg-green-500 text-white',
-    info: theme === 'dark' ? 'bg-accent-blue/90 text-white' : 'bg-blue-500 text-white',
-    warning: theme === 'dark' ? 'bg-accent-orange/90 text-white' : 'bg-orange-500 text-white',
+    error: 'bg-danger/15 text-danger',
+    success: 'bg-primary/15 text-primary',
+    info: 'well text-fg-muted',
+    warning: 'bg-warn/15 text-highlight-fg',
+  };
+
+  const typeIcon = {
+    error: <path d="M6 6l12 12M18 6L6 18" />,
+    success: <path d="M5 13l4 4L19 7" />,
+    info: <path d="M12 8h.01M11 12h1v5h1" />,
+    warning: <path d="M12 8v5M12 16.5h.01" />,
   };
 
   return (
     <div
-      className={`${typeStyles[toast.type]} rounded-xl px-4 py-3 shadow-ios-lg backdrop-blur-md transition-all duration-300 ${
+      data-theme={theme}
+      className={`glass-strong rounded-2xl py-2.5 pl-2.5 pr-1.5 text-fg transition-all duration-300 ${
         isExiting
-          ? 'opacity-0 translate-x-8 scale-95'
-          : 'opacity-100 translate-x-0 scale-100 animate-in slide-in-from-right-5 fade-in'
+          ? 'translate-x-6 opacity-0'
+          : 'animate-in translate-x-0 opacity-100'
       }`}
-      role="alert"
+      role={toast.type === 'error' ? 'alert' : 'status'}
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">{toast.message}</p>
+      <div className="flex items-center gap-3">
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${typeStyles[toast.type]}`} aria-hidden="true">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            {typeIcon[toast.type]}
+          </svg>
+        </span>
+        <p className="min-w-0 flex-1 text-[14px] font-semibold">{toast.message}</p>
         <button
           type="button"
           onClick={handleDismiss}
-          className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+          className="well-hover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg-muted transition-calm hover:text-fg"
           aria-label="Close"
         >
-          <span className="text-lg leading-none">×</span>
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" aria-hidden="true">
+            <path d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
     </div>
@@ -76,7 +91,7 @@ type ToastContainerProps = {
 
 export function ToastContainer({ toasts, onDismiss, theme = 'dark' }: ToastContainerProps) {
   return (
-    <div className="fixed bottom-4 right-4 z-[100000] flex flex-col gap-2 max-w-sm">
+    <div className="fixed bottom-4 left-4 right-4 z-[100000] flex flex-col gap-2 sm:left-auto sm:w-full sm:max-w-sm">
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onDismiss={onDismiss} theme={theme} />
       ))}

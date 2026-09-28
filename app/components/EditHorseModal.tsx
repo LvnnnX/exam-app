@@ -20,9 +20,9 @@ function normalizeHex(value: string): string | null {
 }
 
 export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId }: EditHorseModalProps) {
-  const [jersey, setJersey] = useState('#ef4444');
-  const [pants, setPants] = useState('#7f1d1d');
-  const [saddle, setSaddle] = useState('#f97316');
+  const [jersey, setJersey] = useState(HORSE_SKINS[0].horse.jersey);
+  const [pants, setPants] = useState(HORSE_SKINS[0].horse.pants);
+  const [saddle, setSaddle] = useState(HORSE_SKINS[0].horse.saddle);
   const [mount, setMount] = useState<MountId>('horse');
 
   useEffect(() => {
@@ -33,6 +33,15 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
     setSaddle(skin.horse.saddle);
     setMount(skin.mount);
   }, [isOpen, currentSkinId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const matchedPresetId = useMemo(() => {
     // Presets only count when riding a horse, since they don't define a mount.
@@ -69,55 +78,64 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
     onClose();
   };
 
+  const tileBase = 'flex h-14 w-full items-center justify-center rounded-2xl transition-calm';
+  const tileActive = 'clay ring-2 ring-primary ring-offset-2 ring-offset-canvas';
+  const tileIdle = 'well well-hover';
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-2xl p-3 animate-in fade-in duration-200">
-      <div className="w-full max-w-md max-h-[92vh] overflow-hidden rounded-[28px] bg-white shadow-ios-xl flex flex-col animate-in zoom-in-95 duration-200">
+    <div className="glass-scrim fixed inset-0 z-[100] flex items-center justify-center p-3" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-mount-title"
+        className="glass-sheet animate-in flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-4xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         {/* Header */}
-        <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-4 border-b border-black/[0.06]">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0">
-            <h3 className="text-[17px] font-semibold tracking-tight text-nike-black">Ubah avatar</h3>
-            <p className="text-[12px] text-nike-grey-500 tracking-tight">Pilih preset atau atur warnamu sendiri.</p>
+            <h3 id="edit-mount-title" className="text-[18px] font-bold tracking-tight text-fg">Ubah avatar</h3>
+            <p className="text-[13px] text-fg-muted">Pilih preset atau atur warnamu sendiri.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 text-nike-grey-500 hover:bg-black/10 hover:text-nike-black transition-spring-fast active:scale-90 shrink-0"
-            aria-label="Close"
+            className="well well-hover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg transition-calm"
+            aria-label="Tutup"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-          {/* Preview */}
-          <div className="rounded-3xl bg-black/[0.03] px-5 py-6 flex items-center justify-center">
-            <div className="flex h-24 w-24 items-center justify-center">
+        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+          {/* Preview: the mount standing on its clay pedestal */}
+          <div className="clay relative flex items-center justify-center rounded-3xl px-5 pt-7 pb-8">
+            <span className="absolute bottom-6 left-1/2 h-3 w-28 -translate-x-1/2 rounded-full bg-black/10 blur-[2px]" aria-hidden="true" />
+            <div className="relative flex h-24 w-24 items-center justify-center">
               <HorseAvatar
                 colors={{ jersey, pants, saddle }}
                 mount={mount}
                 size="lg"
                 animate={true}
-                className="scale-[2.2]"
+                className="scale-[2]"
               />
             </div>
           </div>
 
           {/* Presets */}
           <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Preset</p>
-              {matchedPresetId ? (
-                <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">
-                  {HORSE_SKINS.find((s) => s.id === matchedPresetId)?.name ?? matchedPresetId}
-                </span>
-              ) : (
-                <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">Custom</span>
-              )}
+            <div className="mb-2.5 flex items-center justify-between">
+              <p className="text-[13px] font-semibold text-fg">Preset</p>
+              <span className="text-[12px] font-medium text-fg-muted">
+                {matchedPresetId
+                  ? (HORSE_SKINS.find((s) => s.id === matchedPresetId)?.name ?? matchedPresetId)
+                  : 'Custom'}
+              </span>
             </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="grid grid-cols-4 gap-2">
               {HORSE_SKINS.map((skin) => {
                 const isActive = matchedPresetId === skin.id;
                 return (
@@ -126,11 +144,9 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                     type="button"
                     onClick={() => handlePresetClick(skin.id)}
                     title={skin.name}
-                    className={`group shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast active:scale-95 ${
-                      isActive
-                        ? 'bg-nike-black/[0.04] ring-2 ring-nike-black ring-offset-2 ring-offset-white'
-                        : 'bg-black/[0.04] hover:bg-black/[0.07]'
-                    }`}
+                    aria-label={`Preset ${skin.name}`}
+                    aria-pressed={isActive}
+                    className={`${tileBase} ${isActive ? tileActive : tileIdle}`}
                   >
                     <HorseAvatar colors={skin.horse} size="sm" />
                   </button>
@@ -141,13 +157,13 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
 
           {/* Mount picker */}
           <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Tunggangan</p>
-              <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">
+            <div className="mb-2.5 flex items-center justify-between">
+              <p className="text-[13px] font-semibold text-fg">Tunggangan</p>
+              <span className="text-[12px] font-medium text-fg-muted">
                 {MOUNT_OPTIONS.find((m) => m.id === mount)?.name ?? 'Kuda'}
               </span>
             </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
               {MOUNT_OPTIONS.map((opt) => {
                 const isActive = mount === opt.id;
                 return (
@@ -158,17 +174,15 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
                       if (isMountId(opt.id)) setMount(opt.id);
                     }}
                     title={opt.name}
-                    className={`shrink-0 flex h-14 w-14 items-center justify-center rounded-2xl transition-spring-fast active:scale-95 ${
-                      isActive
-                        ? 'bg-nike-black/[0.04] ring-2 ring-nike-black ring-offset-2 ring-offset-white'
-                        : 'bg-black/[0.04] hover:bg-black/[0.07]'
-                    }`}
+                    aria-label={opt.name}
+                    aria-pressed={isActive}
+                    className={`${tileBase} ${isActive ? tileActive : tileIdle}`}
                   >
                     {opt.id === 'horse' ? (
                       <HorseAvatar colors={{ jersey, pants, saddle }} size="sm" />
                     ) : opt.src ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={opt.src} alt={opt.name} className="h-9 w-9 object-contain" draggable={false} />
+                      <img src={opt.src} alt="" className="h-9 w-9 object-contain" draggable={false} />
                     ) : null}
                   </button>
                 );
@@ -178,8 +192,8 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
 
           {/* Custom Colors */}
           <div>
-            <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase mb-2.5">Warna kustom</p>
-            <div className="rounded-2xl bg-black/[0.03] divide-y divide-black/[0.05]">
+            <p className="mb-2.5 text-[13px] font-semibold text-fg">Warna kustom</p>
+            <div className="well divide-y divide-line rounded-2xl">
               <ColorRow label="Baju joki" value={jersey} onChange={setJersey} />
               <ColorRow label="Celana joki" value={pants} onChange={setPants} />
               <ColorRow label="Sadel kuda" value={saddle} onChange={setSaddle} />
@@ -188,18 +202,18 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 flex gap-2 px-5 py-4 border-t border-black/[0.06]">
+        <div className="flex shrink-0 gap-2 border-t border-line px-5 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 h-11 rounded-full bg-black/5 text-nike-black text-[13px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+            className="well well-hover h-11 flex-1 rounded-xl text-[14px] font-medium text-fg transition-calm"
           >
             Batal
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 h-11 rounded-full bg-nike-black text-white text-[13px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] tracking-tight shadow-ios-sm"
+            className="clay-primary h-11 flex-1 rounded-xl text-[14px] font-semibold"
           >
             Simpan
           </button>
@@ -234,11 +248,12 @@ function ColorRow({
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <p className="text-[13px] font-medium text-nike-black tracking-tight min-w-0 flex-1 truncate">{label}</p>
-      <div className="flex items-center gap-2 shrink-0">
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+      <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-fg">{label}</p>
+      <div className="flex shrink-0 items-center gap-2">
         <input
           type="text"
+          aria-label={`${label}, kode hex`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={handleHexBlur}
@@ -252,9 +267,9 @@ function ColorRow({
           }}
           maxLength={7}
           spellCheck={false}
-          className="w-[78px] h-8 rounded-lg bg-white px-2.5 text-[12px] font-mono tabular-nums uppercase text-nike-grey-500 focus:outline-none focus:text-nike-black tracking-tight"
+          className="h-11 w-[84px] rounded-lg md:h-9 border border-line-strong bg-transparent px-2.5 text-[13px] font-semibold tabular-nums uppercase text-fg-muted transition-calm focus:text-fg"
         />
-        <label className="relative h-9 w-9 shrink-0 rounded-full overflow-hidden cursor-pointer transition-spring-fast active:scale-95 ring-1 ring-black/[0.06]" style={{ backgroundColor: value }}>
+        <label className="relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-full ring-1 ring-line-strong transition-calm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus)]" style={{ backgroundColor: value }}>
           <input
             type="color"
             value={value}

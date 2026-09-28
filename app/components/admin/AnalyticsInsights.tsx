@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { Search } from 'lucide-react';
 import RichContent from '@/app/components/RichContent';
 
 type QuestionData = {
@@ -59,7 +60,6 @@ type AnalyticsInsightsProps = {
 export default function AnalyticsInsights({
   hardestTopics,
   hardestQuestions,
-  scoreTrend,
   formatCategorySelectionLabel,
   onQuestionClick,
   theme = 'dark',
@@ -70,39 +70,25 @@ export default function AnalyticsInsights({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'wrongRate' | 'attempts'>('wrongRate');
 
-  // Helper function to get color for accuracy percentage (higher is better)
+  // Accuracy: higher is better
   const getAccuracyColor = (accuracy: number) => {
-    if (accuracy > 70) {
-      return theme === 'dark' ? 'text-accent-green' : 'text-green-600';
-    } else if (accuracy > 50) {
-      return theme === 'dark' ? 'text-accent-orange' : 'text-orange-600';
-    } else {
-      return theme === 'dark' ? 'text-accent-red' : 'text-red-600';
-    }
+    if (accuracy > 70) return 'text-primary';
+    if (accuracy > 50) return 'text-highlight-fg';
+    return 'text-danger';
   };
 
-  // Helper function to get color for wrong rate percentage (higher is worse)
+  // Wrong rate: higher is worse
   const getWrongRateColor = (wrongRate: number) => {
-    if (wrongRate > 70) {
-      return theme === 'dark' ? 'text-accent-red' : 'text-red-600';
-    } else if (wrongRate > 25) {
-      return theme === 'dark' ? 'text-accent-orange' : 'text-orange-600';
-    } else {
-      return theme === 'dark' ? 'text-accent-green' : 'text-green-600';
-    }
+    if (wrongRate > 70) return 'text-danger';
+    if (wrongRate > 25) return 'text-highlight-fg';
+    return 'text-primary';
   };
 
-  // Helper function to get difficulty badge
   const getDifficultyBadge = (wrongRate: number) => {
-    if (wrongRate > 80) {
-      return { label: 'Very Hard', color: theme === 'dark' ? 'bg-accent-red/20 text-accent-red' : 'bg-red-100 text-red-700' };
-    } else if (wrongRate > 50) {
-      return { label: 'Hard', color: theme === 'dark' ? 'bg-accent-orange/20 text-accent-orange' : 'bg-orange-100 text-orange-700' };
-    } else if (wrongRate > 25) {
-      return { label: 'Medium', color: theme === 'dark' ? 'bg-accent-blue/20 text-accent-blue' : 'bg-blue-100 text-blue-700' };
-    } else {
-      return { label: 'Easy', color: theme === 'dark' ? 'bg-accent-green/20 text-accent-green' : 'bg-green-100 text-green-700' };
-    }
+    if (wrongRate > 80) return { label: 'Very hard', color: 'bg-danger/12 text-danger' };
+    if (wrongRate > 50) return { label: 'Hard', color: 'bg-warn/15 text-highlight-fg' };
+    if (wrongRate > 25) return { label: 'Medium', color: 'well text-fg-muted' };
+    return { label: 'Easy', color: 'bg-primary/12 text-primary' };
   };
 
   const displayedQuestions = hardestQuestions
@@ -163,33 +149,23 @@ export default function AnalyticsInsights({
 
   // Show 8 questions by default, with "Show More" button to see all
   const questionsToShow = showAllQuestions ? displayedQuestions : displayedQuestions.slice(0, 8);
+
+  const typeSegment = (active: boolean) =>
+    `h-11 md:h-9 rounded-lg px-3.5 text-[13px] font-semibold transition-calm ${active ? 'clay' : 'text-fg-muted hover:text-fg'}`;
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <div
-        className={`rounded-[28px] border p-6 shadow-ios-md ${
-          theme === 'dark'
-            ? 'border-dark-border-subtle bg-dark-800'
-            : 'border-[#E5E5E5] bg-white'
-        }`}
-      >
+    <div data-theme={theme} className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+      <section className="glass rounded-3xl p-5" aria-labelledby="hardest-topics-title">
         <div className="mb-4">
-          <h3
-            className={`text-base font-semibold tracking-tight ${
-              theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'
-            }`}
-          >
-            Hardest Topics
+          <h3 id="hardest-topics-title" className="text-[17px] font-bold tracking-tight text-fg">
+            Hardest topics
           </h3>
-          <p
-            className={`mt-1 text-xs font-medium ${
-              theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
-            }`}
-          >
-            Topics with highest miss rate.
+          <p className="mt-0.5 text-[13px] text-fg-muted">
+            Topics with highest miss rate. Pick one to filter the questions.
           </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {hardestTopics.slice(0, 5).map((topic, index) => {
             const missCount = topic.answered - topic.correct;
             const topicValue = topic.subBab || topic.bab || topic.mapel;
@@ -198,82 +174,26 @@ export default function AnalyticsInsights({
               <button
                 key={topic.key}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => setSelectedTopicFilter(isSelected ? null : topic)}
-                className={`w-full flex items-center justify-between gap-3 rounded-[20px] border p-3.5 transition-spring hover:scale-[1.01] ${
-                  isSelected
-                    ? theme === 'dark'
-                      ? 'border-accent-blue/40 bg-accent-blue/12 shadow-ios-sm'
-                      : 'border-blue-600/40 bg-blue-50 shadow-ios-sm'
-                    : theme === 'dark'
-                    ? 'border-dark-border-subtle bg-white/[0.03] hover:bg-white/[0.05]'
-                    : 'border-[#E5E5E5] bg-black/[0.02] hover:bg-black/[0.03]'
+                className={`flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left transition-calm ${
+                  isSelected ? 'bg-primary/12 ring-1 ring-primary/40' : 'well well-hover'
                 }`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                      isSelected
-                        ? theme === 'dark'
-                          ? 'bg-accent-blue text-white'
-                          : 'bg-blue-600 text-white'
-                        : theme === 'dark'
-                        ? 'bg-accent-red/15 text-accent-red'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[14px] font-bold tabular-nums ${isSelected ? 'bg-primary text-on-primary' : 'clay'}`}>
                     {index + 1}
                   </span>
-                  <span
-                    className={`truncate text-sm font-semibold tracking-tight ${
-                      isSelected
-                        ? theme === 'dark'
-                          ? 'text-accent-blue'
-                          : 'text-blue-700'
-                        : theme === 'dark'
-                        ? 'text-dark-text-primary'
-                        : 'text-gray-900'
-                    }`}
-                  >
+                  <span className={`truncate text-[14px] font-semibold ${isSelected ? 'text-primary' : 'text-fg'}`}>
                     {formatCategorySelectionLabel(topicValue)}
                   </span>
                 </div>
-                <div className="flex flex-col items-end shrink-0">
-                  <span
-                    className={`text-lg font-semibold tabular-nums ${
-                      isSelected
-                        ? theme === 'dark'
-                          ? 'text-accent-blue'
-                          : 'text-blue-700'
-                        : getAccuracyColor(topic.accuracy)
-                    }`}
-                  >
+                <div className="flex shrink-0 flex-col items-end">
+                  <span className={`text-[18px] font-bold leading-tight tabular-nums ${getAccuracyColor(topic.accuracy)}`}>
                     {topic.accuracy}%
                   </span>
-                  <span
-                    className={`text-[10px] font-medium ${
-                      isSelected
-                        ? theme === 'dark'
-                          ? 'text-accent-blue/70'
-                          : 'text-blue-600'
-                        : theme === 'dark'
-                        ? 'text-dark-text-tertiary'
-                        : 'text-gray-500'
-                    }`}
-                  >
-                    accuracy
-                  </span>
-                  <span
-                    className={`text-[10px] font-medium ${
-                      isSelected
-                        ? theme === 'dark'
-                          ? 'text-accent-blue/60'
-                          : 'text-blue-500'
-                        : theme === 'dark'
-                        ? 'text-dark-text-tertiary'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    {missCount} of {topic.answered} wrong
+                  <span className="text-[11px] font-medium text-fg-muted">
+                    accuracy · {missCount} of {topic.answered} wrong
                   </span>
                 </div>
               </button>
@@ -281,129 +201,71 @@ export default function AnalyticsInsights({
           })}
 
           {hardestTopics.length === 0 && (
-            <div
-              className={`rounded-[20px] border-2 border-dashed p-6 text-center ${
-                theme === 'dark'
-                  ? 'border-dark-border-medium bg-white/[0.02] text-dark-text-tertiary'
-                  : 'border-gray-300 bg-black/[0.02] text-gray-400'
-              }`}
-            >
-              <p className="text-sm font-medium">No topic data available.</p>
+            <div className="rounded-2xl border border-dashed border-line-strong p-6 text-center">
+              <p className="text-[14px] font-medium text-fg-muted">No topic data available.</p>
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      <div
-        className={`rounded-[28px] border p-6 shadow-ios-md lg:col-span-2 ${
-          theme === 'dark'
-            ? 'border-dark-border-subtle bg-dark-800'
-            : 'border-[#E5E5E5] bg-white'
-        }`}
-      >
+      <section className="glass rounded-3xl p-5 lg:col-span-2" aria-labelledby="hardest-questions-title">
         <div className="mb-4">
-          <h3
-            className={`text-base font-semibold tracking-tight ${
-              theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'
-            }`}
-          >
-            Hardest Questions
+          <h3 id="hardest-questions-title" className="text-[17px] font-bold tracking-tight text-fg">
+            Hardest questions
           </h3>
-          <p
-            className={`mt-1 text-xs font-medium ${
-              theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
-            }`}
-          >
+          <p className="mt-0.5 text-[13px] text-fg-muted">
             Highest wrong rate questions. Click to inspect details.
           </p>
         </div>
 
-        <div className="mb-4 space-y-3">
-          <input
-            type="text"
-            placeholder="Search by question ID or text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className={`h-11 w-full rounded-2xl border px-4 text-sm font-medium transition-spring-fast focus:outline-none focus:ring-2 ${
-              theme === 'dark'
-                ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary placeholder:text-dark-text-tertiary focus:border-accent-blue focus:ring-accent-blue/10'
-                : 'border-[#E5E5E5] bg-white text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-gray-900/10'
-            }`}
-          />
+        <div className="mb-4 space-y-2.5">
+          <div className="relative">
+            <input
+              type="text"
+              aria-label="Search questions"
+              placeholder="Search by question ID or text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="well h-11 w-full rounded-xl pl-10 pr-4 text-[14px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
+            />
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+          </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className={`inline-flex h-10 rounded-full border p-0.5 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
-              <button
-                type="button"
-                onClick={() => setQuestionTypeFilter('all')}
-                className={`rounded-full px-3.5 text-[11px] font-semibold transition-spring-fast ${
-                  questionTypeFilter === 'all'
-                    ? theme === 'dark'
-                      ? 'bg-accent-blue text-white'
-                      : 'bg-[#111111] text-white'
-                    : theme === 'dark'
-                    ? 'text-dark-text-primary hover:bg-dark-700'
-                    : 'text-[#111111] hover:bg-[#f5f5f5]'
-                }`}
-              >
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="well flex gap-1 rounded-xl p-1" role="group" aria-label="Question type">
+              <button type="button" aria-pressed={questionTypeFilter === 'all'} onClick={() => setQuestionTypeFilter('all')} className={typeSegment(questionTypeFilter === 'all')}>
                 All
               </button>
-              <button
-                type="button"
-                onClick={() => setQuestionTypeFilter('multiple_choice')}
-                className={`rounded-full px-3.5 text-[11px] font-semibold transition-spring-fast ${
-                  questionTypeFilter === 'multiple_choice'
-                    ? theme === 'dark'
-                      ? 'bg-accent-blue text-white'
-                      : 'bg-[#111111] text-white'
-                    : theme === 'dark'
-                    ? 'text-dark-text-primary hover:bg-dark-700'
-                    : 'text-[#111111] hover:bg-[#f5f5f5]'
-                }`}
-              >
+              <button type="button" aria-pressed={questionTypeFilter === 'multiple_choice'} onClick={() => setQuestionTypeFilter('multiple_choice')} className={typeSegment(questionTypeFilter === 'multiple_choice')}>
                 PG
               </button>
-              <button
-                type="button"
-                onClick={() => setQuestionTypeFilter('short_answer')}
-                className={`rounded-full px-3.5 text-[11px] font-semibold transition-spring-fast ${
-                  questionTypeFilter === 'short_answer'
-                    ? theme === 'dark'
-                      ? 'bg-accent-blue text-white'
-                      : 'bg-[#111111] text-white'
-                    : theme === 'dark'
-                    ? 'text-dark-text-primary hover:bg-dark-700'
-                    : 'text-[#111111] hover:bg-[#f5f5f5]'
-                }`}
-              >
+              <button type="button" aria-pressed={questionTypeFilter === 'short_answer'} onClick={() => setQuestionTypeFilter('short_answer')} className={typeSegment(questionTypeFilter === 'short_answer')}>
                 Isian
               </button>
             </div>
 
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'wrongRate' | 'attempts')}
-              className={`h-10 min-w-[152px] cursor-pointer rounded-full border px-3.5 text-[11px] font-semibold transition-spring-fast focus:outline-none focus:ring-2 ${
-                theme === 'dark'
-                  ? 'border-dark-border-medium bg-dark-800 text-dark-text-primary focus:border-accent-blue focus:ring-accent-blue/10'
-                  : 'border-[#e5e5e5] bg-white text-[#111111] focus:border-[#111111] focus:ring-[#111111]/10'
-              }`}
-            >
-              <option value="wrongRate">Sort by wrong rate</option>
-              <option value="attempts">Sort by attempts</option>
-            </select>
+            <div className="relative">
+              <select
+                value={sortBy}
+                aria-label="Sort"
+                onChange={(e) => setSortBy(e.target.value as 'wrongRate' | 'attempts')}
+                className="well well-hover h-11 min-w-[170px] cursor-pointer appearance-none rounded-xl pl-3.5 pr-10 text-[13px] font-medium text-fg transition-calm"
+              >
+                <option value="wrongRate">Sort by wrong rate</option>
+                <option value="attempts">Sort by attempts</option>
+              </select>
+              <svg className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
 
-            <span
-              className={`text-xs font-medium ${
-                theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
-              }`}
-            >
+            <span className="text-[13px] font-medium tabular-nums text-fg-muted">
               {displayedQuestions.length} question{displayedQuestions.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
 
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {questionsToShow.map((question, index) => {
             const topics = [
               ...(question.question?.mapels || []),
@@ -411,75 +273,37 @@ export default function AnalyticsInsights({
               ...(question.question?.sub_babs || [])
             ].filter(Boolean);
             const studentCount = `${question.incorrect} of ${question.attempts} students`;
+            const difficulty = getDifficultyBadge(question.wrongRate);
 
             return (
               <button
                 key={question.questionId}
                 type="button"
                 onClick={() => onQuestionClick(question)}
-                className={`w-full rounded-[20px] border p-3.5 text-left transition-spring hover:scale-[1.01] ${
-                  theme === 'dark'
-                    ? 'border-dark-border-subtle bg-white/[0.03] hover:bg-white/[0.05]'
-                    : 'border-[#E5E5E5] bg-black/[0.02] hover:bg-black/[0.03]'
-                }`}
+                className="well well-hover w-full rounded-2xl p-3.5 text-left transition-calm"
               >
                 <div className="flex items-start gap-3">
-                  <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                      theme === 'dark'
-                        ? 'bg-accent-red/15 text-accent-red'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
+                  <span className="clay flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[14px] font-bold tabular-nums">
                     {index + 1}
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`text-xs font-semibold ${
-                          theme === 'dark'
-                            ? 'text-dark-text-secondary'
-                            : 'text-gray-600'
-                        }`}
-                      >
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span className="text-[13px] font-semibold text-fg">
                         Q{question.questionId}
                       </span>
-                      <span
-                        className={`text-xs font-medium ${
-                          theme === 'dark'
-                            ? 'text-dark-text-tertiary'
-                            : 'text-gray-500'
-                        }`}
-                      >
+                      <span className="text-[12px] font-medium text-fg-muted">
                         {studentCount}
                       </span>
                       {question.question?.question_type && (
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold ${
-                            theme === 'dark'
-                              ? 'bg-dark-700 text-dark-text-secondary'
-                              : 'bg-white text-gray-600'
-                          }`}
-                        >
+                        <span className="well inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold text-fg-muted">
                           {question.question.question_type === 'short_answer' ? 'Isian' : 'PG'}
                         </span>
                       )}
-                      {/* Difficulty Badge */}
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold ${
-                          getDifficultyBadge(question.wrongRate).color
-                        }`}
-                      >
-                        {getDifficultyBadge(question.wrongRate).label}
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${difficulty.color}`}>
+                        {difficulty.label}
                       </span>
                     </div>
-                    <div
-                      className={`truncate text-sm font-medium mb-2 ${
-                        theme === 'dark'
-                          ? 'text-dark-text-primary'
-                          : 'text-gray-900'
-                      }`}
-                    >
+                    <div className="mb-2 truncate text-[14px] font-medium text-fg">
                       {question.question ? (
                         <RichContent html={question.question.question_text} />
                       ) : (
@@ -487,46 +311,25 @@ export default function AnalyticsInsights({
                       )}
                     </div>
                     {topics.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {topics.slice(0, 2).map((topic, idx) => (
-                          <span
-                            key={idx}
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                              theme === 'dark'
-                                ? 'bg-dark-700 text-dark-text-secondary'
-                                : 'bg-white text-gray-600'
-                            }`}
-                          >
+                          <span key={idx} className="inline-flex items-center rounded-md border border-line px-2 py-0.5 text-[11px] font-semibold text-fg-muted">
                             {formatCategorySelectionLabel(topic)}
                           </span>
                         ))}
                         {topics.length > 2 && (
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                              theme === 'dark'
-                                ? 'bg-dark-700 text-dark-text-secondary'
-                                : 'bg-white text-gray-600'
-                            }`}
-                          >
+                          <span className="inline-flex items-center rounded-md border border-line px-2 py-0.5 text-[11px] font-semibold tabular-nums text-fg-muted">
                             +{topics.length - 2}
                           </span>
                         )}
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col items-end shrink-0">
-                    <span
-                      className={`text-xl font-semibold tabular-nums ${getWrongRateColor(question.wrongRate)}`}
-                    >
+                  <div className="flex shrink-0 flex-col items-end">
+                    <span className={`text-[20px] font-bold leading-tight tabular-nums ${getWrongRateColor(question.wrongRate)}`}>
                       {question.wrongRate}%
                     </span>
-                    <span
-                      className={`text-[10px] font-medium ${
-                        theme === 'dark'
-                          ? 'text-dark-text-tertiary'
-                          : 'text-gray-500'
-                      }`}
-                    >
+                    <span className="text-[11px] font-medium text-fg-muted">
                       wrong
                     </span>
                   </div>
@@ -536,14 +339,8 @@ export default function AnalyticsInsights({
           })}
 
           {displayedQuestions.length === 0 && (
-            <div
-              className={`rounded-[16px] border-2 border-dashed p-6 text-center ${
-                theme === 'dark'
-                  ? 'border-[#2a2a2a] text-dark-text-tertiary'
-                  : 'border-gray-300 text-gray-400'
-              }`}
-            >
-              <p className="text-sm font-medium">
+            <div className="rounded-2xl border border-dashed border-line-strong p-6 text-center">
+              <p className="text-[14px] font-medium text-fg-muted">
                 {selectedTopicFilter
                   ? 'No questions found for selected topic'
                   : 'No question data available'}
@@ -555,17 +352,13 @@ export default function AnalyticsInsights({
             <button
               type="button"
               onClick={() => setShowAllQuestions(!showAllQuestions)}
-              className={`w-full mt-3 h-10 rounded-full border px-4 text-xs font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${
-                theme === 'dark'
-                  ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:border-accent-blue hover:text-accent-blue'
-                  : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'
-              }`}
+              className="well well-hover mt-2 h-11 w-full rounded-xl px-4 text-[13px] font-medium text-fg transition-calm"
             >
-              {showAllQuestions ? `Show Less` : `Show More (${displayedQuestions.length - 8} more)`}
+              {showAllQuestions ? 'Show less' : `Show more (${displayedQuestions.length - 8} more)`}
             </button>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

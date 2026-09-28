@@ -8,10 +8,11 @@ type ResultsFooterProps = {
 
 export default function ResultsFooter({ onRestart }: ResultsFooterProps) {
   return (
-    <div className="pt-6 border-t border-black/[0.06]">
+    <div className="border-t border-line pt-6">
       <button
+        type="button"
         onClick={onRestart}
-        className="w-full sm:w-auto sm:px-10 h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] tracking-tight shadow-ios-sm"
+        className="clay-primary h-12 w-full rounded-xl px-10 text-[15px] font-semibold sm:w-auto"
       >
         Start over
       </button>

@@ -16,34 +16,36 @@ export default function QuestionModalHeader({
   isEditing,
   selectedQuestion,
   onClose,
-  theme = 'dark',
 }: QuestionModalHeaderProps) {
+  const chip = 'well inline-flex h-6 items-center rounded-md px-2 text-[12px] font-semibold text-fg-muted';
+
   return (
-    <div className={`shrink-0 flex justify-between items-center gap-3 px-4 py-3 border-b sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'}`}>
-      <div className="flex items-center gap-2 flex-wrap min-w-0">
-        <h2 className={`text-[15px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-6 sm:py-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <h2 className="text-[18px] font-bold tracking-tight text-fg">
           {isAdding ? 'Add question' : isEditing ? 'Edit question' : 'Question'}
         </h2>
         {selectedQuestion && !isAdding && !isEditing && (
           <div className="flex items-center gap-1.5">
-            <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tabular-nums ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
+            <span className={`${chip} tabular-nums`}>
               #{selectedQuestion.id}
             </span>
-            <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
+            <span className={chip}>
               {selectedQuestion.question_type === 'short_answer' ? 'Isian singkat' : 'Pilihan ganda'}
             </span>
-            <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-tight ${selectedQuestion.is_hidden ? (theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700') : (theme === 'dark' ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700')}`}>
+            <span className={`inline-flex h-6 items-center rounded-md px-2 text-[12px] font-semibold ${selectedQuestion.is_hidden ? 'bg-danger/12 text-danger' : 'bg-primary/12 text-primary'}`}>
               {selectedQuestion.is_hidden ? 'Hidden' : 'Visible'}
             </span>
           </div>
         )}
       </div>
       <button
+        type="button"
         onClick={onClose}
-        className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 shrink-0 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
-        title="Close"
+        className="well well-hover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg transition-calm"
+        aria-label="Close"
       >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.25} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
       </button>
     </div>
   );

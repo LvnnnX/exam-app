@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { Search } from 'lucide-react';
 import StudentWeaknessCard from './StudentWeaknessCard';
 import StudentWeaknessModal from './StudentWeaknessModal';
 
@@ -121,130 +122,89 @@ export default function StudentWeaknessPanel({
   };
 
   return (
-    <div className="space-y-4">
-      <div
-        className={`rounded-[24px] border p-5 shadow-ios-sm ${
-          theme === 'dark'
-            ? 'border-dark-border-subtle bg-dark-800'
-            : 'border-[#E5E5E5] bg-white'
-        }`}
-      >
-        <h2
-          className={`text-[20px] font-semibold tracking-tight ${
-            theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'
-          }`}
-        >
-          Student Weakness
-        </h2>
-        <p
-          className={`mt-1 text-xs font-medium ${
-            theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
-          }`}
-        >
-          Identify weak learners, then build focused remedial quiz sets.
-        </p>
-      </div>
+    <div data-theme={theme} className="space-y-3">
+      <section className="glass space-y-4 rounded-3xl p-5" aria-labelledby="student-weakness-title">
+        <div>
+          <h2 id="student-weakness-title" className="text-[20px] font-bold tracking-tight text-fg">
+            Student weakness
+          </h2>
+          <p className="mt-0.5 text-[13px] text-fg-muted">
+            Identify weak learners, then build focused remedial quiz sets.
+          </p>
+        </div>
 
-      <div
-        className={`space-y-3 rounded-[24px] border p-5 shadow-ios-sm ${
-          theme === 'dark'
-            ? 'border-dark-border-subtle bg-dark-800'
-            : 'border-[#E5E5E5] bg-white'
-        }`}
-      >
-        <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#8a8a8a]'}`}>
-          Filter & actions
-        </p>
-        {/* Search */}
-        <input
-          type="text"
-          placeholder="Search by student name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className={`h-11 w-full rounded-2xl border px-4 text-sm font-medium transition-spring-fast focus:outline-none focus:ring-2 ${
-            theme === 'dark'
-              ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary placeholder:text-dark-text-tertiary focus:border-accent-blue focus:ring-accent-blue/10'
-              : 'border-[#E5E5E5] bg-white text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-gray-900/10'
-          }`}
-        />
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div
-            className={`inline-flex h-10 rounded-full border p-0.5 ${
-              theme === 'dark' ? 'border-dark-border-medium bg-dark-800' : 'border-[#e5e5e5] bg-white'
-            }`}
-          >
-            {(['all', 'critical', 'high', 'medium', 'low'] as const).map((severity) => (
-              <button
-                key={severity}
-                type="button"
-                onClick={() => setSeverityFilter(severity)}
-                className={`rounded-full px-3.5 text-[11px] font-semibold transition-spring-fast ${
-                  severityFilter === severity
-                    ? theme === 'dark'
-                      ? 'bg-accent-blue text-white'
-                      : 'bg-gray-900 text-white'
-                    : theme === 'dark'
-                    ? 'text-dark-text-primary hover:bg-dark-700'
-                    : 'text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                {severity}
-              </button>
-            ))}
+        <div className="space-y-2.5 border-t border-line pt-4">
+          <div className="relative">
+            <input
+              type="text"
+              aria-label="Search students"
+              placeholder="Search by student name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="well h-11 w-full rounded-xl pl-10 pr-4 text-[14px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
+            />
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
           </div>
 
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'name' | 'totalWrong' | 'avgScore')}
-            className={`h-10 min-w-[156px] cursor-pointer rounded-full border px-3.5 text-[11px] font-semibold transition-spring-fast focus:outline-none focus:ring-2 ${
-              theme === 'dark'
-                ? 'border-dark-border-medium bg-dark-800 text-dark-text-primary focus:border-accent-blue focus:ring-accent-blue/10'
-                : 'border-[#e5e5e5] bg-white text-gray-900 focus:border-gray-900 focus:ring-gray-900/10'
-            }`}
-          >
-            <option value="totalWrong">Sort by total wrong</option>
-            <option value="avgScore">Sort by avg score</option>
-            <option value="name">Sort by name</option>
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="well flex flex-wrap gap-1 rounded-xl p-1" role="group" aria-label="Severity">
+              {(['all', 'critical', 'high', 'medium', 'low'] as const).map((severity) => (
+                <button
+                  key={severity}
+                  type="button"
+                  aria-pressed={severityFilter === severity}
+                  onClick={() => setSeverityFilter(severity)}
+                  className={`h-11 md:h-9 rounded-lg px-3 text-[13px] font-semibold capitalize transition-calm ${
+                    severityFilter === severity ? 'clay' : 'text-fg-muted hover:text-fg'
+                  }`}
+                >
+                  {severity}
+                </button>
+              ))}
+            </div>
 
-          <button
-            type="button"
-            onClick={handleSelectAll}
-            className={`h-10 rounded-full border px-3.5 text-[11px] font-semibold transition-spring-fast ${
-              theme === 'dark'
-                ? 'border-dark-border-medium bg-dark-800 text-dark-text-primary hover:border-accent-blue hover:text-accent-blue'
-                : 'border-[#e5e5e5] bg-white text-gray-900 hover:border-gray-900'
-            }`}
-          >
-            {selectedStudents.size === filteredStudents.length ? 'Deselect all' : 'Select all'}
-          </button>
+            <div className="relative">
+              <select
+                value={sortBy}
+                aria-label="Sort students"
+                onChange={(e) => setSortBy(e.target.value as 'name' | 'totalWrong' | 'avgScore')}
+                className="well well-hover h-11 min-w-[176px] cursor-pointer appearance-none rounded-xl pl-3.5 pr-10 text-[13px] font-medium text-fg transition-calm"
+              >
+                <option value="totalWrong">Sort by total wrong</option>
+                <option value="avgScore">Sort by avg score</option>
+                <option value="name">Sort by name</option>
+              </select>
+              <svg className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
 
-          <span
-            className={`text-xs font-medium ${
-              theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'
-            }`}
-          >
-            {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
-          </span>
-
-          {selectedStudents.size > 0 && (
             <button
               type="button"
-              onClick={() => onCreateRemedialQuiz(Array.from(selectedStudents))}
-              className={`h-10 rounded-full border px-4 text-[11px] font-semibold transition-spring hover:scale-[1.02] ${
-                theme === 'dark'
-                  ? 'border-accent-blue bg-accent-blue text-white hover:bg-accent-blue/90'
-                  : 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
-              }`}
+              onClick={handleSelectAll}
+              className="well well-hover h-11 rounded-xl px-4 text-[13px] font-medium text-fg transition-calm"
             >
-              Create quiz ({selectedStudents.size})
+              {selectedStudents.size === filteredStudents.length ? 'Deselect all' : 'Select all'}
             </button>
-          )}
-        </div>
-      </div>
 
-      <div className="space-y-3 overflow-x-hidden px-1 py-1">
+            <span className="text-[13px] font-medium tabular-nums text-fg-muted">
+              {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
+            </span>
+
+            {selectedStudents.size > 0 && (
+              <button
+                type="button"
+                onClick={() => onCreateRemedialQuiz(Array.from(selectedStudents))}
+                className="clay-primary ml-auto h-11 rounded-xl px-5 text-[14px] font-semibold"
+              >
+                Create quiz ({selectedStudents.size})
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="space-y-2.5 overflow-x-hidden">
         {filteredStudents.map((student) => (
           <StudentWeaknessCard
             key={student.key}
@@ -258,14 +218,9 @@ export default function StudentWeaknessPanel({
         ))}
 
         {filteredStudents.length === 0 && (
-          <div
-            className={`rounded-[24px] border-2 border-dashed p-8 text-center ${
-              theme === 'dark'
-                ? 'border-dark-border-medium bg-white/[0.02] text-dark-text-tertiary'
-                : 'border-gray-300 bg-black/[0.02] text-gray-400'
-            }`}
-          >
-            <p className="text-sm font-medium">No students match current filters.</p>
+          <div className="glass rounded-3xl p-8 text-center">
+            <p className="text-[15px] font-semibold text-fg">No students match current filters.</p>
+            <p className="mt-1 text-[13px] text-fg-muted">Clear the search or pick another severity.</p>
           </div>
         )}
       </div>

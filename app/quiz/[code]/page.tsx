@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use } from 'react';
+import React, { use, useEffect } from 'react';
 import { secureSave } from '@/lib/security';
 import { formatHMS } from '@/lib/quiz';
 import RichContent from '@/app/components/RichContent';
@@ -11,7 +11,61 @@ import { getHorseSkin } from '@/lib/horse-skins';
 import HorseAvatar from '@/app/components/HorseAvatar';
 import { formatCategorySelectionLabel } from '@/lib/categories';
 import CrownIcon from '@/app/components/CrownIcon';
+import { QuestionGridLegend, questionTileClass } from '@/app/components/exam/QuestionNavPopup';
 import useQuizSessionController from '@/app/hooks/useQuizSessionController';
+
+function splitTopicLabels(raw: string | null | undefined): string[] {
+  return String(raw || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((v) => formatCategorySelectionLabel(v));
+}
+
+function TopicRows({ tiers }: { tiers: ReadonlyArray<{ label: string; raw: string | null | undefined }> }) {
+  return (
+    <div className="space-y-1.5">
+      {tiers.map(({ label, raw }) => {
+        const items = splitTopicLabels(raw);
+        if (items.length === 0) {
+          return (
+            <div key={label} className="flex items-baseline gap-2">
+              <span className="w-11 shrink-0 text-left text-[12px] font-medium text-fg-muted">{label}</span>
+              <span className="text-[14px] font-medium text-fg-subtle">None</span>
+            </div>
+          );
+        }
+        const [first, ...rest] = items;
+        return (
+          <div key={label} className="flex min-w-0 items-baseline gap-2">
+            <span className="w-11 shrink-0 text-left text-[12px] font-medium text-fg-muted">{label}</span>
+            <span className="truncate text-[14px] font-semibold text-fg">{first}</span>
+            {rest.length > 0 && (
+              <span
+                title={items.join(', ')}
+                className="well inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-semibold tabular-nums text-fg-muted"
+              >
+                +{rest.length}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CenteredStatus({ title, detail }: { title: string; detail?: string }) {
+  return (
+    <div className="flex flex-1 items-center justify-center p-6" role="status" aria-live="polite">
+      <div className="glass flex flex-col items-center rounded-3xl px-8 py-7 text-center">
+        <span className="spinner-calm mb-4 h-6 w-6" aria-hidden="true" />
+        <p className="text-[15px] font-semibold text-fg">{title}</p>
+        {detail && <p className="mt-1 text-[13px] text-fg-muted">{detail}</p>}
+      </div>
+    </div>
+  );
+}
 
 export default function QuizSessionPage({ params }: { params: Promise<{ code: string }> }) {
   const unwrappedParams = use(params);
@@ -24,7 +78,6 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     router,
     isStandard,
     leaderboardRowRefs,
-    getRankBadgeClasses,
   } = meta;
 
   const {
@@ -71,152 +124,138 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     finishStandardQuiz,
   } = actions;
 
+  // Escape closes the submit confirm first, then the question grid. The tab
+  // warning swallows Escape in the capture phase, so it never reaches here.
+  useEffect(() => {
+    if (!showNavPopup && !showSubmitConfirm) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (showSubmitConfirm) setShowSubmitConfirm(false);
+      else setShowNavPopup(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showNavPopup, showSubmitConfirm, setShowNavPopup, setShowSubmitConfirm]);
 
-  if (loading) return <div className="p-8 text-center text-gray-500 font-bold">LOADING...</div>;
-  if (!session) return null;
+  if (loading) return <CenteredStatus title="Memuat kuis…" />;
+  if (!session) return <CenteredStatus title="Mengalihkan…" detail="Kuis tidak ditemukan." />;
+
+  const topicTiers = [
+    { label: 'Mapel', raw: session.mapel },
+    { label: 'Bab', raw: session.bab },
+    { label: 'Sub', raw: session.sub_bab },
+  ] as const;
 
   if (isFinished) {
-    const topicTiers = ([
-      { label: 'Mapel', raw: session.mapel },
-      { label: 'Bab', raw: session.bab },
-      { label: 'Sub', raw: session.sub_bab },
-    ] as const);
-
     return (
-      <div className="flex-1 flex flex-col px-4 sm:px-6 pt-8 pb-10 bg-white min-h-screen">
-        <div className="max-w-2xl mx-auto w-full">
+      <div className="flex flex-1 flex-col px-4 pt-6 pb-12 sm:px-6 md:pt-10">
+        <div className="mx-auto w-full max-w-2xl">
           {/* Header */}
           <div className="mb-6">
-            <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-nike-green/10 text-nike-green text-[11px] font-medium tracking-tight">
-              <span className="w-1.5 h-1.5 rounded-full bg-nike-green animate-pulse" />
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-primary/12 px-2.5 text-[12px] font-semibold text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
               Live result
             </span>
-            <h2 className="mt-3 font-display text-[32px] sm:text-[40px] text-nike-black leading-[1.05] tracking-[-0.02em]">
+            <h2 className="mt-3 text-[32px] font-bold leading-[1.05] tracking-[-0.02em] text-fg sm:text-[40px]">
               Leaderboard.
             </h2>
-            <p className="mt-1 text-[13px] text-nike-grey-500 tracking-tight">
+            <p className="mt-1 text-[14px] text-fg-muted">
               Hasil akhir untuk semua peserta.
             </p>
           </div>
 
           {/* Summary card */}
-          <div className="rounded-3xl bg-black/[0.03] px-5 py-4 mb-3 flex flex-col gap-3.5">
+          <div className="glass mb-4 flex flex-col gap-4 rounded-3xl px-5 py-5">
             {player && (
-              <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-medium text-nike-grey-500/80 mb-1 tracking-tight uppercase">Skor kamu</p>
-                  <p className="text-[22px] font-semibold tabular-nums text-nike-black tracking-tight leading-none">
-                    {score} <span className="text-nike-grey-500/50 text-[16px]">/ {session.question_count}</span>
-                  </p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="clay flex h-12 min-w-12 items-center justify-center rounded-xl px-2 text-[20px] font-bold tabular-nums">
+                    {score}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-medium text-fg-muted">Skor kamu</p>
+                    <p className="text-[14px] font-semibold tabular-nums text-fg">dari {session.question_count} soal</p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowLeaderboardView(true)}
-                  className="h-9 px-4 rounded-full bg-nike-black text-white text-[12px] font-medium tracking-tight hover:bg-nike-grey-500 transition-spring-fast active:scale-95 shadow-ios-sm shrink-0"
+                  className="clay-primary h-11 shrink-0 rounded-xl px-5 text-[14px] font-semibold"
                 >
                   Race view
                 </button>
               </div>
             )}
 
-            <div className="h-px bg-black/[0.06]" aria-hidden="true" />
+            {player && <div className="h-px bg-line" aria-hidden="true" />}
 
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-medium text-nike-grey-500/80 mb-1 tracking-tight uppercase">Topik</p>
-              {topicTiers.map(({ label, raw }) => {
-                const items = String(raw || '')
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-                  .map((v) => formatCategorySelectionLabel(v));
-                if (items.length === 0) {
-                  return (
-                    <div key={label} className="flex items-baseline gap-1.5">
-                      <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
-                      <span className="text-[13px] font-medium text-nike-grey-500 tracking-tight">None</span>
-                    </div>
-                  );
-                }
-                const [first, ...rest] = items;
-                return (
-                  <div key={label} className="flex items-baseline gap-1.5 min-w-0">
-                    <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
-                    <span className="text-[13px] font-medium text-nike-black tracking-tight truncate">{first}</span>
-                    {rest.length > 0 && (
-                      <span
-                        title={items.join(', ')}
-                        className="inline-flex items-center px-1.5 h-5 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums tracking-tight shrink-0"
-                      >
-                        +{rest.length}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+            <div>
+              <p className="mb-2 text-[12px] font-medium text-fg-muted">Topik</p>
+              <TopicRows tiers={topicTiers} />
             </div>
           </div>
 
           {/* Leaderboard list */}
-          <div className="space-y-1.5 mb-5">
-            {leaderboard.map((lb, idx) => {
-              const isMe = lb.id === player?.id;
-              const rank = idx + 1;
-              const showCrown = rank <= 3;
-              return (
-                <div
-                  key={lb.id}
-                  ref={(element) => { leaderboardRowRefs.current[lb.id] = element; }}
-                  className={`px-4 py-3 rounded-2xl flex items-center gap-3 transform-gpu will-change-transform transition-spring-fast ${
-                    isMe ? 'bg-nike-black text-white shadow-ios-sm' : 'bg-black/[0.03] text-nike-black'
-                  }`}
-                >
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold tabular-nums ${
-                    showCrown
-                      ? rank === 1
-                        ? 'bg-yellow-400 text-yellow-900'
-                        : rank === 2
-                          ? 'bg-slate-300 text-slate-700'
-                          : 'bg-amber-700 text-amber-100'
-                      : isMe
-                        ? 'bg-white/10 text-white/70'
-                        : 'bg-black/[0.06] text-nike-grey-500'
-                  }`}>
-                    {showCrown ? (
-                      <span className="text-[14px]">{rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>
-                    ) : rank}
-                  </div>
+          {leaderboard.length === 0 ? (
+            <div className="glass mb-5 rounded-3xl px-5 py-8 text-center">
+              <p className="text-[15px] font-semibold text-fg">Belum ada peserta.</p>
+              <p className="mt-1 text-[13px] text-fg-muted">Daftar ini terisi otomatis saat peserta bergabung.</p>
+            </div>
+          ) : (
+            <div className="glass mb-5 overflow-hidden rounded-3xl p-1.5" role="list">
+              {leaderboard.map((lb, idx) => {
+                const isMe = lb.id === player?.id;
+                const rank = idx + 1;
+                const showCrown = rank <= 3;
+                const pending = isStandard && !lb.finished_at;
+                return (
+                  <div
+                    key={lb.id}
+                    role="listitem"
+                    ref={(element) => { leaderboardRowRefs.current[lb.id] = element; }}
+                    className={`flex transform-gpu items-center gap-3 rounded-2xl px-3 py-2.5 will-change-transform transition-spring-fast ${
+                      isMe ? 'bg-highlight/15' : ''
+                    }`}
+                  >
+                    <span className={`flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl text-[14px] font-bold tabular-nums ${
+                      rank === 1 ? 'clay-highlight' : 'clay'
+                    }`}>
+                      {rank}
+                    </span>
 
-                  <p className="flex-1 min-w-0 truncate text-[14px] font-semibold tracking-tight">
-                    {lb.name}
-                    {isMe && (
-                      <span className="ml-1.5 text-[10px] font-medium text-white/60 tracking-tight uppercase">You</span>
+                    <p className="min-w-0 flex-1 truncate text-[15px] font-semibold text-fg">
+                      {lb.name}
+                      {isMe && (
+                        <span className="ml-2 text-[12px] font-semibold text-highlight-fg">Kamu</span>
+                      )}
+                    </p>
+
+                    {showCrown && (
+                      <CrownIcon rank={rank as 1 | 2 | 3} className="shrink-0 text-[20px]" />
                     )}
-                  </p>
 
-                  <div className="text-right shrink-0">
-                    <p className={`text-[13px] font-semibold tabular-nums tracking-tight leading-none ${
-                      isMe ? 'text-white' : 'text-nike-black'
-                    }`}>
-                      {isStandard && !lb.finished_at ? '?' : lb.score}
-                      <span className={`text-[10px] font-medium ml-1 ${isMe ? 'text-white/50' : 'text-nike-grey-500'}`}>
-                        / {session.question_count}
-                      </span>
-                    </p>
-                    <p className={`mt-0.5 text-[10px] font-medium tabular-nums font-mono tracking-tight ${
-                      isMe ? 'text-white/60' : 'text-nike-grey-500'
-                    }`}>
-                      {isStandard && !lb.finished_at ? '—' : formatHMS(lb.total_time)}
-                    </p>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[15px] font-bold leading-none tabular-nums text-fg">
+                        {pending ? '?' : lb.score}
+                        <span className="ml-1 text-[12px] font-medium text-fg-muted">
+                          / {session.question_count}
+                        </span>
+                      </p>
+                      <p className="mt-1 text-[12px] font-medium tabular-nums text-fg-muted">
+                        {pending ? 'Mengerjakan' : formatHMS(lb.total_time)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Footer */}
           <button
+            type="button"
             onClick={() => router.push('/')}
-            className="w-full h-12 rounded-full bg-black/5 text-nike-black text-[13px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+            className="well well-hover h-12 w-full rounded-xl text-[14px] font-medium text-fg transition-calm"
           >
             Kembali ke beranda
           </button>
@@ -234,75 +273,42 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
   if (!player) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
-        <div className="max-w-sm w-full">
-          <div className="text-center mb-6">
-            <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-nike-red/10 text-nike-red text-[11px] font-medium tracking-tight">
-              <span className="w-1.5 h-1.5 rounded-full bg-nike-red animate-pulse" />
+      <div className="flex flex-1 items-center justify-center px-4 py-10">
+        <div className="w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-danger/10 px-2.5 text-[12px] font-semibold text-danger">
+              <span className="h-1.5 w-1.5 rounded-full bg-danger" aria-hidden="true" />
               Live quiz
             </span>
-            <h2 className="mt-4 font-display text-[28px] sm:text-[32px] text-nike-black leading-[1.05] tracking-[-0.02em]">
+            <h2 className="mt-4 text-[30px] font-bold leading-[1.05] tracking-[-0.02em] text-fg sm:text-[34px]">
               Gabung ke kuis.
             </h2>
-            <p className="mt-1 text-[13px] text-nike-grey-500 tracking-tight">
+            <p className="mt-1 text-[14px] text-fg-muted">
               Masukkan namamu untuk masuk ruang tunggu.
             </p>
           </div>
 
-          <div className="rounded-3xl bg-black/[0.03] px-5 py-4 mb-4">
-            <p className="text-[10px] font-medium text-nike-grey-500/80 mb-2.5 tracking-tight uppercase">Topik</p>
-            <div className="space-y-1.5">
-              {([
-                { label: 'Mapel', raw: session.mapel },
-                { label: 'Bab', raw: session.bab },
-                { label: 'Sub', raw: session.sub_bab },
-              ] as const).map(({ label, raw }) => {
-                const items = String(raw || '')
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-                  .map((v) => formatCategorySelectionLabel(v));
-                if (items.length === 0) {
-                  return (
-                    <div key={label} className="flex items-baseline gap-1.5">
-                      <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
-                      <span className="text-[13px] font-medium text-nike-grey-500 tracking-tight">None</span>
-                    </div>
-                  );
-                }
-                const [first, ...rest] = items;
-                return (
-                  <div key={label} className="flex items-baseline gap-1.5 min-w-0">
-                    <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
-                    <span className="text-[13px] font-medium text-nike-black tracking-tight truncate">{first}</span>
-                    {rest.length > 0 && (
-                      <span
-                        title={items.join(', ')}
-                        className="inline-flex items-center px-1.5 h-5 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums tracking-tight shrink-0"
-                      >
-                        +{rest.length}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+          <div className="glass rounded-3xl p-5">
+            <p className="mb-2 text-[12px] font-medium text-fg-muted">Topik</p>
+            <div className="well mb-5 rounded-2xl px-3.5 py-3">
+              <TopicRows tiers={topicTiers} />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="block text-[11px] font-medium text-nike-grey-500 tracking-tight pl-1">Nama kamu</label>
+            <label htmlFor="quiz-player-name" className="mb-2 block text-[13px] font-medium text-fg-muted">Nama kamu</label>
             <input
+              id="quiz-player-name"
               type="text"
               placeholder="Tulis nama lengkap"
               value={name}
               maxLength={24}
               onChange={e => setName(e.target.value.slice(0, 24))}
-              className="w-full h-12 rounded-2xl bg-black/5 px-4 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none focus:bg-black/10 transition-spring-fast tracking-tight"
+              className="well mb-3 h-12 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
             />
             <button
+              type="button"
               onClick={handleJoin}
               disabled={!name.trim() || loading}
-              className="w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight shadow-ios-sm"
+              className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold"
             >
               {loading ? 'Menyambungkan…' : 'Masuk ruang tunggu'}
             </button>
@@ -313,103 +319,57 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   }
 
   if (session.status === 'waiting') {
+    const skin = getHorseSkin(player?.horse_skin, player?.id);
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
-        <div className="max-w-md w-full mx-auto">
-          <div className="text-center mb-6">
-            <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-black/5 text-nike-grey-500 text-[11px] font-medium tracking-tight">
-              <span className="w-1.5 h-1.5 rounded-full bg-nike-grey-500 animate-pulse" />
+      <div className="flex flex-1 items-center justify-center px-4 py-10">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-6 text-center">
+            <span className="well inline-flex h-7 items-center gap-2 rounded-lg px-2.5 text-[12px] font-semibold text-fg-muted">
+              <span className="spinner-calm h-3 w-3" aria-hidden="true" />
               Ruang tunggu
             </span>
-            <h2 className="mt-4 font-display text-[28px] sm:text-[32px] text-nike-black leading-[1.05] tracking-[-0.02em]">
+            <h2 className="mt-4 text-[30px] font-bold leading-[1.05] tracking-[-0.02em] text-fg sm:text-[34px]">
               Menunggu admin.
             </h2>
-            <p className="mt-1 text-[13px] text-nike-grey-500 tracking-tight">
+            <p className="mt-1 text-[14px] text-fg-muted" role="status" aria-live="polite">
               Kuis akan segera dimulai.
             </p>
-
-            <div className="mt-5 flex items-center justify-center gap-1.5" aria-label="Memuat">
-              <span className="w-1.5 h-1.5 rounded-full bg-nike-black animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-nike-black animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-nike-black animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
           </div>
 
-          {waitTimer && (
-            <div className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-black/[0.03] px-5 py-4 animate-in fade-in duration-300">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-nike-black shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 7v5l3 2" />
-                  </svg>
-                </div>
+          <div className="glass rounded-3xl p-5">
+            {waitTimer && (
+              <div className="mb-4 flex items-center justify-between gap-3 border-b border-line pb-4">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Mulai otomatis</p>
-                  <p className="text-[12px] font-medium text-nike-grey-500 tracking-tight">Kuis akan dimulai dalam</p>
+                  <p className="text-[12px] font-medium text-fg-muted">Mulai otomatis</p>
+                  <p className="text-[14px] font-semibold text-fg">Kuis akan dimulai dalam</p>
                 </div>
+                <span className="clay shrink-0 rounded-xl px-3.5 py-2 text-[22px] font-bold leading-none tabular-nums">
+                  {waitTimer}
+                </span>
               </div>
-              <span className="text-[22px] font-semibold font-mono tabular-nums text-nike-black tracking-tight leading-none shrink-0">
-                {waitTimer}
-              </span>
-            </div>
-          )}
+            )}
 
-          <div className="rounded-3xl bg-black/[0.03] px-5 py-4 mb-3 flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-ios-sm">
-              <HorseAvatar colors={getHorseSkin(player?.horse_skin, player?.id).horse} mount={getHorseSkin(player?.horse_skin, player?.id).mount} size="md" animate={true} />
+            <div className="mb-4 flex items-center gap-3">
+              <div className="clay flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl">
+                <HorseAvatar colors={skin.horse} mount={skin.mount} size="md" animate={true} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-medium text-fg-muted">Pemain</p>
+                <p className="truncate text-[16px] font-bold text-fg">{player?.name || 'Tamu'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditHorseModalOpen(true)}
+                disabled={changingHorseSkin || !player}
+                className="well well-hover h-11 shrink-0 rounded-xl px-4 text-[14px] font-medium text-fg transition-calm disabled:opacity-50"
+              >
+                {changingHorseSkin ? 'Tunggu…' : 'Ubah'}
+              </button>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase">Pemain</p>
-              <p className="text-[14px] font-semibold text-nike-black tracking-tight truncate">{player?.name || 'Tamu'}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsEditHorseModalOpen(true)}
-              disabled={changingHorseSkin || !player}
-              className="h-9 px-4 rounded-full bg-black/5 text-nike-black text-[12px] font-medium tracking-tight hover:bg-black/10 transition-spring-fast active:scale-95 disabled:opacity-50 shrink-0"
-            >
-              {changingHorseSkin ? 'Tunggu…' : 'Ubah'}
-            </button>
-          </div>
 
-          <div className="rounded-3xl bg-black/[0.03] px-5 py-4">
-            <p className="text-[10px] font-medium text-nike-grey-500/80 mb-2.5 tracking-tight uppercase">Topik</p>
-            <div className="space-y-1.5">
-              {([
-                { label: 'Mapel', raw: session.mapel },
-                { label: 'Bab', raw: session.bab },
-                { label: 'Sub', raw: session.sub_bab },
-              ] as const).map(({ label, raw }) => {
-                const items = String(raw || '')
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-                  .map((v) => formatCategorySelectionLabel(v));
-                if (items.length === 0) {
-                  return (
-                    <div key={label} className="flex items-baseline gap-1.5">
-                      <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
-                      <span className="text-[13px] font-medium text-nike-grey-500 tracking-tight">None</span>
-                    </div>
-                  );
-                }
-                const [first, ...rest] = items;
-                return (
-                  <div key={label} className="flex items-baseline gap-1.5 min-w-0">
-                    <span className="text-[10px] font-medium text-nike-grey-500/80 tracking-tight uppercase w-12 shrink-0 text-left">{label}</span>
-                    <span className="text-[13px] font-medium text-nike-black tracking-tight truncate">{first}</span>
-                    {rest.length > 0 && (
-                      <span
-                        title={items.join(', ')}
-                        className="inline-flex items-center px-1.5 h-5 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums tracking-tight shrink-0"
-                      >
-                        +{rest.length}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="well rounded-2xl px-3.5 py-3">
+              <p className="mb-2 text-[12px] font-medium text-fg-muted">Topik</p>
+              <TopicRows tiers={topicTiers} />
             </div>
           </div>
         </div>
@@ -431,26 +391,26 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   const q = currentQuestion;
   if (!q) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-white min-h-screen p-6">
+      <div className="flex flex-1 flex-col items-center justify-center p-6">
         {loadError ? (
-          <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">⚠️</span>
+          <div className="glass animate-in max-w-sm rounded-3xl px-7 py-8 text-center" role="alert">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-danger/12 text-danger" aria-hidden="true">
+              <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
             </div>
-            <h2 className="font-display text-[32px] text-nike-black uppercase mb-4">WADUH!</h2>
-            <p className="text-nike-grey-500 font-bold uppercase tracking-widest text-sm mb-8 max-w-xs mx-auto">{loadError}</p>
+            <h2 className="mb-2 text-[24px] font-bold tracking-tight text-fg">Waduh, soal gagal dimuat.</h2>
+            <p className="mx-auto mb-6 max-w-xs text-[14px] text-fg-muted">{loadError}</p>
             <button
+              type="button"
               onClick={() => window.location.reload()}
-              className="px-8 py-4 bg-nike-black text-white rounded-full font-black text-sm uppercase tracking-widest hover:bg-nike-grey-500 transition-all shadow-xl shadow-nike-black/20"
+              className="clay-primary h-12 rounded-xl px-8 text-[15px] font-semibold"
             >
-              SEGARKAN HALAMAN
+              Segarkan halaman
             </button>
           </div>
         ) : (
-          <>
-            <div className="w-16 h-16 border-4 border-nike-black border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-nike-grey-500 font-bold uppercase tracking-widest text-sm">Menyiapkan Soal...</p>
-          </>
+          <CenteredStatus title="Menyiapkan soal…" />
         )}
       </div>
     );
@@ -461,20 +421,14 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
     textLength > 250 ? 'text-[15px] md:text-[18px]' :
       'text-[16px] md:text-[20px]';
 
-  const splitMountTopicLabels = (raw: string | null | undefined) => String(raw || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((v) => formatCategorySelectionLabel(v));
-
   const renderTopicSegment = (items: string[]) => {
-    if (items.length === 0) return <span className="text-nike-grey-500/70">None</span>;
+    if (items.length === 0) return <span className="text-fg-subtle">None</span>;
     const [first, ...rest] = items;
     return (
-      <span title={items.join(', ')} className="inline-flex items-baseline gap-1 min-w-0">
+      <span title={items.join(', ')} className="inline-flex min-w-0 items-baseline gap-1">
         <span className="truncate">{first}</span>
         {rest.length > 0 && (
-          <span className="inline-flex items-center px-1.5 h-4 rounded-full bg-black/[0.06] text-[10px] font-medium text-nike-grey-500 tabular-nums shrink-0">
+          <span className="well inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-semibold tabular-nums text-fg-muted">
             +{rest.length}
           </span>
         )}
@@ -483,63 +437,65 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
   };
   const totalQuestions = session?.question_count || 0;
   const isLastQuestion = currentIndex >= totalQuestions - 1;
+  const hasAnswer = Boolean(selectedAnswer && selectedAnswer.trim().length > 0);
 
   return (
-    <div className="flex-1 flex flex-col px-4 sm:px-6 pt-6 pb-10 md:pt-8 md:pb-16 min-h-screen bg-white relative">
+    <div className="relative flex flex-1 flex-col px-4 pt-5 pb-12 sm:px-6 md:pt-8 md:pb-16">
       {session.status === 'paused' && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl z-[9999] flex items-center justify-center animate-in fade-in duration-300">
-          <div className="text-center px-8 py-7 bg-white/85 rounded-[32px] shadow-ios-xl max-w-[280px]">
-            <div className="w-14 h-14 bg-nike-black rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+        <div className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="quiz-paused-title">
+          <div className="glass-sheet animate-in max-w-[300px] rounded-4xl px-8 py-7 text-center">
+            <div className="clay mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl" aria-hidden="true">
+              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
             </div>
-            <h1 className="text-[22px] font-semibold text-nike-black tracking-tight mb-1">Kuis dijeda</h1>
-            <p className="text-[12px] font-medium text-nike-grey-500 tracking-tight">Menunggu admin melanjutkan.</p>
+            <h1 id="quiz-paused-title" className="mb-1 text-[22px] font-bold tracking-tight text-fg">Kuis dijeda</h1>
+            <p className="text-[13px] font-medium text-fg-muted">Menunggu admin melanjutkan.</p>
           </div>
         </div>
       )}
-      <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
         {/* Status header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex flex-col min-w-0 gap-1.5">
-            <span className="text-[16px] font-semibold text-nike-black tracking-tight break-words">
+        <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span className="break-words text-[17px] font-bold tracking-tight text-fg">
               {player.name}
             </span>
-            <div className="flex items-baseline gap-1.5 text-[11px] font-medium text-nike-grey-500 tracking-tight min-w-0 flex-wrap">
-              {renderTopicSegment(splitMountTopicLabels(session.mapel))}
-              <span className="text-nike-grey-500/40">·</span>
-              {renderTopicSegment(splitMountTopicLabels(session.bab))}
-              <span className="text-nike-grey-500/40">·</span>
-              {renderTopicSegment(splitMountTopicLabels(session.sub_bab))}
+            <div className="flex min-w-0 flex-wrap items-baseline gap-1.5 text-[12px] font-medium text-fg-muted">
+              {renderTopicSegment(splitTopicLabels(session.mapel))}
+              <span className="text-fg-subtle" aria-hidden="true">·</span>
+              {renderTopicSegment(splitTopicLabels(session.bab))}
+              <span className="text-fg-subtle" aria-hidden="true">·</span>
+              {renderTopicSegment(splitTopicLabels(session.sub_bab))}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {timeLeftDisplay && (
-              <div className="inline-flex items-center gap-2 bg-black/5 px-3 h-9 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-nike-red animate-pulse"></span>
-                <span className="text-[12px] font-semibold tabular-nums font-mono text-nike-black">{timeLeftDisplay}</span>
+              <div className="well inline-flex h-11 items-center gap-2 rounded-xl px-3.5" aria-label={`Sisa waktu ${timeLeftDisplay}`}>
+                <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" aria-hidden="true"></span>
+                <span className="text-[14px] font-bold tabular-nums text-fg">{timeLeftDisplay}</span>
               </div>
             )}
 
             {isStandard && (
               <button
+                type="button"
                 onClick={() => setShowNavPopup(true)}
-                className="h-9 px-3 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center gap-2 transition-spring-fast active:scale-95"
-                title="Daftar soal"
+                className="well well-hover flex h-11 items-center justify-center gap-2 rounded-xl px-3.5 text-fg transition-calm"
+                aria-label="Daftar soal"
               >
-                <svg className="w-4 h-4 text-nike-black shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
-                <span className="text-[12px] font-medium text-nike-black hidden sm:block tracking-tight">Daftar soal</span>
+                <span className="hidden text-[13px] font-semibold sm:block">Daftar soal</span>
               </button>
             )}
 
-            {selectedAnswer && selectedAnswer.trim().length > 0 ? (
-              <span className="inline-flex items-center px-3 h-9 rounded-full bg-nike-green/10 text-nike-green text-[11px] font-medium tracking-tight whitespace-nowrap">
+            {hasAnswer ? (
+              <span className="inline-flex h-11 items-center whitespace-nowrap rounded-xl bg-primary/12 px-3.5 text-[13px] font-semibold text-primary">
                 Tersimpan
               </span>
             ) : (
-              <span className="inline-flex items-center px-3 h-9 rounded-full bg-black/5 text-nike-grey-500 text-[11px] font-medium tracking-tight whitespace-nowrap">
+              <span className="well inline-flex h-11 items-center whitespace-nowrap rounded-xl px-3.5 text-[13px] font-medium text-fg-muted">
                 Pending
               </span>
             )}
@@ -547,58 +503,66 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
         </div>
 
         {/* Question Display Layout */}
-        <div className="mb-0 h-auto md:h-[min(62vh,580px)] md:min-h-[400px] overflow-y-auto md:overflow-hidden rounded-3xl bg-black/[0.03] flex flex-col">
-          <div className="flex flex-col md:grid md:h-full md:grid-cols-[1.4fr_1fr] flex-1">
-            <div className="h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable px-5 py-5 md:px-8 md:py-8 flex flex-col flex-1 min-w-0 border-b border-black/[0.04] md:border-b-0 md:border-r">
-              <div className="mb-4 pb-3 border-b border-black/[0.06] flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-[20px] md:text-[22px] font-bold text-nike-black tracking-tight tabular-nums">
-                  Soal No. {currentIndex + 1}
-                </p>
-                <span className="text-[11px] font-medium text-nike-grey-500 tabular-nums tracking-tight">
+        <div className="glass mb-0 flex h-auto flex-col overflow-y-auto rounded-3xl md:h-[min(62vh,580px)] md:min-h-[400px] md:overflow-hidden">
+          <div className="flex flex-1 flex-col md:grid md:h-full md:grid-cols-[1.4fr_1fr]">
+            <div className="scrollbar-stable flex h-auto min-w-0 flex-1 flex-col overflow-visible border-b border-line px-5 py-5 md:h-full md:overflow-y-auto md:border-b-0 md:border-r md:px-8 md:py-7">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+                <div className="flex items-center gap-3">
+                  <span className="clay flex h-10 min-w-10 items-center justify-center rounded-xl px-2 text-[17px] font-bold tabular-nums" aria-hidden="true">
+                    {currentIndex + 1}
+                  </span>
+                  <p className="text-[18px] font-bold tabular-nums tracking-tight text-fg md:text-[20px]">
+                    Soal No. {currentIndex + 1}
+                  </p>
+                </div>
+                <span className="text-[13px] font-medium tabular-nums text-fg-muted">
                   {currentIndex + 1} / {totalQuestions}
                 </span>
               </div>
               <RichContent
                 html={q.question_text}
-                className={`exam-question-content ${fontSizeClass} font-medium text-nike-black leading-[1.4] tracking-tight`}
+                className={`exam-question-content ${fontSizeClass} font-medium leading-[1.45] text-fg`}
               />
             </div>
 
-            <div className="flex-1 h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable px-5 py-5 md:px-6 md:py-6 flex flex-col justify-center min-w-0">
+            <div className="scrollbar-stable flex h-auto min-w-0 flex-1 flex-col justify-center overflow-visible px-4 py-5 md:h-full md:overflow-y-auto md:px-6 md:py-6">
               {q.question_type === 'short_answer' ? (
                 <div className="w-full space-y-2.5">
-                  <p className="text-[11px] font-medium text-nike-grey-500 tracking-tight">Jawaban singkat</p>
+                  <label htmlFor="quiz-short-answer" className="text-[13px] font-medium text-fg-muted">Jawaban singkat</label>
                   <input
+                    id="quiz-short-answer"
                     type="text"
                     value={selectedAnswer ?? ''}
                     onChange={(event) => setSelectedAnswer(event.target.value)}
                     placeholder="Ketik jawaban…"
-                    className="w-full rounded-2xl bg-white px-4 h-11 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none transition-spring-fast shadow-ios-sm"
+                    className="well h-12 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
                   />
-                  <p className="text-[11px] text-nike-grey-500 tracking-tight">Tekan Next untuk lanjut.</p>
+                  <p className="text-[12px] text-fg-muted">Tekan Next untuk lanjut.</p>
                 </div>
               ) : (
-                <div className="space-y-1.5 w-full">
+                <div className="w-full space-y-2" role="group" aria-label="Pilihan jawaban">
                   {q.options.map((opt, i) => {
                     const isSelected = selectedAnswer === opt.text;
                     return (
                       <button
                         key={i}
+                        type="button"
+                        aria-pressed={isSelected}
                         onClick={() => setSelectedAnswer(opt.text)}
-                        className={`w-full min-w-0 group flex items-center gap-2.5 px-3 py-2 md:px-3.5 md:py-2.5 rounded-2xl text-left transition-spring-fast active:scale-[0.99] ${
+                        className={`group flex min-h-12 w-full min-w-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-calm md:px-3.5 ${
                           isSelected
-                            ? 'bg-nike-black text-white shadow-ios-sm'
-                            : 'bg-white text-nike-black hover:bg-black/[0.04]'
+                            ? 'bg-primary text-on-primary'
+                            : 'well well-hover text-fg'
                         }`}
                       >
-                        <span className={`shrink-0 flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-medium tabular-nums transition-spring-fast ${
-                          isSelected ? 'bg-white/15 text-white' : 'bg-black/[0.06] text-nike-grey-500'
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold tabular-nums transition-calm ${
+                          isSelected ? 'bg-on-primary/20 text-on-primary' : 'border border-line-strong text-fg-muted'
                         }`}>
                           {opt.label}
                         </span>
                         <RichContent
                           html={opt.text}
-                          className={`exam-option-content flex-1 min-w-0 text-[13px] md:text-[14px] font-medium tracking-tight leading-snug ${isSelected ? 'text-white' : 'text-nike-black'}`}
+                          className={`exam-option-content min-w-0 flex-1 text-[14px] font-medium leading-snug md:text-[15px] ${isSelected ? 'text-on-primary' : 'text-fg'}`}
                         />
                       </button>
                     );
@@ -610,31 +574,35 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 border-t border-black/[0.06] pt-6 mt-5">
+        <div className="mt-5 flex flex-col items-stretch gap-2 border-t border-line pt-5 sm:flex-row sm:items-center">
           {isStandard ? (
             <>
               <button
+                type="button"
                 onClick={() => goToQuizQuestion(currentIndex - 1)}
                 disabled={currentIndex === 0}
-                className="w-full sm:flex-1 h-12 rounded-full bg-black/5 text-nike-black text-[13px] font-medium hover:bg-black/10 transition-spring-fast active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed tracking-tight"
+                className="well well-hover h-12 w-full rounded-xl text-[14px] font-medium text-fg transition-calm disabled:cursor-not-allowed disabled:opacity-40 sm:flex-1"
               >
                 Back
               </button>
               <button
+                type="button"
+                aria-pressed={Boolean(doubtFlags[currentIndex])}
                 onClick={() => {
                   const updated = [...doubtFlags];
                   updated[currentIndex] = !updated[currentIndex];
                   setDoubtFlags(updated);
                   secureSave(`quiz_doubts_${quizCode}`, JSON.stringify(updated));
                 }}
-                className={`w-full sm:flex-1 h-12 rounded-full text-[13px] font-medium transition-spring-fast active:scale-95 tracking-tight ${doubtFlags[currentIndex]
-                  ? 'bg-yellow-400 text-nike-black shadow-ios-sm'
-                  : 'bg-black/5 text-nike-grey-500 hover:bg-black/10'
+                className={`h-12 w-full rounded-xl text-[14px] font-semibold transition-calm sm:flex-1 ${doubtFlags[currentIndex]
+                  ? 'clay-highlight'
+                  : 'well well-hover text-fg-muted'
                   }`}
               >
                 Ragu-ragu
               </button>
               <button
+                type="button"
                 onClick={() => {
                   if (isLastQuestion) {
                     setShowSubmitConfirm(true);
@@ -642,7 +610,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                     goToQuizQuestion(currentIndex + 1);
                   }
                 }}
-                className="w-full sm:flex-1 h-12 rounded-full bg-nike-black text-white text-[13px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] tracking-tight shadow-ios-sm"
+                className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold sm:flex-1"
               >
                 {isLastQuestion ? 'Finish' : 'Next'}
               </button>
@@ -650,15 +618,17 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
           ) : (
             <>
               <button
+                type="button"
                 onClick={() => handleAnswer(selectedAnswer)}
                 disabled={!selectedAnswer || selectedAnswer.trim().length === 0}
-                className="w-full sm:flex-1 h-12 rounded-full bg-nike-black text-white text-[13px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 disabled:cursor-not-allowed tracking-tight shadow-ios-sm"
+                className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold sm:flex-1"
               >
                 Next question
               </button>
               <button
+                type="button"
                 onClick={() => handleAnswer(null)}
-                className="w-full sm:w-auto sm:px-6 h-12 rounded-full bg-black/5 text-nike-grey-500 text-[13px] font-medium hover:bg-black/10 hover:text-nike-black transition-spring-fast active:scale-95 tracking-tight"
+                className="well well-hover h-12 w-full rounded-xl px-6 text-[14px] font-medium text-fg-muted transition-calm hover:text-fg sm:w-auto"
               >
                 Skip
               </button>
@@ -668,28 +638,36 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
 
         {/* Standard Mode: Navigation Popup */}
         {isStandard && showNavPopup && (
-          <div className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-[28px] shadow-ios-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
-              <div className="px-5 pt-5 pb-4 border-b border-black/[0.06]">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[17px] font-semibold tracking-tight text-nike-black">Daftar soal</h3>
+          <div
+            className="glass-scrim fixed inset-0 z-[100] flex items-center justify-center p-4"
+            onClick={() => setShowNavPopup(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="quiz-nav-title"
+              className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="border-b border-line px-5 pt-4 pb-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 id="quiz-nav-title" className="text-[18px] font-bold tracking-tight text-fg">Daftar soal</h3>
                   <button
+                    type="button"
                     onClick={() => setShowNavPopup(false)}
-                    className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-spring-fast active:scale-90"
+                    aria-label="Tutup"
+                    autoFocus
+                    className="well well-hover flex h-11 w-11 items-center justify-center rounded-xl text-fg transition-calm"
                   >
-                    <svg className="w-3.5 h-3.5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-nike-grey-500 tracking-tight">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-nike-black"></span> Terjawab</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span> Ragu</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-black/10"></span> Kosong</span>
-                </div>
+                <QuestionGridLegend />
               </div>
-              <div className="px-5 py-5 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+              <div className="max-h-[60vh] overflow-y-auto px-5 py-5">
+                <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
                   {Array.from({ length: totalQuestions }, (_, i) => {
                     const isAnswered = localAnswers[i] !== null && localAnswers[i] !== undefined && String(localAnswers[i]).trim().length > 0;
                     const isDoubt = doubtFlags[i] || false;
@@ -697,13 +675,11 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                     return (
                       <button
                         key={i}
+                        type="button"
+                        aria-current={isCurrent ? 'step' : undefined}
+                        aria-label={`Soal ${i + 1}${isDoubt ? ', ragu' : isAnswered ? ', terjawab' : ', kosong'}`}
                         onClick={() => goToQuizQuestion(i)}
-                        className={`h-10 rounded-xl text-[13px] font-medium tabular-nums transition-spring-fast active:scale-95 ${isCurrent ? 'ring-2 ring-nike-black ring-offset-2' : ''} ${isDoubt
-                          ? 'bg-yellow-400 text-nike-black'
-                          : isAnswered
-                            ? 'bg-nike-black text-white'
-                            : 'bg-black/5 text-nike-black hover:bg-black/10'
-                          }`}
+                        className={questionTileClass({ isCurrent, isDoubt, isAnswered })}
                       >
                         {i + 1}
                       </button>
@@ -717,25 +693,37 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
       </div>
 
       {showSubmitConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/30 backdrop-blur-2xl animate-in fade-in duration-200">
-          <div className="bg-white rounded-[28px] p-6 max-w-sm w-full shadow-ios-xl animate-in zoom-in-95 duration-300">
-            <h3 className="text-[17px] font-semibold tracking-tight text-nike-black mb-1">Selesai kuis?</h3>
-            <p className="text-[13px] text-nike-grey-500 mb-5 tracking-tight">
+        <div
+          className="glass-scrim fixed inset-0 z-[200] flex items-center justify-center p-4"
+          onClick={() => setShowSubmitConfirm(false)}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="quiz-submit-title"
+            className="glass-sheet animate-in w-full max-w-sm rounded-4xl p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 id="quiz-submit-title" className="mb-1.5 text-[20px] font-bold tracking-tight text-fg">Selesai kuis?</h3>
+            <p className="mb-6 text-[14px] leading-relaxed text-fg-muted">
               Pastikan jawaban kamu sudah dicek sebelum menyelesaikan kuis.
             </p>
             <div className="flex gap-2">
               <button
+                type="button"
+                autoFocus
                 onClick={() => setShowSubmitConfirm(false)}
-                className="flex-1 h-11 rounded-full text-[13px] font-medium text-nike-black bg-black/5 hover:bg-black/10 transition-spring-fast active:scale-95 tracking-tight"
+                className="well well-hover h-11 flex-1 rounded-xl text-[14px] font-medium text-fg transition-calm"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setShowSubmitConfirm(false);
                   finishStandardQuiz();
                 }}
-                className="flex-1 h-11 rounded-full text-[13px] font-medium text-white bg-nike-black hover:bg-nike-grey-500 transition-spring-fast active:scale-95 tracking-tight"
+                className="clay-primary h-11 flex-1 rounded-xl text-[14px] font-semibold"
               >
                 Selesai
               </button>

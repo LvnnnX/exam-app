@@ -146,7 +146,7 @@ function AdminPageInner() {
   }
 
   return (
-    <div data-admin-page className={`relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-screen h-full w-screen overflow-hidden md:flex ${theme === 'dark' ? 'bg-dark-900 text-dark-text-primary' : 'bg-white text-[#111111]'}`}>
+    <div data-admin-page className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-screen h-full w-screen overflow-hidden text-fg md:flex">
       <AdminTabSwitcher
         activeTab={tabs.activeTab}
         onTabChange={handleTabChangeWithUrl}
@@ -166,7 +166,7 @@ function AdminPageInner() {
         }}
       />
 
-      <main className="h-full min-w-0 flex-1 overflow-hidden px-2 pt-14 pb-3 md:ml-[228px] md:px-4 md:py-4 md:pt-4">
+      <main className="h-full min-w-0 flex-1 overflow-hidden px-3 pt-[72px] pb-3 md:ml-[252px] md:px-4 md:py-3 md:pt-3">
         <div className="flex h-full min-h-0 flex-col">
           <div className="min-h-0 flex-1 overflow-hidden pr-1">
             {tabs.activeTab === 'questions' && (

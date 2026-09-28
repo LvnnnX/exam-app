@@ -13,24 +13,24 @@ type TrackingProgressStatsProps = {
   theme?: 'light' | 'dark';
 };
 
-export default function TrackingProgressStats({ trackingSession, theme = 'dark' }: TrackingProgressStatsProps) {
+export default function TrackingProgressStats({ trackingSession }: TrackingProgressStatsProps) {
   return (
-    <div className={`grid grid-cols-3 gap-2`}>
-      <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-        <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Index</p>
-        <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+    <div className="grid grid-cols-3 gap-2.5">
+      <div className="clay rounded-2xl px-4 py-3">
+        <p className="text-[12px] font-medium text-fg-muted">Index</p>
+        <p className="text-[24px] font-bold tabular-nums tracking-tight text-fg">
           {Math.min((trackingSession.current_index || 0) + 1, trackingSession.question_count || 1)}
-          <span className={`text-base font-normal ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>/{trackingSession.question_count}</span>
+          <span className="text-[15px] font-medium text-fg-muted">/{trackingSession.question_count}</span>
         </p>
       </div>
-      <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-        <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Answered</p>
-        <p className={`text-2xl font-semibold tracking-tight tabular-nums ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>{Object.keys(trackingSession.user_answers).length}</p>
+      <div className="clay rounded-2xl px-4 py-3">
+        <p className="text-[12px] font-medium text-fg-muted">Answered</p>
+        <p className="text-[24px] font-bold tabular-nums tracking-tight text-fg">{Object.keys(trackingSession.user_answers).length}</p>
       </div>
-      <div className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50'}`}>
-        <p className={`text-[11px] font-medium ${theme === 'dark' ? 'text-accent-green/80' : 'text-green-600'}`}>Status</p>
-        <p className={`text-base font-semibold tracking-tight ${theme === 'dark' ? 'text-accent-green' : 'text-green-700'} flex items-center gap-1.5`}>
-          <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${theme === 'dark' ? 'bg-accent-green' : 'bg-green-500'}`}></span>
+      <div className="clay rounded-2xl px-4 py-3">
+        <p className="text-[12px] font-medium text-fg-muted">Status</p>
+        <p className="flex items-center gap-1.5 text-[15px] font-bold tracking-tight text-primary">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true"></span>
           Active
         </p>
       </div>

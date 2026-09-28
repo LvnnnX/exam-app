@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import SiteHeader from "@/app/components/SiteHeader";
 import { Providers } from "@/app/providers";
 import "./globals.css";
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-jakarta",
   display: "swap",
 });
 
@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className={`${jakarta.variable} h-full antialiased`}>
       <head>
         {/*
           Preconnect to Supabase so the TLS + DNS handshake for realtime and
@@ -42,7 +42,7 @@ export default function RootLayout({
           </>
         ) : null}
       </head>
-      <body className="min-h-full flex flex-col bg-nike-white text-nike-black font-sans">
+      <body className="min-h-full flex flex-col bg-canvas text-fg font-sans">
         <Providers>
           <SiteHeader />
 

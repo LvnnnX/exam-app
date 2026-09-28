@@ -13,20 +13,22 @@ export default function SettingsSaveBar({
   settingsDirty,
   settingsSaving,
   onSave,
-  theme = 'dark',
 }: SettingsSaveBarProps) {
   return (
-    <div className={`flex items-center justify-between px-5 py-4 ${theme === 'dark' ? 'border-t border-white/[0.04]' : 'border-t border-black/[0.04]'}`}>
+    <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-4">
       {settingsDirty ? (
-        <span className={`text-[11px] font-medium ${theme === 'dark' ? 'text-accent-orange' : 'text-amber-600'}`}>● Unsaved changes</span>
+        <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-highlight-fg" role="status">
+          <span className="h-1.5 w-1.5 rounded-full bg-highlight" aria-hidden="true" />
+          Unsaved changes
+        </span>
       ) : (
-        <span />
+        <span className="text-[13px] text-fg-muted">All changes saved.</span>
       )}
       <button
         type="button"
         onClick={onSave}
         disabled={settingsSaving || !settingsDirty}
-        className={`h-9 rounded-full px-5 text-[12px] font-medium transition-spring-fast active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${settingsDirty && !settingsSaving ? (theme === 'dark' ? 'bg-white text-gray-900 hover:bg-white/90' : 'bg-gray-900 text-white hover:bg-gray-800') : (theme === 'dark' ? 'bg-white/5 text-dark-text-tertiary' : 'bg-black/5 text-gray-500')}`}
+        className="clay-primary h-11 rounded-xl px-6 text-[14px] font-semibold"
       >
         {settingsSaving ? 'Saving...' : 'Save settings'}
       </button>

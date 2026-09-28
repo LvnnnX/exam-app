@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 type JoinQuizModalProps = {
   isOpen: boolean;
@@ -25,54 +25,70 @@ export default function JoinQuizModal({
   onJoin,
   onClose,
 }: JoinQuizModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
-      <div className="bg-white rounded-[32px] shadow-ios-xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-300">
-        <div className="px-6 pt-8 pb-6 text-center">
-          <p className="text-[12px] font-medium text-nike-grey-500 mb-2 tracking-tight">Join live quiz</p>
-          <h2 className="font-display text-[28px] text-nike-black leading-[1.1] tracking-[-0.02em] mb-2">
+    <div className="glass-scrim fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="join-quiz-title"
+        className="glass-sheet animate-in w-full max-w-sm overflow-hidden rounded-4xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="px-6 pt-7 pb-5 text-center">
+          <p className="mb-1.5 text-[12px] font-medium text-fg-muted">Join live quiz</p>
+          <h2 id="join-quiz-title" className="mb-1.5 text-[26px] font-bold leading-[1.1] tracking-[-0.02em] text-fg">
             Enter quiz code.
           </h2>
-          <p className="text-[13px] text-nike-grey-500 mb-6 tracking-tight">{quizCodeLength}-digit code from your host.</p>
+          <p className="mb-6 text-[13px] text-fg-muted">{quizCodeLength}-digit code from your host.</p>
 
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="one-time-code"
-              maxLength={quizCodeLength}
-              value={quizCode}
-              onChange={(e) => onCodeChange(e.target.value)}
-              placeholder="000000"
-              className={`w-full h-14 rounded-2xl px-5 text-center text-[24px] font-semibold tracking-[0.25em] tabular-nums transition-spring-fast focus:outline-none ${codeError ? 'bg-red-50 text-nike-red' : 'bg-black/5 text-nike-black focus:bg-black/10'
-                }`}
-            />
-            {codeError && (
-              <p className="mt-2 text-[12px] font-medium text-nike-red tracking-tight animate-in slide-in-from-top-1">
-                {codeError}
-              </p>
-            )}
-          </div>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="one-time-code"
+            maxLength={quizCodeLength}
+            value={quizCode}
+            onChange={(e) => onCodeChange(e.target.value)}
+            placeholder="000000"
+            aria-label="Kode kuis"
+            aria-invalid={Boolean(codeError)}
+            className={`h-14 w-full rounded-xl px-5 text-center text-[24px] font-semibold tracking-[0.25em] tabular-nums transition-calm placeholder:text-fg-subtle/60 ${codeError ? 'bg-danger/10 text-danger' : 'well text-fg'}`}
+          />
+          {codeError && (
+            <p className="mt-2 text-[13px] font-medium text-danger" role="alert">
+              {codeError}
+            </p>
+          )}
         </div>
 
-        <div className="px-6 pb-6 space-y-2">
+        <div className="flex gap-2 border-t border-line px-6 py-4">
           <button
-            onClick={onJoin}
-            disabled={isCheckingCode || !canJoin}
-            className="w-full h-12 rounded-full bg-nike-black text-white text-[14px] font-medium hover:bg-nike-grey-500 transition-spring-fast active:scale-[0.98] disabled:bg-black/5 disabled:text-nike-grey-500 tracking-tight shadow-ios-sm"
-          >
-            {isCheckingCode ? 'Verifying…' : 'Join'}
-          </button>
-          <button
+            type="button"
             onClick={onClose}
-            className="w-full h-12 rounded-full bg-transparent text-nike-grey-500 text-[14px] font-medium hover:bg-black/5 transition-spring-fast active:scale-95 tracking-tight"
+            className="well well-hover h-11 flex-1 rounded-xl text-[14px] font-medium text-fg transition-calm"
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onJoin}
+            disabled={isCheckingCode || !canJoin}
+            className="clay-primary h-11 flex-1 rounded-xl text-[14px] font-semibold"
+          >
+            {isCheckingCode ? 'Verifying…' : 'Join'}
           </button>
         </div>
       </div>

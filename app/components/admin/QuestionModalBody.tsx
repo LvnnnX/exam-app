@@ -76,7 +76,7 @@ export default function QuestionModalBody({
   theme = 'dark',
 }: QuestionModalBodyProps) {
   return (
-    <div className={`flex-1 overflow-y-auto px-6 py-6 quick-insert-scroll`}>
+    <div className="quick-insert-scroll flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
       {(isAdding || isEditing) ? (
         <QuestionModalEditForm
           formData={formData}

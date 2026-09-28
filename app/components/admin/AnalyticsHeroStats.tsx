@@ -26,57 +26,28 @@ export default function AnalyticsHeroStats({
   theme = 'dark',
 }: AnalyticsHeroStatsProps) {
   const stats = [
-    {
-      value: summary.attempts.toLocaleString(),
-      label: 'Attempts',
-      tooltip: 'Total number of exam/quiz attempts in the selected scope',
-      color: theme === 'dark' ? 'text-accent-blue' : 'text-blue-600',
-      bgColor: theme === 'dark' ? 'bg-accent-blue/10' : 'bg-blue-50',
-      borderColor: theme === 'dark' ? 'border-accent-blue/20' : 'border-blue-200',
-    },
-    {
-      value: `${summary.avgScore}%`,
-      label: 'Avg Score',
-      tooltip: 'Average score across all attempts',
-      color: theme === 'dark' ? 'text-accent-green' : 'text-green-600',
-      bgColor: theme === 'dark' ? 'bg-accent-green/10' : 'bg-green-50',
-      borderColor: theme === 'dark' ? 'border-accent-green/20' : 'border-green-200',
-    },
-    {
-      value: `${summary.passRate}%`,
-      label: 'Pass Rate',
-      tooltip: 'Percentage of attempts that passed',
-      color: theme === 'dark' ? 'text-accent-purple' : 'text-purple-600',
-      bgColor: theme === 'dark' ? 'bg-accent-purple/10' : 'bg-purple-50',
-      borderColor: theme === 'dark' ? 'border-accent-purple/20' : 'border-purple-200',
-    },
-    {
-      value: formatDuration(summary.avgDurationSeconds),
-      label: 'Avg Duration',
-      tooltip: 'Average time taken to complete',
-      color: theme === 'dark' ? 'text-accent-orange' : 'text-orange-600',
-      bgColor: theme === 'dark' ? 'bg-accent-orange/10' : 'bg-orange-50',
-      borderColor: theme === 'dark' ? 'border-accent-orange/20' : 'border-orange-200',
-    },
+    { value: summary.attempts.toLocaleString(), label: 'Attempts', description: 'Total exam and quiz attempts in the selected scope.' },
+    { value: `${summary.avgScore}%`, label: 'Avg score', description: 'Average score across all attempts.' },
+    { value: `${summary.passRate}%`, label: 'Pass rate', description: 'Share of attempts that passed.' },
+    { value: formatDuration(summary.avgDurationSeconds), label: 'Avg duration', description: 'Average time taken to complete.' },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-      {stats.map((stat, index) => (
+    <div data-theme={theme} className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+      {stats.map((stat) => (
         <div
-          key={index}
-          title={stat.tooltip}
-          className={`rounded-2xl px-5 py-4 cursor-help transition-spring-fast ${stat.bgColor}`}
+          key={stat.label}
+          title={stat.description}
+          className="clay rounded-3xl px-5 py-4"
         >
-          <p className={`text-3xl font-semibold tracking-tight tabular-nums ${stat.color}`}>
+          <p className="text-[28px] font-bold leading-tight tracking-tight tabular-nums text-fg">
             {stat.value}
           </p>
-          <p
-            className={`mt-1 text-[12px] font-medium ${
-              theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'
-            }`}
-          >
+          <p className="mt-1 text-[13px] font-semibold text-fg">
             {stat.label}
+          </p>
+          <p className="mt-0.5 hidden text-[12px] leading-snug text-fg-muted sm:block">
+            {stat.description}
           </p>
         </div>
       ))}

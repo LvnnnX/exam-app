@@ -14,6 +14,26 @@ type QuestionDisplayProps = {
   lives?: number;
 };
 
+export function LivesIndicator({ lives, max = 3 }: { lives: number; max?: number }) {
+  return (
+    <div className="flex items-center gap-1" role="img" aria-label={`Nyawa ${lives} dari ${max}`}>
+      {Array.from({ length: max }).map((_, i) => (
+        <svg
+          key={i}
+          viewBox="0 0 24 24"
+          className={`h-[18px] w-[18px] transition-calm ${i < lives ? 'text-danger' : 'text-fg-subtle/40'}`}
+          fill={i < lives ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <path strokeLinejoin="round" d="M12 20.5s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.7-7.5 10.3-7.5 10.3z" />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
 export default function QuestionDisplay({
   currentQuestion,
   selectedAnswer,
@@ -29,76 +49,78 @@ export default function QuestionDisplay({
                         'text-[16px] md:text-[20px]';
 
   return (
-    <div className="mb-0 h-auto md:h-[min(62vh,580px)] md:min-h-[400px] overflow-y-auto md:overflow-hidden rounded-3xl bg-black/[0.03] flex flex-col">
-      <div className="flex flex-col md:grid md:h-full md:grid-cols-[1.4fr_1fr] flex-1">
+    <div className="glass mb-0 flex h-auto flex-col overflow-y-auto rounded-3xl md:h-[min(62vh,580px)] md:min-h-[400px] md:overflow-hidden">
+      <div className="flex flex-1 flex-col md:grid md:h-full md:grid-cols-[1.4fr_1fr]">
         {/* Question section */}
-        <div className="h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable px-5 py-5 md:px-8 md:py-8 flex flex-col flex-1 border-b border-black/[0.04] md:border-b-0 md:border-r">
+        <div className="scrollbar-stable flex h-auto flex-1 flex-col overflow-visible border-b border-line px-5 py-5 md:h-full md:overflow-y-auto md:border-b-0 md:border-r md:px-8 md:py-7">
           {typeof questionNumber === 'number' && (
-            <div className="mb-4 pb-3 border-b border-black/[0.06] flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-[20px] md:text-[22px] font-bold text-nike-black tracking-tight tabular-nums">
-                Soal No. {questionNumber}
-              </p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+              <div className="flex items-center gap-3">
+                <span className="clay flex h-10 min-w-10 items-center justify-center rounded-xl px-2 text-[17px] font-bold tabular-nums" aria-hidden="true">
+                  {questionNumber}
+                </span>
+                <p className="text-[18px] font-bold tabular-nums tracking-tight text-fg md:text-[20px]">
+                  Soal No. {questionNumber}
+                </p>
+              </div>
               {isSurvival && (
                 <div className="flex items-center gap-3">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-[18px] md:text-[20px] font-semibold tabular-nums text-nike-black tracking-tight">{score}</span>
-                    <span className="text-[10px] font-medium text-nike-grey-500 tracking-tight">Score</span>
+                    <span className="text-[20px] font-bold tabular-nums text-fg">{score}</span>
+                    <span className="text-[12px] font-medium text-fg-muted">Score</span>
                   </div>
-                  <span className="w-px h-5 bg-black/[0.08]" aria-hidden="true" />
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <span key={i} className={`text-[16px] transition-spring-fast ${i < lives ? '' : 'grayscale opacity-25'}`}>
-                        ❤️
-                      </span>
-                    ))}
-                  </div>
+                  <span className="h-5 w-px bg-line-strong" aria-hidden="true" />
+                  <LivesIndicator lives={lives} />
                 </div>
               )}
             </div>
           )}
           <RichContent
             html={currentQuestion.question_text}
-            className={`exam-question-content ${fontSizeClass} font-medium text-nike-black leading-[1.4] tracking-tight`}
+            className={`exam-question-content ${fontSizeClass} font-medium leading-[1.45] text-fg`}
           />
         </div>
 
         {/* Answer section */}
-        <div className="flex-1 h-auto md:h-full overflow-visible md:overflow-y-auto scrollbar-stable px-5 py-5 md:px-6 md:py-6 flex flex-col justify-center min-w-0">
+        <div className="scrollbar-stable flex h-auto min-w-0 flex-1 flex-col justify-center overflow-visible px-4 py-5 md:h-full md:overflow-y-auto md:px-6 md:py-6">
           {currentQuestion.question_type === 'short_answer' ? (
             <div className="w-full space-y-2.5">
-              <p className="text-[11px] font-medium text-nike-grey-500 tracking-tight">Jawaban singkat</p>
+              <label htmlFor="short-answer-input" className="text-[13px] font-medium text-fg-muted">Jawaban singkat</label>
               <input
+                id="short-answer-input"
                 type="text"
                 value={selectedAnswer ?? ''}
                 onChange={(event) => onSelectAnswer(event.target.value)}
                 placeholder="Ketik jawaban…"
-                className="w-full rounded-2xl bg-white px-4 h-11 text-[14px] font-medium text-nike-black placeholder-nike-grey-500/70 focus:outline-none transition-spring-fast shadow-ios-sm"
+                className="well h-12 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
               />
-              <p className="text-[11px] text-nike-grey-500 tracking-tight">Tekan Next untuk lanjut.</p>
+              <p className="text-[12px] text-fg-muted">Tekan Next untuk lanjut.</p>
             </div>
           ) : (
-            <div className="space-y-1.5 w-full">
+            <div className="w-full space-y-2" role="group" aria-label="Pilihan jawaban">
               {currentQuestion.options.map((option) => {
                 const isSelected = selectedAnswer === option.text;
 
                 return (
                   <button
                     key={option.label}
+                    type="button"
+                    aria-pressed={isSelected}
                     onClick={() => onSelectAnswer(option.text)}
-                    className={`w-full min-w-0 group flex items-center gap-2.5 px-3 py-2 md:px-3.5 md:py-2.5 rounded-2xl text-left transition-spring-fast active:scale-[0.99] ${
+                    className={`group flex min-h-12 w-full min-w-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-calm md:px-3.5 ${
                       isSelected
-                        ? 'bg-nike-black text-white shadow-ios-sm'
-                        : 'bg-white text-nike-black hover:bg-black/[0.04]'
+                        ? 'bg-primary text-on-primary'
+                        : 'well well-hover text-fg'
                     }`}
                   >
-                    <span className={`shrink-0 flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-medium tabular-nums transition-spring-fast ${
-                      isSelected ? 'bg-white/15 text-white' : 'bg-black/[0.06] text-nike-grey-500'
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold tabular-nums transition-calm ${
+                      isSelected ? 'bg-on-primary/20 text-on-primary' : 'border border-line-strong text-fg-muted'
                     }`}>
                       {option.label}
                     </span>
                     <RichContent
                       html={option.text}
-                      className={`exam-option-content flex-1 min-w-0 text-[13px] md:text-[14px] font-medium tracking-tight leading-snug ${isSelected ? 'text-white' : 'text-nike-black'}`}
+                      className={`exam-option-content min-w-0 flex-1 text-[14px] font-medium leading-snug md:text-[15px] ${isSelected ? 'text-on-primary' : 'text-fg'}`}
                     />
                   </button>
                 );

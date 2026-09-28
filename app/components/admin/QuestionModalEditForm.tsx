@@ -64,60 +64,64 @@ export default function QuestionModalEditForm({
   handleAddNewSubBab,
   theme = 'dark',
 }: QuestionModalEditFormProps) {
+  const fieldLabel = 'block text-[13px] font-semibold text-fg';
+  const hint = 'ml-1.5 text-[12px] font-medium text-fg-muted';
+  const segment = 'h-11 md:h-10 flex-1 rounded-lg px-4 text-[13px] font-semibold transition-calm';
+  const newCategoryInput = 'well h-11 md:h-10 min-w-0 flex-1 rounded-lg px-3 text-[13px] text-fg placeholder:text-fg-subtle transition-calm';
+  const newCategoryButton = 'h-11 md:h-10 shrink-0 rounded-lg bg-primary/12 px-3 text-[13px] font-semibold text-primary transition-calm hover:bg-primary/18 disabled:opacity-50';
+  const emptyTier = 'w-full rounded-xl border border-dashed border-line-strong px-4 py-7 text-center text-[13px] text-fg-muted';
+
   return (
     <div className="space-y-6">
       <RichTextEditorField
-        label="Question Text"
+        label="Question text"
         value={formData.question_text}
         onChange={(value: string) => handleInputChange('question_text', value)}
         density="compact"
         theme={theme}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <label className={`block text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-700'}`}>Jenis Pertanyaan</label>
-          <div className="flex flex-wrap gap-2">
+          <span className={fieldLabel}>Jenis pertanyaan</span>
+          <div className="well flex max-w-sm gap-1 rounded-xl p-1" role="group" aria-label="Jenis pertanyaan">
             <button
               type="button"
+              aria-pressed={formData.question_type === 'multiple_choice'}
               onClick={() => handleInputChange('question_type', 'multiple_choice')}
-              className={`px-4 h-10 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${formData.question_type === 'multiple_choice'
-                ? (theme === 'dark' ? 'bg-accent-blue text-white' : 'bg-nike-black text-white')
-                : (theme === 'dark' ? 'bg-dark-700 border border-dark-border-medium text-dark-text-secondary hover:border-accent-blue hover:text-accent-blue' : 'bg-white border border-slate-300 text-gray-500 hover:border-nike-black hover:text-nike-black')
-                }`}
+              className={`${segment} ${formData.question_type === 'multiple_choice' ? 'clay' : 'text-fg-muted hover:text-fg'}`}
             >
-              Pilihan Ganda
+              Pilihan ganda
             </button>
             <button
               type="button"
+              aria-pressed={formData.question_type === 'short_answer'}
               onClick={() => handleInputChange('question_type', 'short_answer')}
-              className={`px-4 h-10 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${formData.question_type === 'short_answer'
-                ? (theme === 'dark' ? 'bg-accent-blue text-white' : 'bg-nike-black text-white')
-                : (theme === 'dark' ? 'bg-dark-700 border border-dark-border-medium text-dark-text-secondary hover:border-accent-blue hover:text-accent-blue' : 'bg-white border border-slate-300 text-gray-500 hover:border-nike-black hover:text-nike-black')
-                }`}
+              className={`${segment} ${formData.question_type === 'short_answer' ? 'clay' : 'text-fg-muted hover:text-fg'}`}
             >
-              Isian Singkat
+              Isian singkat
             </button>
           </div>
         </div>
 
         {formData.question_type === 'short_answer' && (
           <div className="space-y-2">
-            <label className={`block text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-700'}`}>Jawaban Singkat</label>
+            <label htmlFor="short-answer-key" className={fieldLabel}>Jawaban singkat</label>
             <input
+              id="short-answer-key"
               type="text"
               value={formData.short_answer}
               onChange={(event) => handleInputChange('short_answer', event.target.value)}
               placeholder="Jawaban teks atau angka"
-              className={`w-full px-4 h-11 border rounded-xl focus:outline-none focus:ring-2 text-sm font-medium ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary focus:ring-accent-blue/20 focus:border-accent-blue placeholder:text-dark-text-tertiary' : 'border-slate-300 bg-white text-gray-900 focus:ring-nike-black/10 focus:border-nike-black placeholder:text-gray-400'}`}
+              className="well h-11 w-full rounded-xl px-4 text-[14px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
             />
-            <p className={`text-[10px] uppercase tracking-widest ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Hanya teks atau angka.</p>
+            <p className="text-[12px] text-fg-muted">Hanya teks atau angka.</p>
           </div>
         )}
       </div>
 
       {formData.question_type === 'multiple_choice' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <RichTextEditorField
             label="Option A"
             value={formData.option_a}
@@ -156,13 +160,13 @@ export default function QuestionModalEditForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:col-span-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 md:col-span-2 md:grid-cols-3">
           <div className="space-y-2">
-            <label className={`block text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-700'}`}>
+            <span className={fieldLabel}>
               Mapel
-              <span className={`ml-2 text-[10px] font-normal capitalize ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>(Multi-select)</span>
-            </label>
+              <span className={hint}>multi-select</span>
+            </span>
             <MultiSelectDropdown
               label="Mapel"
               options={filteredMapelsForForm}
@@ -180,17 +184,18 @@ export default function QuestionModalEditForm({
             <div className="flex gap-2 pt-1">
               <input
                 type="text"
+                aria-label="Mapel baru"
                 value={newMapelInput}
                 onChange={(e) => setNewMapelInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewMapel(); } }}
                 placeholder="Add new mapel..."
-                className={`flex-1 px-3 h-8 border rounded-lg text-[11px] focus:outline-none focus:ring-1 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary focus:ring-accent-green/50 placeholder:text-dark-text-tertiary' : 'border-slate-300 bg-white text-gray-900 focus:ring-green-500 placeholder:text-gray-400'}`}
+                className={newCategoryInput}
               />
               <button
                 type="button"
                 onClick={() => void handleAddNewMapel()}
                 disabled={addingCategory || !newMapelInput.trim()}
-                className={`px-3 h-8 rounded-lg text-[10px] font-bold uppercase transition-colors disabled:opacity-50 ${theme === 'dark' ? 'bg-accent-green/20 text-accent-green hover:bg-accent-green/30' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
+                className={newCategoryButton}
               >
                 + New
               </button>
@@ -198,13 +203,13 @@ export default function QuestionModalEditForm({
           </div>
 
           <div className="space-y-2">
-            <label className={`block text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-700'}`}>
+            <span className={fieldLabel}>
               Bab
-              <span className={`ml-2 text-[10px] font-normal capitalize ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>(Multi-select)</span>
-            </label>
+              <span className={hint}>multi-select</span>
+            </span>
             {formData.mapels.length === 0 ? (
-              <div className={`w-full border border-dashed rounded-xl px-4 py-8 text-xs italic text-center ${theme === 'dark' ? 'bg-dark-700/50 border-dark-border-medium text-dark-text-tertiary' : 'bg-gray-50 border-slate-300 text-gray-400'}`}>
-                Pilih Mapel dulu untuk melihat Bab
+              <div className={emptyTier}>
+                Pilih mapel dulu untuk melihat bab.
               </div>
             ) : (
               <>
@@ -224,17 +229,18 @@ export default function QuestionModalEditForm({
                 <div className="flex gap-2 pt-1">
                   <input
                     type="text"
+                    aria-label="Bab baru"
                     value={newbabInput}
                     onChange={(e) => setNewbabInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewbab(); } }}
                     placeholder="Add new bab..."
-                    className={`flex-1 px-3 h-8 border rounded-lg text-[11px] focus:outline-none focus:ring-1 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary focus:ring-accent-green/50 placeholder:text-dark-text-tertiary' : 'border-slate-300 bg-white text-gray-900 focus:ring-green-500 placeholder:text-gray-400'}`}
+                    className={newCategoryInput}
                   />
                   <button
                     type="button"
                     onClick={() => void handleAddNewbab()}
                     disabled={addingCategory || !newbabInput.trim()}
-                    className={`px-3 h-8 rounded-lg text-[10px] font-bold uppercase transition-colors disabled:opacity-50 ${theme === 'dark' ? 'bg-accent-green/20 text-accent-green hover:bg-accent-green/30' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
+                    className={newCategoryButton}
                   >
                     + New
                   </button>
@@ -244,13 +250,13 @@ export default function QuestionModalEditForm({
           </div>
 
           <div className="space-y-2">
-            <label className={`block text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-700'}`}>
+            <span className={fieldLabel}>
               Sub-bab
-              <span className={`ml-2 text-[10px] font-normal capitalize ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>(Multi-select)</span>
-            </label>
+              <span className={hint}>multi-select</span>
+            </span>
             {formData.babs.length === 0 ? (
-              <div className={`w-full border border-dashed rounded-xl px-4 py-8 text-xs italic text-center ${theme === 'dark' ? 'bg-dark-700/50 border-dark-border-medium text-dark-text-tertiary' : 'bg-gray-50 border-slate-300 text-gray-400'}`}>
-                Pilih Bab dulu untuk melihat Subbab
+              <div className={emptyTier}>
+                Pilih bab dulu untuk melihat sub-bab.
               </div>
             ) : (
               <>
@@ -267,17 +273,18 @@ export default function QuestionModalEditForm({
                 <div className="flex gap-2 pt-1">
                   <input
                     type="text"
+                    aria-label="Sub-bab baru"
                     value={newSubBabInput}
                     onChange={(e) => setNewSubBabInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleAddNewSubBab(); } }}
                     placeholder="Add new sub-bab..."
-                    className={`flex-1 px-3 h-8 border rounded-lg text-[11px] focus:outline-none focus:ring-1 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary focus:ring-accent-green/50 placeholder:text-dark-text-tertiary' : 'border-slate-300 bg-white text-gray-900 focus:ring-green-500 placeholder:text-gray-400'}`}
+                    className={newCategoryInput}
                   />
                   <button
                     type="button"
                     onClick={() => void handleAddNewSubBab()}
                     disabled={addingCategory || !newSubBabInput.trim()}
-                    className={`px-3 h-8 rounded-lg text-[10px] font-bold uppercase transition-colors disabled:opacity-50 ${theme === 'dark' ? 'bg-accent-green/20 text-accent-green hover:bg-accent-green/30' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
+                    className={newCategoryButton}
                   >
                     + New
                   </button>
@@ -288,26 +295,32 @@ export default function QuestionModalEditForm({
         </div>
 
         {formData.question_type === 'multiple_choice' && (
-          <div className="space-y-1">
-            <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-700'}`}>Correct Answer</label>
-            <select
-              value={formData.correct_answer}
-              onChange={(event) => handleInputChange('correct_answer', event.target.value)}
-              className={`w-full px-4 h-[48px] border-2 rounded-lg focus:outline-none transition-all font-medium appearance-none ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary focus:border-accent-blue' : 'border-slate-300 bg-white text-gray-900 focus:border-nike-black'}`}
-            >
-              <option value="A">Option A</option>
-              <option value="B">Option B</option>
-              <option value="C">Option C</option>
-              <option value="D">Option D</option>
-              <option value="E">Option E</option>
-            </select>
+          <div className="space-y-2">
+            <label htmlFor="correct-answer-select" className={fieldLabel}>Correct answer</label>
+            <div className="relative">
+              <select
+                id="correct-answer-select"
+                value={formData.correct_answer}
+                onChange={(event) => handleInputChange('correct_answer', event.target.value)}
+                className="well well-hover h-12 w-full cursor-pointer appearance-none rounded-xl pl-4 pr-10 text-[14px] font-semibold text-fg transition-calm"
+              >
+                <option value="A">Option A</option>
+                <option value="B">Option B</option>
+                <option value="C">Option C</option>
+                <option value="D">Option D</option>
+                <option value="E">Option E</option>
+              </select>
+              <svg className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         )}
 
-        <div className="space-y-1">
-          <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-700'}`}>Is Hidden</label>
+        <div className="space-y-2">
+          <span className={fieldLabel}>Visibility</span>
           <label
-            className={`flex items-center justify-between w-full h-[48px] px-4 border-2 rounded-lg cursor-pointer transition-all ${formData.is_hidden ? (theme === 'dark' ? 'border-accent-red/30 bg-accent-red/10' : 'border-red-200 bg-red-50') : (theme === 'dark' ? 'border-dark-border-medium bg-dark-700' : 'border-slate-300 bg-white')}`}
+            className={`flex h-12 w-full cursor-pointer items-center justify-between rounded-xl px-4 transition-calm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus)] ${formData.is_hidden ? 'bg-danger/10' : 'well'}`}
           >
             <input
               type="checkbox"
@@ -315,16 +328,16 @@ export default function QuestionModalEditForm({
               checked={formData.is_hidden}
               onChange={(event) => handleInputChange('is_hidden', event.target.checked)}
             />
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${formData.is_hidden ? (theme === 'dark' ? 'text-accent-red' : 'text-red-600') : (theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-500')}`}>
+            <span className={`text-[14px] font-semibold ${formData.is_hidden ? 'text-danger' : 'text-fg'}`}>
               {formData.is_hidden ? 'Hidden' : 'Visible'}
             </span>
-            <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.is_hidden ? (theme === 'dark' ? 'bg-accent-red' : 'bg-red-500') : (theme === 'dark' ? 'bg-dark-600' : 'bg-gray-300')}`}>
+            <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-calm ${formData.is_hidden ? 'bg-danger' : 'bg-line-strong'}`}>
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.is_hidden ? 'translate-x-6' : 'translate-x-1'}`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${formData.is_hidden ? 'translate-x-6' : 'translate-x-1'}`}
               />
             </span>
           </label>
-          <p className={`text-[10px] uppercase tracking-widest ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>
+          <p className="text-[12px] text-fg-muted">
             Hidden questions will be skipped for users.
           </p>
         </div>

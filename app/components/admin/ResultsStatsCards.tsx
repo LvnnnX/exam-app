@@ -30,26 +30,19 @@ export default function ResultsStatsCards({ isLiveMode, statsData, theme = 'dark
   const averageDuration = durations.length > 0 ? formatDuration(durations.reduce((sum, value) => sum + value, 0) / durations.length) : '-';
 
   const stats = [
-    { value: statsData.length.toString(), label: 'Attempts', sub: 'Filtered results', accent: 'blue' as const },
-    { value: `${averageScore}%`, label: 'Avg score', sub: 'Mean accuracy', accent: 'green' as const },
-    { value: `${passRate}%`, label: 'Pass rate', sub: 'Score ≥ 70%', accent: 'purple' as const },
-    { value: averageDuration, label: 'Avg time', sub: 'Completed only', accent: 'orange' as const },
+    { value: statsData.length.toString(), label: 'Attempts', sub: 'Filtered results' },
+    { value: `${averageScore}%`, label: 'Avg score', sub: 'Mean accuracy' },
+    { value: `${passRate}%`, label: 'Pass rate', sub: 'Score ≥ 70%' },
+    { value: averageDuration, label: 'Avg time', sub: 'Completed only' },
   ];
 
-  const accentClasses = {
-    blue: theme === 'dark' ? 'text-accent-blue' : 'text-blue-600',
-    green: theme === 'dark' ? 'text-accent-green' : 'text-green-600',
-    purple: theme === 'dark' ? 'text-accent-purple' : 'text-indigo-600',
-    orange: theme === 'dark' ? 'text-accent-orange' : 'text-orange-600',
-  };
-
   return (
-    <div className="mb-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+    <div data-theme={theme} className="mb-3 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
       {stats.map((s) => (
-        <div key={s.label} className={`rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-          <div className={`text-2xl font-semibold tracking-tight tabular-nums ${accentClasses[s.accent]}`}>{s.value}</div>
-          <div className={`mt-0.5 text-[12px] font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-700'}`}>{s.label}</div>
-          <div className={`text-[11px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>{s.sub}</div>
+        <div key={s.label} className="clay rounded-3xl px-4 py-3.5">
+          <div className="text-[26px] font-bold leading-tight tracking-tight tabular-nums text-fg">{s.value}</div>
+          <div className="mt-0.5 text-[13px] font-semibold text-fg">{s.label}</div>
+          <div className="text-[12px] text-fg-muted">{s.sub}</div>
         </div>
       ))}
     </div>

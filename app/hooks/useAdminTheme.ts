@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 export type AdminTheme = 'light' | 'dark';
 
-const DARK_BG = '#000000';
-const DARK_FG = '#ffffff';
+// Match --canvas / --fg of the dark theme in globals.css.
+const DARK_BG = '#0e1416';
+const DARK_FG = '#eef3f2';
+
+const themeListeners = new Set<() => void>();
 
 function readStoredTheme(): AdminTheme {
-  // Read from localStorage during state initialisation so we don't trigger a
-  // cascading re-render via setState inside an effect.
-  if (typeof window === 'undefined') return 'dark';
   try {
     const stored = window.localStorage.getItem('admin-theme');
     return stored === 'light' || stored === 'dark' ? stored : 'dark';
@@ -19,8 +19,28 @@ function readStoredTheme(): AdminTheme {
   }
 }
 
+function subscribeTheme(listener: () => void) {
+  themeListeners.add(listener);
+  window.addEventListener('storage', listener);
+  return () => {
+    themeListeners.delete(listener);
+    window.removeEventListener('storage', listener);
+  };
+}
+
+function writeStoredTheme(next: AdminTheme) {
+  try {
+    window.localStorage.setItem('admin-theme', next);
+  } catch {
+    // Storage blocked: the theme still applies for this page view.
+  }
+  themeListeners.forEach((listener) => listener());
+}
+
 export function useAdminTheme() {
-  const [theme, setTheme] = useState<AdminTheme>(readStoredTheme);
+  // The server snapshot is always 'dark', so hydration matches the server HTML;
+  // React then re-renders with the stored theme without a hydration error.
+  const theme = useSyncExternalStore<AdminTheme>(subscribeTheme, readStoredTheme, () => 'dark');
 
   useEffect(() => {
     const root = document.documentElement;
@@ -35,8 +55,9 @@ export function useAdminTheme() {
         body.style.setProperty('background-color', DARK_BG, 'important');
         body.style.setProperty('color', DARK_FG, 'important');
         root.style.colorScheme = 'dark';
+        // The admin page stays transparent so the canvas light fields show
+        // through the glass surfaces; only the text color is forced.
         if (adminPage) {
-          adminPage.style.setProperty('background-color', DARK_BG, 'important');
           adminPage.style.setProperty('color', DARK_FG, 'important');
         }
       } else {
@@ -58,8 +79,6 @@ export function useAdminTheme() {
     // after React has had a chance to mount it.
     const raf = window.requestAnimationFrame(apply);
 
-    localStorage.setItem('admin-theme', theme);
-
     return () => {
       window.cancelAnimationFrame(raf);
       body.classList.remove('admin-dark-theme');
@@ -77,7 +96,7 @@ export function useAdminTheme() {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    writeStoredTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   return { theme, toggleTheme };

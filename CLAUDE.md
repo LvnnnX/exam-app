@@ -142,12 +142,12 @@ The runtime uses Wake Lock + Page Visibility + selection blocking. Treat anti-ch
 
 ### Adding a New UI Component
 
-1. Match the iOS aesthetic — see `DESIGN.md` for tokens.
+1. Follow the glass + clay system in `DESIGN.md`: surfaces are `glass` / `glass-sheet`, pressable or owned objects are `clay-*`, inset content is `well`. One element gets one treatment.
 2. Use sentence-case copy in Bahasa Indonesia (or English where natural).
-3. Default to flat pills on `bg-black/5` tracks.
-4. Use `rounded-2xl` / `rounded-3xl` and `shadow-ios-*`.
-5. Add `transition-spring-fast` on interactive elements.
-6. Support both light and dark theme via the existing theme prop.
+3. Use the semantic tokens (`text-fg`, `text-fg-muted`, `bg-primary`, `text-danger`, ...) instead of raw palette classes or `theme === 'dark'` branches.
+4. Use the radius scale in `DESIGN.md` (`rounded-xl` controls, `rounded-3xl` cards, `rounded-4xl` modals) and 44px tap targets (`h-11`).
+5. Add `transition-calm` on interactive elements; respect `prefers-reduced-motion` for any JS animation.
+6. Support both light and dark theme via the existing theme prop (`data-theme={theme}` on a modal root).
 
 ### Adding a New Admin Tab
 

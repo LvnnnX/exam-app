@@ -304,6 +304,20 @@ export default function RichTextEditorField({
     };
   }, [mathModalMode]);
 
+  // Escape closes the math or table dialog; the question draft is left untouched.
+  useEffect(() => {
+    if (!mathModalMode && !tableModalOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setMathModalMode(null);
+      setMathLatex('');
+      setEditingMathPos(null);
+      setTableModalOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mathModalMode, tableModalOpen]);
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !editor) return;
@@ -425,21 +439,21 @@ export default function RichTextEditorField({
   }, [mathLatex, mathModalMode]);
 
   if (!editor) {
-    return <div className="p-4 border rounded-lg bg-gray-50 animate-pulse">Initializing editor...</div>;
+    return <div className="well rounded-xl p-4 text-[13px] font-medium text-fg-muted" role="status">Initializing editor...</div>;
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <label className={`block text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-700'}`}>{label}</label>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Rich Text</span>
+      <div className="mb-1.5 flex items-center justify-between">
+        <label className="block text-[13px] font-semibold text-fg">{label}</label>
+        <span className="text-[12px] font-medium text-fg-muted">Rich text</span>
       </div>
       {description && (
-        <p className="text-[11px] text-gray-400 mb-2">{description}</p>
+        <p className="mb-2 text-[12px] text-fg-muted">{description}</p>
       )}
 
-      <div className={`tiptap-shell border ${theme === 'dark' ? 'border-dark-border-medium' : 'border-slate-300'} ${isCompact ? 'rounded-xl' : 'rounded-2xl'} ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'} overflow-hidden shadow-sm transition-all ${theme === 'dark' ? 'focus-within:border-accent-blue' : 'focus-within:border-nike-black'}`}>
-        <div className={`tiptap-toolbar tiptap-toolbar-scroll border-b ${theme === 'dark' ? 'bg-dark-800/95 border-dark-border-medium' : 'bg-white/95 border-slate-300'} ${isCompact ? 'px-2 pt-1.5 pb-2' : 'px-3 pt-2 pb-2.5'} flex items-center gap-1 sticky top-0 z-10 overflow-x-auto overflow-y-hidden whitespace-nowrap backdrop-blur-md`}>
+      <div className={`tiptap-shell well overflow-hidden border border-line transition-calm focus-within:border-primary ${isCompact ? 'rounded-xl' : 'rounded-2xl'}`}>
+        <div className={`tiptap-toolbar tiptap-toolbar-scroll sticky top-0 z-10 flex items-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap border-b border-line bg-[var(--glass-solid)] ${isCompact ? 'px-2 pt-1.5 pb-2' : 'px-3 pt-2 pb-2.5'}`}>
           <div className="flex items-center gap-0.5">
             <button
               type="button"
@@ -475,7 +489,7 @@ export default function RichTextEditorField({
             </button>
           </div>
 
-          <div className={`h-5 w-px mx-1 ${theme === 'dark' ? 'bg-dark-border-medium' : 'bg-slate-300'}`} />
+          <div className="mx-1 h-5 w-px bg-line-strong" aria-hidden="true" />
 
           <div className="flex items-center gap-0.5">
             <button
@@ -512,7 +526,7 @@ export default function RichTextEditorField({
             </button>
           </div>
 
-          <div className={`h-5 w-px mx-1 ${theme === 'dark' ? 'bg-dark-border-medium' : 'bg-slate-300'}`} />
+          <div className="mx-1 h-5 w-px bg-line-strong" aria-hidden="true" />
 
           <div className="flex items-center gap-0.5">
             <button
@@ -541,7 +555,7 @@ export default function RichTextEditorField({
             </button>
           </div>
 
-          <div className={`h-5 w-px mx-1 ${theme === 'dark' ? 'bg-dark-border-medium' : 'bg-slate-300'}`} />
+          <div className="mx-1 h-5 w-px bg-line-strong" aria-hidden="true" />
 
           <div className="flex items-center gap-0.5">
             <button
@@ -591,7 +605,7 @@ export default function RichTextEditorField({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().deleteColumn().run()}
-                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-red-600`}
+                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-danger`}
                   title="Delete Column"
                 >
                   -C
@@ -599,7 +613,7 @@ export default function RichTextEditorField({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().deleteRow().run()}
-                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-red-600`}
+                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-danger`}
                   title="Delete Row"
                 >
                   -R
@@ -607,7 +621,7 @@ export default function RichTextEditorField({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().deleteTable().run()}
-                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-red-600 font-bold`}
+                  className={`toolbar-btn ${isCompact ? 'compact' : ''} text-xs text-danger font-bold`}
                   title="Delete Table"
                 >
                   Del
@@ -616,7 +630,7 @@ export default function RichTextEditorField({
             )}
           </div>
 
-          <div className={`h-5 w-px mx-1 ${theme === 'dark' ? 'bg-dark-border-medium' : 'bg-slate-300'}`} />
+          <div className="mx-1 h-5 w-px bg-line-strong" aria-hidden="true" />
 
           {/* LaTeX / Math Buttons */}
           <div className="flex items-center gap-0.5">
@@ -638,13 +652,14 @@ export default function RichTextEditorField({
             </button>
           </div>
 
-          <div className={`h-5 w-px mx-1 ${theme === 'dark' ? 'bg-dark-border-medium' : 'bg-slate-300'}`} />
+          <div className="mx-1 h-5 w-px bg-line-strong" aria-hidden="true" />
 
           <div className="flex items-center gap-1">
             <select
               value={selectedLanguage}
               onChange={(event) => setSelectedLanguage(event.target.value)}
-              className={`text-xs border rounded-lg px-2.5 ${isCompact ? 'h-[28px]' : 'h-[32px]'} ${theme === 'dark' ? 'border-dark-border-medium bg-dark-750 text-dark-text-primary focus:border-accent-blue' : 'border-slate-300 bg-white focus:border-nike-black'} outline-none transition-colors`}
+              aria-label="Code language"
+              className={`rounded-lg border border-line-strong bg-transparent px-2.5 text-xs text-fg transition-calm ${isCompact ? 'h-[28px]' : 'h-[32px]'}`}
             >
               {CODE_LANGUAGES.map((language) => (
                 <option key={language.value} value={language.value}>
@@ -663,8 +678,9 @@ export default function RichTextEditorField({
             <button
               type="button"
               onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
-              className={`toolbar-btn ${isCompact ? 'compact' : ''} ${theme === 'dark' ? 'text-accent-red hover:bg-accent-red/10' : 'text-red-600 hover:bg-red-50'}`}
+              className={`toolbar-btn ${isCompact ? 'compact' : ''} text-danger`}
               title="Clear Formatting"
+              aria-label="Clear formatting"
             >
               <span className="text-lg">×</span>
             </button>
@@ -673,20 +689,20 @@ export default function RichTextEditorField({
 
         <EditorContent
           editor={editor}
-          className={`tiptap-editor ${isCompact ? 'p-3' : 'p-4'} min-h-[200px] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}
+          className={`tiptap-editor min-h-[200px] text-fg ${isCompact ? 'p-3' : 'p-4'}`}
         />
       </div>
 
       {mathModalMode && (
-        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/40 p-3 sm:p-4 backdrop-blur-xl" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-sm sm:max-w-md overflow-hidden rounded-3xl shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800 text-dark-text-primary' : 'bg-white text-nike-black'}`}>
+        <div data-theme={theme} className="glass-scrim fixed inset-0 z-[80] flex items-end justify-center p-3 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={mathModalMode === 'inline' ? 'Inline math' : 'Block math'}>
+          <div className="glass-sheet animate-in w-full max-w-sm overflow-hidden rounded-4xl text-fg sm:max-w-md">
             <div className="flex items-center justify-between px-5 pt-4 pb-3">
-              <h3 className="text-base font-semibold tracking-tight">{mathModalMode === 'inline' ? 'Inline math.' : 'Block math.'}</h3>
+              <h3 className="text-[17px] font-bold tracking-tight">{mathModalMode === 'inline' ? 'Inline math.' : 'Block math.'}</h3>
               <button
                 type="button"
                 onClick={closeMathModal}
                 aria-label="Tutup"
-                className={`flex h-8 w-8 items-center justify-center rounded-full transition-spring-fast ${theme === 'dark' ? 'text-white/70 hover:bg-white/10' : 'text-black/60 hover:bg-black/5'}`}
+                className="well well-hover flex h-11 w-11 items-center justify-center rounded-xl text-fg transition-calm"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden>
                   <path d="M18 6L6 18M6 6l12 12" />
@@ -695,16 +711,15 @@ export default function RichTextEditorField({
             </div>
 
             <div className="space-y-3 px-4 pb-4 sm:px-5 sm:pb-5">
-              <div className={`flex gap-1 overflow-x-auto rounded-full p-1 quick-insert-scroll ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
+              <div className="quick-insert-scroll well flex gap-1 overflow-x-auto rounded-xl p-1">
                 {(['functions', 'operators', 'colors', 'sizes', 'matrices', 'reference'] as MathModalTab[]).map((tab) => (
                   <button
                     key={tab}
                     type="button"
+                    aria-pressed={mathModalTab === tab}
                     onClick={() => setMathModalTab(tab)}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold capitalize transition-spring-fast ${
-                      mathModalTab === tab
-                        ? (theme === 'dark' ? 'bg-white text-nike-black shadow-ios-sm' : 'bg-white text-nike-black shadow-ios-sm')
-                        : (theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/55 hover:text-nike-black')
+                    className={`h-11 md:h-9 shrink-0 rounded-lg px-3 text-[12px] font-semibold capitalize transition-calm ${
+                      mathModalTab === tab ? 'clay' : 'text-fg-muted hover:text-fg'
                     }`}
                   >
                     {tab}
@@ -712,7 +727,7 @@ export default function RichTextEditorField({
                 ))}
               </div>
 
-              <div className={`rounded-2xl p-2 ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
+              <div className="well rounded-2xl p-2">
                 {mathModalTab === 'functions' && (
                   <div className="grid grid-cols-3 gap-1.5 max-h-[140px] overflow-y-auto quick-insert-scroll">
                     {MATH_FUNCTIONS.map((fn) => {
@@ -722,10 +737,10 @@ export default function RichTextEditorField({
                           key={fn.label}
                           type="button"
                           onClick={() => insertLatexSnippet(fn.latex)}
-                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
+                          className="flex min-h-11 flex-col items-center gap-0.5 rounded-xl border border-line px-1.5 py-2 transition-calm hover:border-line-strong hover:bg-[var(--well-bg-hover)]"
                           title={fn.latex}
                         >
-                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{fn.label}</span>
+                          <span className="text-[11px] font-semibold text-fg-muted">{fn.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -742,10 +757,10 @@ export default function RichTextEditorField({
                           key={op.label}
                           type="button"
                           onClick={() => insertLatexSnippet(op.latex)}
-                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
+                          className="flex min-h-11 flex-col items-center gap-0.5 rounded-xl border border-line px-1.5 py-2 transition-calm hover:border-line-strong hover:bg-[var(--well-bg-hover)]"
                           title={op.latex}
                         >
-                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{op.label}</span>
+                          <span className="text-[11px] font-semibold text-fg-muted">{op.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -762,10 +777,10 @@ export default function RichTextEditorField({
                           key={color.label}
                           type="button"
                           onClick={() => insertLatexSnippet(color.latex)}
-                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
+                          className="flex min-h-11 flex-col items-center gap-0.5 rounded-xl border border-line px-1.5 py-2 transition-calm hover:border-line-strong hover:bg-[var(--well-bg-hover)]"
                           title={color.latex}
                         >
-                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{color.label}</span>
+                          <span className="text-[11px] font-semibold text-fg-muted">{color.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -782,10 +797,10 @@ export default function RichTextEditorField({
                           key={size.label}
                           type="button"
                           onClick={() => insertLatexSnippet(size.latex)}
-                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
+                          className="flex min-h-11 flex-col items-center gap-0.5 rounded-xl border border-line px-1.5 py-2 transition-calm hover:border-line-strong hover:bg-[var(--well-bg-hover)]"
                           title={size.latex}
                         >
-                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{size.label}</span>
+                          <span className="text-[11px] font-semibold text-fg-muted">{size.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -796,31 +811,31 @@ export default function RichTextEditorField({
                 {mathModalTab === 'matrices' && (
                   <div className="flex flex-wrap items-center gap-2 px-1 py-1">
                     <div className="flex items-center gap-1.5">
-                      <label className={`text-[11px] font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/55'}`}>Baris</label>
+                      <label className="text-[12px] font-medium text-fg-muted">Baris</label>
                       <input
                         type="number"
                         min="1"
                         max="10"
                         value={matrixRows}
                         onChange={(e) => setMatrixRows(parseInt(e.target.value) || 2)}
-                        className={`w-12 rounded-lg px-2 py-1 text-xs outline-none transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 text-white focus:bg-dark-700' : 'bg-white text-nike-black focus:ring-2 focus:ring-nike-black/15'}`}
+                        className="h-11 w-14 rounded-lg border border-line-strong bg-transparent px-2 text-[13px] text-fg transition-calm md:h-9"
                       />
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <label className={`text-[11px] font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/55'}`}>Kolom</label>
+                      <label className="text-[12px] font-medium text-fg-muted">Kolom</label>
                       <input
                         type="number"
                         min="1"
                         max="10"
                         value={matrixCols}
                         onChange={(e) => setMatrixCols(parseInt(e.target.value) || 2)}
-                        className={`w-12 rounded-lg px-2 py-1 text-xs outline-none transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 text-white focus:bg-dark-700' : 'bg-white text-nike-black focus:ring-2 focus:ring-nike-black/15'}`}
+                        className="h-11 md:h-9 w-14 rounded-lg border border-line-strong bg-transparent px-2 text-[13px] text-fg transition-calm"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={generateMatrix}
-                      className={`ml-auto rounded-full px-3 py-1 text-[11px] font-semibold transition-spring-fast ${theme === 'dark' ? 'bg-white text-nike-black hover:scale-[1.01]' : 'bg-nike-black text-white hover:scale-[1.01]'}`}
+                      className="ml-auto h-11 md:h-9 rounded-lg bg-primary/12 px-3 text-[12px] font-semibold text-primary transition-calm hover:bg-primary/18"
                     >
                       Buat
                     </button>
@@ -836,10 +851,10 @@ export default function RichTextEditorField({
                           key={ref.label}
                           type="button"
                           onClick={() => insertLatexSnippet(ref.latex)}
-                          className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-2 transition-spring-fast ${theme === 'dark' ? 'bg-dark-800 hover:bg-dark-700' : 'bg-white hover:bg-black/5'}`}
+                          className="flex min-h-11 flex-col items-center gap-0.5 rounded-xl border border-line px-1.5 py-2 transition-calm hover:border-line-strong hover:bg-[var(--well-bg-hover)]"
                           title={ref.latex}
                         >
-                          <span className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-white/55' : 'text-black/55'}`}>{ref.label}</span>
+                          <span className="text-[11px] font-semibold text-fg-muted">{ref.label}</span>
                           <div className="text-sm" dangerouslySetInnerHTML={{ __html: preview }} />
                         </button>
                       );
@@ -858,15 +873,16 @@ export default function RichTextEditorField({
                     insertMathFromModal();
                   }
                 }}
-                className={`min-h-[72px] w-full resize-none rounded-2xl px-4 py-3 font-mono text-sm outline-none transition-spring-fast quick-insert-scroll ${theme === 'dark' ? 'bg-white/5 text-white placeholder:text-white/30 focus:bg-white/10' : 'bg-black/5 text-nike-black placeholder:text-black/30 focus:bg-white focus:ring-2 focus:ring-nike-black/15'}`}
+                aria-label="LaTeX"
+                className="quick-insert-scroll well min-h-[72px] w-full resize-none rounded-xl px-4 py-3 font-mono text-sm text-fg placeholder:text-fg-subtle transition-calm"
                 placeholder="\\frac{a}{b}"
               />
 
-              <div className={`flex min-h-[56px] items-center justify-center overflow-x-auto rounded-2xl px-3 py-3 quick-insert-scroll ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
+              <div className="quick-insert-scroll well flex min-h-[56px] items-center justify-center overflow-x-auto rounded-xl px-3 py-3" aria-live="polite">
                 {mathPreview ? (
                   <div dangerouslySetInnerHTML={{ __html: mathPreview }} />
                 ) : (
-                  <span className={`text-xs ${theme === 'dark' ? 'text-white/40' : 'text-black/40'}`}>Preview muncul di sini.</span>
+                  <span className="text-[12px] text-fg-muted">Preview muncul di sini.</span>
                 )}
               </div>
 
@@ -874,7 +890,7 @@ export default function RichTextEditorField({
                 <button
                   type="button"
                   onClick={closeMathModal}
-                  className={`h-11 rounded-full text-xs font-semibold transition-spring-fast ${theme === 'dark' ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-black/5 text-nike-black hover:bg-black/10'}`}
+                  className="well well-hover h-11 rounded-xl text-[14px] font-medium text-fg transition-calm"
                 >
                   Batal
                 </button>
@@ -882,7 +898,7 @@ export default function RichTextEditorField({
                   type="button"
                   onClick={insertMathFromModal}
                   disabled={!mathLatex.trim()}
-                  className={`h-11 rounded-full text-xs font-semibold shadow-ios-sm hover:shadow-ios-md hover:scale-[1.01] active:scale-[0.99] transition-spring-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${theme === 'dark' ? 'bg-white text-nike-black' : 'bg-nike-black text-white'}`}
+                  className="clay-primary h-11 rounded-xl text-[14px] font-semibold"
                 >
                   Sisipkan
                 </button>
@@ -893,59 +909,61 @@ export default function RichTextEditorField({
       )}
 
       {tableModalOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4 backdrop-blur-md" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-md overflow-hidden rounded-[24px] border shadow-ios-xl ${theme === 'dark' ? 'border-dark-border-strong bg-dark-800 text-dark-text-primary' : 'border-slate-300 bg-white text-slate-900'}`}>
-            <div className={`flex items-center justify-between border-b px-5 py-4 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800/95' : 'border-slate-300 bg-white/95'}`}>
+        <div data-theme={theme} className="glass-scrim fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="insert-table-title">
+          <div className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl text-fg">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <div>
-                <p className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Table</p>
-                <h3 className="text-base font-semibold">Insert Table</h3>
+                <p className="text-[12px] font-medium text-fg-muted">Table</p>
+                <h3 id="insert-table-title" className="text-[17px] font-bold tracking-tight">Insert table</h3>
               </div>
-              <button type="button" onClick={closeTableModal} className={`flex h-8 w-8 items-center justify-center rounded-full text-lg transition-colors ${theme === 'dark' ? 'text-dark-text-secondary hover:bg-dark-700' : 'text-slate-500 hover:bg-slate-100'}`} title="Close">×</button>
+              <button type="button" onClick={closeTableModal} className="well well-hover flex h-11 w-11 items-center justify-center rounded-xl text-lg text-fg transition-calm" aria-label="Close">×</button>
             </div>
 
             <div className="space-y-4 p-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block text-xs font-bold uppercase tracking-wide mb-2 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-slate-700'}`}>Rows</label>
+                  <label htmlFor="insert-table-rows" className="mb-2 block text-[13px] font-semibold text-fg">Rows</label>
                   <input
+                    id="insert-table-rows"
                     type="number"
                     min="1"
                     max="20"
                     value={tableRows}
                     onChange={(e) => setTableRows(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
-                    className={`w-full px-3 h-10 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary focus:ring-accent-blue/20 focus:border-accent-blue' : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/10 focus:border-slate-900'}`}
+                    className="well h-11 w-full rounded-xl px-3 text-[14px] font-medium text-fg transition-calm"
                   />
                 </div>
                 <div>
-                  <label className={`block text-xs font-bold uppercase tracking-wide mb-2 ${theme === 'dark' ? 'text-dark-text-primary' : 'text-slate-700'}`}>Columns</label>
+                  <label htmlFor="insert-table-cols" className="mb-2 block text-[13px] font-semibold text-fg">Columns</label>
                   <input
+                    id="insert-table-cols"
                     type="number"
                     min="1"
                     max="10"
                     value={tableCols}
                     onChange={(e) => setTableCols(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                    className={`w-full px-3 h-10 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary focus:ring-accent-blue/20 focus:border-accent-blue' : 'border-slate-300 bg-white text-slate-900 focus:ring-slate-900/10 focus:border-slate-900'}`}
+                    className="well h-11 w-full rounded-xl px-3 text-[14px] font-medium text-fg transition-calm"
                   />
                 </div>
               </div>
 
-              <label className={`flex items-center gap-3 cursor-pointer rounded-xl border p-4 transition-colors ${tableHasHeader ? (theme === 'dark' ? 'border-accent-blue/30 bg-accent-blue/10' : 'border-slate-300 bg-slate-50') : (theme === 'dark' ? 'border-dark-border-medium bg-dark-700/50' : 'border-slate-300 bg-white')}`}>
+              <label className={`flex cursor-pointer items-center gap-3 rounded-xl p-4 transition-calm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus)] ${tableHasHeader ? 'bg-primary/10' : 'well'}`}>
                 <input
                   type="checkbox"
                   checked={tableHasHeader}
                   onChange={(e) => setTableHasHeader(e.target.checked)}
                   className="sr-only"
                 />
-                <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${tableHasHeader ? (theme === 'dark' ? 'bg-accent-blue' : 'bg-slate-900') : (theme === 'dark' ? 'bg-dark-600' : 'bg-slate-300')}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${tableHasHeader ? 'translate-x-6' : 'translate-x-1'}`} />
+                <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-calm ${tableHasHeader ? 'bg-primary' : 'bg-line-strong'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${tableHasHeader ? 'translate-x-6' : 'translate-x-1'}`} />
                 </span>
-                <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-slate-900'}`}>First row as header</span>
+                <span className="text-[14px] font-semibold text-fg">First row as header</span>
               </label>
             </div>
 
-            <div className={`flex justify-end gap-2 border-t px-5 py-4 ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800/95' : 'border-slate-300 bg-white/95'}`}>
-              <button type="button" onClick={closeTableModal} className={`h-10 rounded-full border px-5 text-xs font-semibold transition-colors ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600' : 'border-slate-400 bg-white text-slate-700 hover:bg-slate-50'}`}>Cancel</button>
-              <button type="button" onClick={insertTableFromModal} className={`h-10 rounded-full px-6 text-xs font-semibold text-white transition-colors ${theme === 'dark' ? 'bg-accent-blue hover:bg-accent-blue/90' : 'bg-slate-900 hover:bg-slate-700'}`}>Insert Table</button>
+            <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
+              <button type="button" onClick={closeTableModal} className="well well-hover h-11 rounded-xl px-5 text-[14px] font-medium text-fg transition-calm">Cancel</button>
+              <button type="button" onClick={insertTableFromModal} className="clay-primary h-11 rounded-xl px-6 text-[14px] font-semibold">Insert table</button>
             </div>
           </div>
         </div>

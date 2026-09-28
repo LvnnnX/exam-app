@@ -56,11 +56,29 @@ export default function ResultDetailsModal({
     onClose();
   };
 
+  useEffect(() => {
+    if (!viewingResult) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        document.body.style.overflow = '';
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewingResult, onClose]);
+
   if (!viewingResult) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 z-[10000]" onClick={handleClose}>
-      <div className={`rounded-[28px] shadow-ios-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4" onClick={handleClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Result details ${viewingResult.name}`}
+        className="glass-sheet animate-in flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-4xl text-fg"
+        onClick={(e) => e.stopPropagation()}
+      >
         <ResultDetailsHeader
           viewingResult={viewingResult}
           formatCategorySelectionLabel={formatCategorySelectionLabel}

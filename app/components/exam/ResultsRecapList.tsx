@@ -15,8 +15,17 @@ type ResultsRecapListProps = {
 };
 
 export default function ResultsRecapList({ recapData }: ResultsRecapListProps) {
+  if (recapData.length === 0) {
+    return (
+      <div className="glass mb-8 rounded-3xl px-5 py-8 text-center">
+        <p className="text-[15px] font-semibold text-fg">Belum ada rekap.</p>
+        <p className="mt-1 text-[13px] text-fg-muted">Rekap jawaban muncul di sini setelah sesi selesai dan tersimpan.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-3 mb-8">
+    <div className="glass mb-8 overflow-hidden rounded-3xl">
       {recapData
         .map((item, idx) => {
           const userAnswer = item.user_answer;
@@ -24,24 +33,26 @@ export default function ResultsRecapList({ recapData }: ResultsRecapListProps) {
           const isSkipped = !userAnswer;
 
           return (
-            <div key={idx} className="bg-black/[0.03] p-5 sm:p-6 rounded-3xl">
-              <div className="flex gap-3 mb-3">
-                <span className="text-[12px] font-medium text-nike-grey-500 tabular-nums shrink-0 mt-0.5 tracking-tight">{(idx + 1).toString().padStart(2, '0')}</span>
-                <RichContent html={item.question_text} className="text-[14px] sm:text-[15px] font-medium text-nike-black leading-snug flex-1 min-w-0 tracking-tight" />
+            <div key={idx} className="border-b border-line px-5 py-5 last:border-b-0 sm:px-6">
+              <div className="mb-3 flex gap-3">
+                <span className="clay flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg px-1.5 text-[13px] font-bold tabular-nums">
+                  {idx + 1}
+                </span>
+                <RichContent html={item.question_text} className="min-w-0 flex-1 pt-1 text-[15px] font-medium leading-snug text-fg" />
               </div>
 
-              <div className="ml-7 sm:ml-9">
+              <div className="ml-11">
                 {isSkipped ? (
-                  <span className="inline-flex items-center px-3 h-7 rounded-full bg-black/5 text-nike-grey-500 text-[11px] font-medium tracking-tight">Skipped</span>
+                  <span className="well inline-flex h-7 items-center rounded-lg px-3 text-[12px] font-medium text-fg-muted">Skipped</span>
                 ) : isCorrect ? (
                   <div className="flex items-start gap-2.5">
-                    <span className="inline-flex items-center px-2.5 h-6 rounded-full bg-nike-green/10 text-nike-green text-[10px] font-medium tracking-tight shrink-0 mt-0.5">Correct</span>
-                    <RichContent html={userAnswer} className="text-[13px] font-medium text-nike-black flex-1 min-w-0 tracking-tight" />
+                    <span className="mt-0.5 inline-flex h-6 shrink-0 items-center rounded-md bg-primary/12 px-2.5 text-[12px] font-semibold text-primary">Correct</span>
+                    <RichContent html={userAnswer} className="min-w-0 flex-1 text-[14px] font-medium text-fg" />
                   </div>
                 ) : (
                   <div className="flex items-start gap-2.5">
-                    <span className="inline-flex items-center px-2.5 h-6 rounded-full bg-nike-red/10 text-nike-red text-[10px] font-medium tracking-tight shrink-0 mt-0.5">Wrong</span>
-                    <RichContent html={userAnswer} className="text-[13px] font-medium text-nike-red flex-1 min-w-0 tracking-tight" />
+                    <span className="mt-0.5 inline-flex h-6 shrink-0 items-center rounded-md bg-danger/12 px-2.5 text-[12px] font-semibold text-danger">Wrong</span>
+                    <RichContent html={userAnswer} className="min-w-0 flex-1 text-[14px] font-medium text-danger" />
                   </div>
                 )}
               </div>

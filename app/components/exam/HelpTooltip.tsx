@@ -1,19 +1,55 @@
 "use client";
 
-import React from 'react';
+import React, { useId, useRef, useState } from 'react';
 
 type HelpTooltipProps = {
   text: string;
 };
 
+// Half of the tooltip width (w-52 = 208px) plus the 12px page gutter it must keep.
+const HALF_WIDTH = 104;
+const EDGE = 12;
+
 export default function HelpTooltip({ text }: HelpTooltipProps) {
+  const tooltipId = useId();
+  const wrapperRef = useRef<HTMLSpanElement>(null);
+  const [align, setAlign] = useState<'start' | 'center' | 'end'>('center');
+
+  // Pick the alignment on open so the tooltip never runs off a narrow screen.
+  const place = () => {
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mid = rect.left + rect.width / 2;
+    if (mid + HALF_WIDTH > window.innerWidth - EDGE) setAlign('end');
+    else if (mid - HALF_WIDTH < EDGE) setAlign('start');
+    else setAlign('center');
+  };
+
+  const alignClass = align === 'end' ? 'right-0' : align === 'start' ? 'left-0' : 'left-1/2 -translate-x-1/2';
+
   return (
-    <span className="relative group inline-block ml-1.5 align-middle">
-      <button type="button" className="w-[14px] h-[14px] rounded-full bg-black/10 text-nike-grey-500 text-[10px] font-medium flex items-center justify-center hover:bg-nike-black hover:text-white transition-spring-fast cursor-help">?</button>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 bg-nike-black text-white text-[11px] font-medium leading-relaxed rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-spring-fast z-10 text-center shadow-ios-md pointer-events-none tracking-tight">
+    <span
+      ref={wrapperRef}
+      className="relative group inline-flex ml-1.5 align-middle"
+      onPointerEnter={place}
+      onFocus={place}
+    >
+      <button
+        type="button"
+        aria-label="Bantuan"
+        aria-describedby={tooltipId}
+        className="relative flex h-[18px] w-[18px] items-center justify-center rounded-full well text-[11px] font-semibold text-fg-muted transition-calm hover:text-fg cursor-help before:absolute before:-inset-[13px] before:content-['']"
+      >
+        ?
+      </button>
+      {/* display:none while closed, so a hidden tooltip never widens the page. */}
+      <span
+        id={tooltipId}
+        role="tooltip"
+        className={`glass-strong animate-in pointer-events-none absolute bottom-full z-20 mb-2 hidden w-52 max-w-[calc(100vw-24px)] rounded-xl px-3 py-2 text-center text-[12px] font-medium leading-snug text-fg group-hover:block group-focus-within:block ${alignClass}`}
+      >
         {text}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-nike-black"></div>
-      </div>
+      </span>
     </span>
   );
 }

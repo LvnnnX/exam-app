@@ -7,5 +7,10 @@ type SettingsLoadingStateProps = {
 };
 
 export default function SettingsLoadingState({ theme = 'dark' }: SettingsLoadingStateProps) {
-  return <div className={`p-6 text-sm animate-pulse ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>Loading settings...</div>;
+  return (
+    <div data-theme={theme} className="flex items-center gap-2 p-6 text-[14px] font-medium text-fg-muted" role="status">
+      <span className="spinner-calm h-4 w-4" aria-hidden="true" />
+      Loading settings...
+    </div>
+  );
 }

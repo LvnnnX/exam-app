@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 type QuestionNavPopupProps = {
   isOpen: boolean;
@@ -12,6 +12,26 @@ type QuestionNavPopupProps = {
   onGoToQuestion: (index: number) => void;
 };
 
+export function QuestionGridLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] font-medium text-fg-muted">
+      <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[4px] bg-primary" aria-hidden="true" /> Terjawab</span>
+      <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-[4px] bg-highlight" aria-hidden="true" /> Ragu</span>
+      <span className="flex items-center gap-1.5"><span className="well h-3 w-3 rounded-[4px] border border-line-strong" aria-hidden="true" /> Kosong</span>
+    </div>
+  );
+}
+
+export function questionTileClass({ isCurrent, isDoubt, isAnswered }: { isCurrent: boolean; isDoubt: boolean; isAnswered: boolean }) {
+  const state = isDoubt
+    ? 'bg-highlight text-on-highlight'
+    : isAnswered
+      ? 'bg-primary text-on-primary'
+      : 'well well-hover text-fg';
+  const ring = isCurrent ? 'ring-2 ring-fg ring-offset-2 ring-offset-canvas' : '';
+  return `h-11 rounded-xl text-[14px] font-semibold tabular-nums transition-calm ${state} ${ring}`;
+}
+
 export default function QuestionNavPopup({
   isOpen,
   total,
@@ -21,33 +41,46 @@ export default function QuestionNavPopup({
   onClose,
   onGoToQuestion,
 }: QuestionNavPopupProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-2xl flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[28px] shadow-ios-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300">
-        <div className="px-5 pt-5 pb-4 border-b border-black/[0.06]">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[17px] font-semibold tracking-tight text-nike-black">Daftar soal</h3>
+    <div className="glass-scrim fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="question-nav-title"
+        className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="border-b border-line px-5 pt-4 pb-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 id="question-nav-title" className="text-[18px] font-bold tracking-tight text-fg">Daftar soal</h3>
             <button
+              type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-spring-fast active:scale-90"
+              aria-label="Tutup"
+              className="well well-hover flex h-11 w-11 items-center justify-center rounded-xl text-fg transition-calm"
             >
-              <svg className="w-3.5 h-3.5 text-nike-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-nike-grey-500 tracking-tight">
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-nike-black"></span> Terjawab</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span> Ragu</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-black/10"></span> Kosong</span>
-          </div>
+          <QuestionGridLegend />
         </div>
-        <div className="px-5 py-5 max-h-[60vh] overflow-y-auto">
-          <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-5">
+          <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
             {Array.from({ length: total }, (_, i) => {
               const isAnswered = answers[i] !== null && answers[i] !== undefined && String(answers[i]).trim().length > 0;
               const isDoubt = doubtFlags[i] || false;
@@ -55,13 +88,11 @@ export default function QuestionNavPopup({
               return (
                 <button
                   key={i}
+                  type="button"
+                  aria-current={isCurrent ? 'step' : undefined}
+                  aria-label={`Soal ${i + 1}${isDoubt ? ', ragu' : isAnswered ? ', terjawab' : ', kosong'}`}
                   onClick={() => onGoToQuestion(i)}
-                  className={`h-10 rounded-xl text-[13px] font-medium tabular-nums transition-spring-fast active:scale-95 ${isCurrent ? 'ring-2 ring-nike-black ring-offset-2' : ''} ${isDoubt
-                    ? 'bg-yellow-400 text-nike-black'
-                    : isAnswered
-                      ? 'bg-nike-black text-white'
-                      : 'bg-black/5 text-nike-black hover:bg-black/10'
-                    }`}
+                  className={questionTileClass({ isCurrent, isDoubt, isAnswered })}
                 >
                   {i + 1}
                 </button>

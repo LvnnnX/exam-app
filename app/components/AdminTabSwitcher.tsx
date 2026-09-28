@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import React, { useEffect, useState } from 'react';
-import { FileQuestion, BarChart3, TrendingUp, Settings, PlayCircle, Shield, Sun, Moon, Menu, X } from 'lucide-react';
+import { FileQuestion, BarChart3, TrendingUp, Settings, PlayCircle, Shield, Sun, Moon, Menu, X, LogOut } from 'lucide-react';
 
 type AdminTab = 'questions' | 'results' | 'analytics' | 'settings' | 'quiz' | 'access';
 
@@ -38,44 +38,60 @@ const tips: Record<AdminTab, string> = {
   access: 'Manage admin roles carefully; avoid removing your own access.',
 };
 
-function NavButton({ tab, activeTab, onTabChange, theme = 'dark' }: {
+function NavButton({ tab, activeTab, onTabChange }: {
   tab: typeof tabs[number];
   activeTab: AdminTab;
   onTabChange: (tab: AdminTab) => void;
-  theme?: 'light' | 'dark';
 }) {
   const isActive = activeTab === tab.id;
   const Icon = tab.icon;
-
-  const styles = theme === 'dark'
-    ? isActive
-      ? 'bg-white/10 text-dark-text-primary'
-      : 'text-dark-text-secondary hover:bg-white/5'
-    : isActive
-      ? 'bg-black/10 text-gray-900'
-      : 'text-gray-600 hover:bg-black/5';
 
   return (
     <button
       type="button"
       onClick={() => onTabChange(tab.id)}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-left text-[13px] rounded-full font-medium transition-spring-fast active:scale-95 ${styles}`}
+      aria-current={isActive ? 'page' : undefined}
+      className={`flex h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-[14px] transition-calm ${
+        isActive ? 'well font-semibold text-fg' : 'font-medium text-fg-muted well-hover hover:text-fg'
+      }`}
     >
-      <Icon size={16} className="shrink-0" />
+      <Icon size={17} className={`shrink-0 ${isActive ? 'text-primary' : 'text-fg-subtle'}`} />
       {tab.label}
     </button>
+  );
+}
+
+function IdentityRow({ adminEmail, adminRole }: { adminEmail: string; adminRole?: string }) {
+  return (
+    <div className="flex items-center gap-3 px-1">
+      <div className="clay flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[14px] font-bold uppercase" aria-hidden="true">
+        {adminEmail[0]}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-[13px] font-semibold text-fg" title={adminEmail}>{adminEmail}</p>
+        <p className="mt-0.5 text-[12px] font-medium capitalize text-fg-muted">{adminRole || 'Administrator'}</p>
+      </div>
+    </div>
   );
 }
 
 export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onAddQuestion, onCreateQuiz, adminEmail, adminRole, canAccessManage, canViewSettings, theme = 'dark', onToggleTheme }: AdminTabSwitcherProps) {
   const visibleTabs = tabs.filter((tab) => (!tab.accessOnly || canAccessManage) && (!tab.settingsOnly || canViewSettings));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const activeLabel = tabs.find((tab) => tab.id === activeTab)?.label ?? 'Admin';
 
   useEffect(() => {
     if (mobileOpen) {
       const previous = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = previous; };
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') setMobileOpen(false);
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.style.overflow = previous;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     }
   }, [mobileOpen]);
 
@@ -84,157 +100,150 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
     setMobileOpen(false);
   };
 
+  const secondaryAction = 'well well-hover flex h-11 w-full items-center gap-2.5 rounded-xl px-3.5 text-left text-[13px] font-medium text-fg transition-calm';
+
   return (
     <>
-      <aside className={`fixed inset-y-0 left-0 z-40 hidden h-screen w-[228px] shrink-0 flex-col overflow-hidden border-r px-3 py-4 md:flex ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-850' : 'border-[#e5e5e5] bg-[#f5f5f5]'}`}>
-        <div className="px-1 pb-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center">
-              <Image src="/favicon.ico" alt="Smandapura Exam App" width={44} height={44} priority />
-            </div>
-            <div className="min-w-0">
-              <div className={`text-xl font-bold leading-none tracking-[-0.03em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
-                Smandapura<br />Exam App
-              </div>
-            </div>
+      <aside className="glass fixed inset-y-3 left-3 z-40 hidden w-[228px] shrink-0 flex-col overflow-y-auto rounded-4xl px-3 py-4 md:flex">
+        <div className="mb-5 flex items-center gap-2.5 px-1.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <Image src="/favicon.ico" alt="" width={36} height={36} priority />
+          </div>
+          <div className="min-w-0 text-[15px] font-bold leading-tight tracking-tight text-fg">
+            Smandapura<br />Exam App
           </div>
         </div>
 
-        <nav className="flex flex-col gap-2">
+        <nav className="flex flex-col gap-1" aria-label="Admin">
           {visibleTabs.map((tab) => (
-            <NavButton key={tab.id} tab={tab} activeTab={activeTab} onTabChange={onTabChange} theme={theme} />
+            <NavButton key={tab.id} tab={tab} activeTab={activeTab} onTabChange={onTabChange} />
           ))}
         </nav>
 
         {(onAddQuestion || onCreateQuiz) && (
-          <div className={`mt-3 rounded-[24px] border p-4 shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
-            <p className={`mb-3 text-[10px] font-bold uppercase tracking-[0.22em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Quick Action</p>
-            <div className="space-y-2">
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="mb-2 px-1.5 text-[12px] font-medium text-fg-muted">Quick action</p>
+            <div className="space-y-1.5">
               {onAddQuestion && (
-                <button
-                  type="button"
-                  onClick={onAddQuestion}
-                  className={`w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600 hover:border-dark-border-strong' : 'border-[#e5e5e5] bg-[#f5f5f5] text-[#111111] hover:border-[#111111]'}`}
-                >
-                  Add Question
+                <button type="button" onClick={onAddQuestion} className={secondaryAction}>
+                  <FileQuestion size={16} className="shrink-0 text-fg-subtle" />
+                  Add question
                 </button>
               )}
               {onCreateQuiz && (
-                <button
-                  type="button"
-                  onClick={onCreateQuiz}
-                  className={`w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-semibold transition-spring-fast hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600 hover:border-dark-border-strong' : 'border-[#e5e5e5] bg-[#f5f5f5] text-[#111111] hover:border-[#111111]'}`}
-                >
-                  Create Quiz
+                <button type="button" onClick={onCreateQuiz} className={secondaryAction}>
+                  <PlayCircle size={16} className="shrink-0 text-fg-subtle" />
+                  Create quiz
                 </button>
               )}
             </div>
           </div>
         )}
 
-        <div className={`mt-3 rounded-[24px] border p-4 shadow-ios-sm ${theme === 'dark' ? 'border-dark-border-subtle bg-dark-800' : 'border-[#e5e5e5] bg-white'}`}>
-          <p className={`mb-2 text-[10px] font-bold uppercase tracking-[0.22em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Tip</p>
-          <p className={`text-xs font-medium leading-relaxed ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-[#111111]'}`}>{tips[activeTab]}</p>
+        <div className="mt-5 px-1.5">
+          <p className="mb-1 text-[12px] font-medium text-fg-muted">Tip</p>
+          <p className="text-[13px] leading-relaxed text-fg">{tips[activeTab]}</p>
         </div>
 
         <div className="flex-1" />
 
-        {adminEmail && (
-          <div className={`mb-3 rounded-[24px] border p-5 shadow-ios-sm ${theme === 'dark' ? 'border-accent-blue bg-dark-800' : 'border-[#111111] bg-white'}`}>
-            <p className={`mb-3 text-[10px] font-bold uppercase tracking-[0.22em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Admin Identity</p>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold uppercase ${theme === 'dark' ? 'bg-accent-blue text-white' : 'bg-[#111111] text-white'}`}>
-                {adminEmail[0]}
-              </div>
-              <div className="min-w-0">
-                <p className={`truncate text-sm font-bold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`} title={adminEmail}>{adminEmail}</p>
-                <p className={`mt-1 text-[10px] font-bold uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>{adminRole || 'Administrator'}</p>
-              </div>
-            </div>
+        <div className="mt-5 space-y-3 border-t border-line pt-4">
+          {adminEmail && <IdentityRow adminEmail={adminEmail} adminRole={adminRole} />}
+
+          <div className="flex gap-1.5">
+            {onToggleTheme && (
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                className="well well-hover flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-[13px] font-medium text-fg transition-calm"
+                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                {theme === 'dark' ? 'Light' : 'Dark'}
+              </button>
+            )}
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-danger/10 text-[13px] font-semibold text-danger transition-calm hover:bg-danger/15"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            )}
           </div>
-        )}
 
-        {onToggleTheme && (
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className={`mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border px-5 text-xs font-semibold uppercase tracking-[0.12em] transition-spring-fast shadow-ios-sm hover:scale-[1.02] ${theme === 'dark' ? 'border-dark-border-medium bg-dark-700 text-dark-text-primary hover:bg-dark-600' : 'border-[#111111] bg-white text-[#111111] hover:bg-[#f5f5f5]'}`}
-          >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            {theme === 'dark' ? 'Light' : 'Dark'} Mode
-          </button>
-        )}
-
-        {onLogout && (
-          <button
-            type="button"
-            onClick={onLogout}
-            className={`h-12 rounded-2xl border px-5 text-xs font-semibold uppercase tracking-[0.12em] transition-spring-fast shadow-ios-sm hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-red bg-dark-800 text-accent-red hover:bg-accent-red hover:text-white' : 'border-[#111111] bg-white text-[#111111] hover:bg-[#111111] hover:text-white'}`}
-          >
-            Logout
-          </button>
-        )}
-
-        <p className={`mt-3 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>
-          Smandapura Exam App v1.0
-        </p>
+          <p className="px-1.5 text-[12px] font-medium text-fg-subtle">
+            Smandapura Exam App v1.0
+          </p>
+        </div>
       </aside>
 
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className={`fixed right-3 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-full transition-spring-fast active:scale-90 md:hidden ${theme === 'dark' ? 'bg-white/10 text-dark-text-primary backdrop-blur-md' : 'bg-black/5 text-gray-900 backdrop-blur-md'}`}
-        aria-label="Open menu"
-      >
-        <Menu size={18} />
-      </button>
+      {/* Mobile top bar */}
+      <div className="glass fixed inset-x-3 top-3 z-40 flex h-14 items-center justify-between rounded-3xl pl-4 pr-1.5 md:hidden">
+        <div className="flex min-w-0 items-center gap-2">
+          <Image src="/favicon.ico" alt="" width={24} height={24} />
+          <span className="truncate text-[15px] font-bold tracking-tight text-fg">{activeLabel}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="well-hover flex h-11 w-11 items-center justify-center rounded-xl text-fg transition-calm"
+          aria-label="Open menu"
+          aria-expanded={mobileOpen}
+        >
+          <Menu size={20} />
+        </button>
+      </div>
 
       {mobileOpen && (
         <div
           className="fixed inset-0 z-50 md:hidden"
           role="dialog"
           aria-modal="true"
+          aria-label="Admin menu"
         >
           <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            className="glass-scrim absolute inset-0"
             onClick={() => setMobileOpen(false)}
           />
 
-          <aside className={`absolute inset-y-0 right-0 flex h-full w-[280px] max-w-[85vw] flex-col overflow-y-auto px-4 py-4 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-850' : 'bg-white'}`}>
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-                  <Image src="/favicon.ico" alt="Smandapura Exam App" width={32} height={32} />
-                </div>
-                <div className={`text-[15px] font-semibold leading-tight tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>
+          <aside className="glass-strong animate-in absolute inset-y-2 right-2 flex w-[288px] max-w-[88vw] flex-col overflow-y-auto rounded-4xl px-3 py-3">
+            <div className="mb-4 flex items-center justify-between pl-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <Image src="/favicon.ico" alt="" width={28} height={28} />
+                <div className="text-[15px] font-bold leading-tight tracking-tight text-fg">
                   Smandapura
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className={`flex h-9 w-9 items-center justify-center rounded-full transition-spring-fast active:scale-90 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
+                className="well well-hover flex h-11 w-11 items-center justify-center rounded-xl text-fg transition-calm"
                 aria-label="Close menu"
+                autoFocus
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
-            <nav className="flex flex-col gap-1.5">
+            <nav className="flex flex-col gap-1" aria-label="Admin">
               {visibleTabs.map((tab) => (
-                <NavButton key={tab.id} tab={tab} activeTab={activeTab} onTabChange={handleMobileTab} theme={theme} />
+                <NavButton key={tab.id} tab={tab} activeTab={activeTab} onTabChange={handleMobileTab} />
               ))}
             </nav>
 
             {(onAddQuestion || onCreateQuiz) && (
-              <div className="mt-4 space-y-2">
-                <p className={`px-2 text-[10px] font-semibold uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-gray-400'}`}>Quick action</p>
+              <div className="mt-4 space-y-1.5 border-t border-line pt-4">
+                <p className="px-1.5 text-[12px] font-medium text-fg-muted">Quick action</p>
                 {onAddQuestion && (
                   <button
                     type="button"
                     onClick={() => { onAddQuestion(); setMobileOpen(false); }}
-                    className={`w-full rounded-2xl px-4 py-2.5 text-left text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-gray-900 hover:bg-black/10'}`}
+                    className={secondaryAction}
                   >
+                    <FileQuestion size={16} className="shrink-0 text-fg-subtle" />
                     Add question
                   </button>
                 )}
@@ -242,8 +251,9 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
                   <button
                     type="button"
                     onClick={() => { onCreateQuiz(); setMobileOpen(false); }}
-                    className={`w-full rounded-2xl px-4 py-2.5 text-left text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-gray-900 hover:bg-black/10'}`}
+                    className={secondaryAction}
                   >
+                    <PlayCircle size={16} className="shrink-0 text-fg-subtle" />
                     Create quiz
                   </button>
                 )}
@@ -252,40 +262,31 @@ export default function AdminTabSwitcher({ activeTab, onTabChange, onLogout, onA
 
             <div className="flex-1" />
 
-            {adminEmail && (
-              <div className={`mt-4 mb-3 rounded-2xl px-4 py-3 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold uppercase ${theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-gray-900 text-white'}`}>
-                    {adminEmail[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`truncate text-[13px] font-medium tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`} title={adminEmail}>{adminEmail}</p>
-                    <p className={`mt-0.5 text-[11px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>{adminRole || 'Administrator'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className="mt-4 space-y-3 border-t border-line pt-4">
+              {adminEmail && <IdentityRow adminEmail={adminEmail} adminRole={adminRole} />}
 
-            {onToggleTheme && (
-              <button
-                type="button"
-                onClick={onToggleTheme}
-                className={`mb-2 flex h-10 w-full items-center justify-center gap-2 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-white/5 text-dark-text-primary hover:bg-white/10' : 'bg-black/5 text-gray-900 hover:bg-black/10'}`}
-              >
-                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-              </button>
-            )}
+              {onToggleTheme && (
+                <button
+                  type="button"
+                  onClick={onToggleTheme}
+                  className="well well-hover flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-medium text-fg transition-calm"
+                >
+                  {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </button>
+              )}
 
-            {onLogout && (
-              <button
-                type="button"
-                onClick={() => { onLogout(); setMobileOpen(false); }}
-                className={`h-10 rounded-full text-[12px] font-medium transition-spring-fast active:scale-95 ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red hover:bg-accent-red/25' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-              >
-                Logout
-              </button>
-            )}
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={() => { onLogout(); setMobileOpen(false); }}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-danger/10 text-[13px] font-semibold text-danger transition-calm hover:bg-danger/15"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              )}
+            </div>
           </aside>
         </div>
       )}

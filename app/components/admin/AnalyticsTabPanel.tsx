@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
+import { RefreshCw, X } from 'lucide-react';
 import RichContent from '@/app/components/RichContent';
-import { Card } from '@/components/ui/card';
-import { BorderBeam } from '@/components/ui/border-beam';
 import AnalyticsHeroStats from '@/app/components/admin/AnalyticsHeroStats';
 import AnalyticsInsights from '@/app/components/admin/AnalyticsInsights';
 import StudentWeaknessPanel from '@/app/components/admin/StudentWeaknessPanel';
@@ -110,41 +109,49 @@ function formatTimeAgo(dateString: string | null): string {
   }
 }
 
-function TopicBadge({ label, value, theme = 'dark' }: { label: string; value: string; theme?: 'light' | 'dark' }) {
+function TopicBadge({ label, value }: { label: string; value: string; theme?: 'light' | 'dark' }) {
   if (!value || value === '-') return null;
   return (
-    <span className={`inline-flex max-w-[130px] items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-      theme === 'dark'
-        ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-tertiary'
-        : 'border-[#e5e5e5] bg-white text-[#707072]'
-    }`}>
-      <span className={theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}>{label}</span>
+    <span className="well inline-flex max-w-[150px] items-center gap-1 rounded-md px-2 py-0.5 text-[12px] font-medium text-fg-muted">
+      <span className="font-bold text-fg">{label}</span>
       <span className="truncate">{value}</span>
     </span>
   );
 }
 
-function QuestionOption({ label, html, active, theme = 'dark' }: { label: string; html: string; active: boolean; theme?: 'light' | 'dark' }) {
+function QuestionOption({ label, html, active }: { label: string; html: string; active: boolean; theme?: 'light' | 'dark' }) {
   if (!html) return null;
   return (
-    <div className={`rounded-[14px] border p-3 ${
-      active
-        ? theme === 'dark'
-          ? 'border-accent-green/30 bg-accent-green/10'
-          : 'border-[#34C759] bg-[#F0FFF4]'
-        : theme === 'dark'
-        ? 'border-[#2a2a2a] bg-dark-750'
-        : 'border-[#e5e5e5] bg-[#f5f5f5]'
-    }`}>
-      <div className={`mb-1 text-[10px] font-black uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+    <div className={`rounded-2xl p-3 ${active ? 'bg-primary/10 ring-1 ring-primary/30' : 'well'}`}>
+      <div className={`mb-1 flex items-center justify-between text-[12px] font-semibold ${active ? 'text-primary' : 'text-fg-muted'}`}>
         Option {label}
+        {active && <span className="rounded-md bg-primary/15 px-2 py-0.5 text-[11px]">Correct</span>}
       </div>
-      <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+      <div className="text-[14px] font-medium text-fg">
         <RichContent html={html} />
       </div>
     </div>
   );
 }
+
+function ModalCloseButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Close"
+      className="well well-hover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg transition-calm"
+    >
+      <X size={16} />
+    </button>
+  );
+}
+
+const chipButton = (active: boolean) =>
+  `h-11 md:h-10 rounded-lg px-3 text-[13px] font-semibold transition-calm ${active ? 'clay' : 'text-fg-muted hover:text-fg'}`;
+
+const pickerTile = (active: boolean) =>
+  `rounded-2xl px-3.5 py-3 text-left transition-calm ${active ? 'bg-primary text-on-primary' : 'well well-hover text-fg'}`;
 
 export default function AnalyticsTabPanel({
   analyticsData,
@@ -279,109 +286,119 @@ export default function AnalyticsTabPanel({
     };
   }, [sessionPickerOpen, participantPickerOpen]);
 
+  React.useEffect(() => {
+    if (!sessionPickerOpen && !participantPickerOpen && !selectedQuestion) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setSessionPickerOpen(false);
+      setParticipantPickerOpen(false);
+      setSelectedQuestion(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sessionPickerOpen, participantPickerOpen, selectedQuestion]);
+
+  const scopeCard = 'glass-sheet rounded-3xl px-4 py-3.5 text-left transition-calm hover:border-line-strong disabled:cursor-not-allowed disabled:opacity-60';
+
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className={`mb-4 rounded-3xl px-5 py-4 ${theme === 'dark' ? 'bg-white/[0.03]' : 'bg-black/[0.025]'}`}>
+    <div data-theme={theme} className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="glass mb-3 rounded-3xl px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-[220px] flex-1">
-            <h2 className={`text-[20px] font-semibold tracking-tight ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Analytics</h2>
-            <p className={`mt-0.5 text-[12px] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Analyze performance and identify areas for improvement.</p>
+          <div className="min-w-[200px] flex-1">
+            <h2 className="text-[22px] font-bold tracking-tight text-fg">Analytics</h2>
+            <p className="mt-0.5 text-[13px] text-fg-muted">Analyze performance and identify areas for improvement.</p>
           </div>
           <button
             type="button"
             onClick={onRefresh}
             disabled={analyticsLoading}
-            className={`h-9 rounded-full px-4 text-[12px] font-medium transition-spring-fast active:scale-95 disabled:opacity-50 ${theme === 'dark' ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-700 hover:bg-black/10'}`}
+            className="well well-hover flex h-11 items-center gap-2 rounded-xl px-4 text-[13px] font-medium text-fg transition-calm disabled:opacity-50"
           >
+            {analyticsLoading ? <span className="spinner-calm h-3.5 w-3.5" aria-hidden="true" /> : <RefreshCw size={15} className="text-fg-subtle" />}
             {analyticsLoading ? 'Loading' : 'Refresh'}
           </button>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className={`inline-flex h-9 rounded-full p-0.5 ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="well flex gap-1 rounded-xl p-1" role="group" aria-label="Source">
             <button
               type="button"
+              aria-pressed={analyticsSource === 'exam'}
               onClick={() => onSourceChange('exam')}
-              className={`rounded-full px-4 text-[12px] font-medium transition-spring-fast ${analyticsSource === 'exam' ? (theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-white text-gray-900 shadow-ios-sm') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}
+              className={chipButton(analyticsSource === 'exam')}
             >
               Exam
             </button>
             <button
               type="button"
+              aria-pressed={analyticsSource === 'quiz'}
               onClick={() => onSourceChange('quiz')}
-              className={`rounded-full px-4 text-[12px] font-medium transition-spring-fast ${analyticsSource === 'quiz' ? (theme === 'dark' ? 'bg-white/10 text-dark-text-primary' : 'bg-white text-gray-900 shadow-ios-sm') : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}
+              className={chipButton(analyticsSource === 'quiz')}
             >
               Quiz
             </button>
           </div>
-        </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className={`mr-1 text-[11px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
-            Date range
-          </span>
-          {[1, 3, 7, 14, 30].map((days) => {
-            const isActive = isDateRangeActive(days);
-            return (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[12px] font-medium text-fg-muted">Date range</span>
+            <div className="well flex flex-wrap gap-1 rounded-xl p-1" role="group" aria-label="Date range">
+              {[1, 3, 7, 14, 30].map((days) => {
+                const isActive = isDateRangeActive(days);
+                return (
+                  <button
+                    key={days}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => onDateRangeChange(rangeFromDays(days))}
+                    className={chipButton(isActive)}
+                  >
+                    {days}D
+                  </button>
+                );
+              })}
               <button
-                key={days}
                 type="button"
-                onClick={() => onDateRangeChange(rangeFromDays(days))}
-                className={`h-8 rounded-full px-3 text-[11px] font-medium transition-spring-fast active:scale-95 ${
-                  isActive
-                    ? theme === 'dark'
-                      ? 'bg-white/10 text-dark-text-primary'
-                      : 'bg-white text-gray-900 shadow-ios-sm'
-                    : theme === 'dark'
-                    ? 'bg-white/5 text-dark-text-tertiary hover:bg-white/10'
-                    : 'bg-black/5 text-gray-500 hover:bg-black/10'
-                }`}
+                aria-pressed={isDateRangeActive('all')}
+                onClick={() => onDateRangeChange({ start: '', end: '' })}
+                className={chipButton(isDateRangeActive('all'))}
               >
-                {days}D
+                All
               </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => onDateRangeChange({ start: '', end: '' })}
-            className={`h-8 rounded-full px-3 text-[11px] font-medium transition-spring-fast active:scale-95 ${
-              isDateRangeActive('all')
-                ? theme === 'dark'
-                  ? 'bg-white/10 text-dark-text-primary'
-                  : 'bg-white text-gray-900 shadow-ios-sm'
-                : theme === 'dark'
-                ? 'bg-white/5 text-dark-text-tertiary hover:bg-white/10'
-                : 'bg-black/5 text-gray-500 hover:bg-black/10'
-            }`}
-          >
-            All
-          </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {analyticsError && <div className={`mb-2 rounded-2xl px-4 py-3 text-[12px] font-medium ${theme === 'dark' ? 'bg-accent-red/15 text-accent-red' : 'bg-red-50 text-red-700'}`}>{analyticsError}</div>}
+      {analyticsError && <div className="mb-3 rounded-2xl bg-danger/10 px-4 py-3 text-[13px] font-semibold text-danger" role="alert">{analyticsError}</div>}
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        <div className="mb-4 grid grid-cols-1 gap-4 px-3 py-1 sm:grid-cols-2">
-          <button type="button" onClick={() => { if (analyticsSource !== 'quiz') return; setDraftQuizSessionKeys(activeQuizSessionKeys); setSessionPickerOpen(true); }} disabled={analyticsSource !== 'quiz'} className={`rounded-2xl border px-4 py-3 text-left shadow-ios-sm transition-spring hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-blue bg-dark-800 hover:bg-dark-750 disabled:border-dark-border-medium disabled:text-dark-text-muted disabled:hover:bg-dark-800 disabled:hover:scale-100' : 'border-[#111111] bg-white hover:bg-[#f5f5f5] disabled:border-[#e5e5e5] disabled:text-[#9a9a9a] disabled:hover:bg-white disabled:hover:scale-100'}`}>
-            <div className="flex items-center justify-between gap-2"><span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Sessions</span><span className={`text-[10px] font-black uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Change</span></div>
-            <p className={`mt-1 truncate text-sm font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>{sessionCardTitle}</p>
-            <p className={`mt-0.5 text-[10px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#8a8a8a]'}`}>{analyticsSource === 'quiz' ? `${quizSessions.length} available in date range` : 'Active only for Quiz source'}</p>
+        <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <button type="button" onClick={() => { if (analyticsSource !== 'quiz') return; setDraftQuizSessionKeys(activeQuizSessionKeys); setSessionPickerOpen(true); }} disabled={analyticsSource !== 'quiz'} className={scopeCard}>
+            <div className="flex items-center justify-between gap-2"><span className="text-[12px] font-medium text-fg-muted">Sessions</span><span className="text-[13px] font-semibold text-primary">Change</span></div>
+            <p className="mt-1 truncate text-[16px] font-bold text-fg">{sessionCardTitle}</p>
+            <p className="mt-0.5 text-[12px] text-fg-muted">{analyticsSource === 'quiz' ? `${quizSessions.length} available in date range` : 'Active only for Quiz source'}</p>
           </button>
-          <button type="button" onClick={() => setParticipantPickerOpen(true)} className={`rounded-2xl border px-4 py-3 text-left shadow-ios-sm transition-spring hover:scale-[1.02] ${theme === 'dark' ? 'border-accent-blue bg-dark-800 hover:bg-dark-750' : 'border-[#111111] bg-white hover:bg-[#f5f5f5]'}`}>
-            <div className="flex items-center justify-between gap-2"><span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Participant</span><span className={`text-[10px] font-black uppercase tracking-[0.12em] ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>Change</span></div>
-            <p className={`mt-1 truncate text-sm font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>{activeParticipant?.name || 'All participants'}</p>
-            <p className={`mt-0.5 text-[10px] font-medium ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#8a8a8a]'}`}>{activeParticipant ? `${activeParticipant.attempts} attempts in scope` : `${participants.length} participants included`}</p>
+          <button type="button" onClick={() => setParticipantPickerOpen(true)} className={scopeCard}>
+            <div className="flex items-center justify-between gap-2"><span className="text-[12px] font-medium text-fg-muted">Participant</span><span className="text-[13px] font-semibold text-primary">Change</span></div>
+            <p className="mt-1 truncate text-[16px] font-bold text-fg">{activeParticipant?.name || 'All participants'}</p>
+            <p className="mt-0.5 text-[12px] text-fg-muted">{activeParticipant ? `${activeParticipant.attempts} attempts in scope` : `${participants.length} participants included`}</p>
           </button>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4">
           <AnalyticsHeroStats summary={summary} theme={theme} />
         </div>
 
         {analyticsLoading && summary.attempts === 0 ? (
-          <p className={`py-8 text-center text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-muted' : 'text-[#707072]'}`}>Loading analytics...</p>
+          <p className="flex items-center justify-center gap-2 py-8 text-center text-[14px] font-medium text-fg-muted" role="status">
+            <span className="spinner-calm h-4 w-4" aria-hidden="true" />
+            Loading analytics...
+          </p>
         ) : summary.attempts === 0 ? (
-          <div className={`rounded-[24px] border-2 border-dashed p-6 text-center text-sm font-semibold ${theme === 'dark' ? 'border-dark-border-medium bg-dark-800 text-dark-text-muted' : 'border-[#e5e5e5] bg-white text-[#707072]'}`}>No analytics data for current filters.</div>
+          <div className="glass rounded-3xl p-8 text-center">
+            <p className="text-[15px] font-semibold text-fg">No analytics data for current filters.</p>
+            <p className="mt-1 text-[13px] text-fg-muted">Widen the date range or switch source to see results.</p>
+          </div>
         ) : (
           <div className="space-y-6">
             <AnalyticsInsights
@@ -434,43 +451,43 @@ export default function AnalyticsTabPanel({
       )}
 
       {sessionPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xl p-4" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-2xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+        <div className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="session-picker-title" onClick={() => setSessionPickerOpen(false)}>
+          <div className="glass-sheet animate-in w-full max-w-2xl rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Quiz session scope</p>
-                <h3 className={`mt-1 text-xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Choose sessions</h3>
-                <p className={`mt-1 text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Pilih satu/lebih quiz untuk menghitung soal tersulit hanya dari sesi itu.</p>
+                <p className="text-[12px] font-medium text-fg-muted">Quiz session scope</p>
+                <h3 id="session-picker-title" className="mt-0.5 text-[20px] font-bold tracking-tight text-fg">Choose sessions</h3>
+                <p className="mt-1 text-[13px] text-fg-muted">Pilih satu/lebih quiz untuk menghitung soal tersulit hanya dari sesi itu.</p>
               </div>
-              <button type="button" onClick={() => setSessionPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:border-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'}`}>Close</button>
+              <ModalCloseButton onClick={() => setSessionPickerOpen(false)} />
             </div>
-            <div className="mb-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setDraftQuizSessionKeys([])} className={`h-8 rounded-full border px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900'}`}>All</button>
-              {[1, 2, 5].map((count) => <button key={count} type="button" onClick={() => setDraftQuizSessionKeys(quizSessions.slice(0, count).map((session) => session.key))} className={`h-8 rounded-full border px-3 text-[10px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900'}`}>Latest {count}</button>)}
+            <div className="well mb-4 inline-flex flex-wrap gap-1 rounded-xl p-1">
+              <button type="button" onClick={() => setDraftQuizSessionKeys([])} className={chipButton(draftQuizSessionKeys.length === 0)}>All</button>
+              {[1, 2, 5].map((count) => <button key={count} type="button" onClick={() => setDraftQuizSessionKeys(quizSessions.slice(0, count).map((session) => session.key))} className={chipButton(false)}>Latest {count}</button>)}
             </div>
-            <div className={`grid max-h-[56vh] gap-2 overflow-y-auto sm:grid-cols-2 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
+            <div className="result-details-scroll-light grid max-h-[56vh] gap-2 overflow-y-auto sm:grid-cols-2">
               {quizSessions.map((session) => {
                 const active = draftQuizSessionKeys.includes(session.key);
                 const topics = [session.mapel, session.bab, session.subBab].filter(Boolean);
                 const timeAgo = formatTimeAgo(session.createdAt || session.finishedAt);
                 return (
-                  <button key={session.key} type="button" onClick={() => toggleDraftSession(session.key)} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${active ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
+                  <button key={session.key} type="button" aria-pressed={active} onClick={() => toggleDraftSession(session.key)} className={pickerTile(active)}>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-black">{session.label}</p>
-                      <span className={`text-[10px] font-black ${active ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{active ? 'Selected' : 'Select'}</span>
+                      <p className="truncate text-[14px] font-bold">{session.label}</p>
+                      <span className={`text-[12px] font-semibold ${active ? 'text-on-primary' : 'text-fg-muted'}`}>{active ? 'Selected' : 'Select'}</span>
                     </div>
-                    <p className={`mt-1 text-[9px] font-semibold ${active ? 'text-white/60' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-400')}`}>
+                    <p className={`mt-1 text-[12px] ${active ? 'text-on-primary/80' : 'text-fg-muted'}`}>
                       {timeAgo || 'No date available'}
                     </p>
-                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                      <span className={`text-[10px] font-semibold ${active ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{session.attempts} attempts</span>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className={`text-[12px] font-medium ${active ? 'text-on-primary/80' : 'text-fg-muted'}`}>{session.attempts} attempts</span>
                       {topics.length > 0 && (
                         <>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold ${active ? 'bg-white/20 text-white' : (theme === 'dark' ? 'bg-dark-700 text-dark-text-secondary' : 'bg-white text-gray-600')}`}>
+                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${active ? 'bg-on-primary/20 text-on-primary' : 'well text-fg-muted'}`}>
                             {formatCategorySelectionLabel(topics[0])}
                           </span>
                           {topics.length > 1 && (
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold ${active ? 'bg-white/20 text-white' : (theme === 'dark' ? 'bg-dark-700 text-dark-text-secondary' : 'bg-white text-gray-600')}`}>
+                            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${active ? 'bg-on-primary/20 text-on-primary' : 'well text-fg-muted'}`}>
                               +{topics.length - 1}
                             </span>
                           )}
@@ -480,38 +497,38 @@ export default function AnalyticsTabPanel({
                   </button>
                 );
               })}
-              {quizSessions.length === 0 && <p className={`rounded-[16px] p-4 text-sm font-semibold ${theme === 'dark' ? 'bg-dark-750 text-dark-text-tertiary' : 'bg-gray-50 text-gray-500'}`}>No quiz sessions in current date/filter scope.</p>}
+              {quizSessions.length === 0 && <p className="well rounded-2xl p-4 text-[13px] font-medium text-fg-muted sm:col-span-2">No quiz sessions in current date/filter scope.</p>}
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setSessionPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900'}`}>Cancel</button>
-              <button type="button" onClick={() => { setSelectedRemedialIds([]); onQuizSessionsChange(draftQuizSessionKeys); setSessionPickerOpen(false); }} className={`h-9 rounded-full px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'bg-accent-blue' : 'bg-gray-900'}`}>Apply</button>
+            <div className="mt-4 flex justify-end gap-2 border-t border-line pt-4">
+              <button type="button" onClick={() => setSessionPickerOpen(false)} className="well well-hover h-11 rounded-xl px-5 text-[14px] font-medium text-fg transition-calm">Cancel</button>
+              <button type="button" onClick={() => { setSelectedRemedialIds([]); onQuizSessionsChange(draftQuizSessionKeys); setSessionPickerOpen(false); }} className="clay-primary h-11 rounded-xl px-6 text-[14px] font-semibold">Apply</button>
             </div>
           </div>
         </div>
       )}
 
       {participantPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xl p-4" role="dialog" aria-modal="true">
-          <div className={`w-full max-w-xl rounded-[24px] p-6 shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
+        <div className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="participant-picker-title" onClick={() => setParticipantPickerOpen(false)}>
+          <div className="glass-sheet animate-in w-full max-w-xl rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>Participant scope</p>
-                <h3 className={`mt-1 text-xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-gray-900'}`}>Choose participant</h3>
-                <p className={`mt-1 text-xs font-medium ${theme === 'dark' ? 'text-dark-text-secondary' : 'text-gray-600'}`}>Analytics dan remedial akan dihitung ulang untuk pilihan ini.</p>
+                <p className="text-[12px] font-medium text-fg-muted">Participant scope</p>
+                <h3 id="participant-picker-title" className="mt-0.5 text-[20px] font-bold tracking-tight text-fg">Choose participant</h3>
+                <p className="mt-1 text-[13px] text-fg-muted">Analytics dan remedial akan dihitung ulang untuk pilihan ini.</p>
               </div>
-              <button type="button" onClick={() => setParticipantPickerOpen(false)} className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-spring-fast hover:scale-105 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:border-dark-text-primary' : 'border-[#cacacb] bg-white text-gray-900 hover:border-gray-900'}`}>Close</button>
+              <ModalCloseButton onClick={() => setParticipantPickerOpen(false)} />
             </div>
-            <div className={`grid max-h-[60vh] gap-2 overflow-y-auto sm:grid-cols-2 ${theme === 'dark' ? 'result-details-scroll-dark' : 'result-details-scroll-light'}`}>
-              <button type="button" onClick={() => { setSelectedRemedialIds([]); onParticipantChange('all'); setParticipantPickerOpen(false); }} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${activeParticipantKey === 'all' ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
-                <p className="truncate text-sm font-black">All participants</p>
-                <p className={`mt-1 text-[10px] font-semibold ${activeParticipantKey === 'all' ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{participants.length} participants included</p>
+            <div className="result-details-scroll-light grid max-h-[60vh] gap-2 overflow-y-auto sm:grid-cols-2">
+              <button type="button" aria-pressed={activeParticipantKey === 'all'} onClick={() => { setSelectedRemedialIds([]); onParticipantChange('all'); setParticipantPickerOpen(false); }} className={pickerTile(activeParticipantKey === 'all')}>
+                <p className="truncate text-[14px] font-bold">All participants</p>
+                <p className={`mt-1 text-[12px] ${activeParticipantKey === 'all' ? 'text-on-primary/80' : 'text-fg-muted'}`}>{participants.length} participants included</p>
               </button>
               {participants.map((participant) => {
                 const active = activeParticipantKey === participant.key;
                 return (
-                  <button key={participant.key} type="button" onClick={() => { setSelectedRemedialIds([]); onParticipantChange(participant.key); setParticipantPickerOpen(false); }} className={`rounded-[16px] border px-3 py-2 text-left transition-spring hover:scale-[1.01] ${active ? (theme === 'dark' ? 'border-accent-blue bg-accent-blue text-white' : 'border-gray-900 bg-gray-900 text-white') : (theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-primary hover:bg-dark-700' : 'border-gray-200 bg-gray-50 text-gray-900 hover:bg-gray-100')}`}>
-                    <p className="truncate text-sm font-black">{participant.name}</p>
-                    <p className={`mt-1 text-[10px] font-semibold ${active ? 'text-white/70' : (theme === 'dark' ? 'text-dark-text-tertiary' : 'text-gray-500')}`}>{participant.attempts} attempts</p>
+                  <button key={participant.key} type="button" aria-pressed={active} onClick={() => { setSelectedRemedialIds([]); onParticipantChange(participant.key); setParticipantPickerOpen(false); }} className={pickerTile(active)}>
+                    <p className="truncate text-[14px] font-bold">{participant.name}</p>
+                    <p className={`mt-1 text-[12px] ${active ? 'text-on-primary/80' : 'text-fg-muted'}`}>{participant.attempts} attempts</p>
                   </button>
                 );
               })}
@@ -521,73 +538,63 @@ export default function AnalyticsTabPanel({
       )}
 
       {selectedQuestion && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${theme === 'dark' ? 'bg-black/60' : 'bg-black/40'}`} role="dialog" aria-modal="true">
-          <div className={`max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[24px] p-4 shadow-2xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`}>
-            <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="question-detail-title" onClick={() => setSelectedQuestion(null)}>
+          <div className="glass-sheet animate-in max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                <p className="text-[12px] font-medium text-fg-muted">
                   Question #{selectedQuestion.questionId}
                 </p>
-                <h3 className={`mt-1 text-xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
-                  Question Detail
+                <h3 id="question-detail-title" className="mt-0.5 text-[20px] font-bold tracking-tight text-fg">
+                  Question detail
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedQuestion(null)}
-                className={`h-9 rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${
-                  theme === 'dark'
-                    ? 'border-[#2a2a2a] text-dark-text-primary hover:border-dark-text-primary'
-                    : 'border-[#cacacb] text-[#111111] hover:border-[#111111]'
-                }`}
-              >
-                Close
-              </button>
+              <ModalCloseButton onClick={() => setSelectedQuestion(null)} />
             </div>
-            <div className="mb-3 grid grid-cols-3 gap-2">
-              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-[#e5e5e5] bg-[#f5f5f5]'}`}>
-                <div className={`text-2xl font-black ${theme === 'dark' ? 'text-accent-red' : 'text-[#FF3B30]'}`}>
+            <div className="mb-4 grid grid-cols-3 gap-2.5">
+              <div className="clay rounded-2xl px-3 py-2.5">
+                <div className="text-[24px] font-bold tabular-nums text-danger">
                   {selectedQuestion.wrongRate}%
                 </div>
-                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
-                  Wrong Rate
+                <div className="text-[12px] font-medium text-fg-muted">
+                  Wrong rate
                 </div>
               </div>
-              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-[#e5e5e5] bg-[#f5f5f5]'}`}>
-                <div className={`text-2xl font-black ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+              <div className="clay rounded-2xl px-3 py-2.5">
+                <div className="text-[24px] font-bold tabular-nums text-fg">
                   {selectedQuestion.incorrect}/{selectedQuestion.attempts}
                 </div>
-                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                <div className="text-[12px] font-medium text-fg-muted">
                   Incorrect
                 </div>
               </div>
-              <div className={`rounded-[14px] border p-2 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-[#e5e5e5] bg-[#f5f5f5]'}`}>
-                <div className={`text-2xl font-black ${theme === 'dark' ? 'text-accent-green' : 'text-[#34C759]'}`}>
+              <div className="clay rounded-2xl px-3 py-2.5">
+                <div className="text-[24px] font-bold tabular-nums text-primary">
                   {selectedQuestion.correct}
                 </div>
-                <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
+                <div className="text-[12px] font-medium text-fg-muted">
                   Correct
                 </div>
               </div>
             </div>
             {selectedQuestion.question ? (
               <div className="space-y-2">
-                <div className={`rounded-[24px] border p-3 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-[#e5e5e5] bg-white'}`}>
+                <div className="well rounded-2xl p-4">
                   <div className="mb-2 flex flex-wrap gap-1">
                     {selectedQuestion.question.mapels.map((value) => <TopicBadge key={`m-${value}`} label="M" value={formatCategorySelectionLabel(value)} theme={theme} />)}
                     {selectedQuestion.question.babs.map((value) => <TopicBadge key={`b-${value}`} label="B" value={formatCategorySelectionLabel(value)} theme={theme} />)}
                     {selectedQuestion.question.sub_babs.map((value) => <TopicBadge key={`s-${value}`} label="S" value={formatCategorySelectionLabel(value)} theme={theme} />)}
                   </div>
-                  <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+                  <div className="text-[15px] font-medium text-fg">
                     <RichContent html={selectedQuestion.question.question_text} />
                   </div>
                 </div>
                 {selectedQuestion.question.question_type === 'short_answer' ? (
-                  <div className={`rounded-[14px] border p-3 ${theme === 'dark' ? 'border-accent-green/30 bg-accent-green/10' : 'border-[#34C759] bg-[#F0FFF4]'}`}>
-                    <div className={`mb-1 text-[10px] font-black uppercase tracking-[0.16em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-[#707072]'}`}>
-                      Correct Answer
+                  <div className="rounded-2xl bg-primary/10 p-3">
+                    <div className="mb-1 text-[12px] font-semibold text-primary">
+                      Correct answer
                     </div>
-                    <div className={`text-sm font-semibold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-[#111111]'}`}>
+                    <div className="text-[14px] font-medium text-fg">
                       {selectedQuestion.question.short_answer || '-'}
                     </div>
                   </div>
@@ -601,7 +608,7 @@ export default function AnalyticsTabPanel({
                   </div>
                 )}
               </div>
-            ) : <div className={`rounded-[24px] border p-4 text-sm font-semibold ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750 text-dark-text-tertiary' : 'border-[#e5e5e5] bg-[#f5f5f5] text-[#707072]'}`}>Question data not found. It may have been deleted.</div>}
+            ) : <div className="well rounded-2xl p-4 text-[14px] font-medium text-fg-muted">Question data not found. It may have been deleted.</div>}
           </div>
         </div>
       )}

@@ -17,6 +17,13 @@ type LeaderboardViewModalProps = {
   theme?: 'light' | 'dark';
 };
 
+// Confetti uses the palette: Pine 300/500, Amber 300/400, Ink 300.
+const CONFETTI_COLORS = ['#7fbca9', '#36806c', '#e9b567', '#df9a3f', '#aebbbc'];
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export default function LeaderboardViewModal({ open, session, players, onClose, currentTime, serverTimeOffset = 0, theme = 'dark' }: LeaderboardViewModalProps) {
   const rankBadgeRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const crownRefs = useRef<Record<string, HTMLSpanElement | null>>({});
@@ -108,7 +115,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     };
   }, [open, onClose]);
 
-  // Animate rank badge & crown when rank changes
+  // Nudge the rank token and crown when a rank changes
   useLayoutEffect(() => {
     if (!open) {
       previousRanksRef.current = new Map();
@@ -116,13 +123,14 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     }
 
     const prevRanks = previousRanksRef.current;
+    const reduceMotion = prefersReducedMotion();
 
     fixedOrderPlayers.forEach((player) => {
       const currentRank = playerRanks.get(player.id) ?? 999;
       const previousRank = prevRanks.get(player.id);
 
       // Only animate if rank actually changed (and we had a previous rank)
-      if (previousRank !== undefined && previousRank !== currentRank) {
+      if (!reduceMotion && previousRank !== undefined && previousRank !== currentRank) {
         const badge = rankBadgeRefs.current[player.id];
         const crown = crownRefs.current[player.id];
 
@@ -133,27 +141,27 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
           badge.animate(
             wentUp
               ? [
-                { transform: 'scale(1)', filter: 'brightness(1)' },
-                { transform: 'scale(1.35) translateY(-6px)', filter: 'brightness(1.2)' },
-                { transform: 'scale(1)', filter: 'brightness(1)' },
+                { transform: 'translateY(0) scale(1)' },
+                { transform: 'translateY(-3px) scale(1.08)' },
+                { transform: 'translateY(0) scale(1)' },
               ]
               : [
-                { transform: 'scale(1)', filter: 'brightness(1)' },
-                { transform: 'scale(0.8) translateY(4px)', filter: 'brightness(0.85)' },
-                { transform: 'scale(1)', filter: 'brightness(1)' },
+                { transform: 'translateY(0) scale(1)' },
+                { transform: 'translateY(2px) scale(0.95)' },
+                { transform: 'translateY(0) scale(1)' },
               ],
-            { duration: 600, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
+            { duration: 400, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
           );
         }
 
         if (crown && currentRank <= 3) {
           crown.animate(
             [
-              { transform: 'translateY(0px) scale(1) rotate(0deg)', opacity: '0.5' },
-              { transform: 'translateY(-12px) scale(1.4) rotate(-8deg)', opacity: '1' },
-              { transform: 'translateY(0px) scale(1) rotate(0deg)', opacity: '1' },
+              { transform: 'translateY(0) scale(1)', opacity: '0.6' },
+              { transform: 'translateY(-4px) scale(1.1)', opacity: '1' },
+              { transform: 'translateY(0) scale(1)', opacity: '1' },
             ],
-            { duration: 700, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
+            { duration: 400, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
           );
         }
       }
@@ -163,12 +171,12 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     previousRanksRef.current = new Map(playerRanks);
   }, [open, playerRanks, fixedOrderPlayers]);
 
-  // Stable fingerprint of all player scores – changes whenever any score updates
+  // Stable fingerprint of all player scores, changes whenever any score updates
   const scoreFingerprint = useMemo(() => {
     return fixedOrderPlayers.map(p => `${p.id}:${p.score}`).join(',');
   }, [fixedOrderPlayers]);
 
-  // Animate horse when score increases: zoom-in → gallop → zoom-out
+  // On score increase: small lift, short gallop with one dust puff, settle
   useEffect(() => {
     if (!open) {
       previousScoresRef.current = new Map();
@@ -179,6 +187,7 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
 
     const prevScores = previousScoresRef.current;
     const prevFinished = previousFinishedRef.current;
+    const reduceMotion = prefersReducedMotion();
 
     fixedOrderPlayers.forEach((player) => {
       const prevScore = prevScores.get(player.id);
@@ -186,10 +195,9 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
       const isFinished = isStandard ? !!player.finished_at : (!!player.finished_at || player.score >= questionCount);
       const wasFinished = prevFinished.get(player.id) === true;
 
-      // Confetti logic: trigger when a player JUST finished
+      // Confetti: trigger when a player JUST finished
       if (isFinished && !wasFinished && prevFinished.has(player.id)) {
-        
-        // Wait a tiny bit for the horse to reach the finish line position if it moved
+        // Wait for the mount to reach the finish line position if it moved
         setTimeout(() => {
           const horseEl = horseScaleRefs.current[player.id];
           if (horseEl) {
@@ -198,67 +206,67 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
             const y = (rect.top + rect.height / 2) / window.innerHeight;
 
             confetti({
-              particleCount: 100,
-              spread: 70,
+              particleCount: 60,
+              spread: 60,
+              startVelocity: 28,
+              ticks: 140,
+              scalar: 0.9,
               origin: { x, y },
-              colors: ['#FFD700', '#FFA500', '#FF4500', '#00FF00', '#0000FF'],
+              colors: CONFETTI_COLORS,
               zIndex: 10001,
+              disableForReducedMotion: true,
             });
           }
-        }, 500);
+        }, 350);
       }
 
       // Only animate if score went UP and we had a previous score
-      if (prevScore !== undefined && currentScore > prevScore) {
+      if (!reduceMotion && prevScore !== undefined && currentScore > prevScore) {
         const scaleEl = horseScaleRefs.current[player.id];
         const gallopEl = horseGallopRefs.current[player.id];
         if (!scaleEl || !gallopEl || gallopingRef.current.has(player.id)) return;
 
         gallopingRef.current.add(player.id);
 
-        // Phase 1: Zoom In (300ms) — on the scale wrapper
-        const zoomIn = scaleEl.animate(
+        // Phase 1: lift slightly on the scale wrapper
+        const lift = scaleEl.animate(
           [
             { transform: 'scale(1)' },
-            { transform: 'scale(1.4)' },
+            { transform: 'scale(1.12)' },
           ],
-          { duration: 300, fill: 'forwards', easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+          { duration: 200, fill: 'forwards', easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
         );
 
-        zoomIn.onfinish = () => {
-          // Phase 2: Gallop — Web Animations API on the INNER gallopEl
-          // Rapid bounce up/down + slight rotation to simulate running
+        lift.onfinish = () => {
+          // Phase 2: short gallop on the inner element, with one dust puff behind
+          gallopEl.classList.add('horse-dust');
           const gallopAnim = gallopEl.animate(
             [
-              { transform: 'translateY(0px) rotate(0deg)', offset: 0 },
-              { transform: 'translateY(-6px) rotate(-3deg)', offset: 0.15 },
-              { transform: 'translateY(2px) rotate(1.5deg)', offset: 0.3 },
-              { transform: 'translateY(-5px) rotate(-2deg)', offset: 0.45 },
-              { transform: 'translateY(2px) rotate(1.5deg)', offset: 0.6 },
-              { transform: 'translateY(-6px) rotate(-3deg)', offset: 0.75 },
-              { transform: 'translateY(2px) rotate(1deg)', offset: 0.9 },
-              { transform: 'translateY(0px) rotate(0deg)', offset: 1 },
+              { transform: 'translateY(0) rotate(0deg)', offset: 0 },
+              { transform: 'translateY(-3px) rotate(-1.5deg)', offset: 0.3 },
+              { transform: 'translateY(1px) rotate(0.75deg)', offset: 0.65 },
+              { transform: 'translateY(0) rotate(0deg)', offset: 1 },
             ],
-            { duration: 300, iterations: 3, easing: 'linear' }
+            { duration: 280, iterations: 2, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
           );
 
-          // Phase 3: After gallop finishes, zoom out
+          // Phase 3: settle back to rest
           gallopAnim.onfinish = () => {
-            // Cancel zoomIn fill-forward so it doesn't block zoomOut
-            zoomIn.cancel();
-            scaleEl.style.transform = 'scale(1.4)';
+            gallopEl.classList.remove('horse-dust');
+            lift.cancel();
+            scaleEl.style.transform = 'scale(1.12)';
 
-            const zoomOut = scaleEl.animate(
+            const settle = scaleEl.animate(
               [
-                { transform: 'scale(1.4)' },
+                { transform: 'scale(1.12)' },
                 { transform: 'scale(1)' },
               ],
-              { duration: 400, fill: 'forwards', easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+              { duration: 240, fill: 'forwards', easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
             );
 
-            zoomOut.onfinish = () => {
+            settle.onfinish = () => {
               scaleEl.style.transform = '';
-              zoomOut.cancel();
+              settle.cancel();
               gallopingRef.current.delete(player.id);
             };
           };
@@ -280,73 +288,81 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
 
   if (!open || !session) return null;
 
-  return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-xl p-2 sm:p-4" onClick={onClose}>
-      <div className={`flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[32px] shadow-ios-xl ${theme === 'dark' ? 'bg-dark-800' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className={`relative flex items-center justify-center border-b p-4 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-slate-200 bg-white'}`}>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🏁</span>
-              <div className="text-center">
-                <h2 className={`text-base font-bold ${theme === 'dark' ? 'text-dark-text-primary' : 'text-slate-900'}`}>Leaderboard</h2>
-                <p className={`text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
-                  {fixedOrderPlayers.length} peserta • {session.question_count} soal
-                </p>
-              </div>
-            </div>
+  const isPaused = session.status === 'paused';
+  const isLowTime = !isPaused && timeRemaining < 60000;
 
-            {/* Timer Display */}
+  return (
+    <div
+      data-theme={theme}
+      className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="race-view-title"
+        className="glass-sheet animate-in flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-4xl text-fg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-6 sm:py-4">
+          <div className="min-w-0">
+            <h2 id="race-view-title" className="text-[18px] font-bold tracking-tight text-fg sm:text-[20px]">Leaderboard</h2>
+            <p className="text-[13px] font-medium text-fg-muted">
+              {fixedOrderPlayers.length} peserta · {session.question_count} soal
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
             {session.status !== 'waiting' && session.status !== 'finished' && (
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${session.status === 'paused' ? (theme === 'dark' ? 'bg-accent-orange/20 border-accent-orange/30' : 'bg-orange-50 border-orange-200') :
-                timeRemaining < 60000 ? (theme === 'dark' ? 'bg-accent-red/20 border-accent-red/30 animate-pulse' : 'bg-red-50 border-red-200 animate-pulse') : (theme === 'dark' ? 'bg-dark-700 border-[#2a2a2a]' : 'bg-slate-50 border-slate-200')
-                }`}>
-                <span className="text-base">⏱️</span>
-                <div className="flex flex-col">
-                  <span className={`font-mono text-base font-bold tabular-nums leading-none ${session.status === 'paused' ? (theme === 'dark' ? 'text-accent-orange' : 'text-orange-600') :
-                    timeRemaining < 60000 ? (theme === 'dark' ? 'text-accent-red' : 'text-red-600') : (theme === 'dark' ? 'text-dark-text-primary' : 'text-slate-900')
-                    }`}>
-                    {timeStr}
-                  </span>
-                  <span className={`text-[8px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
-                    {session.status === 'paused' ? 'PAUSED' : 'SISA WAKTU'}
-                  </span>
-                </div>
+              <div
+                className={`flex h-11 items-center gap-2.5 rounded-xl px-3.5 ${
+                  isPaused ? 'bg-warn/15 text-highlight-fg' : isLowTime ? 'bg-danger/12 text-danger' : 'well text-fg'
+                }`}
+                aria-label={`${isPaused ? 'Dijeda' : 'Sisa waktu'} ${timeStr}`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${isPaused ? 'bg-warn' : isLowTime ? 'bg-danger animate-pulse' : 'bg-primary'}`}
+                  aria-hidden="true"
+                />
+                <span className="text-[16px] font-bold leading-none tabular-nums">{timeStr}</span>
+                <span className="text-[12px] font-medium opacity-80">
+                  {isPaused ? 'Dijeda' : 'Sisa waktu'}
+                </span>
               </div>
             )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="well well-hover flex h-11 w-11 items-center justify-center rounded-xl text-fg transition-calm"
+              aria-label="Tutup"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.25} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className={`absolute right-4 flex h-7 w-7 items-center justify-center rounded-full transition-spring-fast hover:scale-110 ${theme === 'dark' ? 'hover:bg-dark-700 text-dark-text-tertiary' : 'hover:bg-slate-100 text-slate-400'}`}
-            aria-label="Close"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
 
-        {/* Table */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Lanes */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 sm:px-4">
           {fixedOrderPlayers.length === 0 ? (
             <div className="px-6 py-16 text-center">
-              <p className={`text-sm font-bold ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Belum ada peserta</p>
+              <p className="text-[15px] font-semibold text-fg">Belum ada peserta.</p>
+              <p className="mt-1 text-[13px] text-fg-muted">Peserta muncul di lintasan setelah bergabung.</p>
             </div>
           ) : (
-            <table className="w-full">
-              <thead className={`sticky top-0 z-10 backdrop-blur-sm ${theme === 'dark' ? 'bg-dark-750/95' : 'bg-slate-50/95'}`}>
-                <tr className={`border-b ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-slate-200'}`}>
-                  <th className={`w-14 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Rank</th>
-                  <th className={`px-2 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
-                    <div className="flex items-center justify-between pr-2">
-                      <span>Lintasan</span>
-                      <span className={theme === 'dark' ? 'text-dark-text-tertiary/50' : 'text-slate-300'}>🏁 Finish</span>
-                    </div>
-                  </th>
-                  <th className={`w-20 px-2 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.18em] ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>Status</th>
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${theme === 'dark' ? 'divide-[#2a2a2a]' : 'divide-slate-100'}`}>
+            <div role="table" aria-label="Posisi peserta di lintasan">
+              <div role="row" className="mb-1 flex items-center gap-2 px-1 text-[12px] font-semibold text-fg-muted sm:gap-3">
+                <span role="columnheader" className="w-10 shrink-0 text-center">Rank</span>
+                <span role="columnheader" className="flex flex-1 items-center justify-between pr-2">
+                  <span>Lintasan</span>
+                  <span>Finish</span>
+                </span>
+                <span role="columnheader" className="hidden w-20 shrink-0 text-center sm:block">Status</span>
+              </div>
+
+              <div className="space-y-1.5">
                 {fixedOrderPlayers.map((player) => {
                   const rank = playerRanks.get(player.id) ?? 999;
                   const progress = Math.max(0, Math.min(100, (player.score / questionCount) * 100));
@@ -354,108 +370,98 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
                   const isFinished = !!player.finished_at || player.score >= questionCount;
                   const isTop3 = rank <= 3;
 
-                  const rankBadge = rank === 1
-                    ? (theme === 'dark' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-200')
-                    : rank === 2
-                      ? (theme === 'dark' ? 'bg-slate-500/20 text-slate-300 border-slate-500/30' : 'bg-slate-100 text-slate-600 border-slate-200')
-                      : rank === 3
-                        ? (theme === 'dark' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-orange-100 text-orange-700 border-orange-200')
-                        : (theme === 'dark' ? 'bg-dark-700 text-dark-text-tertiary border-[#2a2a2a]' : 'bg-white text-slate-400 border-slate-100');
-
                   return (
-                    <tr key={player.id} className="transition-colors">
-                      {/* Rank badge */}
-                      <td className="px-2 py-1.5">
+                    <div key={player.id} role="row" className="flex items-center gap-2 px-1 sm:gap-3">
+                      {/* Rank token */}
+                      <div role="cell" className="w-10 shrink-0">
                         <div
                           ref={(el) => { rankBadgeRefs.current[player.id] = el; }}
-                          className={`mx-auto flex h-8 w-8 items-center justify-center rounded-xl border text-[12px] font-black transition-all duration-300 ${rankBadge}`}
+                          className={`flex h-10 w-10 items-center justify-center rounded-xl text-[14px] font-bold tabular-nums ${rank === 1 ? 'clay-highlight' : 'clay'}`}
                         >
-                          {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}
+                          {rank}
                         </div>
-                      </td>
+                      </div>
 
-                      {/* Race Track */}
-                      <td className="px-2 py-1.5 overflow-hidden">
-                        <div className={`relative h-11 w-full overflow-visible rounded-2xl border ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-700/70' : 'border-slate-200/60 bg-slate-100/70'}`}>
-                          {/* Track stripes */}
-                          <div className={`absolute inset-0 rounded-2xl opacity-30`} style={{ backgroundImage: theme === 'dark' ? 'repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 60px)' : 'repeating-linear-gradient(90deg, rgba(148,163,184,0.13) 0, rgba(148,163,184,0.13) 1px, transparent 1px, transparent 60px)' }} />
-
-                          {/* Watermark (Name | Score) */}
+                      {/* Lane */}
+                      <div role="cell" className="min-w-0 flex-1">
+                        <div className="well relative h-16 w-full overflow-visible rounded-2xl">
+                          {/* Progress fill */}
                           <div
-                            className={`absolute inset-y-0 flex items-center z-10 pointer-events-none transition-all duration-700 ease-in-out ${progress > 30 ? 'left-4' : 'left-1/2 -translate-x-1/2'
-                              }`}
-                          >
-                            <span className={`text-[15px] font-black uppercase tracking-widest drop-shadow-sm truncate max-w-[250px] ${theme === 'dark' ? 'text-dark-text-secondary/80' : 'text-slate-600/80'}`}>
-                              {player.name} <span className="mx-2 opacity-50">|</span> {player.score}
-                            </span>
-                          </div>
-
-                          {/* Filled progress */}
-                          <div
-                            className={`absolute inset-y-0 left-0 rounded-2xl bg-gradient-to-r ${skin.trackFillClass} opacity-20 transition-[width] duration-500 ease-out z-0`}
+                            className="absolute inset-y-0 left-0 z-0 rounded-2xl bg-primary/15 transition-[width] duration-300 ease-out"
                             style={{ width: `${progress}%` }}
                           />
 
-                          {/* Horse + crown */}
+                          {/* Name and score */}
                           <div
-                            className="absolute top-1/2 -translate-y-1/2 flex items-center transition-[left] duration-500 ease-out z-20"
-                            style={{ left: `clamp(4px, calc(${progress}% - 28px), calc(100% - 60px))` }}
+                            className={`pointer-events-none absolute inset-y-0 z-10 flex items-center transition-all duration-300 ease-out ${progress > 30 ? 'left-3' : 'left-1/2 -translate-x-1/2'}`}
+                          >
+                            <span className="max-w-[40vw] truncate text-[13px] font-semibold text-fg-muted sm:max-w-[260px] sm:text-[14px]">
+                              {player.name}
+                              <span className="mx-1.5 text-fg-subtle" aria-hidden="true">·</span>
+                              <span className="tabular-nums text-fg">{player.score}</span>
+                            </span>
+                          </div>
+
+                          {/* Mount + crown */}
+                          <div
+                            className="absolute top-1/2 z-20 flex -translate-y-1/2 items-center transition-[left] duration-300 ease-out"
+                            style={{ left: `clamp(4px, calc(${progress}% - 30px), calc(100% - 64px))` }}
                           >
                             <div className="relative flex flex-col items-center justify-center">
-                              {/* Crown for top 3 – animated */}
                               {isTop3 && (
-                                <div
+                                <span
                                   ref={(el) => { crownRefs.current[player.id] = el; }}
-                                  className="absolute right-[-28px] top-1/2 -translate-y-1/2 text-[22px] drop-shadow-md transition-all duration-300 z-30"
+                                  className="absolute right-[-22px] top-1/2 z-30 -translate-y-1/2 text-[18px]"
                                 >
                                   <CrownIcon rank={rank as 1 | 2 | 3} />
-                                </div>
+                                </span>
                               )}
-                              {/* Horse — two nested divs: outer for scale, inner for gallop */}
+                              {/* Two nested wrappers: outer for lift, inner for gallop */}
                               <div
                                 ref={(el) => { horseScaleRefs.current[player.id] = el; }}
                                 className="relative flex items-center justify-center"
                               >
+                                <span className="absolute bottom-1 left-1/2 h-1.5 w-9 -translate-x-1/2 rounded-full bg-black/15 blur-[1.5px]" aria-hidden="true" />
                                 <div
                                   ref={(el) => { horseGallopRefs.current[player.id] = el; }}
                                   className="relative"
                                 >
-                                  <HorseAvatar colors={skin.horse} mount={skin.mount} size="lg" className="drop-shadow-md" />
+                                  <HorseAvatar colors={skin.horse} mount={skin.mount} size="lg" />
                                 </div>
                               </div>
                             </div>
                           </div>
 
                           {/* Finish line */}
-                          <div className={`absolute right-0 top-0 bottom-0 w-[3px] rounded-r-2xl opacity-40 z-10`} style={{ backgroundImage: theme === 'dark' ? 'repeating-linear-gradient(180deg,#64748b_0,#64748b_3px,#1e293b_3px,#1e293b_6px)' : 'repeating-linear-gradient(180deg,#1e293b_0,#1e293b_3px,white_3px,white_6px)' }} />
+                          <div className="absolute inset-y-2 right-2 z-10 border-r-2 border-dashed border-line-strong" aria-hidden="true" />
+                          {isFinished && (
+                            <span className="absolute right-3.5 top-1.5 z-10 text-primary sm:hidden" aria-label="Selesai">
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
+                            </span>
+                          )}
                         </div>
-                      </td>
+                      </div>
 
                       {/* Status */}
-                      <td className="px-2 py-1.5 text-center">
+                      <div role="cell" className="hidden w-20 shrink-0 justify-center sm:flex">
                         {isFinished ? (
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${theme === 'dark' ? 'bg-accent-green/20 text-accent-green' : 'bg-green-100 text-green-700'}`}>
-                            ✓ Selesai
+                          <span className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary/12 px-2.5 text-[12px] font-semibold text-primary">
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7" /></svg>
+                            Selesai
                           </span>
                         ) : (
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${theme === 'dark' ? 'bg-accent-blue/20 text-accent-blue' : 'bg-blue-50 text-blue-500'}`}>
-                            ● Live
+                          <span className="well inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold text-fg-muted">
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+                            Live
                           </span>
                         )}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className={`border-t px-4 py-2 ${theme === 'dark' ? 'border-[#2a2a2a] bg-dark-750' : 'border-slate-200 bg-slate-50'}`}>
-          <div className={`flex items-center justify-center text-[9px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-dark-text-tertiary' : 'text-slate-400'}`}>
-            <span>{fixedOrderPlayers.length} peserta</span>
-          </div>
         </div>
       </div>
     </div>
