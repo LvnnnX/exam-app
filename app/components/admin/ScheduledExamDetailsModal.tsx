@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, Clock, XCircle, Users } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Users, X } from 'lucide-react';
 import { type ScheduledExamRow, type ScheduledExamAttemptRow } from '@/app/actions/admin/scheduled-exam';
 import { fetchAttemptAnswersAction, type AttemptDetailsResult } from '@/app/actions/admin/scheduled-exam-answers';
 import { type RawQuestion } from '@/lib/questions';
 import ResultDetailsModal from '@/app/components/admin/ResultDetailsModal';
 import ScheduledExamQuestionsModal from '@/app/components/admin/ScheduledExamQuestionsModal';
 import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
+import { scrimMotion, sheetMotion } from '@/app/components/ui/motion-presets';
 
 type ScheduledExamDetailsModalProps = {
   exam: ScheduledExamRow | null;
@@ -46,17 +47,18 @@ function formatDateTime(iso?: string | null): string {
   });
 }
 
-function StatusBadge({ status, theme = 'dark' }: { status: string; theme?: 'light' | 'dark' }) {
-  const isDark = theme === 'dark';
-  const map: Record<string, { icon: React.ReactNode; bg: string; text: string }> = {
-    scheduled: { icon: <Clock size={12} />, bg: isDark ? 'bg-accent-blue/15' : 'bg-blue-50', text: isDark ? 'text-accent-blue' : 'text-blue-600' },
-    active: { icon: <CheckCircle2 size={12} />, bg: isDark ? 'bg-accent-green/15' : 'bg-green-50', text: isDark ? 'text-accent-green' : 'text-green-600' },
-    expired: { icon: <XCircle size={12} />, bg: isDark ? 'bg-accent-red/15' : 'bg-red-50', text: isDark ? 'text-accent-red' : 'text-red-600' },
-  };
-  const entry = map[status] || map.scheduled;
+const STATUS_STYLE: Record<string, { icon: React.ReactNode; className: string; label: string }> = {
+  active: { icon: <CheckCircle2 size={13} />, className: 'bg-primary/12 text-primary', label: 'Aktif' },
+  scheduled: { icon: <Clock size={13} />, className: 'well text-fg-muted', label: 'Terjadwal' },
+  expired: { icon: <XCircle size={13} />, className: 'well text-fg-subtle', label: 'Berakhir' },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const entry = STATUS_STYLE[status] || { ...STATUS_STYLE.scheduled, label: status };
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${entry.bg} ${entry.text}`}>
-      {entry.icon} {status}
+    <span className={`inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold ${entry.className}`}>
+      <span aria-hidden="true">{entry.icon}</span>
+      {entry.label}
     </span>
   );
 }
@@ -77,12 +79,14 @@ function formatDuration(startedAt: string, endedAt: string | null, deadlineAt: s
   return `${minutes}m ${seconds}d`;
 }
 
+const chip = 'well inline-flex h-7 items-center rounded-lg px-2.5 text-[12px] font-semibold text-fg-muted';
+
 export default function ScheduledExamDetailsModal({
   exam,
   attempts,
   attemptLoading,
   detailQuestions,
-  detailLoading: _detailLoading,
+  detailLoading,
   formatCategorySelectionLabel,
   getCorrectOptionText,
   onClose,
@@ -93,8 +97,6 @@ export default function ScheduledExamDetailsModal({
   const [attemptDetails, setAttemptDetails] = useState<AttemptDetailsResult | null>(null);
   const [attemptDetailsLoading, setAttemptDetailsLoading] = useState(false);
 
-  const isDark = theme === 'dark';
-
   // Lock body scroll when modal is open
   useEffect(() => {
     if (exam) {
@@ -103,6 +105,16 @@ export default function ScheduledExamDetailsModal({
       return () => { document.body.style.overflow = original; };
     }
   }, [exam]);
+
+  // Escape closes this modal only when no nested modal (questions, answers) is on top of it.
+  useEffect(() => {
+    if (!exam || questionsModalOpen || viewingAttempt) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [exam, questionsModalOpen, viewingAttempt, onClose]);
 
   const handleCloseQuestions = () => setQuestionsModalOpen(false);
   const handleCloseResult = () => {
@@ -135,210 +147,181 @@ export default function ScheduledExamDetailsModal({
     return timeA - timeB;
   });
 
+  const activeCount = attempts.filter(a => !a.submitted_at).length;
+
   return (
     <>
       <AnimatePresence>
         {exam && (
-          <>
-            {/* Overlay */}
+          <motion.div
+            {...scrimMotion}
+            data-theme={theme}
+            className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4"
+            onClick={onClose}
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-[10000]"
-              onClick={onClose}
+              {...sheetMotion}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="scheduled-detail-title"
+              className="glass-sheet flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-4xl text-fg"
+              onClick={(e) => e.stopPropagation()}
             >
-              {/* Panel — wider for player table */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className={`rounded-[24px] shadow-ios-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden ${isDark ? 'bg-dark-800 border border-dark-border-subtle' : 'bg-white border border-nike-grey-200'}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Header */}
-                <div className={`shrink-0 flex items-start justify-between gap-3 px-5 py-4 border-b sm:gap-4 ${isDark ? 'border-dark-border-subtle' : 'border-nike-grey-200'}`}>
-                  <div className="flex flex-col gap-2 min-w-0 flex-1">
-                    <h2 className={`text-[15px] font-semibold tracking-tight truncate ${isDark ? 'text-dark-text-primary' : 'text-gray-900'}`}>
-                      {exam.title}
-                    </h2>
+              {/* Header */}
+              <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-medium text-fg-muted">Ujian terjadwal</p>
+                  <h2 id="scheduled-detail-title" className="mt-0.5 truncate text-[20px] font-bold tracking-tight text-fg">
+                    {exam.title}
+                  </h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <StatusBadge status={exam.status} />
+                    {exam.access_code && (
+                      <span className={`${chip} font-mono tracking-wide text-fg`}>
+                        {exam.access_code}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Tutup"
+                  className="well well-hover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg transition-calm"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Body, two columns from lg */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="flex min-h-full flex-col lg:flex-row">
+
+                  {/* Left: exam info + question bank */}
+                  <div className="w-full shrink-0 space-y-3 border-b border-line px-5 py-4 sm:px-6 lg:w-80 lg:border-b-0 lg:border-r">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <StatusBadge status={exam.status} theme={theme} />
-                      {exam.access_code && (
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold ${isDark ? 'bg-accent-blue/15 text-accent-blue' : 'bg-blue-50 text-blue-700'}`}>
-                          {exam.access_code}
-                        </span>
-                      )}
+                      {[exam.mapels, exam.babs, exam.sub_babs].map((value, index) => {
+                        const label = value ? formatCategoryChip(value, formatCategorySelectionLabel) : null;
+                        return label ? <span key={index} className={chip}>{label}</span> : null;
+                      })}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="clay inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-bold tabular-nums">
+                        {exam.question_count} soal
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQuestionsModalOpen(true)}
+                        disabled={detailLoading}
+                        className="flex h-11 items-center gap-2 rounded-xl bg-primary/12 px-4 text-[13px] font-semibold text-primary transition-calm hover:bg-primary/18 disabled:opacity-60 md:h-10"
+                      >
+                        {detailLoading && <span className="spinner-calm h-3.5 w-3.5" aria-hidden="true" />}
+                        {detailLoading ? 'Memuat soal…' : 'Lihat soal'}
+                      </button>
+                    </div>
+
+                    <div className="well space-y-2.5 rounded-2xl p-4">
+                      <DetailRow label="Batas waktu" value={`${exam.time_limit_minutes} menit`} />
+                      <DetailRow label="Mode percobaan" value={exam.attempt_mode === 'retake' ? 'Retake' : 'Sekali'} />
+                      <DetailRow label="Mode navigasi" value={exam.nav_mode === 'strict' ? 'Strict' : 'Standard'} />
+                      <DetailRow label="Waktu mulai" value={formatDateTime(exam.window_start)} />
+                      <DetailRow label="Waktu selesai" value={formatDateTime(exam.window_end)} />
                     </div>
                   </div>
-                  <button
-                    onClick={onClose}
-                    className={`flex items-center justify-center w-8 h-8 rounded-full transition-spring-fast active:scale-90 shrink-0 ${isDark ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-500 hover:bg-black/10'}`}
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
 
-                {/* Body — two-column layout */}
-                <div className={`flex-1 overflow-y-auto ${isDark ? 'bg-dark-800' : 'bg-white'}`}>
-                  <div className="flex flex-col lg:flex-row min-h-full">
-
-                    {/* Left panel: exam info + question bank */}
-                    <div className={`w-full lg:w-72 shrink-0 px-5 py-4 space-y-3 border-b lg:border-b-0 lg:border-r ${isDark ? 'border-dark-border-subtle' : 'border-nike-grey-200'}`}>
-                      {/* Category chips */}
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {exam.mapels && (() => {
-                          const chip = formatCategoryChip(exam.mapels!, formatCategorySelectionLabel);
-                          return chip ? (
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${isDark ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-                              {chip}
+                  {/* Right: player table */}
+                  <div className="min-w-0 flex-1 px-5 py-4 sm:px-6">
+                    <div className="mb-3 flex items-center gap-2">
+                      <h3 className="text-[15px] font-bold tracking-tight text-fg">
+                        Peserta
+                      </h3>
+                      {!attemptLoading && (
+                        <>
+                          <span className="well inline-flex h-6 items-center rounded-md px-2 text-[12px] font-semibold tabular-nums text-fg-muted">
+                            {attempts.length}
+                          </span>
+                          {activeCount > 0 && (
+                            <span className="inline-flex h-6 items-center gap-1.5 rounded-md bg-primary/12 px-2 text-[12px] font-semibold text-primary">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" aria-hidden="true" />
+                              {activeCount} aktif
                             </span>
-                          ) : null;
-                        })()}
-                        {exam.babs && (() => {
-                          const chip = formatCategoryChip(exam.babs!, formatCategorySelectionLabel);
-                          return chip ? (
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${isDark ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-                              {chip}
-                            </span>
-                          ) : null;
-                        })()}
-                        {exam.sub_babs && (() => {
-                          const chip = formatCategoryChip(exam.sub_babs!, formatCategorySelectionLabel);
-                          return chip ? (
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${isDark ? 'bg-white/5 text-dark-text-secondary' : 'bg-black/5 text-gray-600'}`}>
-                              {chip}
-                            </span>
-                          ) : null;
-                        })()}
-                      </div>
-
-                      {/* Question count chip + Questions button */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${isDark ? 'bg-accent-purple/15 text-accent-purple' : 'bg-purple-50 text-purple-700'}`}>
-                          {exam.question_count} Soal
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setQuestionsModalOpen(true)}
-                          className={`h-8 rounded-full px-3 text-[11px] font-semibold transition-spring-fast active:scale-95 ${isDark ? 'bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
-                        >
-                          Questions
-                        </button>
-                      </div>
-
-                      {/* Detail grid */}
-                      <div className={`rounded-2xl border p-4 space-y-2.5 ${isDark ? 'border-dark-border-subtle bg-white/[0.02]' : 'border-nike-grey-200 bg-black/[0.02]'}`}>
-                        <DetailRow label="Batas waktu" value={`${exam.time_limit_minutes} menit`} theme={theme} />
-                        <DetailRow
-                          label="Mode percobaan"
-                          value={exam.attempt_mode === 'retake' ? 'Retake' : 'Sekali'}
-                          theme={theme}
-                        />
-                        <DetailRow
-                          label="Mode navigasi"
-                          value={exam.nav_mode === 'strict' ? 'Strict' : 'Standard'}
-                          theme={theme}
-                        />
-                        <DetailRow label="Waktu Mulai" value={formatDateTime(exam.window_start)} theme={theme} />
-                        <DetailRow label="Waktu Selesai" value={formatDateTime(exam.window_end)} theme={theme} />
-                      </div>
+                          )}
+                        </>
+                      )}
                     </div>
 
-                    {/* Right panel: player table */}
-                    <div className="flex-1 px-5 py-4 min-w-0">
-                      <div className="flex items-center gap-2 mb-3">
-                        <h3 className={`text-[13px] font-semibold ${isDark ? 'text-dark-text-primary' : 'text-gray-900'}`}>
-                          Player
-                        </h3>
-                        {!attemptLoading && (
-                          <>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-white/5 text-dark-text-tertiary' : 'bg-black/5 text-gray-500'}`}>
-                              {attempts.length}
-                            </span>
-                            {attempts.filter(a => !a.submitted_at).length > 0 && (
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                isDark ? 'bg-accent-green/15 text-accent-green' : 'bg-green-50 text-green-700'
-                              }`}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                                {attempts.filter(a => !a.submitted_at).length} aktif
-                              </span>
-                            )}
-                          </>
-                        )}
+                    {attemptLoading ? (
+                      <div className="space-y-2" role="status" aria-label="Memuat peserta">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="well h-12 animate-pulse rounded-2xl" />
+                        ))}
                       </div>
-
-                      {attemptLoading ? (
-                        /* Skeleton rows */
-                        <div className="space-y-2">
-                          {[1, 2, 3].map(i => (
-                            <div key={i} className={`h-12 rounded-2xl animate-pulse ${isDark ? 'bg-white/[0.04]' : 'bg-black/[0.04]'}`} />
-                          ))}
-                        </div>
-                      ) : attempts.length === 0 ? (
-                        <div className={`flex flex-col items-center justify-center py-10 text-center ${isDark ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
-                          <Users size={28} className="mb-2 opacity-40" />
-                          <p className="text-[12px] font-medium">Belum ada peserta</p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full">
-                            <thead>
-                              <tr className={`text-left text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>
-                                <th className="pb-2 pr-3">Rank</th>
-                                <th className="pb-2 pr-3">Nama</th>
-                                <th className="pb-2 pr-3">Current</th>
-                                <th className="pb-2 pr-3">Score</th>
-                                <th className="pb-2 pr-3">Waktu</th>
-                                <th className="pb-2">Action</th>
+                    ) : attempts.length === 0 ? (
+                      <div className="well flex flex-col items-center justify-center rounded-2xl py-10 text-center">
+                        <Users size={26} className="mb-2 text-fg-subtle" aria-hidden="true" />
+                        <p className="text-[14px] font-semibold text-fg">Belum ada peserta</p>
+                        <p className="mt-1 text-[13px] text-fg-muted">Peserta muncul setelah masuk dengan kode akses.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                          <thead>
+                            <tr className="border-b border-line text-left text-[12px] font-semibold text-fg-muted">
+                              <th className="pb-2 pr-3">Rank</th>
+                              <th className="pb-2 pr-3">Nama</th>
+                              <th className="pb-2 pr-3">Soal aktif</th>
+                              <th className="pb-2 pr-3">Skor</th>
+                              <th className="pb-2 pr-3">Waktu</th>
+                              <th className="pb-2 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedAttempts.map((attempt, idx) => (
+                              <tr key={attempt.id} className="border-b border-line last:border-b-0">
+                                <td className="py-2.5 pr-3">
+                                  <span className="clay inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-1.5 text-[12px] font-bold tabular-nums">
+                                    {idx + 1}
+                                  </span>
+                                </td>
+                                <td className="max-w-[160px] truncate py-2.5 pr-3 text-[14px] font-semibold text-fg">
+                                  {attempt.student_name}
+                                </td>
+                                <td className="py-2.5 pr-3 text-[13px] tabular-nums text-fg-muted">
+                                  {attempt.submitted_at
+                                    ? '-'
+                                    : attempt.current_question_index != null
+                                      ? `Q${attempt.current_question_index + 1}`
+                                      : 'Q1'}
+                                </td>
+                                <td className="py-2.5 pr-3 text-[14px] font-bold tabular-nums text-fg">
+                                  {attempt.submitted_at
+                                    ? (attempt.score != null ? attempt.score : '-')
+                                    : (attempt.live_score != null ? attempt.live_score : '0')}
+                                </td>
+                                <td className="py-2.5 pr-3 text-[13px] tabular-nums text-fg-muted">
+                                  {formatDuration(attempt.started_at, attempt.submitted_at, attempt.deadline_at, attempt.auto_submitted)}
+                                </td>
+                                <td className="py-2.5 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleViewAttempt(attempt)}
+                                    className="well well-hover h-11 whitespace-nowrap rounded-xl px-3.5 text-[13px] font-medium text-fg transition-calm md:h-10"
+                                  >
+                                    Lihat jawaban
+                                  </button>
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                              {sortedAttempts.map((attempt, idx) => (
-                                <tr key={attempt.id} className={isDark ? '' : ''}>
-                                  <td className={`py-2.5 pr-3 text-[12px] font-bold tabular-nums ${isDark ? 'text-dark-text-tertiary' : 'text-gray-400'}`}>
-                                    #{idx + 1}
-                                  </td>
-                                  <td className={`py-2.5 pr-3 text-[12px] font-semibold truncate max-w-[140px] ${isDark ? 'text-dark-text-primary' : 'text-gray-900'}`}>
-                                    {attempt.student_name}
-                                  </td>
-                                  <td className={`py-2.5 pr-3 text-[12px] tabular-nums ${isDark ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
-                                    {attempt.submitted_at
-                                      ? '-'
-                                      : attempt.current_question_index != null
-                                        ? `Q${attempt.current_question_index + 1}`
-                                        : 'Q1'}
-                                  </td>
-                                  <td className={`py-2.5 pr-3 text-[12px] font-semibold tabular-nums ${isDark ? 'text-accent-green' : 'text-green-600'}`}>
-                                    {attempt.submitted_at
-                                      ? (attempt.score != null ? attempt.score : '-')
-                                      : (attempt.live_score != null ? attempt.live_score : '0')}
-                                  </td>
-                                  <td className={`py-2.5 pr-3 text-[12px] tabular-nums ${isDark ? 'text-dark-text-secondary' : 'text-gray-600'}`}>
-                                    {formatDuration(attempt.started_at, attempt.submitted_at, attempt.deadline_at, attempt.auto_submitted)}
-                                  </td>
-                                  <td className="py-2.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => void handleViewAttempt(attempt)}
-                                      className={`h-7 rounded-full px-3 text-[11px] font-semibold transition-spring-fast active:scale-95 ${isDark ? 'bg-white/5 text-dark-text-secondary hover:bg-white/10' : 'bg-black/5 text-gray-600 hover:bg-black/10'}`}
-                                    >
-                                      View Answers
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -381,12 +364,11 @@ export default function ScheduledExamDetailsModal({
   );
 }
 
-function DetailRow({ label, value, theme }: { label: string; value: string; theme: 'light' | 'dark' }) {
-  const isDark = theme === 'dark';
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className={`text-[12px] ${isDark ? 'text-dark-text-tertiary' : 'text-gray-500'}`}>{label}</span>
-      <span className={`text-[12px] font-semibold tabular-nums ${isDark ? 'text-dark-text-primary' : 'text-gray-900'}`}>{value}</span>
+      <span className="text-[13px] text-fg-muted">{label}</span>
+      <span className="text-right text-[13px] font-semibold tabular-nums text-fg">{value}</span>
     </div>
   );
 }

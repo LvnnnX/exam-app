@@ -1,5 +1,7 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+"use client";
+
+import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 
 type AdminTutorialModalProps = {
   isOpen: boolean;
@@ -12,38 +14,71 @@ type StepItem = {
   body: string;
 };
 
+// Steps describe the controls that exist in AdminQuizTab and ScheduledExamTabPanel.
 const QUIZ_STEPS: StepItem[] = [
-  { label: 'Buat Quiz', body: 'Klik tombol + untuk menambah quiz baru, atur judul, mapel, dan durasi.' },
-  { label: 'Kelola Soal', body: 'Tambahkan soal satu per satu atau import dari file excel/csv.' },
-  { label: 'Publish', body: 'Klik tombol Publish agar quiz bisa diakses oleh siswa.' },
+  { label: 'Pilih topik', body: 'Di tab Create, pilih mapel, bab, dan sub-bab. Atur jumlah soal, durasi, dan mode navigasi Strict atau Standard.' },
+  { label: 'Buat kuis', body: 'Tekan Buat kuis. Sistem membuat kode 6 digit yang dibagikan ke siswa lewat Join with code.' },
+  { label: 'Pantau live', body: 'Di tab Manage, mulai kuis, pantau pemain dan leaderboard, lalu akhiri saat selesai. Sesi yang selesai pindah ke History.' },
 ];
 
 const SCHEDULED_STEPS: StepItem[] = [
-  { label: 'Jadwalkan', body: 'Pilih quiz yang sudah ada, tentukan tanggal mulai dan selesai.' },
-  { label: 'Monitor', body: 'Pantau peserta yang sedang mengerjakan secara real-time.' },
-  { label: 'Hasil', body: 'Skor dan detail jawaban otomatis terekam setelah siswa submit.' },
+  { label: 'Buat ujian', body: 'Di tab Create, isi judul, kode akses (atau tekan Acak), topik, jumlah soal, batas waktu, dan jendela waktu mulai sampai selesai.' },
+  { label: 'Bagikan kode', body: 'Siswa masuk lewat Ujian terjadwal di halaman depan memakai kode akses, hanya selama jendela waktu terbuka.' },
+  { label: 'Pantau dan nilai', body: 'Di tab Manage, tekan Lihat untuk melihat peserta, skor live, bank soal, dan jawaban tiap peserta. Ujian yang ditutup pindah ke History.' },
 ];
 
 export default function AdminTutorialModal({ isOpen, onClose, type }: AdminTutorialModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
   const steps = type === 'quiz' ? QUIZ_STEPS : SCHEDULED_STEPS;
   return (
-    <div className="fixed inset-0 z-[150] bg-dark-800/95 backdrop-blur-2xl flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div className="bg-white rounded-[28px] max-w-lg w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-[20px] font-display font-semibold mb-4">Tutorial {type === 'quiz' ? 'Quiz' : 'Scheduled Exam'}</h3>
+    <div className="glass-scrim fixed inset-0 z-[150] flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-tutorial-title"
+        className="glass-sheet animate-in w-full max-w-lg rounded-4xl p-6 text-fg"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[12px] font-medium text-fg-muted">Tutorial</p>
+            <h3 id="admin-tutorial-title" className="mt-0.5 text-[20px] font-bold tracking-tight text-fg">
+              {type === 'quiz' ? 'Kuis live' : 'Ujian terjadwal'}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup tutorial"
+            className="well well-hover flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-fg transition-calm"
+          >
+            <X size={16} />
+          </button>
+        </div>
         <ol className="space-y-4">
           {steps.map((step, i) => (
             <li key={step.label} className="flex gap-3">
-              <span className="w-6 h-6 rounded-full bg-nike-black text-white text-[12px] font-medium flex items-center justify-center">{i + 1}</span>
+              <span className="clay mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold tabular-nums">{i + 1}</span>
               <div>
-                <p className="font-semibold text-[14px]">{step.label}</p>
-                <p className="text-[13px] text-nike-grey-500">{step.body}</p>
+                <p className="text-[14px] font-semibold text-fg">{step.label}</p>
+                <p className="text-[13px] leading-relaxed text-fg-muted">{step.body}</p>
               </div>
             </li>
           ))}
         </ol>
-        <button onClick={onClose} className="mt-6 w-full h-10 rounded-full bg-nike-black text-white text-[13px]">Mengerti</button>
-      </motion.div>
+        <button type="button" onClick={onClose} className="clay-primary mt-6 h-12 w-full rounded-xl text-[15px] font-semibold">
+          Mengerti
+        </button>
+      </div>
     </div>
   );
 }

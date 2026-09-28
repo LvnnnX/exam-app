@@ -51,7 +51,7 @@ type LiveSession = {
   start_time: string;
 };
 
-function PageBar({
+export function PageBar({
   page,
   perPage,
   total,

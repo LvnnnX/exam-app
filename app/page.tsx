@@ -282,6 +282,7 @@ export default function ExamPage() {
                   value={state.timeLimit}
                   onChange={setters.setTimeLimit}
                   placeholder="Choose time limit"
+                  ariaLabel="Time limit"
                 />
               </div>
 
@@ -295,6 +296,7 @@ export default function ExamPage() {
                   value={state.questionCount}
                   onChange={setters.setQuestionCount}
                   placeholder="Choose question count"
+                  ariaLabel="Question count"
                 />
               </div>
             </div>

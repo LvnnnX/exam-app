@@ -214,7 +214,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                     key={lb.id}
                     role="listitem"
                     ref={(element) => { leaderboardRowRefs.current[lb.id] = element; }}
-                    className={`flex transform-gpu items-center gap-3 rounded-2xl px-3 py-2.5 will-change-transform transition-spring-fast ${
+                    className={`flex transform-gpu items-center gap-3 rounded-2xl px-3 py-2.5 will-change-transform transition-calm ${
                       isMe ? 'bg-highlight/15' : ''
                     }`}
                   >

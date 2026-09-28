@@ -270,6 +270,11 @@ Page gutter is 16px on phones (`px-4`) and grows to 24 to 32px from `md`.
 
 Utilities: `transition-calm` (color, background, border, shadow, transform, opacity at 150ms). `animate-in` gives a modal or panel a single 220ms fade plus a 4px rise. The legacy names `transition-spring` and `transition-spring-fast` now resolve to the calm curve.
 
+framer-motion (used where CSS cannot do the job):
+- **`MotionConfig`** in `app/providers.tsx` sets the default transition to 320ms on the calm curve and `reducedMotion="user"`, so every `motion.*` element drops transform and layout animation for visitors who ask for reduced motion. No component sets a spring.
+- **Morphs (`layoutId`).** A button that opens its own screen grows into it: Join with code into JoinQuizModal, Ujian terjadwal into ScheduledExamEntry, Daftar soal into the question grid (exam and live quiz), Surrender into its confirm, Ubah into the avatar editor. The button and the dialog share one `layoutId`. Purpose: it answers "where did this come from", so the student does not lose their place. Only buttons that open a dedicated screen morph; ordinary confirms do not.
+- **Modal enter and exit.** `app/components/ui/motion-presets.ts` exports `scrimMotion` (fade) and `sheetMotion` (fade plus a 4px rise, scale 0.985, 220ms). Spread them on `motion.div` inside `<AnimatePresence>` so a modal also animates out. A sheet that hosts `position: fixed` children (the question editor shell) uses `scrimMotion` on both layers, because a transform would become their containing block.
+
 Principles:
 - Motion answers "what just changed?" and nothing else.
 - Press is a 1px sink, not a bounce.
@@ -308,11 +313,15 @@ Eight presets, each a calm jersey / pants / saddle trio drawn from the palette f
 | Row action | `h-11 md:h-10 px-4 rounded-xl bg-primary/12 text-primary hover:bg-primary/18 text-[13px] font-semibold` |
 | Row action, destructive | `h-11 md:h-10 px-4 rounded-xl bg-danger/10 text-danger hover:bg-danger/15` |
 
+`NeumorphButton` (`app/components/ui/neumorph-button.tsx`) is the motion-capable button used where a morph starts. It keeps its historical name and API but renders these recipes: `intent="primary"` is `clay-primary`, `secondary` is the Secondary well (and `clay` when `pressed`), `default` is neutral `clay`, `danger` is `clay-danger`, `danger-soft` is the destructive row-action tint (for a trigger whose confirm is the real destructive step). Sizes are `small` (`h-11 md:h-9`), `medium` (`h-11`), `large` (`h-12`), all sentence case, no hover zoom.
+
 One `clay-primary` per view. An action that repeats on every row (`View`, `Save`, `Approve`, `Remove`) is never clay: ten clay buttons in a table would make ten "primary" actions. Rows use the tinted row-action recipe, and clay stays for the single action that moves the whole view forward. Every confirmation modal pairs a secondary `Batal` with a primary or danger confirm.
 
 ### Inputs
 
 `well h-11 rounded-xl px-4 text-[14px] text-fg placeholder:text-fg-subtle`. Focus shows the global focus ring (2px Pine, 2px offset). Selects use the same recipe with a chevron.
+
+Custom dropdowns (`exam/MultiSelectDropdown`, `exam/SingleSelectDropdown`, the admin topic pickers) share one shape: a `well` trigger with `aria-haspopup="listbox"`, `aria-expanded` and an `aria-label` that names the field and its value; a `glass-strong` panel; options at `min-h-11` with `role="option"` and `aria-selected`; Escape and an outside click close it. Multi-select uses a square check, single-select a round one. A "Pilih semua" row sits under the list header when the list can be bulk-selected.
 
 ### Segmented control
 
@@ -357,6 +366,7 @@ A `?` well button (18px visual, 44px hit area through a `::before` inset) with `
 - paused: `bg-warn/14 text-highlight-fg`.
 - finished: `well text-fg-subtle`.
 - error / wrong: `bg-danger/12 text-danger`.
+- scheduled exam status: `active` (Aktif) is the live chip, `scheduled` (Terjadwal) the waiting chip, `expired` (Berakhir) the finished chip. Labels are shown in Indonesian, not the raw status key.
 
 ### Exam runtime
 
@@ -422,3 +432,6 @@ No horizontal page scroll at any width. Anything wider than the viewport (tables
 | Calm ease, no overshoot | The spring overshoot felt playful in a context where students are under test pressure. |
 | No emoji, no gem crowns, no rainbow lane fills | They were decoration without information and made the race look generated. |
 | Legacy class re-pointing | Keeps every old screen on-palette today while new code moves to semantic tokens. |
+| Morph transitions kept, calmed | A button growing into its own screen tells the student where the screen came from. The spring was replaced by the calm curve, and reduced motion turns it off. |
+| One typeface in the admin too | The admin briefly used Geist. A second family for the same product split its voice; Plus Jakarta Sans covers both surfaces. |
+| Tutorial copy follows the real UI | A tutorial that names buttons the screen does not have is worse than none. Steps are written from the actual Quiz and Scheduled tabs. |
