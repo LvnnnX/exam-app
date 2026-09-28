@@ -85,6 +85,7 @@ export default function HorseAvatar({
 
   useEffect(() => {
     if (!src) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSvg(null);
       return;
     }
@@ -99,7 +100,7 @@ export default function HorseAvatar({
       if (!cancelled) setSvg(null);
     });
     return () => { cancelled = true; };
-  }, [src, mount, colors.jersey, colors.pants, colors.saddle]);
+  }, [src, mount, colors, colors.jersey, colors.pants, colors.saddle]);
 
   return (
     <div

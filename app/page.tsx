@@ -4,7 +4,11 @@ import React from 'react';
 import QuestionDisplay from '@/app/components/QuestionDisplay';
 import HelpTooltip from '@/app/components/exam/HelpTooltip';
 import MultiSelectDropdown from '@/app/components/exam/MultiSelectDropdown';
+import SingleSelectDropdown from '@/app/components/exam/SingleSelectDropdown';
+import NeumorphButton from '@/app/components/ui/neumorph-button';
 import JoinQuizModal from '@/app/components/exam/JoinQuizModal';
+import TutorialModal from '@/app/components/exam/TutorialModal';
+import ScheduledExamEntry from '@/app/components/exam/ScheduledExamEntry';
 import ConfirmIdentityStep from '@/app/components/exam/ConfirmIdentityStep';
 import RestoringSessionView from '@/app/components/exam/RestoringSessionView';
 import PreparingQuestionView from '@/app/components/exam/PreparingQuestionView';
@@ -19,9 +23,10 @@ import ResultsHeader from '@/app/components/exam/ResultsHeader';
 import ResultsRecapList from '@/app/components/exam/ResultsRecapList';
 import ResultsFooter from '@/app/components/exam/ResultsFooter';
 import AppFallbackView from '@/app/components/exam/AppFallbackView';
-import { QUESTION_COUNTS } from '@/lib/questions';
+import { QUESTION_COUNTS, getSessionQuestionViaRpc } from '@/lib/questions';
 import useExamPageController from '@/app/hooks/useExamPageController';
-import { TIME_LIMIT_OPTIONS } from '@/app/hooks/examControllerConstants';
+import { TIME_LIMIT_OPTIONS, STORAGE_KEYS } from '@/app/hooks/examControllerConstants';
+import { secureLoad, secureSave } from '@/lib/security';
 
 export default function ExamPage() {
   const {
@@ -31,6 +36,71 @@ export default function ExamPage() {
     actions,
   } = useExamPageController();
 
+  const [isTutorialOpen, setIsTutorialOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!state.isRestored) {
+      return;
+    }
+    const seen = secureLoad<boolean>(STORAGE_KEYS.TUTORIAL_SEEN);
+    if (!seen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsTutorialOpen(true);
+    }
+  }, [state.isRestored]);
+
+  const closeTutorial = React.useCallback(() => {
+    setIsTutorialOpen(false);
+    secureSave(STORAGE_KEYS.TUTORIAL_SEEN, true);
+  }, []);
+
+  const [isScheduledModalOpen, setIsScheduledModalOpen] = React.useState(false);
+
+  // When a scheduled exam session starts, initialize exam runtime and jump to step 3
+  const handleScheduledExamStarted = React.useCallback(async (
+    sessionId: string,
+    questionCount: number,
+    expiresAt: string,
+    navMode: string,
+    scheduledExamTitle: string,
+    scheduledMapels: string[],
+    scheduledBabs: string[],
+    scheduledSubBabs: string[],
+    scheduledTimeLimitMinutes: number,
+    studentName: string,
+  ) => {
+    setIsScheduledModalOpen(false);
+    setters.setUserName(studentName);
+    setters.setSessionId(sessionId);
+    setters.setTotalQuestions(questionCount);
+    setters.setAnswers(Array(questionCount).fill(null));
+    setters.setDoubtFlags(Array(questionCount).fill(false));
+    setters.setCurrent(0);
+    setters.setExpiresAt(expiresAt);
+    setters.setStartTime(Number(new Date()));
+    setters.setGameMode('exam');
+    setters.setExamMode((navMode === 'standard' ? 'standard' : 'strict') as 'strict' | 'standard');
+    setters.setIsScheduledExam(true);
+    setters.setScheduledExamTitle(scheduledExamTitle);
+    setters.setScheduledTimeLimitMinutes(scheduledTimeLimitMinutes);
+    setters.setMapels(scheduledMapels);
+    setters.setBabs(scheduledBabs);
+    setters.setSubBabs(scheduledSubBabs);
+    // Seed available lookup arrays so mapelsLabel/babsLabel/subBabsLabel resolve immediately
+    // (useExamDerivedValues needs available* to map slugs → display labels)
+    setters.setAvailableMapels(scheduledMapels.map(m => ({ value: m, label: m })));
+    setters.setAvailableBabs(scheduledBabs.map(b => ({ value: b, label: b })));
+    setters.setAvailableSubBabs(scheduledSubBabs.map(s => ({ value: s, label: s })));
+    setters.setTimeLimit(scheduledTimeLimitMinutes);
+    setters.setStep(3);
+    try {
+      const firstQ = await getSessionQuestionViaRpc(sessionId, 0);
+      setters.setCurrentQuestion(firstQ);
+    } catch {
+      setters.setCurrentQuestion(null);
+    }
+  }, [setters]);
+
   if (!state.isRestored) {
     return <RestoringSessionView />;
   }
@@ -38,6 +108,7 @@ export default function ExamPage() {
   if (state.step === 1) {
     const segmentBase = 'flex-1 h-11 rounded-lg text-[14px] font-semibold transition-calm';
     const segmentIdle = 'text-fg-muted hover:text-fg';
+    const fieldLabel = 'flex items-center text-[13px] font-medium text-fg-muted';
     return (
       <div className="flex-1 flex flex-col px-4 pt-8 pb-12 sm:px-6 md:pt-14">
         <div className="mx-auto w-full max-w-xl">
@@ -47,10 +118,20 @@ export default function ExamPage() {
               Take the exam.
             </h1>
             <p className="text-[15px] text-fg-muted">Pick your mode, your topic, and start whenever you’re ready.</p>
+            <button
+              type="button"
+              onClick={() => setIsTutorialOpen(true)}
+              className="well well-hover mt-4 inline-flex h-11 items-center gap-2 rounded-xl px-4 text-[14px] font-medium text-fg transition-calm"
+            >
+              <svg className="h-4 w-4 shrink-0 text-fg-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+              </svg>
+              Lihat tutorial
+            </button>
           </div>
           <div className="glass w-full space-y-5 rounded-3xl p-5 md:p-6">
             <div className="space-y-2">
-              <span className="flex items-center text-[13px] font-medium text-fg-muted">
+              <span className={fieldLabel}>
                 Mode
                 <HelpTooltip text="Pilih mode ujian: Exam (biasa) atau Survival (nyawa terbatas)." />
               </span>
@@ -72,18 +153,34 @@ export default function ExamPage() {
                   Survival
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setters.setIsJoinModalOpen(true)}
-                className="well well-hover flex h-11 w-full items-center justify-center rounded-xl text-[14px] font-medium text-fg transition-calm"
-              >
-                Join with code
-              </button>
+              {/* These two grow into their dialogs (shared layoutId with JoinQuizModal / ScheduledExamEntry). */}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <NeumorphButton
+                  type="button"
+                  size="medium"
+                  intent="secondary"
+                  fullWidth
+                  layoutId="join-quiz-expandable"
+                  onClick={() => setters.setIsJoinModalOpen(true)}
+                >
+                  Join with code
+                </NeumorphButton>
+                <NeumorphButton
+                  type="button"
+                  size="medium"
+                  intent="secondary"
+                  fullWidth
+                  layoutId="scheduled-exam-expandable"
+                  onClick={() => setIsScheduledModalOpen(true)}
+                >
+                  Ujian terjadwal
+                </NeumorphButton>
+              </div>
             </div>
 
             {!state.isSurvival && (
               <div className="space-y-2">
-                <span className="flex items-center text-[13px] font-medium text-fg-muted">
+                <span className={fieldLabel}>
                   Navigation
                   <HelpTooltip text="Strict: Soal berurutan, tidak bisa kembali. Standard: Bebas navigasi dan bisa menandai ragu-ragu." />
                 </span>
@@ -112,7 +209,7 @@ export default function ExamPage() {
             )}
 
             <div className="space-y-2">
-              <label htmlFor="exam-user-name" className="flex items-center text-[13px] font-medium text-fg-muted">
+              <label htmlFor="exam-user-name" className={fieldLabel}>
                 Your name
                 <HelpTooltip text="Nama yang akan ditampilkan pada papan skor (leaderboard)." />
               </label>
@@ -120,15 +217,17 @@ export default function ExamPage() {
                 id="exam-user-name"
                 type="text"
                 value={state.userName}
-                onChange={(e) => setters.setUserName(e.target.value)}
+                maxLength={16}
+                onChange={(e) => setters.setUserName(e.target.value.slice(0, 16))}
                 placeholder="Enter name"
                 className="well h-11 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
               />
+              <p className="text-right text-[12px] tabular-nums text-fg-subtle">{state.userName.length}/16</p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div className="space-y-2">
-                <span className="flex items-center text-[13px] font-medium text-fg-muted">
+                <span className={fieldLabel}>
                   Mapel
                   <HelpTooltip text="Mata pelajaran yang ingin diujikan." />
                 </span>
@@ -142,7 +241,7 @@ export default function ExamPage() {
               </div>
 
               <div className="space-y-2">
-                <span className="flex items-center text-[13px] font-medium text-fg-muted">
+                <span className={fieldLabel}>
                   Bab
                   <HelpTooltip text="Bab materi yang ingin diujikan." />
                 </span>
@@ -157,7 +256,7 @@ export default function ExamPage() {
               </div>
 
               <div className="space-y-2">
-                <span className="flex items-center text-[13px] font-medium text-fg-muted">
+                <span className={fieldLabel}>
                   Sub-bab
                   <HelpTooltip text="Sub-bab materi yang ingin diujikan." />
                 </span>
@@ -172,68 +271,39 @@ export default function ExamPage() {
               </div>
             </div>
 
-            <div className={`grid gap-3 ${state.isSurvival ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label htmlFor="exam-time-limit" className="flex items-center text-[13px] font-medium text-fg-muted">
+                <span className={fieldLabel}>
                   Time limit
                   <HelpTooltip text="Batas waktu maksimal untuk menyelesaikan seluruh soal." />
-                </label>
-                <div className="relative">
-                  <select
-                    id="exam-time-limit"
-                    value={state.timeLimit}
-                    onChange={(e) => setters.setTimeLimit(Number(e.target.value))}
-                    className="well well-hover h-11 w-full cursor-pointer appearance-none rounded-xl pl-4 pr-10 text-[14px] font-medium text-fg transition-calm"
-                  >
-                    {TIME_LIMIT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  <svg
-                    className="pointer-events-none absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                </span>
+                <SingleSelectDropdown
+                  options={TIME_LIMIT_OPTIONS}
+                  value={state.timeLimit}
+                  onChange={setters.setTimeLimit}
+                  placeholder="Choose time limit"
+                />
               </div>
 
-              {!state.isSurvival && (
-                <div className="space-y-2">
-                  <label htmlFor="exam-question-count" className="flex items-center text-[13px] font-medium text-fg-muted">
-                    Question count
-                    <HelpTooltip text="Jumlah soal yang ingin dikerjakan." />
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="exam-question-count"
-                      value={state.questionCount}
-                      onChange={(e) => setters.setQuestionCount(Number(e.target.value) as typeof state.questionCount)}
-                      className="well well-hover h-11 w-full cursor-pointer appearance-none rounded-xl pl-4 pr-10 text-[14px] font-medium tabular-nums text-fg transition-calm"
-                    >
-                      {QUESTION_COUNTS.map((count) => (
-                        <option key={count} value={count}>{count} questions</option>
-                      ))}
-                    </select>
-                    <svg
-                      className="pointer-events-none absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2">
+                <span className={fieldLabel}>
+                  Question count
+                  <HelpTooltip text="Jumlah soal yang ingin dikerjakan." />
+                </span>
+                <SingleSelectDropdown
+                  options={QUESTION_COUNTS.map((count) => ({ value: count, label: `${count} questions` }))}
+                  value={state.questionCount}
+                  onChange={setters.setQuestionCount}
+                  placeholder="Choose question count"
+                />
+              </div>
             </div>
 
-            <button
+            <NeumorphButton
               type="button"
+              size="large"
+              intent="primary"
+              fullWidth
               onClick={() => setters.setStep(2)}
               disabled={
                 !state.userName.trim() ||
@@ -241,10 +311,9 @@ export default function ExamPage() {
                 state.babs.length === 0 ||
                 state.subBabs.length === 0
               }
-              className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold"
             >
               Begin session
-            </button>
+            </NeumorphButton>
           </div>
 
           <JoinQuizModal
@@ -257,6 +326,19 @@ export default function ExamPage() {
             onCodeChange={actions.handleQuizCodeChange}
             onJoin={actions.handleJoinQuiz}
             onClose={actions.closeJoinModal}
+          />
+
+          <TutorialModal
+            isOpen={isTutorialOpen}
+            onClose={closeTutorial}
+          />
+
+          <ScheduledExamEntry
+            isOpen={isScheduledModalOpen}
+            onExamStarted={(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes, studentName) => {
+              void handleScheduledExamStarted(sessionId, questionCount, expiresAt, navMode, scheduledExamTitle, scheduledMapels, scheduledBabs, scheduledSubBabs, scheduledTimeLimitMinutes, studentName);
+            }}
+            onClose={() => setIsScheduledModalOpen(false)}
           />
 
         </div>
@@ -305,6 +387,9 @@ export default function ExamPage() {
             timeLeftDisplay={state.timeLeftDisplay}
             hasAnswerSelected={state.hasAnswerSelected}
             onOpenNavPopup={() => setters.setShowNavPopup(true)}
+            isScheduledExam={state.isScheduledExam}
+            scheduledExamTitle={state.scheduledExamTitle}
+            scheduledTimeLimitMinutes={state.scheduledTimeLimitMinutes}
           />
 
           <QuestionDisplay
@@ -408,6 +493,8 @@ export default function ExamPage() {
             babsLabel={state.babsLabel}
             subBabsLabel={state.subBabsLabel}
             saved={state.saved}
+            isScheduledExam={state.isScheduledExam}
+            scheduledExamTitle={state.scheduledExamTitle}
           />
 
           <ResultsRecapList recapData={state.recapData} />

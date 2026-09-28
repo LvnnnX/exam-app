@@ -2,7 +2,6 @@
 
 import { requireAdmin, requireAuthenticatedUser, requireSuperAdmin } from '@/lib/admin-server';
 import {
-  ADMIN_PERMISSIONS,
   type AdminPermissionMap,
   type AdminProfile,
   type AdminRole,
@@ -254,10 +253,6 @@ export async function deleteAdminProfileAction(accessToken: string, userId: stri
 
   const { error } = await supabase.from('admin_profiles').delete().eq('user_id', userId);
   if (error) throw new Error(error.message);
-}
-
-export async function getAdminPermissionKeysAction(): Promise<string[]> {
-  return [...ADMIN_PERMISSIONS];
 }
 
 export async function createAdminSignupRequestAction(accessToken: string, requestedRole: SignupRole, usernameInput: string): Promise<void> {

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-type AdminTab = 'questions' | 'results' | 'analytics' | 'settings' | 'quiz' | 'access';
-const ADMIN_TABS: AdminTab[] = ['questions', 'results', 'analytics', 'settings', 'quiz', 'access'];
+type AdminTab = 'questions' | 'results' | 'analytics' | 'settings' | 'quiz' | 'scheduled' | 'access';
+const ADMIN_TABS: AdminTab[] = ['questions', 'results', 'analytics', 'settings', 'quiz', 'scheduled', 'access'];
 
 function isAdminTab(value: string): value is AdminTab {
   return ADMIN_TABS.includes(value as AdminTab);
@@ -86,6 +86,10 @@ export default function useAdminTabState({
       await fns.loadAllBabsAdmin();
       await fns.loadAllSubBabsAdmin();
       await fns.loadVisibilitySettings();
+      return;
+    }
+
+    if (tab === 'scheduled') {
       return;
     }
 

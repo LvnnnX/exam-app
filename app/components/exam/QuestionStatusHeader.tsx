@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { motion } from 'framer-motion';
 
 type QuestionStatusHeaderProps = {
   isSurvival: boolean;
@@ -17,6 +18,9 @@ type QuestionStatusHeaderProps = {
   timeLeftDisplay: string;
   hasAnswerSelected: boolean;
   onOpenNavPopup: () => void;
+  isScheduledExam?: boolean;
+  scheduledExamTitle?: string;
+  scheduledTimeLimitMinutes?: number;
 };
 
 function splitLabel(joined: string): string[] {
@@ -60,11 +64,25 @@ export default function QuestionStatusHeader({
   timeLeftDisplay,
   hasAnswerSelected,
   onOpenNavPopup,
+  isScheduledExam,
+  scheduledExamTitle,
+  scheduledTimeLimitMinutes,
 }: QuestionStatusHeaderProps) {
   const mapelItems = splitLabel(mapelsLabel);
   const babItems = splitLabel(babsLabel);
   const subItems = splitLabel(subBabsLabel);
   const lowTime = isLowTime(timeLeftDisplay);
+
+  // Format duration for scheduled exam
+  const scheduledDurationLabel = scheduledTimeLimitMinutes && scheduledTimeLimitMinutes > 0
+    ? scheduledTimeLimitMinutes < 60
+      ? `${scheduledTimeLimitMinutes} menit`
+      : (() => {
+          const h = Math.floor(scheduledTimeLimitMinutes / 60);
+          const m = scheduledTimeLimitMinutes % 60;
+          return m > 0 ? `${h} jam ${m} menit` : `${h} jam`;
+        })()
+    : null;
 
   return (
     <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -73,11 +91,22 @@ export default function QuestionStatusHeader({
           <span className="break-words text-[17px] font-bold tracking-tight text-fg">
             {userName}
           </span>
-          <span className={`inline-flex h-6 items-center rounded-lg px-2.5 text-[12px] font-semibold ${
-            isSurvival ? 'bg-danger/12 text-danger' : 'well text-fg-muted'
-          }`}>
-            {isSurvival ? 'Survival' : 'Exam'}
-          </span>
+          {isScheduledExam && scheduledExamTitle ? (
+            <>
+              <span className="well inline-flex h-6 items-center rounded-lg px-2.5 text-[12px] font-semibold text-fg-muted">
+                Scheduled exam
+              </span>
+              <span className="max-w-[200px] truncate text-[13px] font-medium text-fg-muted sm:max-w-none">
+                {scheduledExamTitle}
+              </span>
+            </>
+          ) : (
+            <span className={`inline-flex h-6 items-center rounded-lg px-2.5 text-[12px] font-semibold ${
+              isSurvival ? 'bg-danger/12 text-danger' : 'well text-fg-muted'
+            }`}>
+              {isSurvival ? 'Survival' : 'Exam'}
+            </span>
+          )}
         </div>
         <div className="flex min-w-0 flex-wrap items-baseline gap-1.5 text-[12px] font-medium text-fg-muted">
           <TopicSegment items={mapelItems} />
@@ -85,6 +114,12 @@ export default function QuestionStatusHeader({
           <TopicSegment items={babItems} />
           <span className="text-fg-subtle" aria-hidden="true">·</span>
           <TopicSegment items={subItems} />
+          {isScheduledExam && scheduledDurationLabel && (
+            <>
+              <span className="text-fg-subtle" aria-hidden="true">·</span>
+              <span>{scheduledDurationLabel}</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -100,8 +135,10 @@ export default function QuestionStatusHeader({
         )}
 
         {isStandard && (
-          <button
+          // Shares its layoutId with QuestionNavPopup, so the grid grows out of this chip.
+          <motion.button
             type="button"
+            layoutId="question-nav-expandable"
             onClick={onOpenNavPopup}
             className="well well-hover flex h-11 items-center justify-center gap-2 rounded-xl px-3.5 text-fg transition-calm"
             aria-label="Daftar soal"
@@ -110,7 +147,7 @@ export default function QuestionStatusHeader({
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
             <span className="hidden text-[13px] font-semibold sm:block">Daftar soal</span>
-          </button>
+          </motion.button>
         )}
 
         {hasAnswerSelected ? (

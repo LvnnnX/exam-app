@@ -2,7 +2,6 @@
 
 import { hasPermission, requireAdmin, requirePermission } from '@/lib/admin-server';
 import { QUIZ_CODE_LENGTH, type KuisLog, type KuisStatus } from '@/lib/quiz';
-import { isSafeCategorySlug, normalizeCategorySlug } from '@/lib/categories';
 
 const QUIZ_CODE_ALPHABET = '0123456789';
 
@@ -39,7 +38,7 @@ function asList(value: string | string[]): string[] {
   return Array.isArray(value) ? value : [value];
 }
 
-function normalizeQuizCategoryList(value: string | string[], allLabel: string): string[] {
+function normalizeQuizCategoryList(value: string | string[], _allLabel: string): string[] {
   return asList(value)
     .map((item) => String(item).trim())
     .filter(Boolean)
@@ -165,7 +164,6 @@ async function buildQuestionIds(supabase: Awaited<ReturnType<typeof requirePermi
 }
 
 export async function createQuizSessionAction(accessToken: string, input: CreateQuizSessionInput): Promise<KuisLog | null> {
-  console.log('[DEBUG] RAW INPUT received by server action:', JSON.stringify(input, null, 2));
   assertQuizInput(input);
   const safeInput: CreateQuizSessionInput = {
     ...input,

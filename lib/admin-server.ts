@@ -23,6 +23,10 @@ export type AdminContext = {
   admin: AdminProfile;
 };
 
+export type ScopedAdminContext = AdminContext & {
+  scope: 'any' | 'own';
+};
+
 function getAdminEmail() {
   return process.env.ADMIN_EMAIL?.trim().toLowerCase() || '';
 }
@@ -111,6 +115,16 @@ export async function requirePermission(accessToken: string, permission: AdminPe
   const context = await requireAdmin(accessToken);
   if (!hasPermission(context.admin, permission)) throw new Error('Forbidden');
   return context;
+}
+
+export async function requirePermissionAnyOf(accessToken: string, permissions: AdminPermission[]): Promise<ScopedAdminContext> {
+  const context = await requireAdmin(accessToken);
+  for (const permission of permissions) {
+    if (hasPermission(context.admin, permission)) {
+      return { ...context, scope: permission.endsWith(':any') ? 'any' : 'own' };
+    }
+  }
+  throw new Error('Forbidden');
 }
 
 export async function requireSuperAdmin(accessToken: string): Promise<AdminContext> {

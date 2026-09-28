@@ -2,12 +2,23 @@
 export function normalizeCategorySlug(value: string): string {
   const str = String(value ?? '').trim();
   if (!str) return '';
-  
+
   return str
     .toLowerCase()
-    .replace(/\s+/g, '_')
+    // Expand "&" to "dan" so "Kurs & Inflasi" stays meaningful as "kurs_dan_inflasi"
+    // instead of silently merging into "kurs_inflasi".
+    .replace(/&/g, ' dan ')
+    // Any character that is not a-z, 0-9 becomes a separator. This folds spaces,
+    // parentheses, slashes, hyphens, dots, and other punctuation into underscores
+    // so labels like "Teori Perilaku Konsumen (Utilitas Marginal)" or
+    // "Kebijakan Kurs (Revaluasi/Devaluasi)" produce a clean slug.
+    .replace(/[^a-z0-9]+/g, '_')
     .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '');
+    .replace(/^_+|_+$/g, '')
+    // Hard cap to match isSafeCategorySlug's 80-char ceiling. Trim a trailing
+    // underscore if the cut lands on one.
+    .slice(0, 80)
+    .replace(/_+$/g, '');
 }
 
 export function categorySlugToLabel(slug: string): string {

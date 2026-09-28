@@ -6,6 +6,8 @@ import { getHorseSkin } from '@/lib/horse-skins';
 import HorseAvatar from '@/app/components/HorseAvatar';
 import CrownIcon from '@/app/components/CrownIcon';
 import confetti from 'canvas-confetti';
+import { AnimatePresence, motion } from 'framer-motion';
+import { scrimMotion, sheetMotion } from '@/app/components/ui/motion-presets';
 
 type LeaderboardViewModalProps = {
   open: boolean;
@@ -286,22 +288,24 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, scoreFingerprint]);
 
-  if (!open || !session) return null;
-
-  const isPaused = session.status === 'paused';
+  const isPaused = session?.status === 'paused';
   const isLowTime = !isPaused && timeRemaining < 60000;
 
   return (
-    <div
+    <AnimatePresence>
+      {open && session && (
+    <motion.div
+      {...scrimMotion}
       data-theme={theme}
       className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4"
       onClick={onClose}
     >
-      <div
+      <motion.div
+        {...sheetMotion}
         role="dialog"
         aria-modal="true"
         aria-labelledby="race-view-title"
-        className="glass-sheet animate-in flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-4xl text-fg"
+        className="glass-sheet flex max-h-[96vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-4xl text-fg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -463,7 +467,9 @@ export default function LeaderboardViewModal({ open, session, players, onClose, 
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

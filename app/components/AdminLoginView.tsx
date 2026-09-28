@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useAdminTheme } from '@/app/hooks/useAdminTheme';
+import Link from 'next/link';
+import type { AdminTheme } from '@/app/hooks/useAdminTheme';
 
 type AdminLoginViewProps = {
   email: string;
@@ -11,6 +12,8 @@ type AdminLoginViewProps = {
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onSubmit: (event: React.FormEvent) => void;
+  theme: AdminTheme;
+  onToggleTheme: () => void;
 };
 
 export default function AdminLoginView({
@@ -21,22 +24,23 @@ export default function AdminLoginView({
   onEmailChange,
   onPasswordChange,
   onSubmit,
+  theme,
+  onToggleTheme,
 }: AdminLoginViewProps) {
-  const { theme, toggleTheme } = useAdminTheme();
   const isDark = theme === 'dark';
   const [showPassword, setShowPassword] = useState(false);
 
   const inputClass = 'well h-12 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm';
   const labelClass = 'mb-2 ml-0.5 block text-[13px] font-medium text-fg-muted';
-  const secondaryBtn = 'well well-hover h-11 rounded-xl text-[13px] font-medium text-fg transition-calm';
+  const secondaryBtn = 'well well-hover flex h-11 items-center justify-center rounded-xl text-[13px] font-medium text-fg transition-calm';
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+    <div data-theme={theme} className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-3 flex justify-end">
           <button
             type="button"
-            onClick={toggleTheme}
+            onClick={onToggleTheme}
             aria-label={isDark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'}
             className="well well-hover inline-flex h-11 items-center gap-2 rounded-xl px-4 text-[13px] font-medium text-fg transition-calm"
           >
@@ -80,7 +84,7 @@ export default function AdminLoginView({
               Admin login.
             </h1>
             <p className="mt-2 text-[14px] font-medium text-fg-muted">
-              Masuk untuk mengelola dashboard.
+              Masuk untuk mengelola dashboard ujian dan kuis.
             </p>
           </div>
 
@@ -113,7 +117,7 @@ export default function AdminLoginView({
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
                   className="well-hover absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-fg-muted transition-calm hover:text-fg"
                 >
                   {showPassword ? (
@@ -143,33 +147,24 @@ export default function AdminLoginView({
             )}
 
             <button type="submit" disabled={authLoading} className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold">
-              {authLoading ? 'Memverifikasi...' : 'Masuk ke dashboard'}
+              {authLoading ? 'Memverifikasi…' : 'Masuk'}
             </button>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => (window.location.href = '/admin/forgot-password')}
-                className={secondaryBtn}
-              >
+              <Link href="/admin/forgot-password" className={secondaryBtn}>
                 Lupa password
-              </button>
-              <button
-                type="button"
-                onClick={() => (window.location.href = '/admin/signup')}
-                className={secondaryBtn}
-              >
+              </Link>
+              <Link href="/admin/signup" className={secondaryBtn}>
                 Minta akses
-              </button>
+              </Link>
             </div>
 
-            <button
-              type="button"
-              onClick={() => (window.location.href = '/')}
-              className="well-hover h-11 w-full rounded-xl text-[13px] font-medium text-fg-muted transition-calm hover:text-fg"
+            <Link
+              href="/"
+              className="well-hover flex h-11 w-full items-center justify-center rounded-xl text-[13px] font-medium text-fg-muted transition-calm hover:text-fg"
             >
               Kembali ke beranda
-            </button>
+            </Link>
           </form>
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { secureSave } from '@/lib/security';
 import { formatHMS } from '@/lib/quiz';
 import RichContent from '@/app/components/RichContent';
@@ -357,14 +358,16 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                 <p className="text-[12px] font-medium text-fg-muted">Pemain</p>
                 <p className="truncate text-[16px] font-bold text-fg">{player?.name || 'Tamu'}</p>
               </div>
-              <button
+              {/* Morphs into EditHorseModal (shared layoutId). */}
+              <motion.button
                 type="button"
+                layoutId="edit-horse-expandable"
                 onClick={() => setIsEditHorseModalOpen(true)}
                 disabled={changingHorseSkin || !player}
                 className="well well-hover h-11 shrink-0 rounded-xl px-4 text-[14px] font-medium text-fg transition-calm disabled:opacity-50"
               >
                 {changingHorseSkin ? 'Tunggu…' : 'Ubah'}
-              </button>
+              </motion.button>
             </div>
 
             <div className="well rounded-2xl px-3.5 py-3">
@@ -477,8 +480,9 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             )}
 
             {isStandard && (
-              <button
+              <motion.button
                 type="button"
+                layoutId="quiz-question-nav-expandable"
                 onClick={() => setShowNavPopup(true)}
                 className="well well-hover flex h-11 items-center justify-center gap-2 rounded-xl px-3.5 text-fg transition-calm"
                 aria-label="Daftar soal"
@@ -487,7 +491,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 <span className="hidden text-[13px] font-semibold sm:block">Daftar soal</span>
-              </button>
+              </motion.button>
             )}
 
             {hasAnswer ? (
@@ -642,11 +646,12 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
             className="glass-scrim fixed inset-0 z-[100] flex items-center justify-center p-4"
             onClick={() => setShowNavPopup(false)}
           >
-            <div
+            <motion.div
+              layoutId="quiz-question-nav-expandable"
               role="dialog"
               aria-modal="true"
               aria-labelledby="quiz-nav-title"
-              className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl"
+              className="glass-sheet w-full max-w-md overflow-hidden rounded-4xl"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="border-b border-line px-5 pt-4 pb-4">
@@ -687,7 +692,7 @@ export default function QuizSessionPage({ params }: { params: Promise<{ code: st
                   })}
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
       </div>

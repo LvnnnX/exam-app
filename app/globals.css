@@ -381,6 +381,34 @@ html {
   --color-accent-orange: var(--warn);
   --color-accent-purple: var(--fg-muted);
 
+  /* Names added by the June iOS-refresh token pass, locked to the palette so
+     any markup that still uses them stays on Ink / Pine / Amber / Brick. */
+  --color-nike-black-hover: var(--color-ink-700);
+  --color-accent-blue-soft: var(--color-pine-50);
+  --color-accent-green-soft: var(--color-pine-50);
+  --color-accent-purple-soft: var(--color-ink-50);
+  --color-accent-orange-soft: var(--color-amber-50);
+  --color-accent-blue-soft-ink: var(--color-pine-700);
+  --color-accent-green-soft-ink: var(--color-pine-700);
+  --color-accent-purple-soft-ink: var(--color-ink-700);
+  --color-accent-orange-soft-ink: var(--color-amber-700);
+  --color-bg-app: var(--canvas);
+  --color-bg-card: var(--glass-bg-strong);
+  --color-link-blue: var(--primary);
+  --color-surface-grey-100: var(--color-ink-100);
+  --color-surface-grey-150: var(--color-ink-50);
+  --color-surface-grey-200: var(--color-ink-100);
+  --color-surface-mint-edge: var(--color-ink-200);
+  --color-dark-olive-900: var(--color-ink-900);
+  --color-surface-cream: var(--color-ink-50);
+  --color-status-green: var(--color-pine-500);
+  --color-grey-mid: var(--color-ink-400);
+  --color-status-red-warm: var(--color-brick-500);
+  --color-dark-950: var(--color-ink-950);
+  --color-pink-soft: var(--color-brick-50);
+  --color-pink-edge: var(--color-brick-100);
+  --color-mint-soft: var(--color-pine-50);
+
   --font-sans: var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-display: var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }

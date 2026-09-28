@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ArrowLeft, Library, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, Download, Library, Plus, RefreshCw, Search, Upload, X } from 'lucide-react';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
+import type { QuestionFilters } from '@/app/actions/admin/questions';
+import { scrimMotion, sheetMotion } from '@/app/components/ui/motion-presets';
 import { type RawQuestion } from '@/lib/questions';
 import { stripHtml } from '@/lib/rich-text';
 import { normalizeCategorySlug } from '@/lib/categories';
@@ -124,6 +127,7 @@ type QuestionsTabPanelProps = {
   onToggleQuestionSelect: (questionId: number, checked: boolean) => void;
   onOpenBatchHideConfirm: () => void;
   onOpenBatchVisibleConfirm: () => void;
+  onOpenBatchDeleteConfirm: () => void;
   onViewQuestion: (question: RawQuestion) => void;
   onEditQuestion: (question: RawQuestion) => void;
   onDeleteQuestion: (question: RawQuestion) => void;
@@ -137,7 +141,11 @@ type QuestionsTabPanelProps = {
   onToggleQuestionVisibility: (question: RawQuestion) => void | Promise<void>;
   paginationMeta: { total: number; totalPages: number } | null;
   mapelCounts: Array<{ mapel: string; count: number }>;
-  fetchQuestionsPaginated: (filters: any, page: number, pageSize: number) => Promise<void>;
+  onExport?: () => void;
+  exporting?: boolean;
+  onImport?: () => void;
+  importing?: boolean;
+  fetchQuestionsPaginated: (filters: QuestionFilters, page: number, pageSize: number) => Promise<void>;
   fetchMapelCounts: () => Promise<void>;
   theme?: 'light' | 'dark';
 };
@@ -172,6 +180,7 @@ export default function QuestionsTabPanel({
   onToggleQuestionSelect,
   onOpenBatchHideConfirm,
   onOpenBatchVisibleConfirm,
+  onOpenBatchDeleteConfirm,
   onViewQuestion,
   onEditQuestion,
   onDeleteQuestion,
@@ -185,6 +194,10 @@ export default function QuestionsTabPanel({
   onToggleQuestionVisibility,
   paginationMeta,
   mapelCounts,
+  onExport,
+  exporting,
+  onImport,
+  importing,
   fetchQuestionsPaginated,
   fetchMapelCounts,
   theme = 'dark',
@@ -303,6 +316,18 @@ export default function QuestionsTabPanel({
               <button type="button" onClick={onRefreshQuestions} className={secondaryButton}>
                 <RefreshCw size={15} className="text-fg-subtle" />
                 Refresh
+              </button>
+            )}
+            {currentView === 'filtered' && onExport && (
+              <button type="button" onClick={onExport} disabled={exporting} className={secondaryButton}>
+                {exporting ? <span className="spinner-calm h-3.5 w-3.5" aria-hidden="true" /> : <Download size={15} className="text-fg-subtle" />}
+                {exporting ? 'Exporting…' : 'Export Excel'}
+              </button>
+            )}
+            {currentView === 'filtered' && onImport && (
+              <button type="button" onClick={onImport} disabled={importing} className={secondaryButton}>
+                {importing ? <span className="spinner-calm h-3.5 w-3.5" aria-hidden="true" /> : <Upload size={15} className="text-fg-subtle" />}
+                {importing ? 'Importing…' : 'Import Excel'}
               </button>
             )}
             {currentView === 'filtered' && canCreateQuestion && (
@@ -454,7 +479,7 @@ export default function QuestionsTabPanel({
                   type="button"
                   onClick={onOpenBatchHideConfirm}
                   disabled={batchProcessing}
-                  className="h-11 whitespace-nowrap rounded-xl bg-danger/10 px-4 text-[13px] font-semibold text-danger transition-calm hover:bg-danger/15 disabled:opacity-50"
+                  className={`${secondaryButton} whitespace-nowrap font-semibold`}
                   title="Hide selected"
                 >
                   Hide {selectedAccessibleCount}
@@ -467,6 +492,15 @@ export default function QuestionsTabPanel({
                   title="Show selected"
                 >
                   Show {selectedAccessibleCount}
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenBatchDeleteConfirm}
+                  disabled={batchProcessing}
+                  className="h-11 whitespace-nowrap rounded-xl bg-danger/10 px-4 text-[13px] font-semibold text-danger transition-calm hover:bg-danger/15 disabled:opacity-50"
+                  title="Delete selected"
+                >
+                  Delete {selectedAccessibleCount}
                 </button>
               </>
             )}
@@ -764,13 +798,16 @@ export default function QuestionsTabPanel({
       </div>
 
       {/* Create MAPEL Modal */}
+      <AnimatePresence>
       {isCreateMapelModalOpen && (
-        <div className="glass-scrim fixed inset-0 z-[100000] flex items-center justify-center p-4" onClick={() => setIsCreateMapelModalOpen(false)}>
-          <div
+        <motion.div {...scrimMotion} key="create-mapel-overlay" className="glass-scrim fixed inset-0 z-[100000] flex items-center justify-center p-4" onClick={() => setIsCreateMapelModalOpen(false)}>
+          <motion.div
+            {...sheetMotion}
+            key="create-mapel-panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-mapel-title"
-            className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl"
+            className="glass-sheet w-full max-w-md overflow-hidden rounded-4xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-line px-5 py-4 sm:px-6">
@@ -858,9 +895,10 @@ export default function QuestionsTabPanel({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Confirm Redirect Modal */}
       {isConfirmRedirectModalOpen && existingMapelInfo && (

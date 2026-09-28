@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { RefreshCw, X } from 'lucide-react';
 import RichContent from '@/app/components/RichContent';
 import AnalyticsHeroStats from '@/app/components/admin/AnalyticsHeroStats';
@@ -8,8 +9,10 @@ import AnalyticsInsights from '@/app/components/admin/AnalyticsInsights';
 import StudentWeaknessPanel from '@/app/components/admin/StudentWeaknessPanel';
 import RemedialQuizBuilder from '@/app/components/admin/RemedialQuizBuilder';
 import RemedialQuizSuccessModal from '@/app/components/admin/RemedialQuizSuccessModal';
+import { buildRemedialQuestionPool } from '@/app/lib/remedialQuizSelection';
+import { scrimMotion, sheetMotion } from '@/app/components/ui/motion-presets';
 
-type AnalyticsSource = 'exam' | 'quiz';
+type AnalyticsSource = 'exam' | 'quiz' | 'scheduled';
 type AnalyticsDateRange = { start: string; end: string };
 type AnalyticsSummary = { attempts: number; avgScore: number; passRate: number; avgDurationSeconds: number | null };
 type TopicStat = { key: string; mapel: string; bab: string; subBab: string; attempts: number; answered: number; correct: number; accuracy: number; wrongRate: number };
@@ -27,6 +30,7 @@ type QuestionData = {
   mapels: string[];
   babs: string[];
   sub_babs: string[];
+  is_hidden?: boolean;
 };
 type QuestionStat = { questionId: number; attempts: number; incorrect: number; correct: number; wrongRate: number; question?: QuestionData };
 type TrendPoint = { key: string; label: string; attempts: number; avgScore: number };
@@ -61,25 +65,24 @@ type AnalyticsTabPanelProps = {
   analyticsError: string | null;
   analyticsSource: AnalyticsSource;
   dateRange: AnalyticsDateRange;
-  activeParticipantKey: string;
+  activeParticipantKeys: string[];
   activeQuizSessionKeys: string[];
   formatCategorySelectionLabel: (value?: string | null) => string;
   onRefresh: () => void;
   onSourceChange: (source: AnalyticsSource) => void;
   onDateRangeChange: (range: AnalyticsDateRange) => void;
-  onParticipantChange: (participantKey: string) => void;
+  onParticipantsChange: (participantKeys: string[]) => void;
   onQuizSessionsChange: (sessionKeys: string[]) => void;
   onNavigateToQuiz: (code: string) => void;
-  onCreateRemedialQuiz: (questionIds: number[]) => Promise<{ quiz_code: string; question_count: number }>;
+  onCreateRemedialQuiz: (questionIds: number[], options: { quizMode: 'strict' | 'standard'; duration: number }) => Promise<{ quiz_code: string; question_count: number }>;
   theme?: 'light' | 'dark';
 };
 
-function formatDuration(seconds: number | null) {
-  if (seconds == null) return '-';
-  const minutes = Math.floor(seconds / 60);
-  const remainder = Math.round(seconds % 60);
-  return minutes > 0 ? `${minutes}m ${remainder}s` : `${remainder}s`;
-}
+const SOURCES: { value: AnalyticsSource; label: string }[] = [
+  { value: 'exam', label: 'Exam' },
+  { value: 'quiz', label: 'Quiz' },
+  { value: 'scheduled', label: 'Scheduled' },
+];
 
 function rangeFromDays(days: number): AnalyticsDateRange {
   const end = new Date();
@@ -159,19 +162,19 @@ export default function AnalyticsTabPanel({
   analyticsError,
   analyticsSource,
   dateRange,
-  activeParticipantKey,
+  activeParticipantKeys,
   activeQuizSessionKeys,
   formatCategorySelectionLabel,
   theme = 'dark',
   onRefresh,
   onSourceChange,
   onDateRangeChange,
-  onParticipantChange,
+  onParticipantsChange,
   onQuizSessionsChange,
   onNavigateToQuiz,
   onCreateRemedialQuiz,
 }: AnalyticsTabPanelProps) {
-  const { summary, hardestTopics, hardestQuestions, scoreTrend, topicTrend, studentWeaknesses, participants, quizSessions, remedialCandidates } = analyticsData;
+  const { summary, hardestTopics, hardestQuestions, scoreTrend, studentWeaknesses, participants, quizSessions, remedialCandidates } = analyticsData;
 
   const isDateRangeActive = (days: number | 'all') => {
     if (days === 'all') {
@@ -181,17 +184,23 @@ export default function AnalyticsTabPanel({
     return dateRange.start === targetRange.start && dateRange.end === targetRange.end;
   };
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionStat | null>(null);
-  const [selectedRemedialIds, setSelectedRemedialIds] = useState<number[]>([]);
-  const [creatingRemedial, setCreatingRemedial] = useState(false);
+  const [, setSelectedRemedialIds] = useState<number[]>([]);
   const [remedialQuizBuilderOpen, setRemedialQuizBuilderOpen] = useState(false);
   const [remedialQuizStudentKeys, setRemedialQuizStudentKeys] = useState<string[]>([]);
   const [remedialQuizSuccess, setRemedialQuizSuccess] = useState<{ quizCode: string; questionCount: number } | null>(null);
   const [participantPickerOpen, setParticipantPickerOpen] = useState(false);
   const [sessionPickerOpen, setSessionPickerOpen] = useState(false);
   const [draftQuizSessionKeys, setDraftQuizSessionKeys] = useState<string[]>([]);
-  const candidateIds = remedialCandidates.map((candidate) => candidate.questionId);
-  const selectedCandidateIds = selectedRemedialIds.filter((id) => candidateIds.includes(id));
-  const activeParticipant = activeParticipantKey === 'all' ? null : participants.find((participant) => participant.key === activeParticipantKey);
+  const [draftParticipantKeys, setDraftParticipantKeys] = useState<string[]>([]);
+  const activeParticipants = participants.filter((participant) => activeParticipantKeys.includes(participant.key));
+  const participantCardTitle = activeParticipantKeys.length === 0
+    ? 'All participants'
+    : activeParticipantKeys.length === 1
+      ? (activeParticipants[0]?.name || '1 participant selected')
+      : `${activeParticipantKeys.length} participants selected`;
+  const participantCardMeta = activeParticipantKeys.length === 0
+    ? `${participants.length} participants included`
+    : `${activeParticipants.reduce((sum, participant) => sum + participant.attempts, 0)} attempts in scope`;
   const activeQuizSessions = quizSessions.filter((session) => activeQuizSessionKeys.includes(session.key));
   const sessionCardTitle = analyticsSource !== 'quiz'
     ? 'Quiz only'
@@ -201,45 +210,25 @@ export default function AnalyticsTabPanel({
         ? (activeQuizSessions[0]?.label || '1 session selected')
         : `${activeQuizSessionKeys.length} sessions selected`;
   const toggleDraftSession = (sessionKey: string) => setDraftQuizSessionKeys((current) => current.includes(sessionKey) ? current.filter((key) => key !== sessionKey) : [...current, sessionKey]);
-
-  const selectTop = (count: number) => setSelectedRemedialIds(candidateIds.slice(0, count));
-  const toggleRemedialId = (id: number, checked: boolean) => setSelectedRemedialIds((current) => checked ? Array.from(new Set([...current, id])) : current.filter((item) => item !== id));
+  const toggleDraftParticipant = (participantKey: string) => setDraftParticipantKeys((current) => current.includes(participantKey) ? current.filter((key) => key !== participantKey) : [...current, participantKey]);
 
   const handleOpenRemedialQuizBuilder = (studentKeys: string[]) => {
     setRemedialQuizStudentKeys(studentKeys);
     setRemedialQuizBuilderOpen(true);
   };
 
-  const handleCreateRemedialQuizFromBuilder = async (config: any) => {
+  const handleCreateRemedialQuizFromBuilder = async (config: { studentKeys: string[]; mode: string; questionCount: number; quizMode: 'strict' | 'standard'; duration: number }) => {
     try {
-      // Filter questions for selected students (UNION logic - include if at least 1 student got it wrong)
-      const availableQuestions = remedialCandidates.filter(q =>
-        q.participantKeys.some((key: string) => config.studentKeys.includes(key))
-      );
+      const selectedQuestions = buildRemedialQuestionPool({
+        mode: config.mode as 'wrong_only' | 'wrong_similar' | 'topic_based',
+        studentKeys: config.studentKeys,
+        remedialCandidates,
+        questionPool: hardestQuestions.map((question) => ({ ...question, participantKeys: [] })),
+      });
 
-      // Select questions based on mode
-      let selectedQuestions: RemedialQuestionCandidate[] = [];
-
-      if (config.mode === 'wrong_only') {
-        // Use filtered questions directly
-        selectedQuestions = availableQuestions;
-      } else if (config.mode === 'wrong_similar') {
-        // For now, use same as wrong_only
-        // TODO: Enhance to include similar questions from same topics
-        selectedQuestions = availableQuestions;
-      } else if (config.mode === 'topic_based') {
-        // For now, use same as wrong_only
-        // TODO: Enhance to include all questions from weak topics
-        selectedQuestions = availableQuestions;
-      }
-
-      // Sort by wrong rate (highest first) and limit to questionCount
-      const sortedQuestions = selectedQuestions
-        .sort((a, b) => b.wrongRate - a.wrongRate)
-        .slice(0, config.questionCount);
-
-      // Extract question IDs
-      const questionIds = sortedQuestions.map(q => q.questionId);
+      const questionIds = selectedQuestions
+        .slice(0, Math.min(config.questionCount, selectedQuestions.length))
+        .map((question) => question.questionId);
 
       if (questionIds.length === 0) {
         window.alert('No questions available for the selected students.');
@@ -250,7 +239,7 @@ export default function AnalyticsTabPanel({
       setRemedialQuizBuilderOpen(false);
 
       // Create the quiz
-      const result = await onCreateRemedialQuiz(questionIds);
+      const result = await onCreateRemedialQuiz(questionIds, { quizMode: config.quizMode, duration: config.duration });
 
       // Show success modal
       setRemedialQuizSuccess({
@@ -259,19 +248,6 @@ export default function AnalyticsTabPanel({
       });
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Failed to create remedial quiz.');
-    }
-  };
-
-  const createRemedialQuiz = async () => {
-    if (selectedCandidateIds.length === 0) return;
-    setCreatingRemedial(true);
-    try {
-      await onCreateRemedialQuiz(selectedCandidateIds);
-      setSelectedRemedialIds([]);
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Failed to create remedial quiz.');
-    } finally {
-      setCreatingRemedial(false);
     }
   };
 
@@ -321,22 +297,17 @@ export default function AnalyticsTabPanel({
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <div className="well flex gap-1 rounded-xl p-1" role="group" aria-label="Source">
-            <button
-              type="button"
-              aria-pressed={analyticsSource === 'exam'}
-              onClick={() => onSourceChange('exam')}
-              className={chipButton(analyticsSource === 'exam')}
-            >
-              Exam
-            </button>
-            <button
-              type="button"
-              aria-pressed={analyticsSource === 'quiz'}
-              onClick={() => onSourceChange('quiz')}
-              className={chipButton(analyticsSource === 'quiz')}
-            >
-              Quiz
-            </button>
+            {SOURCES.map((source) => (
+              <button
+                key={source.value}
+                type="button"
+                aria-pressed={analyticsSource === source.value}
+                onClick={() => onSourceChange(source.value)}
+                className={chipButton(analyticsSource === source.value)}
+              >
+                {source.label}
+              </button>
+            ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -378,10 +349,10 @@ export default function AnalyticsTabPanel({
             <p className="mt-1 truncate text-[16px] font-bold text-fg">{sessionCardTitle}</p>
             <p className="mt-0.5 text-[12px] text-fg-muted">{analyticsSource === 'quiz' ? `${quizSessions.length} available in date range` : 'Active only for Quiz source'}</p>
           </button>
-          <button type="button" onClick={() => setParticipantPickerOpen(true)} className={scopeCard}>
-            <div className="flex items-center justify-between gap-2"><span className="text-[12px] font-medium text-fg-muted">Participant</span><span className="text-[13px] font-semibold text-primary">Change</span></div>
-            <p className="mt-1 truncate text-[16px] font-bold text-fg">{activeParticipant?.name || 'All participants'}</p>
-            <p className="mt-0.5 text-[12px] text-fg-muted">{activeParticipant ? `${activeParticipant.attempts} attempts in scope` : `${participants.length} participants included`}</p>
+          <button type="button" onClick={() => { setDraftParticipantKeys(activeParticipantKeys); setParticipantPickerOpen(true); }} className={scopeCard}>
+            <div className="flex items-center justify-between gap-2"><span className="text-[12px] font-medium text-fg-muted">Participants</span><span className="text-[13px] font-semibold text-primary">Change</span></div>
+            <p className="mt-1 truncate text-[16px] font-bold text-fg">{participantCardTitle}</p>
+            <p className="mt-0.5 text-[12px] text-fg-muted">{participantCardMeta}</p>
           </button>
         </div>
 
@@ -430,6 +401,7 @@ export default function AnalyticsTabPanel({
             return student?.name || 'Unknown';
           })}
           remedialCandidates={remedialCandidates}
+          questionPool={hardestQuestions.map((question) => ({ ...question, participantKeys: [] }))}
           onClose={() => setRemedialQuizBuilderOpen(false)}
           onCreateQuiz={handleCreateRemedialQuizFromBuilder}
           theme={theme}
@@ -450,9 +422,10 @@ export default function AnalyticsTabPanel({
         />
       )}
 
+      <AnimatePresence>
       {sessionPickerOpen && (
-        <div className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="session-picker-title" onClick={() => setSessionPickerOpen(false)}>
-          <div className="glass-sheet animate-in w-full max-w-2xl rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
+        <motion.div {...scrimMotion} className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="session-picker-title" onClick={() => setSessionPickerOpen(false)}>
+          <motion.div {...sheetMotion} className="glass-sheet w-full max-w-2xl rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-[12px] font-medium text-fg-muted">Quiz session scope</p>
@@ -503,43 +476,54 @@ export default function AnalyticsTabPanel({
               <button type="button" onClick={() => setSessionPickerOpen(false)} className="well well-hover h-11 rounded-xl px-5 text-[14px] font-medium text-fg transition-calm">Cancel</button>
               <button type="button" onClick={() => { setSelectedRemedialIds([]); onQuizSessionsChange(draftQuizSessionKeys); setSessionPickerOpen(false); }} className="clay-primary h-11 rounded-xl px-6 text-[14px] font-semibold">Apply</button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {participantPickerOpen && (
-        <div className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="participant-picker-title" onClick={() => setParticipantPickerOpen(false)}>
-          <div className="glass-sheet animate-in w-full max-w-xl rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
+        <motion.div {...scrimMotion} className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="participant-picker-title" onClick={() => setParticipantPickerOpen(false)}>
+          <motion.div {...sheetMotion} className="glass-sheet w-full max-w-xl rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-[12px] font-medium text-fg-muted">Participant scope</p>
-                <h3 id="participant-picker-title" className="mt-0.5 text-[20px] font-bold tracking-tight text-fg">Choose participant</h3>
-                <p className="mt-1 text-[13px] text-fg-muted">Analytics dan remedial akan dihitung ulang untuk pilihan ini.</p>
+                <h3 id="participant-picker-title" className="mt-0.5 text-[20px] font-bold tracking-tight text-fg">Choose participants</h3>
+                <p className="mt-1 text-[13px] text-fg-muted">Pilih satu/lebih peserta. Kosong berarti semua peserta.</p>
               </div>
               <ModalCloseButton onClick={() => setParticipantPickerOpen(false)} />
             </div>
             <div className="result-details-scroll-light grid max-h-[60vh] gap-2 overflow-y-auto sm:grid-cols-2">
-              <button type="button" aria-pressed={activeParticipantKey === 'all'} onClick={() => { setSelectedRemedialIds([]); onParticipantChange('all'); setParticipantPickerOpen(false); }} className={pickerTile(activeParticipantKey === 'all')}>
+              <button type="button" aria-pressed={draftParticipantKeys.length === 0} onClick={() => setDraftParticipantKeys([])} className={pickerTile(draftParticipantKeys.length === 0)}>
                 <p className="truncate text-[14px] font-bold">All participants</p>
-                <p className={`mt-1 text-[12px] ${activeParticipantKey === 'all' ? 'text-on-primary/80' : 'text-fg-muted'}`}>{participants.length} participants included</p>
+                <p className={`mt-1 text-[12px] ${draftParticipantKeys.length === 0 ? 'text-on-primary/80' : 'text-fg-muted'}`}>{participants.length} participants included</p>
               </button>
               {participants.map((participant) => {
-                const active = activeParticipantKey === participant.key;
+                const active = draftParticipantKeys.includes(participant.key);
                 return (
-                  <button key={participant.key} type="button" aria-pressed={active} onClick={() => { setSelectedRemedialIds([]); onParticipantChange(participant.key); setParticipantPickerOpen(false); }} className={pickerTile(active)}>
-                    <p className="truncate text-[14px] font-bold">{participant.name}</p>
+                  <button key={participant.key} type="button" aria-pressed={active} onClick={() => toggleDraftParticipant(participant.key)} className={pickerTile(active)}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-[14px] font-bold">{participant.name}</p>
+                      <span className={`text-[12px] font-semibold ${active ? 'text-on-primary' : 'text-fg-muted'}`}>{active ? 'Selected' : 'Select'}</span>
+                    </div>
                     <p className={`mt-1 text-[12px] ${active ? 'text-on-primary/80' : 'text-fg-muted'}`}>{participant.attempts} attempts</p>
                   </button>
                 );
               })}
             </div>
-          </div>
-        </div>
+            <div className="mt-4 flex justify-end gap-2 border-t border-line pt-4">
+              <button type="button" onClick={() => setParticipantPickerOpen(false)} className="well well-hover h-11 rounded-xl px-5 text-[14px] font-medium text-fg transition-calm">Cancel</button>
+              <button type="button" onClick={() => { setSelectedRemedialIds([]); onParticipantsChange(draftParticipantKeys); setParticipantPickerOpen(false); }} className="clay-primary h-11 rounded-xl px-6 text-[14px] font-semibold">Apply</button>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {selectedQuestion && (
-        <div className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="question-detail-title" onClick={() => setSelectedQuestion(null)}>
-          <div className="glass-sheet animate-in max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
+        <motion.div {...scrimMotion} className="glass-scrim fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="question-detail-title" onClick={() => setSelectedQuestion(null)}>
+          <motion.div {...sheetMotion} className="glass-sheet max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-4xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-[12px] font-medium text-fg-muted">
@@ -609,9 +593,10 @@ export default function AnalyticsTabPanel({
                 )}
               </div>
             ) : <div className="well rounded-2xl p-4 text-[14px] font-medium text-fg-muted">Question data not found. It may have been deleted.</div>}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

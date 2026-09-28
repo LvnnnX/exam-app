@@ -25,16 +25,6 @@ function isBrowser(): boolean {
 }
 
 /**
- * Generate a cache key from components
- */
-export function generateCacheKey(components: (string | number | boolean | null | undefined)[]): string {
-  return components
-    .filter(c => c !== null && c !== undefined)
-    .map(c => String(c))
-    .join('_');
-}
-
-/**
  * Get data from cache
  * Returns null if cache miss or expired
  */
@@ -140,9 +130,10 @@ export function invalidateCachePattern(pattern: string, options: CacheOptions = 
 }
 
 /**
- * Clear all expired cache entries
+ * Clear all expired cache entries. Used internally as fallback when
+ * localStorage hits quota during setCache.
  */
-export function clearExpiredCache(prefix: string = DEFAULT_PREFIX): void {
+function clearExpiredCache(prefix: string = DEFAULT_PREFIX): void {
   if (!isBrowser()) return;
 
   try {
@@ -168,95 +159,6 @@ export function clearExpiredCache(prefix: string = DEFAULT_PREFIX): void {
   } catch (error) {
     console.warn('Clear expired cache error:', error);
   }
-}
-
-/**
- * Clear all cache entries
- */
-export function clearAllCache(prefix: string = DEFAULT_PREFIX): void {
-  if (!isBrowser()) return;
-
-  try {
-    const keys = Object.keys(localStorage);
-    keys.forEach(key => {
-      if (key.startsWith(prefix)) {
-        localStorage.removeItem(key);
-      }
-    });
-  } catch (error) {
-    console.warn('Clear all cache error:', error);
-  }
-}
-
-/**
- * Get cache statistics
- */
-export function getCacheStats(prefix: string = DEFAULT_PREFIX): {
-  totalEntries: number;
-  expiredEntries: number;
-  totalSize: number;
-} {
-  if (!isBrowser()) {
-    return { totalEntries: 0, expiredEntries: 0, totalSize: 0 };
-  }
-
-  try {
-    const keys = Object.keys(localStorage);
-    const now = Date.now();
-    let totalEntries = 0;
-    let expiredEntries = 0;
-    let totalSize = 0;
-
-    keys.forEach(key => {
-      if (!key.startsWith(prefix)) return;
-
-      totalEntries++;
-      const cached = localStorage.getItem(key);
-      if (!cached) return;
-
-      totalSize += cached.length;
-
-      try {
-        const entry: CacheEntry<unknown> = JSON.parse(cached);
-        if (now - entry.timestamp > entry.ttl) {
-          expiredEntries++;
-        }
-      } catch {
-        expiredEntries++;
-      }
-    });
-
-    return { totalEntries, expiredEntries, totalSize };
-  } catch (error) {
-    console.warn('Get cache stats error:', error);
-    return { totalEntries: 0, expiredEntries: 0, totalSize: 0 };
-  }
-}
-
-/**
- * Wrapper function to cache async function results
- * Usage: const cachedFn = withCache(expensiveFn, 'my-cache-key', { ttl: 3600000 });
- */
-export function withCache<T>(
-  fn: () => Promise<T>,
-  key: string,
-  options: CacheOptions = {}
-): () => Promise<T> {
-  return async () => {
-    // Try to get from cache first
-    const cached = getCache<T>(key, options);
-    if (cached !== null) {
-      return cached;
-    }
-
-    // Cache miss - fetch data
-    const data = await fn();
-
-    // Store in cache
-    setCache(key, data, options);
-
-    return data;
-  };
 }
 
 /**

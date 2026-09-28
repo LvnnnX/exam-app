@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useCallback, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useEffect, useCallback, Suspense, useState, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import AdminTabSwitcher from '@/app/components/AdminTabSwitcher';
 import AdminLoginView from '@/app/components/AdminLoginView';
 import AdminAuthLoadingView from '@/app/components/AdminAuthLoadingView';
@@ -15,12 +15,16 @@ import AccessTabPanel from '@/app/components/admin/AccessTabPanel';
 import AnalyticsTabPanel from '@/app/components/admin/AnalyticsTabPanel';
 import useAdminPageController from '@/app/hooks/useAdminPageController';
 import getAdminAccessToken from '@/app/hooks/getAdminAccessToken';
+import ScheduledExamTabPanel from '@/app/components/admin/ScheduledExamTabPanel';
 import { createQuizSessionAction } from '@/app/actions/admin/quiz';
+import { exportQuestionsAction } from '@/app/actions/admin/export-questions';
+import { importQuestionsAction } from '@/app/actions/admin/import-questions';
 import { hasPermission } from '@/lib/admin-permissions';
 import { getOptionText, getCorrectOptionText } from '@/app/hooks/adminOptionText';
 import { useAdminTheme } from '@/app/hooks/useAdminTheme';
 import { ToastContainer } from '@/app/components/Toast';
 
+const VALID_ADMIN_TABS = new Set(['questions', 'quiz', 'results', 'analytics', 'settings', 'scheduled', 'access']);
 
 export default function AdminPage() {
   return (
@@ -46,16 +50,104 @@ function AdminPageInner() {
 
   const { theme, toggleTheme } = useAdminTheme();
 
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const base64 = btoa(
+        String.fromCharCode(...new Uint8Array(buffer))
+      );
+      const token = await getAdminAccessToken();
+      const result = await importQuestionsAction(token, base64);
+
+      const parts: string[] = [];
+      if (result.created > 0) parts.push(`${result.created} dibuat`);
+      if (result.updated > 0) parts.push(`${result.updated} diperbarui`);
+      const summary = parts.length > 0 ? parts.join(', ') : '0 soal diproses';
+
+      if (result.errors.length > 0) {
+        const errorPreviews = result.errors.slice(0, 5).map(e => `Baris ${e.row}: ${e.message}`).join('\n');
+        const extra = result.errors.length > 5 ? `\n... dan ${result.errors.length - 5} error lainnya` : '';
+        questions.showToast(`${summary}, ${result.errors.length} error:\n${errorPreviews}${extra}`, 'warning');
+      } else {
+        questions.showToast(`Import berhasil: ${summary}.`, 'success');
+      }
+
+      // Refresh list
+      await questions.fetchAdminQuestions();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal mengimport soal.';
+      questions.showToast(message, 'error');
+    } finally {
+      setImporting(false);
+      // Reset input so same file can be re-imported
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [questions]);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const token = await getAdminAccessToken();
+      const filters = {
+        mapels: questions.activeMapelFilter.length > 0 ? questions.activeMapelFilter : undefined,
+        babs: questions.activebabFilter.length > 0 ? questions.activebabFilter : undefined,
+        subBabs: questions.activeSubBabFilter.length > 0 ? questions.activeSubBabFilter : undefined,
+        questionType: questions.questionTypeFilter,
+        visibility: questions.visibilityFilter,
+        searchQuery: questions.searchQuery || undefined,
+        sortOrder: questions.sortOrder,
+      };
+      const result = await exportQuestionsAction(token, filters);
+
+      const byteChars = atob(result.bufferBase64);
+      const byteNums = new Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) {
+        byteNums[i] = byteChars.charCodeAt(i);
+      }
+      const byteArr = new Uint8Array(byteNums);
+      const blob = new Blob([byteArr], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      questions.showToast(`${result.total} soal berhasil diexport.`, 'success');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal mengexport soal.';
+      questions.showToast(message, 'error');
+    } finally {
+      setExporting(false);
+    }
+  }, [questions]);
+
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   // Initialize from URL on mount only
   useEffect(() => {
     if (auth.isAuthenticated !== true) return;
 
     const urlTab = searchParams.get('tab');
-    if (urlTab && ['questions', 'quiz', 'results', 'analytics', 'settings', 'access'].includes(urlTab)) {
-      tabs.handleTabChange(urlTab as any);
+    if (urlTab && VALID_ADMIN_TABS.has(urlTab)) {
+      tabs.handleTabChange(urlTab as Parameters<typeof tabs.handleTabChange>[0]);
     }
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,8 +159,8 @@ function AdminPageInner() {
 
     const handlePopState = () => {
       const urlTab = new URL(window.location.href).searchParams.get('tab');
-      if (urlTab && ['questions', 'quiz', 'results', 'analytics', 'settings', 'access'].includes(urlTab)) {
-        tabs.handleTabChange(urlTab as any);
+      if (urlTab && VALID_ADMIN_TABS.has(urlTab)) {
+        tabs.handleTabChange(urlTab as Parameters<typeof tabs.handleTabChange>[0]);
       }
     };
 
@@ -77,8 +169,8 @@ function AdminPageInner() {
   }, [auth.isAuthenticated, tabs]);
 
   // Wrapper for tab change that also updates URL
-  const handleTabChangeWithUrl = useCallback((tab: string) => {
-    tabs.handleTabChange(tab as any);
+  const handleTabChangeWithUrl = useCallback((tab: Parameters<typeof tabs.handleTabChange>[0]) => {
+    tabs.handleTabChange(tab);
 
     // Update URL and remove code parameter (code is specific to Quiz tab sessions)
     const newUrl = new URL(window.location.href);
@@ -141,12 +233,14 @@ function AdminPageInner() {
         onEmailChange={auth.setEmail}
         onPasswordChange={auth.setPassword}
         onSubmit={auth.handleLogin}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
     );
   }
 
   return (
-    <div data-admin-page className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-screen h-full w-screen overflow-hidden text-fg md:flex">
+    <div data-admin-page className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-dvh min-h-dvh w-screen overflow-hidden text-fg md:flex">
       <AdminTabSwitcher
         activeTab={tabs.activeTab}
         onTabChange={handleTabChangeWithUrl}
@@ -157,13 +251,6 @@ function AdminPageInner() {
         canViewSettings={canSaveSettings || canDeleteTopic}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onAddQuestion={canCreateQuestion ? () => {
-          handleTabChangeWithUrl('questions');
-          questions.startAddNew();
-        } : undefined}
-        onCreateQuiz={() => {
-          handleTabChangeWithUrl('quiz');
-        }}
       />
 
       <main className="h-full min-w-0 flex-1 overflow-hidden px-3 pt-[72px] pb-3 md:ml-[252px] md:px-4 md:py-3 md:pt-3">
@@ -239,10 +326,24 @@ function AdminPageInner() {
                   questions.setBatchVisibilityTarget(false);
                   questions.setBatchVisibilityModalOpen(true);
                 }}
+                onOpenBatchDeleteConfirm={() => {
+                  const deletableIds = questionDerived.filteredQuestions
+                    .filter((question) => {
+                      const ownsQuestion = String(adminProfile?.userId || '') === String(question.created_by || '');
+                      return canDeleteAnyQuestion || (ownsQuestion && canDeleteOwnQuestion);
+                    })
+                    .map((question) => question.id);
+                  questions.setSelectedQuestionIds(questions.selectedQuestionIds.filter((id) => deletableIds.includes(id)));
+                  questions.setBatchDeleteModalOpen(true);
+                }}
                 onViewQuestion={questions.onViewQuestion}
                 onEditQuestion={questions.startEdit}
                 onDeleteQuestion={questions.setDeletingQuestion}
                 onToggleQuestionVisibility={questions.onToggleQuestionVisibility}
+                onExport={handleExport}
+                exporting={exporting}
+                onImport={handleImport}
+                importing={importing}
               />
               </div>
             )}
@@ -302,25 +403,25 @@ function AdminPageInner() {
                   analyticsError={analytics.analyticsError}
                   analyticsSource={analytics.analyticsSource}
                   dateRange={analytics.dateRange}
-                  activeParticipantKey={analytics.activeParticipantKey}
+                  activeParticipantKeys={analytics.activeParticipantKeys}
                   activeQuizSessionKeys={analytics.activeQuizSessionKeys}
                   formatCategorySelectionLabel={shared.formatCategorySelectionLabel}
                   theme={theme}
                   onRefresh={() => void analytics.fetchAnalytics(results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onSourceChange={(source) => analytics.changeAnalyticsSource(source, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onDateRangeChange={(range) => analytics.changeDateRange(range, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
-                  onParticipantChange={(participantKey) => analytics.changeParticipant(participantKey, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
+                  onParticipantsChange={(participantKeys) => analytics.changeParticipants(participantKeys, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onQuizSessionsChange={(sessionKeys) => analytics.changeQuizSessions(sessionKeys, results.activeResMapel, results.activeResbab, results.activeResSubBab, results.activeModeFilter)}
                   onNavigateToQuiz={handleNavigateToQuizWithCode}
-                  onCreateRemedialQuiz={async (questionIds) => {
+                  onCreateRemedialQuiz={async (questionIds, options) => {
                     const token = await getAdminAccessToken();
                     const session = await createQuizSessionAction(token, {
                       mapel: results.activeResMapel.length > 0 ? results.activeResMapel : 'Semua MAPEL',
                       bab: results.activeResbab.length > 0 ? results.activeResbab : 'Semua BAB',
                       subBabs: results.activeResSubBab,
                       questionCount: questionIds.length,
-                      durationMinutes: 30,
-                      quizMode: 'standard',
+                      durationMinutes: options.duration,
+                      quizMode: options.quizMode,
                       allowJoinMidGame: true,
                       selectedQuestionIds: questionIds,
                     });
@@ -367,6 +468,12 @@ function AdminPageInner() {
               </div>
             )}
 
+            {tabs.activeTab === 'scheduled' && (
+              <div className="h-full min-h-0 overflow-y-auto px-1 py-4">
+                <ScheduledExamTabPanel theme={theme} visibilitySettings={settings.visibilitySettings} />
+              </div>
+            )}
+
             {tabs.activeTab === 'access' && canAccessManage && (
               <div className="h-full min-h-0">
                 <AccessTabPanel theme={theme} />
@@ -380,11 +487,14 @@ function AdminPageInner() {
             batchVisibilityTarget={questions.batchVisibilityTarget}
             selectedQuestionCount={questions.selectedQuestionIds.length}
             batchProcessing={questions.batchProcessing}
+            batchDeleteModalOpen={questions.batchDeleteModalOpen}
             deletingQuestion={questions.deletingQuestion}
             deletingQuestionPreview={questions.deletingQuestion ? shared.stripHtml(questions.deletingQuestion.question_text).slice(0, 80) : ''}
             onCloseDeleteTopicError={settings.closeDeleteTopicError}
             onCancelBatchVisibility={() => questions.setBatchVisibilityModalOpen(false)}
             onConfirmBatchVisibility={() => void questions.handleBatchVisibilityToggle(questions.batchVisibilityTarget)}
+            onCancelBatchDelete={() => questions.setBatchDeleteModalOpen(false)}
+            onConfirmBatchDelete={() => void questions.handleBatchDelete()}
             onCancelDeleteQuestion={() => questions.setDeletingQuestion(null)}
             onConfirmDeleteQuestion={questions.confirmDelete}
             theme={theme}
@@ -429,6 +539,14 @@ function AdminPageInner() {
           <ToastContainer toasts={settings.toasts} onDismiss={settings.dismissToast} theme={theme} />
         </div>
       </main>
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".xlsx"
+        onChange={handleFileChange}
+        className="hidden"
+        aria-hidden="true"
+      />
     </div>
   );
 }

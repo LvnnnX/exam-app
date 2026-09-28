@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { scrimMotion, sheetMotion } from '@/app/components/ui/motion-presets';
 import { type RawQuestion } from '@/lib/questions';
 import TrackingModalHeader from '@/app/components/admin/TrackingModalHeader';
 import TrackingCurrentQuestionPanel from '@/app/components/admin/TrackingCurrentQuestionPanel';
@@ -74,18 +76,19 @@ export default function TrackingModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, trackingSession, onClose]);
 
-  if (!isOpen || !trackingSession) return null;
-
   const tabClass = (active: boolean) =>
     `h-11 md:h-10 flex-1 rounded-lg text-[13px] font-semibold transition-calm ${active ? 'clay' : 'text-fg-muted hover:text-fg'}`;
 
   return (
-    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4" onClick={handleClose}>
-      <div
+    <AnimatePresence>
+      {isOpen && trackingSession && (
+    <motion.div {...scrimMotion} data-theme={theme} className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4" onClick={handleClose}>
+      <motion.div
+        {...sheetMotion}
         role="dialog"
         aria-modal="true"
         aria-label={`Live tracking ${trackingSession.name}`}
-        className="glass-sheet animate-in flex max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-4xl text-fg sm:max-h-[90vh]"
+        className="glass-sheet flex max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-4xl text-fg sm:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         <TrackingModalHeader
@@ -137,7 +140,9 @@ export default function TrackingModal({
             />
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

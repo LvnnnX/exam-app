@@ -42,15 +42,7 @@ type LiveSession = {
 };
 
 
-function splitResultCategories(value: string) {
-  return value.split(',').map(item => item.trim()).filter(Boolean);
-}
 
-function hasAnyResultCategory(value: string, selectedValues: string[]) {
-  if (selectedValues.length === 0) return true;
-  const categories = splitResultCategories(value);
-  return selectedValues.some(selected => categories.includes(selected));
-}
 
 export default function useAdminResults() {
   const [results, setResults] = useState<ExamResult[]>([]);

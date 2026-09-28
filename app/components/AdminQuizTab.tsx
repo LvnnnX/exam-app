@@ -12,6 +12,7 @@ import RichContent from '@/app/components/RichContent';
 import MultiSelectDropdown from '@/app/components/MultiSelectDropdown';
 import LeaderboardViewModal from '@/app/components/LeaderboardViewModal';
 import { ToastContainer, type ToastMessage } from '@/app/components/Toast';
+import AdminTutorialModal from '@/app/components/admin/AdminTutorialModal';
 
 // Shared class recipes for this tab (see DESIGN.md: well, clay, glass).
 const ui = {
@@ -59,6 +60,7 @@ function onTriggerKey(event: React.KeyboardEvent<HTMLDivElement>, toggle: () => 
 }
 
 export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: { mapels: string[], babs: string[], subBabs: { label: string, value: string }[], theme?: 'light' | 'dark' }) {
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [activeView, setActiveView] = useState<'create' | 'manage' | 'history'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('admin_quiz_active_view');
@@ -236,6 +238,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       // Switch to manage view only if this is a new session being loaded
       // Don't force view change if user is already viewing this session
       if ((!activeSession || activeSession.quiz_code !== code) && activeView !== 'manage') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveView('manage');
       }
 
@@ -579,7 +582,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [activeSession?.id, activeSession?.status]);
+  }, [activeSession, activeSession?.id, activeSession?.status]);
 
   // Auto-finish timer
   useEffect(() => {
@@ -666,79 +669,86 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
   }, [viewingPlayer, activeSession]);
 
   const handleCreate = async () => {
-    if (selectedMapels.length === 0 || selectedBabs.length === 0 || selectedSubBabs.length === 0) {
-      showToast('Pilih MAPEL, BAB, dan Sub-bab terlebih dahulu.', 'error');
-      return;
-    }
+    if (creating) return;
 
-    const { count: availableCount, error: countError } = await supabase
-      .from('questions')
-      .select('id', { count: 'exact', head: true })
-      .eq('is_hidden', false)
-      .overlaps('mapels', selectedMapels)
-      .overlaps('babs', selectedBabs)
-      .overlaps('sub_babs', selectedSubBabs);
-
-    if (countError) {
-      showToast('Gagal memeriksa jumlah soal tersedia.', 'error');
-      return;
-    }
-
-    if ((availableCount || 0) < questionCount) {
-      setCreateErrorModal({
-        availableCount: availableCount || 0,
-        requestedCount: questionCount,
-        mapels: selectedMapels,
-        babs: selectedBabs,
-        subBabs: selectedSubBabs,
-      });
-      return;
-    }
-
-    setCreating(true);
-    let scheduledAt: string | undefined;
-    if (scheduleEnabled && scheduleDate && scheduleTime) {
-      const target = new Date(`${scheduleDate}T${scheduleTime}:00`);
-      if (target.getTime() <= currentTime) {
-        alert('Waktu schedule tidak boleh di masa lalu.');
-        setCreating(false);
+    try {
+      if (selectedMapels.length === 0 || selectedBabs.length === 0 || selectedSubBabs.length === 0) {
+        showToast('Pilih MAPEL, BAB, dan Sub-bab terlebih dahulu.', 'error');
         return;
       }
-      scheduledAt = target.toISOString();
-    }
-    const effectiveSubBabs = selectedSubBabs;
 
-    if (percentagesEnabled) {
-      const totalPct = effectiveSubBabs.reduce((acc, val) => acc + (subBabPercentages[val] || 0), 0);
-      if (totalPct !== 100) {
-        alert('Total persentase soal harus 100%. Saat ini: ' + totalPct + '%');
-        setCreating(false);
+      setCreating(true);
+
+      const { count: availableCount, error: countError } = await supabase
+        .from('questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_hidden', false)
+        .overlaps('mapels', selectedMapels)
+        .overlaps('babs', selectedBabs)
+        .overlaps('sub_babs', selectedSubBabs);
+
+      if (countError) {
+        console.error('Failed to count available quiz questions', countError);
+        showToast('Gagal memeriksa jumlah soal tersedia.', 'error');
         return;
       }
-    }
 
-    const session = await createQuizSession(
-      selectedMapels,
-      selectedBabs,
-      selectedSubBabs,
-      questionCount,
-      durationMinutes,
-      scheduledAt,
-      percentagesEnabled ? subBabPercentages : undefined,
-      quizMode,
-      allowJoinMidGame
-    );
-    if (session) {
-      setActiveSession(session);
-      setActiveView('manage');
-      // Reset schedule form
-      setScheduleEnabled(false);
-      setScheduleDate('');
-      setScheduleTime('');
-    } else {
-      showToast("Tidak ada soal tersedia. Silakan tambahkan soal terlebih dahulu.", "error");
+      if ((availableCount || 0) < questionCount) {
+        setCreateErrorModal({
+          availableCount: availableCount || 0,
+          requestedCount: questionCount,
+          mapels: selectedMapels,
+          babs: selectedBabs,
+          subBabs: selectedSubBabs,
+        });
+        return;
+      }
+
+      let scheduledAt: string | undefined;
+      if (scheduleEnabled && scheduleDate && scheduleTime) {
+        const target = new Date(`${scheduleDate}T${scheduleTime}:00`);
+        if (target.getTime() <= currentTime) {
+          showToast('Waktu schedule tidak boleh di masa lalu.', 'error');
+          return;
+        }
+        scheduledAt = target.toISOString();
+      }
+      const effectiveSubBabs = selectedSubBabs;
+
+      if (percentagesEnabled) {
+        const totalPct = effectiveSubBabs.reduce((acc, val) => acc + (subBabPercentages[val] || 0), 0);
+        if (totalPct !== 100) {
+          showToast('Total persentase soal harus 100%. Saat ini: ' + totalPct + '%', 'error');
+          return;
+        }
+      }
+
+      const session = await createQuizSession(
+        selectedMapels,
+        selectedBabs,
+        selectedSubBabs,
+        questionCount,
+        durationMinutes,
+        scheduledAt,
+        percentagesEnabled ? subBabPercentages : undefined,
+        quizMode,
+        allowJoinMidGame
+      );
+      if (session) {
+        setActiveSession(session);
+        setActiveView('manage');
+        setScheduleEnabled(false);
+        setScheduleDate('');
+        setScheduleTime('');
+      } else {
+        showToast("Tidak ada soal tersedia. Silakan tambahkan soal terlebih dahulu.", "error");
+      }
+    } catch (error) {
+      console.error('Failed to create quiz session', error);
+      showToast('Gagal membuat quiz. Cek koneksi, login admin, lalu coba lagi.', 'error');
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   };
 
   const resolveCurrentLabel = (player: Player) => {
@@ -883,7 +893,7 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
     void tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [activeSession, activeSession?.id, activeSession?.status, activeSession?.scheduled_at, currentTime, deleteQuizSession, updateQuizStatus]);
+  }, [activeSession, activeSession?.id, activeSession?.status, activeSession?.scheduled_at, currentTime, deleteQuizSession, handleCloseSession, updateQuizStatus]);
 
   // Refresh active sessions list when admin returns to the manage view.
   // Auto-start of scheduled quizzes is handled server-side by pg_cron;
@@ -964,17 +974,26 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
               {activeSession ? 'Pantau sesi quiz, pemain, dan leaderboard secara live.' : activeView === 'history' ? 'Review riwayat quiz yang sudah selesai.' : activeView === 'manage' ? 'Kelola sesi quiz aktif, waiting, dan paused.' : 'Buat sesi quiz live dari topik pilihan.'}
             </p>
           </div>
-          {(activeView !== 'create' || activeSession) && (
+          <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => void handleRefresh()}
-              disabled={refreshing}
+              onClick={() => setIsTutorialOpen(true)}
               className={ui.secondary}
             >
-              {refreshing && <span className="spinner-calm h-3.5 w-3.5" aria-hidden="true" />}
-              {refreshing ? 'Refreshing...' : 'Refresh'}
+              Tutorial
             </button>
-          )}
+            {(activeView !== 'create' || activeSession) && (
+              <button
+                type="button"
+                onClick={() => void handleRefresh()}
+                disabled={refreshing}
+                className={ui.secondary}
+              >
+                {refreshing && <span className="spinner-calm h-3.5 w-3.5" aria-hidden="true" />}
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            )}
+          </div>
         </div>
         <div className="mt-4">
           <div className="well inline-flex gap-1 rounded-xl p-1" role="group" aria-label="Quiz view">
@@ -1147,6 +1166,22 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                         </span>
                         <span className="text-[14px] font-medium text-fg-muted">None selected</span>
                       </button>
+                      {selectedMapels.length > 0 && !loadingBabs && displayBabs.length > 0 && (
+                        <button
+                          type="button"
+                          className={ui.option}
+                          onClick={() => {
+                            setSelectedBabs([...displayBabs]);
+                            setSelectedSubBabs([]);
+                            setIsBabOpen(false);
+                          }}
+                        >
+                          <span className={ui.check(selectedBabs.length === displayBabs.length)}>
+                            {selectedBabs.length === displayBabs.length && <CheckMark />}
+                          </span>
+                          <span className="text-[14px] font-semibold text-fg">Pilih semua</span>
+                        </button>
+                      )}
                       {selectedMapels.length === 0 ? (
                         <div className="p-3 text-center text-[13px] text-fg-muted">Pilih MAPEL terlebih dahulu</div>
                       ) : loadingBabs ? (
@@ -1245,6 +1280,35 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
                         </span>
                         <span className="text-[14px] font-medium text-fg-muted">None selected</span>
                       </button>
+                      {selectedBabs.length > 0 && !loadingSubBabs && displaySubBabs.length > 0 && (
+                        <button
+                          type="button"
+                          className={ui.option}
+                          onClick={() => {
+                            const next = displaySubBabs.map(sb => sb.value);
+                            setSelectedSubBabs(next);
+                            if (percentagesEnabled) {
+                              const newPct: Record<string, number> = {};
+                              const total = next.length;
+                              if (total > 0) {
+                                const equal = Math.floor(100 / total);
+                                let rem = 100 - (equal * total);
+                                next.forEach(v => {
+                                  newPct[v] = equal + (rem > 0 ? 1 : 0);
+                                  rem--;
+                                });
+                              }
+                              setSubBabPercentages(newPct);
+                            }
+                            setIsSubBabOpen(false);
+                          }}
+                        >
+                          <span className={ui.check(selectedSubBabs.length === displaySubBabs.length)}>
+                            {selectedSubBabs.length === displaySubBabs.length && <CheckMark />}
+                          </span>
+                          <span className="text-[14px] font-semibold text-fg">Pilih semua</span>
+                        </button>
+                      )}
 
                       {selectedBabs.length === 0 ? (
                         <div className="p-3 text-center text-[13px] text-fg-muted">Pilih BAB terlebih dahulu</div>
@@ -2651,6 +2715,8 @@ export default function AdminQuizTab({ mapels, babs, subBabs, theme = 'dark' }: 
           </div>
         </div>
       )}
+
+      <AdminTutorialModal isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} type="quiz" />
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} theme={theme} />
     </div>

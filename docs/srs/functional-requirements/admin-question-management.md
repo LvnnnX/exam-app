@@ -79,7 +79,7 @@ The system shall support multiple-choice questions with five options (A–E) and
 
 The system shall support short-answer questions.
 
-The expected answer is stored in `short_answer`. The student input shall be compared case-insensitive, HTML-stripped, and trimmed.
+The expected answer is stored in `short_answer`. The student input shall be compared case-insensitive, HTML-stripped, and whitespace-stripped (every whitespace character removed, not just leading/trailing). Authors can space comma-separated lists or formulas freely without breaking grading.
 
 ## FR-QM-013: Category Assignment
 
@@ -88,6 +88,8 @@ The admin shall assign questions to:
 - MAPEL (one or many).
 - BAB (one or many).
 - Sub-bab (one or many).
+
+Category labels are stored raw on the question row and folded to a slug at runtime for matching, dedup, and visibility checks. The slug is lowercased, `&` expands to `dan`, and every other non-alphanumeric character (spaces, parentheses, slashes, hyphens, dots) folds to a single underscore, capped at 80 characters. This means human-friendly labels like `Teori Perilaku Konsumen (Utilitas Marginal)`, `Ekonomi Keuangan & Pasar Modal`, or `Kebijakan Kurs (Revaluasi/Devaluasi)` are accepted everywhere (manual entry and bulk import) and resolve to stable slugs (`teori_perilaku_konsumen_utilitas_marginal`, `ekonomi_keuangan_dan_pasar_modal`, `kebijakan_kurs_revaluasi_devaluasi`).
 
 ## FR-QM-014: Add Category During Question Editing
 

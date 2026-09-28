@@ -15,6 +15,8 @@ type ResultsHeaderProps = {
   babsLabel: string;
   subBabsLabel: string;
   saved: boolean;
+  isScheduledExam?: boolean;
+  scheduledExamTitle?: string;
 };
 
 function splitLabel(joined: string): string[] {
@@ -52,6 +54,8 @@ export default function ResultsHeader({
   babsLabel,
   subBabsLabel,
   saved,
+  isScheduledExam,
+  scheduledExamTitle,
 }: ResultsHeaderProps) {
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
   const tone = isSurvival
@@ -91,6 +95,13 @@ export default function ResultsHeader({
         </div>
 
         <div className="h-px bg-line" aria-hidden="true" />
+
+        {isScheduledExam && scheduledExamTitle && (
+          <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+            <span className="shrink-0 text-[12px] font-medium text-fg-muted">Nama ujian</span>
+            <span className="truncate text-[13px] font-semibold text-fg">{scheduledExamTitle}</span>
+          </div>
+        )}
 
         <div className="flex min-w-0 flex-wrap items-baseline gap-2">
           <span className="shrink-0 text-[12px] font-medium text-fg-muted">Topik</span>

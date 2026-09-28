@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import DOMPurify, { type Config as DomPurifyConfig } from 'dompurify';
-import { type RawQuestion, type BabInfo, type SubBabInfo, fetchQuestions, fetchBabsAdmin, fetchSubBabsAdmin } from '@/lib/questions';
+import { type RawQuestion, type BabInfo, type SubBabInfo, fetchQuestions, fetchBabsAdmin, fetchSubBabsAdmin, normalizeRawQuestion } from '@/lib/questions';
 import { ensureHtmlDocument, stripHtml } from '@/lib/rich-text';
-import { createQuestionAction, deleteQuestionAction, updateQuestionAction, updateQuestionsVisibilityAction, fetchQuestionCountsByMapelAction, fetchQuestionsPaginatedAction, type MapelCount, type QuestionFilters, type PaginatedQuestionsResult } from '@/app/actions/admin/questions';
+import { createQuestionAction, deleteQuestionAction, updateQuestionAction, updateQuestionsVisibilityAction, deleteSelectedQuestionsAction, fetchQuestionCountsByMapelAction, fetchQuestionsPaginatedAction, type MapelCount, type QuestionFilters } from '@/app/actions/admin/questions';
 import { type ToastMessage } from '@/app/components/Toast';
 
 type QuestionDraft = {
@@ -64,7 +64,7 @@ function sanitizeRichHtml(value: string): string {
 
 export default function useAdminQuestions({
   getAdminAccessToken,
-  loadAllBabsAdmin,
+  loadAllBabsAdmin: _loadAllBabsAdmin,
   loadAllSubBabsAdmin,
   allMapels,
   setAllMapels,
@@ -91,6 +91,7 @@ export default function useAdminQuestions({
   const [batchProcessing, setBatchProcessing] = useState(false);
   const [batchVisibilityModalOpen, setBatchVisibilityModalOpen] = useState(false);
   const [batchVisibilityTarget, setBatchVisibilityTarget] = useState(false);
+  const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
   const [deletingQuestion, setDeletingQuestion] = useState<RawQuestion | null>(null);
   const [newMapelInput, setNewMapelInput] = useState('');
   const [newSubBabInput, setNewSubBabInput] = useState('');
@@ -272,12 +273,20 @@ export default function useAdminQuestions({
 
       const accessToken = await getAdminAccessToken();
       if (isAdding) {
-        await createQuestionAction(accessToken, payload);
+        const created = await createQuestionAction(accessToken, payload);
+        // Optimistic: prepend the new row; derived filteredQuestions re-filters/sorts.
+        const normalized = normalizeRawQuestion(created);
+        setAdminQuestions(prev => [normalized, ...prev]);
       } else if (isEditing && selectedQuestion?.id) {
-        await updateQuestionAction(accessToken, selectedQuestion.id, payload);
+        const updated = await updateQuestionAction(accessToken, selectedQuestion.id, payload);
+        const normalized = normalizeRawQuestion(updated);
+        // Optimistic: replace the edited row in place, preserve creator_username.
+        setAdminQuestions(prev => prev.map(q => q.id === normalized.id
+          ? { ...normalized, creator_username: q.creator_username ?? normalized.creator_username }
+          : q));
       }
 
-      await fetchAdminQuestions();
+      // Append any newly-introduced categories locally (no full-scan refetch).
       if (payload.mapels.length > 0) {
         setAllMapels(prev => {
           const next = new Map(prev.map(item => [item.value, item]));
@@ -285,8 +294,20 @@ export default function useAdminQuestions({
           return Array.from(next.values()).sort((a, b) => a.label.localeCompare(b.label));
         });
       }
-      await loadAllBabsAdmin();
-      await loadAllSubBabsAdmin();
+      if (payload.babs.length > 0) {
+        setAllbabs(prev => {
+          const next = new Map(prev.map(item => [item.value, item]));
+          payload.babs.forEach((value) => next.set(value, { value, label: value }));
+          return Array.from(next.values()).sort((a, b) => a.label.localeCompare(b.label));
+        });
+      }
+      if (payload.sub_babs.length > 0) {
+        setAllSubBabsAdmin(prev => {
+          const next = new Map(prev.map(item => [item.value, item]));
+          payload.sub_babs.forEach((value) => next.set(value, { value, label: value }));
+          return Array.from(next.values()).sort((a, b) => a.label.localeCompare(b.label));
+        });
+      }
       closeModal();
     } catch (err) {
       console.error('Error saving question:', err);
@@ -304,10 +325,12 @@ export default function useAdminQuestions({
     }
 
     try {
-      await deleteQuestionAction(await getAdminAccessToken(), deletingQuestion.id);
+      const deletedId = deletingQuestion.id;
+      await deleteQuestionAction(await getAdminAccessToken(), deletedId);
 
-      await fetchAdminQuestions();
-      if (selectedQuestion?.id === deletingQuestion.id) {
+      // Optimistic: drop the row locally instead of full-scan refetch.
+      setAdminQuestions(prev => prev.filter(q => q.id !== deletedId));
+      if (selectedQuestion?.id === deletedId) {
         closeModal();
       }
     } catch (err) {
@@ -324,7 +347,9 @@ export default function useAdminQuestions({
     try {
       await updateQuestionsVisibilityAction(await getAdminAccessToken(), selectedQuestionIds, isHidden);
 
-      await fetchAdminQuestions();
+      // Optimistic: flip is_hidden on the affected rows locally.
+      const ids = new Set(selectedQuestionIds);
+      setAdminQuestions(prev => prev.map(q => ids.has(q.id) ? { ...q, is_hidden: isHidden } : q));
       setSelectedQuestionIds([]);
     } catch (err) {
       console.error('Error batch updating visibility:', err);
@@ -332,6 +357,25 @@ export default function useAdminQuestions({
     } finally {
       setBatchProcessing(false);
       setBatchVisibilityModalOpen(false);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedQuestionIds.length === 0) return;
+
+    setBatchProcessing(true);
+    try {
+      await deleteSelectedQuestionsAction(await getAdminAccessToken(), selectedQuestionIds);
+      // Optimistic: drop deleted rows locally.
+      const ids = new Set(selectedQuestionIds);
+      setAdminQuestions(prev => prev.filter(q => !ids.has(q.id)));
+      setSelectedQuestionIds([]);
+    } catch (err) {
+      console.error('Error batch deleting questions:', err);
+      window.alert('Gagal menghapus soal secara massal.');
+    } finally {
+      setBatchProcessing(false);
+      setBatchDeleteModalOpen(false);
     }
   };
 
@@ -369,7 +413,8 @@ export default function useAdminQuestions({
   const onToggleQuestionVisibility = async (question: RawQuestion) => {
     const newHidden = !question.is_hidden;
     await updateQuestionsVisibilityAction(await getAdminAccessToken(), [question.id], newHidden);
-    await fetchAdminQuestions();
+    // Optimistic: flip is_hidden locally instead of full-scan refetch.
+    setAdminQuestions(prev => prev.map(q => q.id === question.id ? { ...q, is_hidden: newHidden } : q));
   };
 
   const onViewQuestion = (question: RawQuestion) => {
@@ -457,6 +502,7 @@ export default function useAdminQuestions({
     batchProcessing,
     batchVisibilityModalOpen,
     batchVisibilityTarget,
+    batchDeleteModalOpen,
     deletingQuestion,
     newMapelInput,
     newSubBabInput,
@@ -471,6 +517,7 @@ export default function useAdminQuestions({
     setSelectedQuestionIds,
     setBatchVisibilityModalOpen,
     setBatchVisibilityTarget,
+    setBatchDeleteModalOpen,
     setDeletingQuestion,
     setNewMapelInput,
     setNewSubBabInput,
@@ -487,6 +534,7 @@ export default function useAdminQuestions({
     handleSave,
     confirmDelete,
     handleBatchVisibilityToggle,
+    handleBatchDelete,
     startAddNew,
     startEdit,
     onToggleQuestionVisibility,

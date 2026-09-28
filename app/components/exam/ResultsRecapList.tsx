@@ -2,13 +2,7 @@
 
 import React from 'react';
 import RichContent from '@/app/components/RichContent';
-
-type RecapItem = {
-  user_answer: string | null;
-  correct_text: string;
-  is_correct: boolean;
-  question_text: string;
-};
+import type { RecapItem } from '@/app/hooks/examTypes';
 
 type ResultsRecapListProps = {
   recapData: RecapItem[];
@@ -33,7 +27,7 @@ export default function ResultsRecapList({ recapData }: ResultsRecapListProps) {
           const isSkipped = !userAnswer;
 
           return (
-            <div key={idx} className="border-b border-line px-5 py-5 last:border-b-0 sm:px-6">
+            <div key={item.question_id} className="border-b border-line px-5 py-5 last:border-b-0 sm:px-6">
               <div className="mb-3 flex gap-3">
                 <span className="clay flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg px-1.5 text-[13px] font-bold tabular-nums">
                   {idx + 1}

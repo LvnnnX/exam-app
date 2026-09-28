@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 type JoinQuizModalProps = {
   isOpen: boolean;
@@ -40,11 +41,13 @@ export default function JoinQuizModal({
 
   return (
     <div className="glass-scrim fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
-      <div
+      {/* Grows out of the "Join with code" button on the setup screen (shared layoutId). */}
+      <motion.div
+        layoutId="join-quiz-expandable"
         role="dialog"
         aria-modal="true"
         aria-labelledby="join-quiz-title"
-        className="glass-sheet animate-in w-full max-w-sm overflow-hidden rounded-4xl"
+        className="glass-sheet w-full max-w-sm overflow-hidden rounded-4xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="px-6 pt-7 pb-5 text-center">
@@ -91,7 +94,7 @@ export default function JoinQuizModal({
             {isCheckingCode ? 'Verifying…' : 'Join'}
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

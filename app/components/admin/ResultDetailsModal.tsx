@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { scrimMotion, sheetMotion } from '@/app/components/ui/motion-presets';
 import { type RawQuestion } from '@/lib/questions';
 import ResultDetailsHeader from '@/app/components/admin/ResultDetailsHeader';
 import ResultDetailsContent from '@/app/components/admin/ResultDetailsContent';
@@ -68,15 +70,16 @@ export default function ResultDetailsModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewingResult, onClose]);
 
-  if (!viewingResult) return null;
-
   return (
-    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4" onClick={handleClose}>
-      <div
+    <AnimatePresence>
+      {viewingResult && (
+    <motion.div {...scrimMotion} data-theme={theme} className="glass-scrim fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4" onClick={handleClose}>
+      <motion.div
+        {...sheetMotion}
         role="dialog"
         aria-modal="true"
         aria-label={`Result details ${viewingResult.name}`}
-        className="glass-sheet animate-in flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-4xl text-fg"
+        className="glass-sheet flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-4xl text-fg"
         onClick={(e) => e.stopPropagation()}
       >
         <ResultDetailsHeader
@@ -92,7 +95,9 @@ export default function ResultDetailsModal({
           getCorrectOptionText={getCorrectOptionText}
           theme={theme}
         />
-      </div>
-    </div>
+      </motion.div>
+      </motion.div>
+      )}
+      </AnimatePresence>
   );
 }

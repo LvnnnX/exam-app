@@ -18,6 +18,10 @@ export const STORAGE_KEYS = {
   SCORE: 'exam_score',
   EXAM_MODE: 'exam_exam_mode',
   DOUBT_FLAGS: 'exam_doubt_flags',
+  TUTORIAL_SEEN: 'exam_tutorial_seen',
+  IS_SCHEDULED_EXAM: 'exam_is_scheduled',
+  SCHEDULED_EXAM_TITLE: 'exam_scheduled_title',
+  SCHEDULED_TIME_LIMIT: 'exam_scheduled_time_limit',
 } as const;
 
 export const TIME_LIMIT_OPTIONS = [

@@ -1,7 +1,11 @@
 import { supabase } from './supabase';
 import { ensureHtmlDocument } from './rich-text';
-import { categorySlugToLabel, isSafeCategorySlug, normalizeCategorySlug } from './categories';
-import { getCache, setCache, CACHE_TTL, generateCacheKey } from './cache';
+import { isSafeCategorySlug, normalizeCategorySlug } from './categories';
+import { getCache, setCache, CACHE_TTL } from './cache';
+
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').trim();
+}
 
 const getUA = () => typeof window !== 'undefined' ? window.navigator.userAgent : 'server';
 
@@ -111,7 +115,7 @@ function normalizeQuestionType(value: string | null | undefined): QuestionType {
   return value === 'short_answer' ? 'short_answer' : 'multiple_choice';
 }
 
-function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
+export function normalizeRawQuestion(raw: RawQuestion): RawQuestion {
   const hasShortAnswer = raw.short_answer !== null && raw.short_answer !== undefined && String(raw.short_answer).trim() !== '';
 
   return {
@@ -227,7 +231,7 @@ export async function fetchMapels(): Promise<BabInfo[]> {
     const result = Array.from(seen.entries())
       .filter(([slug]) => !visibility.hidden_mapels.includes(slug) && !visibility.admin_only_mapels.includes(slug))
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([slug, raw]) => ({ value: raw, label: raw }));
+      .map(([_slug, raw]) => ({ value: raw, label: raw }));
 
     // Cache the result
     setCache(cacheKey, result, { ttl: CACHE_TTL.CATEGORIES });
@@ -235,47 +239,6 @@ export async function fetchMapels(): Promise<BabInfo[]> {
   } catch {
     return [];
   }
-}
-
-export async function fetchMapelsAdmin(): Promise<BabInfo[]> {
-  // Try cache first
-  const cacheKey = 'mapels_admin';
-  const cached = getCache<BabInfo[]>(cacheKey, { ttl: CACHE_TTL.CATEGORIES });
-  if (cached) return cached;
-
-  const [mapelsResult, visibility] = await Promise.all([
-    supabase.from('questions').select('mapels').eq('is_hidden', false),
-    fetchVisibilitySettings(),
-  ]);
-
-  const { data, error } = mapelsResult;
-
-  if (error) {
-    console.error('Failed to fetch mapels admin:', error.message);
-    return [];
-  }
-
-  const rawMapels = data.flatMap((q) => {
-    const row = q as CategoryRow;
-    return toStringArray(row.mapels ?? row.mapel);
-  }).filter(Boolean);
-
-  const seen = new Map<string, string>();
-  for (const raw of rawMapels) {
-    const slug = normalizeCategorySlug(raw);
-    if (slug && !seen.has(slug)) {
-      seen.set(slug, raw);
-    }
-  }
-
-  const result = Array.from(seen.entries())
-    .filter(([slug]) => !visibility.hidden_mapels.includes(slug))
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
-
-  // Cache the result
-  setCache(cacheKey, result, { ttl: CACHE_TTL.CATEGORIES });
-  return result;
 }
 
 export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
@@ -306,7 +269,7 @@ export async function fetchAllMapelsAdmin(): Promise<BabInfo[]> {
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
@@ -340,42 +303,35 @@ export async function fetchbabs(mapel?: string): Promise<BabInfo[]> {
   return Array.from(seen.entries())
     .filter(([slug]) => !visibility.hidden_babs.includes(slug) && !visibility.admin_only_babs.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchBabsAdmin(mapel?: string | string[]): Promise<BabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('mapels, babs');
-
-  if (error || !data) return [];
-
+  // Server-side DISTINCT unnest via RPC (idx_questions_mapels_gin backs the overlap filter).
+  // Replaces the prior full-table scan + JS dedupe.
   const selectedMapels = (Array.isArray(mapel) ? mapel : mapel ? [mapel] : [])
     .filter(m => m !== 'Semua MAPEL' && m !== 'None')
-    .map(normalizeCategorySlug)
     .filter(Boolean);
 
-  const matchingRows = selectedMapels.length === 0
-    ? data
-    : data.filter((q) => {
-      const row = q as CategoryRow;
-      return toStringArray(row.mapels ?? row.mapel).some((raw) => selectedMapels.includes(normalizeCategorySlug(raw)));
-    });
+  const { data, error } = await supabase.rpc('get_distinct_babs', {
+    p_mapels: selectedMapels.length > 0 ? selectedMapels : null,
+  });
 
-  const rawBabs = matchingRows.flatMap((q) => {
-    const row = q as CategoryRow;
-    return toStringArray(row.babs);
-  }).filter(Boolean);
+  if (error || !data) {
+    if (error) console.error('get_distinct_babs failed:', error.message);
+    return [];
+  }
 
   const seen = new Map<string, string>();
-  for (const raw of rawBabs) {
-    const slug = normalizeCategorySlug(String(raw));
-    if (slug && !seen.has(slug)) {
-      seen.set(slug, String(raw));
-    }
+  for (const row of data as { value: string }[]) {
+    const raw = String(row.value);
+    const slug = normalizeCategorySlug(raw);
+    if (slug && !seen.has(slug)) seen.set(slug, raw);
   }
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
@@ -398,75 +354,35 @@ export async function fetchAllBabsAdmin(): Promise<BabInfo[]> {
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
-}
-
-export async function fetchSubBabs(bab?: string): Promise<SubBabInfo[]> {
-  let query = supabase.from('public_categories').select('*');
-  if (bab && bab !== 'Semua BAB' && bab !== 'None') {
-    query = query.contains('babs', [bab]);
-  }
-
-  const [subBabsResult, visibility] = await Promise.all([
-    query,
-    fetchVisibilitySettings(),
-  ]);
-
-  const { data, error } = subBabsResult;
-  if (error || !data) return [];
-
-  const rawSubBabs = data.flatMap((q) => {
-    const row = q as CategoryRow;
-    return toStringArray(row.sub_babs);
-  }).filter(Boolean);
-
-  const seen = new Map<string, string>();
-  for (const raw of rawSubBabs) {
-    const slug = normalizeCategorySlug(String(raw));
-    if (slug && !seen.has(slug)) {
-      seen.set(slug, String(raw));
-    }
-  }
-
-  return Array.from(seen.entries())
-    .filter(([slug]) => !visibility.hidden_sub_babs.includes(slug) && !visibility.admin_only_sub_babs.includes(slug))
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchSubBabsAdmin(bab?: string | string[]): Promise<SubBabInfo[]> {
-  const { data, error } = await supabase.from('questions').select('babs, sub_babs');
-
-  if (error || !data) return [];
-
+  // Server-side DISTINCT unnest via RPC (idx_questions_babs_gin backs the overlap filter).
+  // Replaces the prior full-table scan + JS dedupe.
   const selectedBabs = (Array.isArray(bab) ? bab : bab ? [bab] : [])
     .filter(b => b !== 'Semua BAB' && b !== 'None')
-    .map(normalizeCategorySlug)
     .filter(Boolean);
 
-  const matchingRows = selectedBabs.length === 0
-    ? data
-    : data.filter((q) => {
-      const row = q as CategoryRow;
-      return toStringArray(row.babs).some((raw) => selectedBabs.includes(normalizeCategorySlug(raw)));
-    });
+  const { data, error } = await supabase.rpc('get_distinct_sub_babs', {
+    p_babs: selectedBabs.length > 0 ? selectedBabs : null,
+  });
 
-  const rawSubBabs = matchingRows.flatMap((q) => {
-    const row = q as CategoryRow;
-    return toStringArray(row.sub_babs);
-  }).filter(Boolean);
+  if (error || !data) {
+    if (error) console.error('get_distinct_sub_babs failed:', error.message);
+    return [];
+  }
 
   const seen = new Map<string, string>();
-  for (const raw of rawSubBabs) {
-    const slug = normalizeCategorySlug(String(raw));
-    if (slug && !seen.has(slug)) {
-      seen.set(slug, String(raw));
-    }
+  for (const row of data as { value: string }[]) {
+    const raw = String(row.value);
+    const slug = normalizeCategorySlug(raw);
+    if (slug && !seen.has(slug)) seen.set(slug, raw);
   }
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 /** 
@@ -511,7 +427,7 @@ export async function fetchSubBabsForMultiple(babs: string[]): Promise<SubBabInf
   return Array.from(seen.entries())
     .filter(([slug]) => !visibility.hidden_sub_babs.includes(slug) && !visibility.admin_only_sub_babs.includes(slug))
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 /** Returns ALL sub_babs from the questions table with zero filtering.
@@ -535,7 +451,7 @@ export async function fetchAllSubBabsAdmin(): Promise<SubBabInfo[]> {
 
   return Array.from(seen.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slug, raw]) => ({ value: raw, label: raw }));
+    .map(([_slug, raw]) => ({ value: raw, label: raw }));
 }
 
 export async function fetchQuestions(mapel?: string, bab?: string, subBab?: string): Promise<RawQuestion[]> {
@@ -657,6 +573,30 @@ export async function submitSessionExamViaRpc(
   }
 
   return data as SubmitSessionExamRpcRow;
+}
+
+// ==================== Server time sync (BUG-H1) ====================
+// Fetch server NOW() to compute clientOffset = serverNow - clientNow.
+// Returns offset in milliseconds. Positive offset means server is ahead of client.
+// Used by timers to compute expiry against server clock instead of client clock,
+// so users can't extend exam time by setting their system clock backward.
+export async function getServerTimeOffsetMs(): Promise<number> {
+  const clientNowBefore = Date.now();
+  const { data, error } = await supabase.rpc('get_server_now');
+  const clientNowAfter = Date.now();
+
+  if (error || !data || typeof (data as { server_now?: string }).server_now !== 'string') {
+    return 0; // graceful fallback — no offset, use client clock
+  }
+
+  const serverNow = new Date((data as { server_now: string }).server_now).getTime();
+  if (!Number.isFinite(serverNow)) return 0;
+
+  // Estimate "server time at the moment we received the response" by adding half RTT
+  const rttHalf = Math.floor((clientNowAfter - clientNowBefore) / 2);
+  const adjustedClientNow = clientNowBefore + rttHalf;
+
+  return serverNow - adjustedClientNow;
 }
 
 // ==================== Fetch specific questions by IDs ====================

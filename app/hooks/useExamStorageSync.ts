@@ -22,6 +22,9 @@ type StorageKeys = {
   SCORE: string;
   EXAM_MODE: string;
   DOUBT_FLAGS: string;
+  IS_SCHEDULED_EXAM: string;
+  SCHEDULED_EXAM_TITLE: string;
+  SCHEDULED_TIME_LIMIT: string;
 };
 
 type UseExamStorageSyncArgs = {
@@ -44,6 +47,9 @@ type UseExamStorageSyncArgs = {
   timeLimit: number;
   examMode: ExamMode;
   doubtFlags: boolean[];
+  isScheduledExam: boolean;
+  scheduledExamTitle: string;
+  scheduledTimeLimitMinutes: number;
 };
 
 export default function useExamStorageSync({
@@ -66,6 +72,9 @@ export default function useExamStorageSync({
   timeLimit,
   examMode,
   doubtFlags,
+  isScheduledExam,
+  scheduledExamTitle,
+  scheduledTimeLimitMinutes,
 }: UseExamStorageSyncArgs) {
   useEffect(() => {
     if (!isRestored) return;
@@ -86,6 +95,9 @@ export default function useExamStorageSync({
     secureSave(storageKeys.TIME_LIMIT, timeLimit);
     secureSave(storageKeys.EXAM_MODE, examMode);
     secureSave(storageKeys.DOUBT_FLAGS, doubtFlags);
+    secureSave(storageKeys.IS_SCHEDULED_EXAM, isScheduledExam);
+    secureSave(storageKeys.SCHEDULED_EXAM_TITLE, scheduledExamTitle);
+    secureSave(storageKeys.SCHEDULED_TIME_LIMIT, scheduledTimeLimitMinutes);
   }, [
     isRestored,
     userName,
@@ -106,5 +118,8 @@ export default function useExamStorageSync({
     examMode,
     doubtFlags,
     storageKeys,
+    isScheduledExam,
+    scheduledExamTitle,
+    scheduledTimeLimitMinutes,
   ]);
 }

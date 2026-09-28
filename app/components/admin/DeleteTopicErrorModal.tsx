@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { scrimMotion, sheetMotion } from '@/app/components/ui/motion-presets';
 
 type DeleteTopicError = {
   message: string;
@@ -23,17 +25,16 @@ export default function DeleteTopicErrorModal({ error, onClose, theme = 'dark' }
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [error, onClose]);
 
-  if (!error) {
-    return null;
-  }
-
   return (
-    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4" onClick={onClose}>
-      <div
+    <AnimatePresence>
+      {error && (
+    <motion.div {...scrimMotion} data-theme={theme} className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4" onClick={onClose}>
+      <motion.div
+        {...sheetMotion}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="delete-topic-error-title"
-        className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl"
+        className="glass-sheet w-full max-w-md overflow-hidden rounded-4xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
@@ -67,7 +68,9 @@ export default function DeleteTopicErrorModal({ error, onClose, theme = 'dark' }
             Tutup
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

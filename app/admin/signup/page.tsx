@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { createAdminSignupRequestAction } from '@/app/actions/admin/access';
 import { type AdminRole } from '@/lib/admin-permissions';
@@ -96,14 +97,27 @@ export default function AdminSignupPage() {
               </svg>
             </div>
             <h1 className="text-[26px] font-bold tracking-tight text-fg md:text-[28px]">
-              Minta akses admin.
+              Daftar admin.
             </h1>
             <p className="mt-2 text-[14px] font-medium text-fg-muted">
-              Buat akun, lalu tunggu approval super admin.
+              Ajukan akun baru untuk ditinjau oleh super admin.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block">
+              <span className={labelClass}>Username</span>
+              <input
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="nama_pengguna"
+                className={inputClass}
+                required
+              />
+            </label>
+
             <label className="block">
               <span className={labelClass}>Email</span>
               <input
@@ -118,20 +132,6 @@ export default function AdminSignupPage() {
             </label>
 
             <label className="block">
-              <span className={labelClass}>Username</span>
-              <input
-                type="text"
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                pattern="[a-zA-Z0-9_.-]{3,32}"
-                placeholder="username"
-                className={inputClass}
-                required
-              />
-            </label>
-
-            <label className="block">
               <span className={labelClass}>Password</span>
               <div className="relative">
                 <input
@@ -139,15 +139,15 @@ export default function AdminSignupPage() {
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  minLength={8}
-                  placeholder="••••••••"
+                  minLength={6}
+                  placeholder="Minimal 6 karakter"
                   className={`${inputClass} pr-14`}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
                   className="well-hover absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-fg-muted transition-calm hover:text-fg"
                 >
                   {showPassword ? (
@@ -168,15 +168,16 @@ export default function AdminSignupPage() {
             </label>
 
             <label className="block">
-              <span className={labelClass}>Peran yang diminta</span>
+              <span className={labelClass}>Peran yang diajukan</span>
               <div className="relative">
                 <select
                   value={requestedRole}
                   onChange={(e) => setRequestedRole(e.target.value as SignupRole)}
                   className={`${inputClass} well-hover cursor-pointer appearance-none pr-11 font-semibold`}
                 >
-                  <option value="teacher">Teacher</option>
-                  <option value="admin">Admin</option>
+                  <option value="teacher">Teacher (Guru / Pembuat Soal)</option>
+                  <option value="curator">Curator (Kurator Konten)</option>
+                  <option value="admin">Admin (Pengelola Penuh)</option>
                 </select>
                 <svg
                   viewBox="0 0 24 24"
@@ -205,16 +206,15 @@ export default function AdminSignupPage() {
             )}
 
             <button type="submit" disabled={loading} className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold">
-              {loading ? 'Mengirim...' : 'Kirim permintaan akses'}
+              {loading ? 'Mengirim permintaan…' : 'Ajukan pendaftaran'}
             </button>
 
-            <button
-              type="button"
-              onClick={() => (window.location.href = '/admin')}
-              className="well well-hover h-11 w-full rounded-xl text-[13px] font-medium text-fg transition-calm"
+            <Link
+              href="/admin"
+              className="well well-hover flex h-11 w-full items-center justify-center rounded-xl text-[13px] font-medium text-fg transition-calm"
             >
-              Kembali ke login
-            </button>
+              Sudah punya akun? Masuk
+            </Link>
           </form>
         </div>
 

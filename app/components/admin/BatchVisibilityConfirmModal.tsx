@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { scrimMotion, sheetMotion } from '@/app/components/ui/motion-presets';
 
 type BatchVisibilityConfirmModalProps = {
   isOpen: boolean;
@@ -30,17 +32,16 @@ export default function BatchVisibilityConfirmModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, batchProcessing, onCancel]);
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
-      <div
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div {...scrimMotion} data-theme={theme} className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
+      <motion.div
+        {...sheetMotion}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="batch-visibility-title"
-        className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl"
+        className="glass-sheet w-full max-w-md overflow-hidden rounded-4xl"
       >
         <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
           <div className="mb-4 flex items-center gap-3">
@@ -83,7 +84,9 @@ export default function BatchVisibilityConfirmModal({
             {batchProcessing ? 'Memproses…' : 'Lanjutkan'}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

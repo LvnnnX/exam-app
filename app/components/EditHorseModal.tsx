@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { HORSE_SKINS, getHorseSkin, MOUNT_OPTIONS, isMountId, type MountId } from '@/lib/horse-skins';
 import HorseAvatar from './HorseAvatar';
 
@@ -28,6 +29,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
   useEffect(() => {
     if (!isOpen) return;
     const skin = getHorseSkin(currentSkinId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setJersey(skin.horse.jersey);
     setPants(skin.horse.pants);
     setSaddle(skin.horse.saddle);
@@ -84,11 +86,13 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
 
   return (
     <div className="glass-scrim fixed inset-0 z-[100] flex items-center justify-center p-3" onClick={onClose}>
-      <div
+      {/* Grows out of the "Ubah" button in the waiting room (shared layoutId). */}
+      <motion.div
+        layoutId="edit-horse-expandable"
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-mount-title"
-        className="glass-sheet animate-in flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-4xl"
+        className="glass-sheet flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-4xl"
         onClick={(event) => event.stopPropagation()}
       >
         {/* Header */}
@@ -218,7 +222,7 @@ export default function EditHorseModal({ isOpen, onClose, onSave, currentSkinId 
             Simpan
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -235,6 +239,7 @@ function ColorRow({
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraft(value);
   }, [value]);
 

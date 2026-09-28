@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 type QuestionNavPopupProps = {
   isOpen: boolean;
@@ -56,11 +57,13 @@ export default function QuestionNavPopup({
 
   return (
     <div className="glass-scrim fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
-      <div
+      {/* Morphs out of the "Daftar soal" chip in QuestionStatusHeader (shared layoutId). */}
+      <motion.div
+        layoutId="question-nav-expandable"
         role="dialog"
         aria-modal="true"
         aria-labelledby="question-nav-title"
-        className="glass-sheet animate-in w-full max-w-md overflow-hidden rounded-4xl"
+        className="glass-sheet w-full max-w-md overflow-hidden rounded-4xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-line px-5 pt-4 pb-4">
@@ -100,7 +103,7 @@ export default function QuestionNavPopup({
             })}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

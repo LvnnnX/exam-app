@@ -1,33 +1,45 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
+import { buildRemedialQuestionPool, type RemedialQuestionLike } from '@/app/lib/remedialQuizSelection';
+
+type RemedialCandidate = RemedialQuestionLike;
 
 type RemedialQuizBuilderProps = {
   selectedStudentKeys: string[];
   studentNames: string[];
-  remedialCandidates: any[];
+  remedialCandidates: RemedialCandidate[];
+  questionPool: RemedialCandidate[];
   onClose: () => void;
   onCreateQuiz: (config: QuizConfig) => void;
   theme?: 'light' | 'dark';
 };
 
 type QuizConfig = {
-  name: string;
   duration: number;
   questionCount: number;
   mode: 'wrong_only' | 'wrong_similar' | 'topic_based';
+  quizMode: 'strict' | 'standard';
   studentKeys: string[];
 };
 
 const MODE_OPTIONS = [
-  { value: 'wrong_only', label: 'Only wrong questions', desc: 'Include only questions students got wrong.', comingSoon: false },
-  { value: 'wrong_similar', label: 'Wrong + similar', desc: 'Wrong questions plus similar ones from the same topics.', comingSoon: true },
-  { value: 'topic_based', label: 'Topic-based', desc: 'All questions from weak topics.', comingSoon: true },
+  { value: 'wrong_only', label: 'Only wrong questions', desc: 'Include only questions students got wrong.' },
+  { value: 'wrong_similar', label: 'Wrong + similar', desc: 'Wrong questions plus similar ones from the same topics.' },
+  { value: 'topic_based', label: 'Topic-based', desc: 'All questions from weak topics.' },
 ] as const;
+
+const POOL_NOTE: Record<QuizConfig['mode'], string> = {
+  wrong_only: 'Questions that selected students answered incorrectly.',
+  wrong_similar: 'Wrong questions first, then questions from the same topics.',
+  topic_based: 'Questions from the topics where selected students are weakest.',
+};
 
 const fieldLabel = 'mb-2 block text-[13px] font-semibold text-fg';
 const selectClass = 'well well-hover h-11 w-full cursor-pointer appearance-none rounded-xl pl-4 pr-10 text-[14px] font-medium text-fg transition-calm';
+const segment = (active: boolean) =>
+  `h-11 flex-1 rounded-lg text-[13px] font-semibold transition-calm ${active ? 'clay' : 'text-fg-muted hover:text-fg'}`;
 
 function SelectChevron() {
   return (
@@ -41,26 +53,37 @@ export default function RemedialQuizBuilder({
   selectedStudentKeys,
   studentNames,
   remedialCandidates,
+  questionPool,
   onClose,
   onCreateQuiz,
   theme = 'dark',
 }: RemedialQuizBuilderProps) {
-  const [quizName, setQuizName] = useState('Remedial Quiz');
   const [duration, setDuration] = useState(60);
   const [questionCount, setQuestionCount] = useState(20);
-  const [mode, setMode] = useState<'wrong_only' | 'wrong_similar' | 'topic_based'>('wrong_only');
+  const [mode, setMode] = useState<QuizConfig['mode']>('wrong_only');
+  const [quizMode, setQuizMode] = useState<QuizConfig['quizMode']>('strict');
 
-  // Filter questions for selected students
-  const availableQuestions = remedialCandidates.filter(q =>
-    q.participantKeys.some((key: string) => selectedStudentKeys.includes(key))
-  );
+  const availableQuestions = useMemo(() => buildRemedialQuestionPool({
+    mode,
+    studentKeys: selectedStudentKeys,
+    remedialCandidates,
+    questionPool,
+  }), [mode, selectedStudentKeys, remedialCandidates, questionPool]);
+
+  const questionOptions = useMemo(() => {
+    const presets = [5, 10, 20, 25, 30, 40, 50, 100];
+    const capped = presets.filter((value) => value <= availableQuestions.length);
+    return capped.length > 0 ? capped : availableQuestions.length > 0 ? [availableQuestions.length] : [];
+  }, [availableQuestions.length]);
+
+  const effectiveQuestionCount = availableQuestions.length > 0 ? Math.min(questionCount, availableQuestions.length) : questionCount;
 
   const handleCreate = () => {
     onCreateQuiz({
-      name: quizName,
       duration,
-      questionCount,
+      questionCount: effectiveQuestionCount,
       mode,
+      quizMode,
       studentKeys: selectedStudentKeys,
     });
   };
@@ -107,16 +130,20 @@ export default function RemedialQuizBuilder({
 
         <div className="space-y-5">
           <div>
-            <label htmlFor="remedial-quiz-name" className={fieldLabel}>
-              Quiz name
-            </label>
-            <input
-              id="remedial-quiz-name"
-              type="text"
-              value={quizName}
-              onChange={(e) => setQuizName(e.target.value)}
-              className="well h-11 w-full rounded-xl px-4 text-[14px] font-medium text-fg transition-calm"
-            />
+            <span className={fieldLabel}>Mode navigasi</span>
+            <div className="well flex gap-1 rounded-xl p-1" role="group" aria-label="Mode navigasi">
+              <button type="button" aria-pressed={quizMode === 'strict'} onClick={() => setQuizMode('strict')} className={segment(quizMode === 'strict')}>
+                Strict
+              </button>
+              <button type="button" aria-pressed={quizMode === 'standard'} onClick={() => setQuizMode('standard')} className={segment(quizMode === 'standard')}>
+                Standard
+              </button>
+            </div>
+            <p className="mt-2 text-[13px] text-fg-muted">
+              {quizMode === 'strict'
+                ? 'Soal harus dikerjakan berurutan, tidak bisa kembali.'
+                : 'Peserta bisa bolak-balik soal dan menandai ragu-ragu.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -148,15 +175,15 @@ export default function RemedialQuizBuilder({
               <div className="relative">
                 <select
                   id="remedial-question-count"
-                  value={questionCount}
+                  value={effectiveQuestionCount}
                   onChange={(e) => setQuestionCount(Number(e.target.value))}
-                  className={selectClass}
+                  disabled={questionOptions.length === 0}
+                  className={`${selectClass} disabled:cursor-not-allowed disabled:opacity-60`}
                 >
-                  <option value={10}>10 questions</option>
-                  <option value={20}>20 questions</option>
-                  <option value={30}>30 questions</option>
-                  <option value={50}>50 questions</option>
-                  <option value={100}>100 questions</option>
+                  {questionOptions.length === 0 && <option value={questionCount}>No questions available</option>}
+                  {questionOptions.map((value) => (
+                    <option key={value} value={value}>{value} questions</option>
+                  ))}
                 </select>
                 <SelectChevron />
               </div>
@@ -184,16 +211,8 @@ export default function RemedialQuizBuilder({
                         {active && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
                       </span>
                       <span className="flex-1">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="text-[14px] font-semibold text-fg">{option.label}</span>
-                          {option.comingSoon && (
-                            <span className="well rounded-md px-2 py-0.5 text-[11px] font-semibold text-fg-muted">Coming soon</span>
-                          )}
-                        </span>
-                        <span className="mt-0.5 block text-[13px] text-fg-muted">
-                          {option.desc}
-                          {option.comingSoon && ' For now it uses wrong questions only.'}
-                        </span>
+                        <span className="block text-[14px] font-semibold text-fg">{option.label}</span>
+                        <span className="mt-0.5 block text-[13px] text-fg-muted">{option.desc}</span>
                       </span>
                     </div>
                   </button>
@@ -225,8 +244,8 @@ export default function RemedialQuizBuilder({
               </p>
               <p className="text-[13px] text-fg-muted">
                 {availableQuestions.length === 0
-                  ? 'The selected students have no wrong answers to build from.'
-                  : 'Questions that selected students answered incorrectly.'}
+                  ? 'No questions match this mode for the selected students.'
+                  : POOL_NOTE[mode]}
               </p>
             </div>
           </div>

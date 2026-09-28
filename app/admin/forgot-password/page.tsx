@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAdminTheme } from '@/app/hooks/useAdminTheme';
 
@@ -33,7 +34,7 @@ export default function AdminForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-3 flex justify-end">
           <button
@@ -74,7 +75,7 @@ export default function AdminForgotPasswordPage() {
               Lupa password.
             </h1>
             <p className="mt-2 text-[14px] font-medium text-fg-muted">
-              Masukkan email akun admin untuk menerima link reset.
+              Masukkan email akun admin untuk menerima tautan reset.
             </p>
           </div>
 
@@ -104,16 +105,15 @@ export default function AdminForgotPasswordPage() {
             )}
 
             <button type="submit" disabled={loading} className="clay-primary h-12 w-full rounded-xl text-[15px] font-semibold">
-              {loading ? 'Mengirim...' : 'Kirim link reset'}
+              {loading ? 'Mengirim…' : 'Kirim tautan reset'}
             </button>
 
-            <button
-              type="button"
-              onClick={() => (window.location.href = '/admin')}
-              className="well well-hover h-11 w-full rounded-xl text-[13px] font-medium text-fg transition-calm"
+            <Link
+              href="/admin"
+              className="well well-hover flex h-11 w-full items-center justify-center rounded-xl text-[13px] font-medium text-fg transition-calm"
             >
               Kembali ke login
-            </button>
+            </Link>
           </form>
         </div>
 

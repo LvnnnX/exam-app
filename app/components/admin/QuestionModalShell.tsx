@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { scrimMotion } from '@/app/components/ui/motion-presets';
 import { type RawQuestion } from '@/lib/questions';
 import QuestionModalHeader from '@/app/components/admin/QuestionModalHeader';
 import QuestionModalFooter from '@/app/components/admin/QuestionModalFooter';
@@ -40,15 +42,18 @@ export default function QuestionModalShell({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isFormMode, onClose]);
 
-  if (!isOpen) return null;
-
+  // Opacity only: a transform on the sheet would become the containing block
+  // for the fixed-position math and table dialogs that open inside it.
   return (
-    <div data-theme={theme} className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
-      <div
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div {...scrimMotion} data-theme={theme} className="glass-scrim fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
+      <motion.div
+        {...scrimMotion}
         role="dialog"
         aria-modal="true"
         aria-label={isAdding ? 'Add question' : isEditing ? 'Edit question' : 'Question'}
-        className="glass-sheet animate-in flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-4xl text-fg"
+        className="glass-sheet flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-4xl text-fg"
         onClick={(e) => e.stopPropagation()}
       >
         <QuestionModalHeader
@@ -69,7 +74,9 @@ export default function QuestionModalShell({
           onSave={onSave}
           theme={theme}
         />
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
