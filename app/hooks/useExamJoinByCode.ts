@@ -38,6 +38,9 @@ export default function useExamJoinByCode({ quizCodeLength }: UseExamJoinByCodeA
       } else if ((quiz.status === 'active' || quiz.status === 'paused') && quiz.allow_join_mid_game === false) {
         setCodeError('Kuis sedang berjalan dan tidak menerima peserta baru');
       } else {
+        // Kept as a full page load on purpose: the quiz page starts from a clean
+        // document instead of inheriting exam-page state. Lint-only annotation.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = `/quiz/${quiz.quiz_code}`;
       }
     } catch {
