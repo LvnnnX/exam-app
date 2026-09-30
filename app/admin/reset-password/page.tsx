@@ -39,7 +39,7 @@ export default function AdminResetPasswordPage() {
   const inputClass = 'well h-12 w-full rounded-xl px-4 text-[15px] font-medium text-fg transition-calm';
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="glass rounded-4xl p-7 md:p-9">
           <div className="mb-7 text-center">

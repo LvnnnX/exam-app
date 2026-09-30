@@ -16,6 +16,7 @@ import { common, createLowlight } from 'lowlight';
 import katex from 'katex';
 import { ensureHtmlDocument } from '@/lib/rich-text';
 import { supabase } from '@/lib/supabase';
+import { AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Quote } from 'lucide-react';
 
 import 'katex/dist/katex.min.css';
 
@@ -498,7 +499,7 @@ export default function RichTextEditorField({
               className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive({ textAlign: 'left' }) ? 'is-active' : ''}`}
               title="Align Left"
             >
-              <span className="text-xs">⬅</span>
+              <AlignLeft size={14} />
             </button>
             <button
               type="button"
@@ -506,7 +507,7 @@ export default function RichTextEditorField({
               className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive({ textAlign: 'center' }) ? 'is-active' : ''}`}
               title="Align Center"
             >
-              <span className="text-xs">↔</span>
+              <AlignCenter size={14} />
             </button>
             <button
               type="button"
@@ -514,7 +515,7 @@ export default function RichTextEditorField({
               className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive({ textAlign: 'right' }) ? 'is-active' : ''}`}
               title="Align Right"
             >
-              <span className="text-xs">➡</span>
+              <AlignRight size={14} />
             </button>
             <button
               type="button"
@@ -522,7 +523,7 @@ export default function RichTextEditorField({
               className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive({ textAlign: 'justify' }) ? 'is-active' : ''}`}
               title="Justify"
             >
-              <span className="text-xs">⬌</span>
+              <AlignJustify size={14} />
             </button>
           </div>
 
@@ -535,7 +536,7 @@ export default function RichTextEditorField({
               className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('bulletList') ? 'is-active' : ''}`}
               title="Bullet List"
             >
-              <span className="text-sm">•</span>
+              <List size={14} />
             </button>
             <button
               type="button"
@@ -543,7 +544,7 @@ export default function RichTextEditorField({
               className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('orderedList') ? 'is-active' : ''}`}
               title="Numbered List"
             >
-              <span className="text-xs font-semibold">1.</span>
+              <ListOrdered size={14} />
             </button>
             <button
               type="button"
@@ -551,7 +552,7 @@ export default function RichTextEditorField({
               className={`toolbar-btn ${isCompact ? 'compact' : ''} ${editor.isActive('blockquote') ? 'is-active' : ''}`}
               title="Quote"
             >
-              <span className="text-sm">❝</span>
+              <Quote size={14} />
             </button>
           </div>
 

@@ -58,7 +58,7 @@ export default function AdminSignupPage() {
   const inputClass = 'well h-12 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm';
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-3 flex justify-end">
           <button
