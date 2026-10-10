@@ -56,9 +56,9 @@ export default function MultiSelectDropdown({
   };
 
   const getDisplayText = () => {
-    if (selectedValues.length === 0) return placeholder || `Select ${label}`;
-    if (selectedValues.length === options.length && options.length > 0) return `All ${label}s`;
-    if (selectedValues.length > 2) return `${selectedValues.length} selected`;
+    if (selectedValues.length === 0) return placeholder || `Pilih ${label.toLowerCase()}`;
+    if (selectedValues.length === options.length && options.length > 0) return `Semua ${label.toLowerCase()}`;
+    if (selectedValues.length > 2) return `${selectedValues.length} dipilih`;
     return selectedValues.map(v => options.find(o => o.value === v)?.label || v).join(', ');
   };
 
@@ -113,7 +113,7 @@ export default function MultiSelectDropdown({
                   className="well-hover w-full flex items-center gap-3 rounded-xl px-3 min-h-11 text-left transition-calm"
                 >
                   <CheckBox checked={allSelected} />
-                  <span className="text-[14px] font-semibold text-fg">Select all</span>
+                  <span className="text-[14px] font-semibold text-fg">Pilih semua</span>
                 </button>
                 <div className="my-1 h-px bg-line" />
                 {options.map(option => {
@@ -137,7 +137,7 @@ export default function MultiSelectDropdown({
               </>
             ) : (
               <div className="p-4 text-center text-[13px] font-medium text-fg-muted">
-                No options available
+                Belum ada pilihan
               </div>
             )}
           </div>

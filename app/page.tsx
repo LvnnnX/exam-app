@@ -11,6 +11,7 @@ import TutorialModal from '@/app/components/exam/TutorialModal';
 import ScheduledExamEntry from '@/app/components/exam/ScheduledExamEntry';
 import ConfirmIdentityStep from '@/app/components/exam/ConfirmIdentityStep';
 import RestoringSessionView from '@/app/components/exam/RestoringSessionView';
+import ExamIntro from '@/app/components/exam/ExamIntro';
 import PreparingQuestionView from '@/app/components/exam/PreparingQuestionView';
 import QuestionNavPopup from '@/app/components/exam/QuestionNavPopup';
 import SubmitConfirmModal from '@/app/components/exam/SubmitConfirmModal';
@@ -112,12 +113,7 @@ export default function ExamPage() {
     return (
       <div className="flex-1 flex flex-col px-4 pt-8 pb-12 sm:px-6 md:pt-14">
         <div className="mx-auto w-full max-w-xl">
-          <div className="mb-6 md:mb-8">
-            <p className="mb-2 text-[13px] font-medium text-fg-muted">Smandapura Exam</p>
-            <h1 className="mb-2 text-[36px] font-bold leading-[1.05] tracking-[-0.02em] text-fg sm:text-[44px]">
-              Take the exam.
-            </h1>
-            <p className="text-[15px] text-fg-muted">Pick your mode, your topic, and start whenever you’re ready.</p>
+          <ExamIntro>
             <button
               type="button"
               onClick={() => setIsTutorialOpen(true)}
@@ -128,7 +124,7 @@ export default function ExamPage() {
               </svg>
               Lihat tutorial
             </button>
-          </div>
+          </ExamIntro>
           <div className="glass w-full space-y-5 rounded-3xl p-5 md:p-6">
             <div className="space-y-2">
               <span className={fieldLabel}>
@@ -163,7 +159,7 @@ export default function ExamPage() {
                   layoutId="join-quiz-expandable"
                   onClick={() => setters.setIsJoinModalOpen(true)}
                 >
-                  Join with code
+                  Gabung dengan kode
                 </NeumorphButton>
                 <NeumorphButton
                   type="button"
@@ -181,10 +177,10 @@ export default function ExamPage() {
             {!state.isSurvival && (
               <div className="space-y-2">
                 <span className={fieldLabel}>
-                  Navigation
+                  Navigasi
                   <HelpTooltip text="Strict: Soal berurutan, tidak bisa kembali. Standard: Bebas navigasi dan bisa menandai ragu-ragu." />
                 </span>
-                <div className="well flex w-full gap-1 rounded-xl p-1" role="group" aria-label="Navigation">
+                <div className="well flex w-full gap-1 rounded-xl p-1" role="group" aria-label="Navigasi">
                   <button
                     type="button"
                     aria-pressed={state.examMode === 'strict'}
@@ -203,14 +199,14 @@ export default function ExamPage() {
                   </button>
                 </div>
                 <p className="text-[13px] text-fg-muted">
-                  {state.examMode === 'strict' ? 'Sequential only, no going back.' : 'Free navigation, mark as doubtful.'}
+                  {state.examMode === 'strict' ? 'Soal berurutan, tidak bisa kembali.' : 'Bebas pindah soal dan bisa tandai ragu-ragu.'}
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
               <label htmlFor="exam-user-name" className={fieldLabel}>
-                Your name
+                Nama kamu
                 <HelpTooltip text="Nama yang akan ditampilkan pada papan skor (leaderboard)." />
               </label>
               <input
@@ -219,7 +215,7 @@ export default function ExamPage() {
                 value={state.userName}
                 maxLength={16}
                 onChange={(e) => setters.setUserName(e.target.value.slice(0, 16))}
-                placeholder="Enter name"
+                placeholder="Tulis nama"
                 className="well h-11 w-full rounded-xl px-4 text-[15px] font-medium text-fg placeholder:text-fg-subtle transition-calm"
               />
               <p className="text-right text-[12px] tabular-nums text-fg-subtle">{state.userName.length}/16</p>
@@ -236,7 +232,7 @@ export default function ExamPage() {
                   options={state.availableMapels}
                   selectedValues={state.mapels}
                   onChange={setters.setMapels}
-                  placeholder="Choose mapel"
+                  placeholder="Pilih mapel"
                 />
               </div>
 
@@ -246,12 +242,12 @@ export default function ExamPage() {
                   <HelpTooltip text="Bab materi yang ingin diujikan." />
                 </span>
                 <MultiSelectDropdown
-                  label="BAB"
+                  label="Bab"
                   options={state.availableBabs}
                   selectedValues={state.babs}
                   onChange={setters.setBabs}
                   disabled={state.mapels.length === 0}
-                  placeholder={state.mapels.length === 0 ? 'Choose mapel' : 'Choose bab'}
+                  placeholder={state.mapels.length === 0 ? 'Pilih mapel dulu' : 'Pilih bab'}
                 />
               </div>
 
@@ -266,7 +262,7 @@ export default function ExamPage() {
                   selectedValues={state.subBabs}
                   onChange={setters.setSubBabs}
                   disabled={state.babs.length === 0}
-                  placeholder={state.babs.length === 0 ? 'Choose bab' : 'Choose sub-bab'}
+                  placeholder={state.babs.length === 0 ? 'Pilih bab dulu' : 'Pilih sub-bab'}
                 />
               </div>
             </div>
@@ -274,29 +270,29 @@ export default function ExamPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <span className={fieldLabel}>
-                  Time limit
+                  Batas waktu
                   <HelpTooltip text="Batas waktu maksimal untuk menyelesaikan seluruh soal." />
                 </span>
                 <SingleSelectDropdown
                   options={TIME_LIMIT_OPTIONS}
                   value={state.timeLimit}
                   onChange={setters.setTimeLimit}
-                  placeholder="Choose time limit"
-                  ariaLabel="Time limit"
+                  placeholder="Pilih batas waktu"
+                  ariaLabel="Batas waktu"
                 />
               </div>
 
               <div className="space-y-2">
                 <span className={fieldLabel}>
-                  Question count
+                  Jumlah soal
                   <HelpTooltip text="Jumlah soal yang ingin dikerjakan." />
                 </span>
                 <SingleSelectDropdown
-                  options={QUESTION_COUNTS.map((count) => ({ value: count, label: `${count} questions` }))}
+                  options={QUESTION_COUNTS.map((count) => ({ value: count, label: `${count} soal` }))}
                   value={state.questionCount}
                   onChange={setters.setQuestionCount}
-                  placeholder="Choose question count"
-                  ariaLabel="Question count"
+                  placeholder="Pilih jumlah soal"
+                  ariaLabel="Jumlah soal"
                 />
               </div>
             </div>
@@ -314,7 +310,7 @@ export default function ExamPage() {
                 state.subBabs.length === 0
               }
             >
-              Begin session
+              Mulai sesi
             </NeumorphButton>
           </div>
 

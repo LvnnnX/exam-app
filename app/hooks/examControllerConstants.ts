@@ -25,12 +25,12 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const TIME_LIMIT_OPTIONS = [
-  { label: 'No Time', value: 0 },
-  { label: '1 Minutes (debug)', value: 1 },
-  { label: '30 Minutes', value: 30 },
-  { label: '60 Minutes', value: 60 },
-  { label: '90 Minutes', value: 90 },
-  { label: '120 Minutes', value: 120 },
-  { label: '150 Minutes', value: 150 },
-  { label: '180 Minutes', value: 180 },
+  { label: 'Tanpa batas waktu', value: 0 },
+  { label: '1 menit (debug)', value: 1 },
+  { label: '30 menit', value: 30 },
+  { label: '60 menit', value: 60 },
+  { label: '90 menit', value: 90 },
+  { label: '120 menit', value: 120 },
+  { label: '150 menit', value: 150 },
+  { label: '180 menit', value: 180 },
 ] as const;
