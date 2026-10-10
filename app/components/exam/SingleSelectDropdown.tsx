@@ -8,7 +8,7 @@ type SingleSelectDropdownProps<T extends string | number> = {
   onChange: (value: T) => void;
   disabled?: boolean;
   placeholder?: string;
-  /** Field name for assistive tech, e.g. "Time limit". Announced with the current value. */
+  /** Field name for assistive tech, e.g. "Batas waktu". Announced with the current value. */
   ariaLabel?: string;
 };
 
@@ -17,7 +17,7 @@ export default function SingleSelectDropdown<T extends string | number>({
   value,
   onChange,
   disabled,
-  placeholder = 'Choose option',
+  placeholder = 'Pilih salah satu',
   ariaLabel,
 }: SingleSelectDropdownProps<T>) {
   const [isOpen, setIsOpen] = useState(false);

@@ -19,11 +19,11 @@ const SETUP_STEPS: StepItem[] = [
     body: 'Pilih Exam untuk ujian biasa, atau Survival kalau mau pakai nyawa terbatas. Salah jawab di Survival mengurangi nyawa, dan sesi berakhir saat nyawa habis.',
   },
   {
-    label: 'Navigation',
+    label: 'Navigasi',
     body: 'Hanya muncul di mode Exam. Strict berarti soal berurutan dan tidak bisa kembali. Standard berarti bebas pindah soal dan bisa menandai soal ragu-ragu.',
   },
   {
-    label: 'Your name',
+    label: 'Nama kamu',
     body: 'Nama yang ditampilkan di papan skor (leaderboard). Maksimal 16 karakter.',
   },
   {
@@ -39,11 +39,11 @@ const SETUP_STEPS: StepItem[] = [
     body: 'Sub-bab materi dari bab yang dipilih. Aktif setelah minimal satu bab dipilih.',
   },
   {
-    label: 'Time limit',
-    body: 'Batas waktu untuk seluruh soal. Pilih No Time kalau tidak mau ada hitungan mundur.',
+    label: 'Batas waktu',
+    body: 'Batas waktu untuk seluruh soal. Pilih Tanpa batas waktu kalau tidak mau ada hitungan mundur.',
   },
   {
-    label: 'Question count',
+    label: 'Jumlah soal',
     body: 'Jumlah soal yang dikerjakan. Pilihannya 5 sampai 100 soal.',
   },
 ];
@@ -173,7 +173,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
 
         <div className="overflow-y-auto px-5 py-5 sm:px-6">
           <p className="mb-5 text-[14px] text-fg-muted">
-            Atur sesi ujian dari pilihan berikut, lalu tekan Begin session.
+            Atur sesi ujian dari pilihan berikut, lalu tekan Mulai sesi.
           </p>
 
           <ol className="space-y-4">
