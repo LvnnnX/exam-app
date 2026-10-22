@@ -93,14 +93,14 @@ isOneToOne: false
                   ]
                 },"exam_sessions": {
                   Row: {
-                    "created_at": string,"current_index": number,"duration_seconds": number | null,"end_time": string | null,"expires_at": string,"id": string,"lives": number,"mode": string,"name": string,"nav_mode": string,"question_order": (number)[],"score": number,"secret_hash": string | null,"selected_categories": NonNullable<Json>,"start_time": string,"status": string,"user_id": string | null
+                    "created_at": string,"current_index": number,"duration_seconds": number | null,"end_reason": string | null,"end_time": string | null,"expires_at": string,"id": string,"lives": number,"mode": string,"name": string,"nav_mode": string,"question_count": number | null,"question_order": (number)[],"score": number,"secret_hash": string | null,"selected_categories": NonNullable<Json>,"start_time": string,"status": string,"time_limit_minutes": number,"user_id": string | null,"violation_count": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"current_index"?: number,"duration_seconds"?: number | null,"end_time"?: string | null,"expires_at"?: string,"id"?: string,"lives"?: number,"mode": string,"name": string,"nav_mode"?: string,"question_order"?: (number)[],"score"?: number,"secret_hash"?: string | null,"selected_categories"?: NonNullable<Json>,"start_time"?: string,"status"?: string,"user_id"?: string | null
+                    "created_at"?: string,"current_index"?: number,"duration_seconds"?: number | null,"end_reason"?: string | null,"end_time"?: string | null,"expires_at"?: string,"id"?: string,"lives"?: number,"mode": string,"name": string,"nav_mode"?: string,"question_count"?: number | null,"question_order"?: (number)[],"score"?: number,"secret_hash"?: string | null,"selected_categories"?: NonNullable<Json>,"start_time"?: string,"status"?: string,"time_limit_minutes"?: number,"user_id"?: string | null,"violation_count"?: number
                   }
                   Update: {
-                    "created_at"?: string,"current_index"?: number,"duration_seconds"?: number | null,"end_time"?: string | null,"expires_at"?: string,"id"?: string,"lives"?: number,"mode"?: string,"name"?: string,"nav_mode"?: string,"question_order"?: (number)[],"score"?: number,"secret_hash"?: string | null,"selected_categories"?: NonNullable<Json>,"start_time"?: string,"status"?: string,"user_id"?: string | null
+                    "created_at"?: string,"current_index"?: number,"duration_seconds"?: number | null,"end_reason"?: string | null,"end_time"?: string | null,"expires_at"?: string,"id"?: string,"lives"?: number,"mode"?: string,"name"?: string,"nav_mode"?: string,"question_count"?: number | null,"question_order"?: (number)[],"score"?: number,"secret_hash"?: string | null,"selected_categories"?: NonNullable<Json>,"start_time"?: string,"status"?: string,"time_limit_minutes"?: number,"user_id"?: string | null,"violation_count"?: number
                   }
                   Relationships: [
                     

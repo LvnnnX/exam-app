@@ -104,7 +104,7 @@ function RaceViewDialog({ onClose, quiz, players }: Omit<RaceViewModalProps, 'op
           </button>
         </header>
 
-        <div className="flex flex-col gap-4 overflow-y-auto p-4 sm:p-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-8" data-race-scroll>
           {lanes.length === 0 ? (
             <p className="py-10 text-center text-[14px] text-fg-muted">
               Belum ada peserta. Lajur muncul begitu siswa bergabung dengan kode {quiz.code}.

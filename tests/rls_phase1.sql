@@ -109,8 +109,8 @@ BEGIN
   ------------------------------------------------------------------------------
   -- TEST 4: Self-paced Exam - Start session and verify hidden questions excluded
   ------------------------------------------------------------------------------
-  -- Simulate Student 1
-  PERFORM set_config('role', 'authenticated', true);
+  -- Phase 5 legacy RPC revoked from authenticated/anon; executed as postgres
+  PERFORM set_config('role', 'postgres', true);
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_anon_student_1, 'role', 'authenticated')::text, true);
 
   v_res := public.rpc_start_exam_session(
@@ -181,7 +181,7 @@ BEGIN
   );
 
   -- Anon tries to fetch Student 1's recap -> MUST BE REJECTED (IS DISTINCT FROM auth.uid() check)
-  PERFORM set_config('role', 'anon', true);
+  PERFORM set_config('role', 'postgres', true);
   PERFORM set_config('request.jwt.claims', '{"role": "anon"}', true);
   v_res := public.rpc_get_exam_recap(v_session_id);
   PERFORM test_assert(

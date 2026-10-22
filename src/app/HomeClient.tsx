@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { joinQuizAction } from '@/src/features/kuis/actions';
-import { Shield, Sparkles, User, Hash, ArrowRight, AlertCircle } from 'lucide-react';
+import { Shield, Sparkles, User, Hash, ArrowRight, AlertCircle, BookCheck } from 'lucide-react';
 
 export default function HomeClient() {
   const router = useRouter();
@@ -156,6 +156,28 @@ export default function HomeClient() {
               )}
             </button>
           </form>
+        </div>
+
+        {/* Kartu Ujian Mandiri (Exam & Survival) */}
+        <div className="p-5 sm:p-6 rounded-3xl glass-card border border-line shadow-xs flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-left">
+            <span className="p-2.5 rounded-2xl well text-primary border border-line">
+              <BookCheck size={20} />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-fg">Ujian Mandiri</h2>
+              <p className="text-[11px] text-fg-subtle">
+                Latihan mandiri mode Exam atau Survival sesuai sub-bab pilihanmu.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/ujian"
+            className="px-4 py-2 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center gap-1.5 shrink-0"
+          >
+            <span>Mulai</span>
+            <ArrowRight size={14} />
+          </Link>
         </div>
       </main>
 

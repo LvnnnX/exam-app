@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts",
     "test:e2e": "playwright test",
-    "test:rls": "node scripts/local-stack/run-sql.mjs tests/rls_phase1.sql",
+    "test:rls": "node scripts/local-stack/run-sql.mjs tests/rls_phase1.sql && node scripts/local-stack/run-sql.mjs tests/rls_phase5.sql",
     "stack:start": "node scripts/local-stack/start.mjs",
     "stack:seed": "node scripts/local-stack/seed-admin.mjs",
     "prepare": "husky",

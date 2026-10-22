@@ -208,6 +208,62 @@ try {
   });
   ok('Frame 3 detik dengan 40 lajur live', `${longTask.frames} frame, gap terburuk ${longTask.worstGapMs}ms`);
   await p40.screenshot({ path: join(SHOTS, 'race-view-40-players.png'), fullPage: false });
+
+  // Fix sisa Fase 4: lajur terakhir harus bisa di-scroll utuh, tidak terpotong di bawah modal.
+  const scrollInfo = await p40.evaluate(async () => {
+    const box = document.querySelector('[role=dialog] [data-race-scroll]');
+    const lis = box.querySelectorAll('ul > li');
+    box.scrollTop = box.scrollHeight;
+    await new Promise((r) => setTimeout(r, 400));
+    const c = box.getBoundingClientRect();
+    const last = lis[lis.length - 1].getBoundingClientRect();
+    const dialog = document.querySelector('[role=dialog]').getBoundingClientRect();
+    return {
+      overflowY: getComputedStyle(box).overflowY,
+      padBottom: parseFloat(getComputedStyle(box).paddingBottom),
+      scrollable: box.scrollHeight > box.clientHeight,
+      atBottom: Math.abs(box.scrollTop + box.clientHeight - box.scrollHeight) <= 1,
+      lastBottom: Math.round(last.bottom), boxBottom: Math.round(c.bottom), dialogBottom: Math.round(dialog.bottom),
+      viewport: window.innerHeight,
+    };
+  });
+  assert.equal(scrollInfo.overflowY, 'auto');
+  assert.ok(scrollInfo.scrollable && scrollInfo.atBottom, JSON.stringify(scrollInfo));
+  assert.ok(scrollInfo.padBottom >= 24, JSON.stringify(scrollInfo));
+  assert.ok(scrollInfo.lastBottom <= scrollInfo.boxBottom && scrollInfo.boxBottom <= scrollInfo.dialogBottom
+    && scrollInfo.dialogBottom <= scrollInfo.viewport, JSON.stringify(scrollInfo));
+  await p40.locator('[role=dialog] ul > li').last().scrollIntoViewIfNeeded();
+  await p40.screenshot({ path: join(SHOTS, 'race-view-40-players-bottom.png'), fullPage: false });
+  ok('Lajur ke-40 bisa di-scroll utuh', `overflow-y auto, padding-bottom ${scrollInfo.padBottom}px, lajur terakhir ${scrollInfo.lastBottom} <= container ${scrollInfo.boxBottom} <= modal ${scrollInfo.dialogBottom}`);
+
+  // Kontras teks sekunder ("Skor ?", deskripsi header) di light + dark.
+  // Background = komposit semua layer semi-transparan di atas canvas + light field terkuat (kasus terburuk).
+  for (const theme of ['light', 'dark']) {
+    await p40.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
+    await sleep(200);
+    const res = await p40.evaluate(() => {
+      const cv = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+      // canvas menormalkan semua format warna (hex8, oklab, rgba) ke RGBA.
+      const parse = (s) => { cv.clearRect(0, 0, 1, 1); cv.fillStyle = '#000'; cv.fillStyle = s; cv.fillRect(0, 0, 1, 1); const d = cv.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+      const over = (top, bot) => [0, 1, 2].map((i) => top[i] * top[3] + bot[i] * (1 - top[3])).concat(1);
+      const lum = (c) => { const s = c.slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2]; };
+      const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+      const root = getComputedStyle(document.documentElement);
+      const tint = parse(root.getPropertyValue('--canvas-tint-1').trim());
+      let base = over(tint, parse(getComputedStyle(document.body).backgroundColor));
+      const bgOf = (el) => {
+        const chain = []; for (let n = el; n && n !== document.body; n = n.parentElement) chain.unshift(n);
+        let bg = base; for (const n of chain) { const c = parse(getComputedStyle(n).backgroundColor); if (c[3] > 0) bg = over(c, bg); } return bg;
+      };
+      const measure = (el) => ({ text: el.textContent.trim().slice(0, 40), ratio: Math.round(ratio(parse(getComputedStyle(el).color), bgOf(el)) * 100) / 100 });
+      const dialog = document.querySelector('[role=dialog]');
+      const score = [...dialog.querySelectorAll('ul > li span')].find((s) => /^Skor/.test(s.textContent.trim()));
+      return [measure(dialog.querySelector('header p')), measure(score)];
+    });
+    for (const r of res) assert.ok(r.ratio >= 4.5, `${theme} kontras ${r.text}: ${r.ratio}`);
+    ok(`Kontras AA ${theme}`, res.map((r) => `"${r.text}" ${r.ratio}:1`).join(', '));
+  }
+  await p40.evaluate(() => document.documentElement.removeAttribute('data-theme'));
   assert.deepEqual(err40, [], err40.join('\n'));
 
   // ---------- admin ----------

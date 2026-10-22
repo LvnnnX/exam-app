@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import hljs from 'highlight.js';
 import katex from 'katex';
-import { sanitizeHtml } from '@/src/lib/sanitizer';
+import { sanitizeHtml } from '@/src/lib/sanitizer-client';
 
 import 'katex/dist/katex.min.css';
 

@@ -7,7 +7,7 @@ import Toolbar from './Toolbar';
 import MathDialog from './MathDialog';
 import TableDialog from './TableDialog';
 import { uploadQuestionImage } from './ImageUploader';
-import { sanitizeHtml } from '@/src/lib/sanitizer';
+import { sanitizeHtml } from '@/src/lib/sanitizer-client';
 import type { RichTextEditorProps } from './types';
 
 import 'katex/dist/katex.min.css';
