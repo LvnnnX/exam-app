@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   compress: true,
   productionBrowserSourceMaps: false,
   experimental: {
+    // forbidden() in /admin/kelola-admin: real HTTP 403 for non super admins.
+    authInterrupts: true,
     optimizePackageImports: ['lucide-react', 'katex'],
   },
   images: {

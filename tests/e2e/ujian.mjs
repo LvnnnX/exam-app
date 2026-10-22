@@ -290,6 +290,8 @@ try {
   // Helper jawab soal di UI
   async function selectOption(correct, expectedKey) {
     // Tunggu opsi pilihan ganda atau short input
+    // Wait for the question to render; a one-shot isVisible() races the JIT question load.
+    await page.locator('[data-testid="ujian-short-input"], [data-testid^="ujian-option-"]').first().waitFor();
     const isShort = await page.locator('[data-testid="ujian-short-input"]').isVisible().catch(() => false);
     if (isShort) {
       const val = correct ? expectedKey : 'SALAH_E2E';
@@ -778,8 +780,11 @@ try {
 
   // Modal read-only detail terbuka
   await adminPage.locator('text=Detail jawaban: E2E Standard').waitFor();
-  assert.ok(await adminPage.locator('text=Pembahasan').first().isVisible());
-  assert.ok(await adminPage.locator('text=Kunci jawaban:').first().isVisible());
+  // Detail loads async after the modal title renders, so wait. "Pembahasan" only renders when a
+  // question has explanation_html (local seed has none); assert the per-item key every row shows.
+  const dialog = adminPage.getByRole('dialog');
+  await dialog.locator('text=Soal #1').waitFor({ timeout: 10000 });
+  assert.ok(await dialog.getByText(/^Kunci:?$/).first().isVisible(), 'detail must mark the answer key');
 
   await adminPage.screenshot({ path: join(SHOTS, 'ujian-admin-intip.png') });
   ok('Skenario 8c: Modal Intip jawaban siswa (read-only) menampilkan jawaban dan pembahasan');

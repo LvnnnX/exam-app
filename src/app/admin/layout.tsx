@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { getCurrentAdmin } from '@/src/features/auth/server';
 import { logoutAdminAction } from '@/src/features/auth/actions';
-import { BookOpen, ClipboardList, FolderTree, LogOut, Radio, Shield } from 'lucide-react';
+import { BookOpen, ClipboardList, FolderTree, LogOut, Radio, Shield, Users } from 'lucide-react';
 
 export default async function AdminLayout({
   children,
@@ -59,6 +59,16 @@ export default async function AdminLayout({
               <ClipboardList size={15} className="text-primary" />
               <span>Hasil Ujian</span>
             </Link>
+
+            {admin.role === 'super_admin' && (
+              <Link
+                href="/admin/kelola-admin"
+                className="px-3.5 py-2 rounded-2xl text-xs font-semibold hover:bg-well flex items-center gap-1.5 text-fg transition-colors border border-transparent hover:border-line"
+              >
+                <Users size={15} className="text-highlight" />
+                <span>Kelola Admin</span>
+              </Link>
+            )}
 
             <form action={logoutAdminAction} className="ml-2 pl-2 border-l border-line">
               <button

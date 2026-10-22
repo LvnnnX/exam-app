@@ -111,6 +111,28 @@ async function handleAuth(req, res, url) {
     }
     return authError(res, 400, 'unsupported_grant_type', 'Unsupported grant type');
   }
+  // DEV ONLY: local stand-in for GoTrue /signup (Fase 6 register flow).
+  // Never shipped: nothing under src/ imports scripts/local-stack, so `next build` does not bundle it.
+  // Production uses real Supabase Auth; this handler also refuses to run under NODE_ENV=production.
+  if (path === '/signup' && req.method === 'POST') {
+    if (process.env.NODE_ENV === 'production') return authError(res, 404, 'not_found', 'Not found');
+    const body = JSON.parse((await readBody(req, 64 * 1024)).toString() || '{}');
+    const email = String(body.email || '').trim().toLowerCase();
+    const password = String(body.password || '');
+    if (!email || !password) return authError(res, 400, 'validation_failed', 'Email and password required');
+    const existing = await pool.query('SELECT id FROM auth.users WHERE lower(email) = lower($1) AND deleted_at IS NULL', [email]);
+    if (existing.rowCount > 0) return authError(res, 400, 'user_already_exists', 'User already registered');
+
+    const { rows } = await pool.query(
+      `INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+         raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+       VALUES ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', $1,
+         public.crypt($2, public.gen_salt('bf')), now(), '{"provider":"email"}', $3, now(), now())
+       RETURNING ${USER_COLS}`,
+      [email, password, JSON.stringify(body.data || {})],
+    );
+    return send(res, 200, issueSession(rows[0]));
+  }
   if (path === '/user' && req.method === 'GET') {
     const claims = bearerClaims(req);
     if (!claims?.sub) return authError(res, 401, 'bad_jwt', 'invalid JWT');

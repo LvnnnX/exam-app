@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
 import { getUjianStateAction } from '../actions';
@@ -17,6 +17,11 @@ import { LoadingBlock } from './ui';
 
 type Step = 'restoring' | 'setup' | 'confirm' | 'running' | 'result' | 'recap';
 
+// false on the server and during hydration, true after: the initial step comes from localStorage,
+// so render the neutral loading block until hydrated to keep SSR and client HTML identical.
+const noopSubscribe = () => () => {};
+const useHydrated = () => useSyncExternalStore(noopSubscribe, () => true, () => false);
+
 export default function UjianApp() {
   const [token, setToken] = useState<SessionToken | null>(() => (typeof window === 'undefined' ? null : loadToken()));
   const [step, setStep] = useState<Step>(() => {
@@ -26,6 +31,7 @@ export default function UjianApp() {
   const [lastSetup, setLastSetup] = useState<LastSetup | null>(() => (typeof window === 'undefined' ? null : loadLastSetup()));
   const [draftSetup, setDraftSetup] = useState<{ setup: LastSetup; labels: TopicLabels } | null>(null);
   const [cachedState, setCachedState] = useState<UjianState | null>(null);
+  const hydrated = useHydrated();
 
   // Restore session saat mount (UM-16)
   useEffect(() => {
@@ -104,7 +110,10 @@ export default function UjianApp() {
         </span>
       </header>
 
-      {step === 'restoring' && <LoadingBlock label="Memulihkan sesi..." />}
+      {(!hydrated || step === 'restoring') && <LoadingBlock label="Memulihkan sesi..." />}
+
+      {hydrated && (
+      <>
 
       {step === 'setup' && (
         <div className="glass rounded-4xl p-6 sm:p-8">
@@ -168,6 +177,8 @@ export default function UjianApp() {
           secret={token.secret}
           onBack={() => setStep('result')}
         />
+      )}
+      </>
       )}
     </div>
   );

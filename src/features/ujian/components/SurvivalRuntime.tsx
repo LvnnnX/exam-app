@@ -51,7 +51,6 @@ export default function SurvivalRuntime({ sessionId, secret, initialState, onFin
 
     if (res.is_correct !== undefined) {
       setFeedback({ correct: res.is_correct, score: res.score ?? (state.score ?? 0) });
-      session.applyOptimisticSurvival(res.is_correct);
       setTimeout(() => setFeedback(null), 1200);
     }
   };

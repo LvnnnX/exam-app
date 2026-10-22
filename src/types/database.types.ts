@@ -415,6 +415,21 @@ isOneToOne: false
 "resolve_admin_login_email":
 { Args: { "p_username": string }; Returns: string
                            },
+"rpc_approve_admin_request":
+{ Args: { "p_admin_id": string }; Returns: Json
+                           },
+"rpc_reject_admin_request":
+{ Args: { "p_admin_id": string; "p_reason"?: string | null }; Returns: Json
+                           },
+"rpc_update_admin_role":
+{ Args: { "p_admin_id": string; "p_new_role": string }; Returns: Json
+                           },
+"rpc_toggle_admin_status":
+{ Args: { "p_admin_id": string; "p_new_status": string }; Returns: Json
+                           },
+"rpc_list_admins":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "rpc_finish_quiz_player":
 { Args: { "p_player_id": string }; Returns: Json
                            },

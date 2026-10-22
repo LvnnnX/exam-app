@@ -29,7 +29,8 @@ function formatDate(iso: string): string {
 function defaultDates(): { from: string; to: string } {
   const now = new Date();
   const past = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
-  const toYmd = (d: Date) => d.toISOString().slice(0, 10);
+  // en-CA gives YYYY-MM-DD; WITA date, not UTC (toISOString lags a day before 08:00 WITA).
+  const toYmd = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
   return { from: toYmd(past), to: toYmd(now) };
 }
 

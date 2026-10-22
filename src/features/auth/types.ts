@@ -9,3 +9,16 @@ export type CurrentAdmin = {
   role: AdminRole;
   status: AdminStatus;
 };
+
+export type AdminListItem = {
+  id: string;
+  user_id: string;
+  email: string;
+  username: string;
+  role: AdminRole;
+  status: AdminStatus;
+  rejection_reason: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};

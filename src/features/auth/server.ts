@@ -1,10 +1,13 @@
 import { createServerSupabaseClient } from '@/src/lib/supabase-server';
-import type { CurrentAdmin } from './types';
+import type { AdminListItem, CurrentAdmin } from './types';
 
 export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
   try {
     const supabase = await createServerSupabaseClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) return null;
 
     const { data: adminRow, error: adminError } = await supabase
@@ -42,4 +45,16 @@ export async function requireSuperAdmin(): Promise<CurrentAdmin> {
     throw new Error('Akses ditolak: Hanya super_admin yang diizinkan');
   }
   return admin;
+}
+
+export async function listAllAdmins(): Promise<AdminListItem[]> {
+  await requireSuperAdmin();
+  const supabase = await createServerSupabaseClient();
+
+  const { data, error } = await supabase.rpc('rpc_list_admins');
+  if (error) {
+    throw new Error('Gagal mengambil daftar admin: ' + error.message);
+  }
+
+  return (data as unknown as AdminListItem[]) || [];
 }

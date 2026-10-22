@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { finishUjianAction, getUjianQuestionAction, getUjianStateAction, saveUjianAnswerAction } from '../actions';
-import { applySurvivalAnswer, secondsLeft } from '../logic';
+import { secondsLeft } from '../logic';
 import type { FinishReason, SaveAnswerResult, UjianQuestion, UjianState } from '../types';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'retry_1' | 'retry_2' | 'error';
@@ -94,6 +94,10 @@ export function useUjianSession({ sessionId, secret, initialState, onFinished }:
 
   // Timer countdown dengan offset jam server
   useEffect(() => {
+    // initialState from UjianApp skips the state fetch above, so seed the clock sync from it.
+    if (!timerSyncRef.current && state?.expires_at) {
+      timerSyncRef.current = { expiresAt: state.expires_at, serverNow: state.server_now, clientFetchAt: Date.now() };
+    }
     const sync = timerSyncRef.current;
     if (!sync || !sync.expiresAt) return;
     const tick = () => {
@@ -106,7 +110,7 @@ export function useUjianSession({ sessionId, secret, initialState, onFinished }:
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [sessionId, secret, state?.expires_at]);
+  }, [sessionId, secret, state?.expires_at, state?.server_now]);
 
   // Simpan jawaban dengan retry backoff
   const saveAnswer = useCallback(
@@ -197,8 +201,5 @@ export function useUjianSession({ sessionId, secret, initialState, onFinished }:
     goTo,
     finish,
     retryLoadQuestion: () => question && loadQuestion(question.index),
-    applyOptimisticSurvival: (correct: boolean) => {
-      setState((prev) => (prev ? { ...prev, lives: applySurvivalAnswer(prev.lives, correct).lives } : null));
-    },
   };
 }

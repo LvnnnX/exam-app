@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { reportUjianViolationAction } from '../actions';
 import { VIOLATION_LIMIT } from '../logic';
 
+const TERMINATE_NOTICE_MS = 2000;
+
 interface AntiCheatOptions {
   sessionId: string;
   secret: string;
@@ -47,7 +49,8 @@ export function useAntiCheat({ sessionId, secret, enabled, onTerminated }: AntiC
         const count = res.data.violation_count;
         setWarningCount(count);
         if (res.data.finished || count >= VIOLATION_LIMIT) {
-          onTerminatedRef.current();
+          // Keep the 3/3 warning on screen briefly so the student sees why the exam stopped.
+          setTimeout(() => onTerminatedRef.current(), TERMINATE_NOTICE_MS);
         }
       } catch {
         /* abaikan kegagalan jaringan pelaporan */
