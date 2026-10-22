@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getQuizStreamState } from '@/src/features/kuis/server';
+import { getCurrentAdmin } from '@/src/features/auth/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,8 @@ export async function GET(
   }
 
   try {
-    const state = await getQuizStreamState(code);
+    const admin = await getCurrentAdmin();
+    const state = await getQuizStreamState(code, admin?.status === 'active' ? 'admin' : 'public');
     if (!state) {
       return NextResponse.json({ success: false, error: 'Kuis tidak ditemukan' }, { status: 404 });
     }

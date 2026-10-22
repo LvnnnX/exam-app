@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getQuizStreamState } from '@/src/features/kuis/server';
+import { getCurrentAdmin } from '@/src/features/auth/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,8 @@ export async function GET(
     return new Response('Kode kuis wajib diisi', { status: 400 });
   }
 
+  const admin = await getCurrentAdmin();
+  const viewer = admin?.status === 'active' ? 'admin' : 'public';
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -21,7 +24,7 @@ export async function GET(
       const sendUpdate = async () => {
         if (isClosed) return;
         try {
-          const state = await getQuizStreamState(code);
+          const state = await getQuizStreamState(code, viewer);
           if (!state) {
             controller.enqueue(
               encoder.encode(`event: error\ndata: ${JSON.stringify({ message: 'Kuis tidak ditemukan' })}\n\n`)

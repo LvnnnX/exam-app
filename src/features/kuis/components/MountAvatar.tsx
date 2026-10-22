@@ -11,6 +11,8 @@ interface MountAvatarProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   showBadge?: boolean;
+  /** No glass box: for repeated race lanes, where blur on every row is too costly. */
+  bare?: boolean;
 }
 
 const SIZES = {
@@ -56,6 +58,7 @@ export default function MountAvatar({
   colors: propColors,
   size = 'md',
   className = '',
+  bare = false,
 }: MountAvatarProps) {
   const [svgHtml, setSvgHtml] = useState<string | null>(null);
 
@@ -102,7 +105,7 @@ export default function MountAvatar({
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center rounded-2xl glass border border-line shadow-xs overflow-hidden ${SIZES[size]} ${className}`}
+      className={`relative inline-flex items-center justify-center overflow-hidden ${bare ? '' : 'rounded-2xl glass border border-line shadow-xs'} ${SIZES[size]} ${className}`}
       title={mountOpt.name}
     >
       {svgHtml ? (

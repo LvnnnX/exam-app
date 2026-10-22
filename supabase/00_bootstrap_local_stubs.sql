@@ -16,6 +16,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
     CREATE ROLE service_role NOLOGIN;
   END IF;
+  -- Match hosted Supabase: service_role bypasses RLS (server-side reads only).
+  ALTER ROLE service_role BYPASSRLS;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
     CREATE ROLE authenticator NOINHERIT LOGIN;
   END IF;

@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import { useQuizLive } from '../hooks/useQuizLive';
-import { updateQuizStatusAction, getPlayerAnswersAction } from '../actions';
+import { updateQuizStatusAction } from '../actions';
 import MountAvatar from './MountAvatar';
-import type { LivePlayerProgress, PlayerAnswerDetail } from '../types';
+import PlayerAnswersModal from './PlayerAnswersModal';
+import RaceViewButton from '@/src/features/race/components/RaceViewButton';
+import type { LivePlayerProgress } from '../types';
 import {
   Play,
   Pause,
@@ -18,7 +20,6 @@ import {
   Clock,
   Sparkles,
   Eye,
-  X,
   FileCheck2,
 } from 'lucide-react';
 
@@ -35,8 +36,6 @@ export default function AdminLiveQuizPanel({
   const [isActing, setIsActing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [inspectPlayer, setInspectPlayer] = useState<LivePlayerProgress | null>(null);
-  const [playerAnswers, setPlayerAnswers] = useState<PlayerAnswerDetail[]>([]);
-  const [loadingAnswers, setLoadingAnswers] = useState(false);
 
   if (!quiz) {
     return (
@@ -65,23 +64,6 @@ export default function AdminLiveQuizPanel({
     navigator.clipboard.writeText(quiz.code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleInspectPlayer = async (p: LivePlayerProgress) => {
-    setInspectPlayer(p);
-    setLoadingAnswers(true);
-    try {
-      const res = await getPlayerAnswersAction(p.id);
-      if (res.success && res.answers) {
-        setPlayerAnswers(res.answers);
-      } else {
-        setPlayerAnswers([]);
-      }
-    } catch {
-      setPlayerAnswers([]);
-    } finally {
-      setLoadingAnswers(false);
-    }
   };
 
   const questionTotal = quiz.config?.question_count || 10;
@@ -140,6 +122,10 @@ export default function AdminLiveQuizPanel({
 
         {/* Action Controls (KL-04) */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {quiz.status !== 'waiting' && quiz.status !== 'cancelled' && (
+            <RaceViewButton quiz={quiz} players={players} />
+          )}
+
           {quiz.status === 'waiting' && (
             <button
               onClick={() => handleAction('start')}
@@ -325,7 +311,7 @@ export default function AdminLiveQuizPanel({
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button
-                          onClick={() => handleInspectPlayer(p)}
+                          onClick={() => setInspectPlayer(p)}
                           className="p-1.5 rounded-xl well hover:bg-well/80 border border-line text-fg-subtle hover:text-primary transition-colors"
                           title="Lihat Jawaban"
                         >
@@ -341,61 +327,8 @@ export default function AdminLiveQuizPanel({
         )}
       </div>
 
-      {/* Modal Detail Jawaban Siswa */}
       {inspectPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-2xl rounded-3xl glass-card border border-line p-6 shadow-xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-line">
-              <div className="flex items-center gap-3">
-                <MountAvatar skin={inspectPlayer.skin} size="md" />
-                <div>
-                  <h4 className="font-bold text-fg text-base">{inspectPlayer.name}</h4>
-                  <p className="text-xs text-fg-subtle">
-                    Skor: <span className="text-primary font-bold">{inspectPlayer.score}</span> • Waktu: {inspectPlayer.total_time}s
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setInspectPlayer(null)}
-                className="p-2 rounded-2xl well hover:bg-brick-50 text-fg-subtle hover:text-danger transition-colors border border-line"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {loadingAnswers ? (
-              <p className="p-8 text-center text-xs text-fg-subtle animate-pulse">Memuat jawaban siswa...</p>
-            ) : playerAnswers.length === 0 ? (
-              <p className="p-8 text-center text-xs text-fg-subtle">Belum ada jawaban yang dikirim oleh siswa ini.</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {playerAnswers.map((ans) => (
-                  <div
-                    key={ans.question_id}
-                    className={`p-3.5 rounded-2xl border flex flex-col gap-2 ${
-                      ans.is_correct ? 'bg-success/5 border-success/30' : 'bg-danger/5 border-danger/30'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-fg">Soal #{ans.question_number}</span>
-                      <span className={`font-bold ${ans.is_correct ? 'text-success' : 'text-danger'}`}>
-                        {ans.is_correct ? '✓ Benar' : '✗ Salah'} ({ans.time_taken}s)
-                      </span>
-                    </div>
-                    <div
-                      className="text-xs text-fg prose prose-sm max-w-none line-clamp-2"
-                      dangerouslySetInnerHTML={{ __html: ans.body_html }}
-                    />
-                    <div className="flex items-center justify-between text-[11px] font-mono well p-2 rounded-xl border border-line">
-                      <span>Jawaban Siswa: <b>{ans.user_answer || '(Kosong)'}</b></span>
-                      <span>Kunci: <b>{ans.correct_answer || '-'}</b></span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <PlayerAnswersModal player={inspectPlayer} onClose={() => setInspectPlayer(null)} />
       )}
     </div>
   );

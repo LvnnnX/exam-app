@@ -6,6 +6,8 @@ import { joinQuizAction } from '@/src/features/kuis/actions';
 import StudentWaitingRoom from '@/src/features/kuis/components/StudentWaitingRoom';
 import StudentQuizRuntime from '@/src/features/kuis/components/StudentQuizRuntime';
 import StudentLeaderboard from '@/src/features/kuis/components/StudentLeaderboard';
+import RaceViewButton from '@/src/features/race/components/RaceViewButton';
+import { publicPlayerId } from '@/src/features/race/logic';
 import { AlertCircle, Pause, User, ArrowRight } from 'lucide-react';
 
 interface QuizRoomClientProps {
@@ -148,7 +150,8 @@ export default function QuizRoomClient({ code }: QuizRoomClientProps) {
   }
 
   // Check if player has finished in live state
-  const liveMe = players.find((p) => p.id === playerData.playerId);
+  const myPublicId = publicPlayerId(playerData.playerId);
+  const liveMe = players.find((p) => p.id === myPublicId);
   const isFinished = isSelfFinished || Boolean(liveMe?.is_finished) || quiz.status === 'finished';
 
   // 1. Finished View (KL-14, KL-15)
@@ -157,7 +160,7 @@ export default function QuizRoomClient({ code }: QuizRoomClientProps) {
       <StudentLeaderboard
         quiz={quiz}
         players={players}
-        currentPlayerId={playerData.playerId}
+        currentPublicId={myPublicId}
       />
     );
   }
@@ -169,6 +172,7 @@ export default function QuizRoomClient({ code }: QuizRoomClientProps) {
         quiz={quiz}
         players={players}
         currentPlayerId={playerData.playerId}
+        currentPublicId={myPublicId}
         currentPlayerName={playerData.name}
         currentSkin={playerData.skin}
         onSkinChange={handleSkinUpdate}
@@ -189,9 +193,14 @@ export default function QuizRoomClient({ code }: QuizRoomClientProps) {
             <p className="text-xs text-fg-subtle leading-relaxed">
               Admin sedang menjeda kuis sementara waktu. Waktu pengerjaan akan dilanjutkan kembali saat admin melanjutkan kuis.
             </p>
+            <RaceViewButton quiz={quiz} players={players} />
           </div>
         </div>
       )}
+
+      <div className="w-full max-w-3xl mx-auto mb-3 flex justify-end">
+        <RaceViewButton quiz={quiz} players={players} />
+      </div>
 
       <StudentQuizRuntime
         quiz={quiz}

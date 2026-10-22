@@ -4,18 +4,20 @@ import React from 'react';
 import Link from 'next/link';
 import type { Quiz, LivePlayerProgress } from '../types';
 import MountAvatar from './MountAvatar';
+import RaceViewButton from '@/src/features/race/components/RaceViewButton';
 import { Trophy, CheckCircle2, XCircle, ArrowLeft, Award } from 'lucide-react';
 
 interface StudentLeaderboardProps {
   quiz: Quiz;
   players: LivePlayerProgress[];
-  currentPlayerId: string;
+  /** id as it appears in the public players list (see publicPlayerId) */
+  currentPublicId: string;
 }
 
 export default function StudentLeaderboard({
   quiz,
   players,
-  currentPlayerId,
+  currentPublicId,
 }: StudentLeaderboardProps) {
   const isStandard = quiz.config?.quiz_mode === 'standard';
   const totalQuestions = quiz.config?.question_count || 10;
@@ -28,7 +30,7 @@ export default function StudentLeaderboard({
     return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
   });
 
-  const myRankIndex = sortedPlayers.findIndex((p) => p.id === currentPlayerId);
+  const myRankIndex = sortedPlayers.findIndex((p) => p.id === currentPublicId);
   const myPlayer = sortedPlayers[myRankIndex];
   const isPassed = myPlayer ? myPlayer.score >= passThreshold : false;
 
@@ -107,9 +109,9 @@ export default function StudentLeaderboard({
             </thead>
             <tbody className="divide-y divide-line/60">
               {sortedPlayers.map((p, idx) => {
-                const isMe = p.id === currentPlayerId;
+                const isMe = p.id === currentPublicId;
                 // Standard mode: hide score if not finished yet
-                const displayScore = (isStandard && !p.is_finished && quiz.status !== 'finished') ? '?' : p.score;
+                const displayScore = (p.score_hidden || (isStandard && !p.is_finished && quiz.status !== 'finished')) ? '?' : p.score;
                 return (
                   <tr
                     key={p.id}
@@ -143,7 +145,8 @@ export default function StudentLeaderboard({
           </table>
         </div>
 
-        <div className="pt-4 border-t border-line flex justify-center">
+        <div className="pt-4 border-t border-line flex flex-wrap items-center justify-center gap-3">
+          <RaceViewButton quiz={quiz} players={players} />
           <Link
             href="/"
             className="px-5 py-2.5 rounded-2xl well hover:bg-well/80 border border-line text-xs font-bold text-fg flex items-center gap-1.5 transition-colors"

@@ -11,6 +11,8 @@ interface StudentWaitingRoomProps {
   quiz: Quiz;
   players: LivePlayerProgress[];
   currentPlayerId: string;
+  /** id as it appears in the public players list (see publicPlayerId) */
+  currentPublicId: string;
   currentPlayerName: string;
   currentSkin: string | null;
   onSkinChange: (newSkin: string) => void;
@@ -20,6 +22,7 @@ export default function StudentWaitingRoom({
   quiz,
   players,
   currentPlayerId,
+  currentPublicId,
   currentPlayerName,
   currentSkin,
   onSkinChange,
@@ -110,7 +113,7 @@ export default function StudentWaitingRoom({
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto p-1">
           {players.map((p) => {
-            const isMe = p.id === currentPlayerId;
+            const isMe = p.id === currentPublicId;
             return (
               <div
                 key={p.id}

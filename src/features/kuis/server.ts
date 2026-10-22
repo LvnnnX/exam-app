@@ -1,4 +1,6 @@
 import { createServerSupabaseClient, createAdminSupabaseClient } from '@/src/lib/supabase-server';
+import { maskPlayersForPublic } from '@/src/features/race/logic';
+import { requireActiveAdmin } from '@/src/features/auth/server';
 import type {
   Quiz,
   QuizStreamState,
@@ -13,6 +15,7 @@ type RpcCaller = {
 };
 
 export async function createQuiz(input: CreateQuizInput) {
+  await requireActiveAdmin();
   const supabase = createAdminSupabaseClient();
   const { data, error } = await ((supabase as unknown) as RpcCaller).rpc('rpc_create_quiz', {
     p_topic_ids: input.topic_ids,
@@ -31,6 +34,7 @@ export async function createQuiz(input: CreateQuizInput) {
 }
 
 export async function updateQuizStatus(quizId: string, action: 'start' | 'pause' | 'resume' | 'finish' | 'cancel') {
+  await requireActiveAdmin();
   const supabase = createAdminSupabaseClient();
   const { data, error } = await ((supabase as unknown) as RpcCaller).rpc('rpc_admin_update_quiz_status', {
     p_quiz_id: quizId,
@@ -93,7 +97,15 @@ export async function listQuizHistory(limit = 30): Promise<Quiz[]> {
   return (data || []) as unknown as Quiz[];
 }
 
-export async function getQuizStreamState(code: string): Promise<QuizStreamState | null> {
+/**
+ * viewer 'public' (students, anyone with the code): standard-mode scores of
+ * unfinished players are masked server-side so they never leave the server.
+ * viewer 'admin': raw scores, only after the route verified an active admin.
+ */
+export async function getQuizStreamState(
+  code: string,
+  viewer: 'public' | 'admin' = 'public'
+): Promise<QuizStreamState | null> {
   const supabase = createAdminSupabaseClient();
   const { data: quizData, error: qErr } = await supabase
     .from('quizzes')
@@ -107,7 +119,7 @@ export async function getQuizStreamState(code: string): Promise<QuizStreamState 
   // Fetch players with score & answered count
   const { data: playersData, error: pErr } = await supabase
     .from('players')
-    .select('id, name, skin, score, total_time, current_index, question_order, joined_at, finished_at')
+    .select('id, name, skin, score, total_time, current_index, question_order, joined_at, finished_at, answers(count)')
     .eq('quiz_id', quiz.id)
     .order('score', { ascending: false })
     .order('total_time', { ascending: true })
@@ -126,14 +138,19 @@ export async function getQuizStreamState(code: string): Promise<QuizStreamState 
     is_finished: Boolean(p.finished_at),
     finished_at: (p.finished_at as string) || null,
     joined_at: String(p.joined_at),
-    answers_count: Number(p.current_index) || 0,
+    answers_count: answeredCount(p.answers),
   }));
 
   return {
     quiz,
-    players,
+    players: viewer === 'admin' ? players : maskPlayersForPublic(quiz, players),
     server_time: new Date().toISOString(),
   };
+}
+
+function answeredCount(embed: unknown): number {
+  const row = Array.isArray(embed) ? (embed[0] as { count?: unknown } | undefined) : undefined;
+  return Number(row?.count) || 0;
 }
 
 export async function joinLiveQuiz(code: string, name: string) {
@@ -223,6 +240,7 @@ export async function setPlayerSkin(playerId: string, skin: string) {
 }
 
 export async function getPlayerAnswers(playerId: string): Promise<PlayerAnswerDetail[]> {
+  await requireActiveAdmin();
   const supabase = createAdminSupabaseClient();
   // Fetch answers + question details for admin or finished player
   const { data, error } = await supabase

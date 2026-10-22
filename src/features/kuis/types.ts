@@ -71,6 +71,8 @@ export interface LivePlayerProgress {
   finished_at: string | null;
   joined_at: string;
   answers_count: number;
+  /** true when the server masked score (standard mode, player not finished, viewer not admin) */
+  score_hidden?: boolean;
 }
 
 export interface QuizStreamState {
