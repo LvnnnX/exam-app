@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node --test tests/unit/",
+    "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts",
     "test:e2e": "playwright test",
     "test:rls": "node scripts/local-stack/run-sql.mjs tests/rls_phase1.sql",
     "stack:start": "node scripts/local-stack/start.mjs",

@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from 'react';
 import { FolderTree } from 'lucide-react';
 import CategoryTreeView from '@/src/features/kategori/CategoryTreeView';
-import { getCategoryTree } from '@/src/features/kategori/server';
+import { getCategoryTreeAction } from '@/src/features/kategori/actions';
 import type { SubjectNode } from '@/src/features/kategori/types';
 
 type KategoriClientProps = {
@@ -17,8 +17,10 @@ export default function KategoriClient({ initialTree }: KategoriClientProps) {
   const handleRefresh = () => {
     startTransition(async () => {
       try {
-        const next = await getCategoryTree();
-        setTree(next);
+        const next = await getCategoryTreeAction();
+        if (next.success && next.tree) {
+          setTree(next.tree);
+        }
       } catch (err) {
         console.error('Failed to reload categories:', err);
       }

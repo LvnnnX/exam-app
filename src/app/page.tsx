@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import HomeClient from './HomeClient';
 
 export default function HomePage() {
-  redirect('/admin/soal');
+  return <HomeClient />;
 }
