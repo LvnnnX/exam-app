@@ -23,6 +23,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "apps/mobile/**",
+    "legacy-v1/**",
+    "scripts/**",
   ]),
 ]);
 
