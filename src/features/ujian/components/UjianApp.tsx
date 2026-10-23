@@ -105,9 +105,11 @@ export default function UjianApp() {
           </span>
           <span>ExamApp v2</span>
         </Link>
-        <span className="well rounded-full px-3 py-1 text-[12px] font-semibold text-fg-muted">
+        {/* The page H1 lives here, not in the setup card: the card only renders after hydration,
+            so this is the one heading present in the server HTML on every step. */}
+        <h1 className="well rounded-full px-3 py-1 text-[12px] font-semibold text-fg-muted">
           Ujian mandiri
-        </span>
+        </h1>
       </header>
 
       {(!hydrated || step === 'restoring') && <LoadingBlock label="Memulihkan sesi..." />}
@@ -118,7 +120,7 @@ export default function UjianApp() {
       {step === 'setup' && (
         <div className="glass rounded-4xl p-6 sm:p-8">
           <div className="mb-6 flex flex-col gap-1">
-            <h1 className="text-[24px] font-bold text-fg">Ujian mandiri</h1>
+            <h2 className="text-[24px] font-bold text-fg">Latihan soal mandiri</h2>
             <p className="text-[14px] text-fg-muted">
               Pilih mode pengerjaan, tentukan materi yang ingin kamu uji, dan mulai berlatih.
             </p>

@@ -1,8 +1,17 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getCurrentAdmin } from '@/src/features/auth/server';
 import { logoutAdminAction } from '@/src/features/auth/actions';
 import { BookOpen, ClipboardList, FolderTree, LogOut, Radio, Shield, Users } from 'lucide-react';
+
+// Private area: never indexed. An object title keeps the "%s · Smandapura" template for pages below;
+// a plain string here would drop it.
+export const metadata: Metadata = {
+  title: { default: 'Admin', template: '%s · Smandapura' },
+  description: 'Portal admin: bank soal, kuis live, dan hasil ujian.',
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({
   children,
