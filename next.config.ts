@@ -1,80 +1,51 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
+
+const supabaseOrigin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321').origin;
+const supabaseWs = supabaseOrigin.replace(/^http/, 'ws');
+const isDev = process.env.NODE_ENV === 'development';
+
+// ponytail: script-src 'unsafe-inline' for Next App Router inline bootstrap scripts. A per-request
+// nonce via src/proxy.ts would drop it but forces every page dynamic (no static/ISR) and widens the
+// proxy matcher beyond /admin. Upgrade to nonce + 'strict-dynamic' if an XSS sink ever appears;
+// DOMPurify on save and render is the primary XSS control today.
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: ${supabaseOrigin}`,
+  "font-src 'self' data:",
+  `connect-src 'self' ${supabaseOrigin} ${supabaseWs}`,
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
 
 const securityHeaders = [
-  // SECURITY: Baseline OWASP security headers required by SECURITY.md.
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "X-XSS-Protection", value: "0" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  // Strict-Transport-Security tells browsers to refuse downgraded HTTP for
-  // two years and to include subdomains. Only emitted in production so local
-  // http://localhost:3000 dev sessions are not pinned.
-  ...(process.env.NODE_ENV === "production"
-    ? [
-        {
-          key: "Strict-Transport-Security",
-          value: "max-age=63072000; includeSubDomains; preload",
-        },
-        { key: "X-DNS-Prefetch-Control", value: "off" },
-        { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-        { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
-      ]
-    : []),
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      process.env.NODE_ENV === "production"
-        ? "script-src 'self' 'unsafe-inline'"
-        : "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https: wss:",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; "),
-  },
-];
-
-const longCacheHeaders = [
-  { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+  { key: 'Content-Security-Policy', value: csp },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), screen-wake-lock=(self)' },
+  { key: 'Strict-Transport-Security', value: 'max-age=15552000' },
 ];
 
 const nextConfig: NextConfig = {
-  // Disable the X-Powered-By: Next.js fingerprint.
+  async headers() {
+    return [{ source: '/(.*)', headers: securityHeaders }];
+  },
+  // Lets parallel local builds (e.g. one agent on :3100, another on :3101) not clobber each other's .next.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   poweredByHeader: false,
-  // Compress responses at the edge. No-op when fronted by a CDN that already
-  // compresses, but avoids serving uncompressed bytes from origin.
   compress: true,
-  // Disable client-side source maps so production bundles don't ship
-  // un-minified TypeScript to the browser.
   productionBrowserSourceMaps: false,
   experimental: {
-    // Drop console.* in production except errors and warnings to keep the
-    // bundle slim and avoid leaking debug data via the browser console.
-    optimizePackageImports: ["lucide-react", "framer-motion", "katex"],
-  },
-  compiler: {
-    removeConsole: { exclude: ["error", "warn"] },
+    // forbidden() in /admin/kelola-admin: real HTTP 403 for non super admins.
+    authInterrupts: true,
+    optimizePackageImports: ['lucide-react', 'katex'],
   },
   images: {
-    formats: ["image/avif", "image/webp"],
-  },
-  async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: securityHeaders,
-      },
-      // Static mount SVGs and bundled images can be cached aggressively.
-      // /_next/static already gets immutable headers from Next; only override
-      // /public assets we treat as immutable.
-      { source: "/mounts/(.*)", headers: longCacheHeaders },
-      { source: "/horse.svg", headers: longCacheHeaders },
-    ];
+    formats: ['image/avif', 'image/webp'],
   },
 };
 
