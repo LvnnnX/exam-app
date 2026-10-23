@@ -132,6 +132,7 @@ export default function CategoryTreeView({ tree, onRefresh }: CategoryTreeViewPr
                     <button
                       type="button"
                       onClick={() => toggleExpandSubject(s.id)}
+                      aria-label="Buka/tutup kategori"
                       className="p-1 rounded-lg hover:bg-well text-fg-subtle"
                     >
                       {isSubExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -185,6 +186,7 @@ export default function CategoryTreeView({ tree, onRefresh }: CategoryTreeViewPr
                                 <button
                                   type="button"
                                   onClick={() => toggleExpandChapter(c.id)}
+                                  aria-label="Buka/tutup kategori"
                                   className="p-1 rounded-lg text-fg-subtle"
                                 >
                                   {isChExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -294,7 +296,7 @@ export default function CategoryTreeView({ tree, onRefresh }: CategoryTreeViewPr
                 {modalType === 'chapter' && 'Tambah Bab Baru'}
                 {modalType === 'topic' && 'Tambah Sub-Bab Baru'}
               </h3>
-              <button type="button" onClick={() => setModalType(null)} className="p-1 rounded-lg text-fg-subtle">
+              <button type="button" onClick={() => setModalType(null)} aria-label="Tutup modal" className="p-1 rounded-lg text-fg-subtle">
                 <X size={18} />
               </button>
             </div>

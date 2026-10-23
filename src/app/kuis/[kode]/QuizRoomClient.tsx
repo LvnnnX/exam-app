@@ -139,7 +139,7 @@ export default function QuizRoomClient({ code }: QuizRoomClientProps) {
           <button
             type="submit"
             disabled={isJoining}
-            className="w-full py-3 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+            className="w-full min-h-[44px] py-3 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
           >
             {isJoining ? <span>Bergabung...</span> : <span>Gabung Kuis Sekarang</span>}
             <ArrowRight size={16} />
@@ -182,7 +182,7 @@ export default function QuizRoomClient({ code }: QuizRoomClientProps) {
 
   // 3. Active Quiz (KL-12, KL-13) or Paused Overlay
   return (
-    <div className="relative w-full">
+    <div className="relative w-full max-w-full overflow-x-hidden">
       {quiz.status === 'paused' && (
         <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="p-6 rounded-3xl glass-card border border-warning/40 shadow-2xl text-center max-w-sm flex flex-col items-center gap-3">
@@ -198,7 +198,7 @@ export default function QuizRoomClient({ code }: QuizRoomClientProps) {
         </div>
       )}
 
-      <div className="w-full max-w-3xl mx-auto mb-3 flex justify-end">
+      <div className="w-full max-w-3xl mx-auto mb-3 flex justify-end px-2 sm:px-0">
         <RaceViewButton quiz={quiz} players={players} />
       </div>
 
@@ -206,6 +206,7 @@ export default function QuizRoomClient({ code }: QuizRoomClientProps) {
         quiz={quiz}
         playerId={playerData.playerId}
         playerName={playerData.name}
+        player={liveMe}
         onFinished={() => setIsSelfFinished(true)}
       />
     </div>

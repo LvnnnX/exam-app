@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { Quiz, QuizQuestionJit } from '../types';
+import type { Quiz, QuizQuestionJit, LivePlayerProgress } from '../types';
+import RichContent from '@/src/components/RichContent';
 import {
   getQuizQuestionAction,
   submitQuizAnswerAction,
@@ -25,6 +26,7 @@ interface StudentQuizRuntimeProps {
   quiz: Quiz;
   playerId: string;
   playerName: string;
+  player?: LivePlayerProgress | null;
   onFinished: () => void;
 }
 
@@ -32,13 +34,19 @@ export default function StudentQuizRuntime({
   quiz,
   playerId,
   playerName: _playerName,
+  player,
   onFinished,
 }: StudentQuizRuntimeProps) {
   const isStrict = quiz.config?.quiz_mode === 'strict';
   const totalQuestions = quiz.config?.question_count || 10;
 
   // Question & Navigation states
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [currentIndex, setCurrentIndex] = useState<number>(() => {
+    if (quiz.config?.quiz_mode === 'strict') {
+      return player?.current_index ?? 0;
+    }
+    return 0;
+  });
   const [currentQuestion, setCurrentQuestion] = useState<QuizQuestionJit | null>(null);
   const [loadingQuestion, setLoadingQuestion] = useState<boolean>(true);
   const [answersMap, setAnswersMap] = useState<Record<number, string>>({});
@@ -54,27 +62,19 @@ export default function StudentQuizRuntime({
   const [_violationCount, setViolationCount] = useState<number>(0);
   const [showViolationModal, setShowViolationModal] = useState<boolean>(false);
 
-  // 1. Wake Lock API (KL-16)
+  // Wake Lock API (KL-16)
   useEffect(() => {
     let wakeLock: { release: () => Promise<void> } | null = null;
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await (navigator as unknown as { wakeLock: { request: (s: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock.request('screen');
-        }
-      } catch {
-        // WakeLock not supported or denied
-      }
-    };
-    requestWakeLock();
-    return () => {
-      if (wakeLock) {
-        try { void wakeLock.release(); } catch {}
-      }
-    };
+    if ('wakeLock' in navigator) {
+      (navigator as unknown as { wakeLock: { request: (s: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock
+        .request('screen')
+        .then((w) => { wakeLock = w; })
+        .catch(() => {});
+    }
+    return () => { if (wakeLock) try { void wakeLock.release(); } catch {} };
   }, []);
 
-  // 2. Tab switch detection (KL-16)
+  // Tab switch detection (KL-16)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -82,10 +82,7 @@ export default function StudentQuizRuntime({
           const next = prev + 1;
           if (next >= 3) {
             setShowViolationModal(true);
-            // Auto submit and finish
-            finishQuizPlayerAction(playerId).then(() => {
-              setTimeout(onFinished, 2500);
-            });
+            void finishQuizPlayerAction(playerId).then(() => setTimeout(onFinished, 2500));
           } else {
             alert(`Peringatan Anti-Curang: Dilarang berpindah tab saat kuis berlangsung! (${next}/3)`);
           }
@@ -93,36 +90,25 @@ export default function StudentQuizRuntime({
         });
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [playerId, onFinished]);
 
-  // 3. Countdown Timer based on expires_at
+  // Countdown Timer based on expires_at
   useEffect(() => {
     if (!quiz.expires_at) return;
-
-    const updateTimer = () => {
+    const interval = setInterval(() => {
       const diffMs = new Date(quiz.expires_at!).getTime() - Date.now();
       const sec = Math.max(0, Math.floor(diffMs / 1000));
       setTimeLeftSec(sec);
-
       if (sec <= 0) {
-        // Time expired! Auto-finish
-        finishQuizPlayerAction(playerId).then(() => {
-          onFinished();
-        });
+        void finishQuizPlayerAction(playerId).then(onFinished);
       }
-    };
-
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
+    }, 1000);
     return () => clearInterval(interval);
   }, [quiz.expires_at, playerId, onFinished]);
 
-  // 4. Fetch question JIT (KL-12)
+  // Fetch question JIT (KL-12)
   const [retryTrigger, setRetryTrigger] = useState(0);
 
   useEffect(() => {
@@ -136,62 +122,40 @@ export default function StudentQuizRuntime({
           if (res.success && res.question) {
             setCurrentQuestion(res.question);
             questionStartTimeRef.current = getNowTimestamp();
-          } else {
-            setErrorMsg(res.error || 'Gagal memuat soal');
-          }
+          } else setErrorMsg(res.error || 'Gagal memuat soal');
         }
       } catch (err: unknown) {
-        if (!cancelled) {
-          setErrorMsg(err instanceof Error ? err.message : String(err));
-        }
+        if (!cancelled) setErrorMsg(err instanceof Error ? err.message : String(err));
       } finally {
         if (!cancelled) setLoadingQuestion(false);
       }
     };
-    load();
+    void load();
     return () => { cancelled = true; };
   }, [playerId, currentIndex, retryTrigger]);
 
-  // 5. Handle Answer Selection & Submission (KL-13)
   const handleSelectOption = async (optionId: string) => {
     if (!currentQuestion) return;
-    setAnswersMap((prev) => ({ ...prev, [currentIndex]: optionId }));
-
     const timeTaken = Math.max(1, Math.round((getNowTimestamp() - questionStartTimeRef.current) / 1000));
-
-    // Submit answer to server immediately
     setIsSubmitting(true);
     try {
-      await submitQuizAnswerAction(
-        playerId,
-        currentIndex,
-        currentQuestion.id,
-        optionId,
-        timeTaken
-      );
+      const res = await submitQuizAnswerAction(playerId, currentIndex, currentQuestion.id, optionId, timeTaken);
+      if (res && res.success) setAnswersMap((prev) => ({ ...prev, [currentIndex]: optionId }));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleNext = () => {
-    if (currentIndex + 1 < totalQuestions) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
-      // Last question reached
-      handleFinalFinish();
-    }
+    if (currentIndex + 1 < totalQuestions) setCurrentIndex((prev) => prev + 1);
+    else void handleFinalFinish();
   };
 
   const handlePrev = () => {
-    if (!isStrict && currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-    }
+    if (!isStrict && currentIndex > 0) setCurrentIndex((prev) => prev - 1);
   };
 
-  const toggleDoubt = () => {
-    setDoubtMap((prev) => ({ ...prev, [currentIndex]: !prev[currentIndex] }));
-  };
+  const toggleDoubt = () => setDoubtMap((prev) => ({ ...prev, [currentIndex]: !prev[currentIndex] }));
 
   const handleFinalFinish = async () => {
     if (confirm('Apakah Anda yakin ingin menyelesaikan kuis ini?')) {
@@ -205,25 +169,20 @@ export default function StudentQuizRuntime({
     }
   };
 
-  const formatTimer = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
+  const formatTimer = (sec: number) => `${Math.floor(sec / 60).toString().padStart(2, '0')}:${(sec % 60).toString().padStart(2, '0')}`;
   const selectedAnswer = answersMap[currentIndex] || '';
   const isDoubt = Boolean(doubtMap[currentIndex]);
 
   return (
     <div
-      className="w-full max-w-3xl mx-auto flex flex-col gap-5 select-none"
+      className="w-full max-w-3xl mx-auto flex flex-col gap-4 sm:gap-5 select-none max-w-full overflow-x-hidden px-2 sm:px-0"
       onCopy={(e) => e.preventDefault()}
       onCut={(e) => e.preventDefault()}
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* Top Header: Timer & Anti-Cheat badge */}
-      <div className="p-4 rounded-3xl glass-card border border-line flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
+      <div className="p-3 sm:p-4 rounded-3xl glass-card border border-line flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2 sm:gap-3">
           <span className="text-xs font-bold font-mono px-3 py-1 rounded-full well border border-line text-primary">
             Soal {currentIndex + 1} dari {totalQuestions}
           </span>
@@ -236,7 +195,7 @@ export default function StudentQuizRuntime({
 
         {/* Timer */}
         <div
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl border font-mono font-bold text-sm ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3.5 py-1.5 rounded-2xl border font-mono font-bold text-xs sm:text-sm ${
             timeLeftSec <= 60
               ? 'bg-danger/15 border-danger/40 text-danger animate-pulse'
               : 'well border-line text-fg'
@@ -248,7 +207,7 @@ export default function StudentQuizRuntime({
       </div>
 
       {/* Main Question Card */}
-      <div className="p-6 sm:p-8 rounded-3xl glass-card border border-line shadow-sm flex flex-col gap-6">
+      <div className="p-4 sm:p-8 rounded-3xl glass-card border border-line shadow-sm flex flex-col gap-5 sm:gap-6">
         {loadingQuestion ? (
           <div className="py-16 text-center text-xs text-fg-subtle animate-pulse">
             Memuat soal nomor {currentIndex + 1}...
@@ -259,7 +218,7 @@ export default function StudentQuizRuntime({
             <span>{errorMsg}</span>
             <button
               onClick={() => setRetryTrigger((v) => v + 1)}
-              className="mt-2 px-4 py-2 rounded-2xl bg-primary text-white text-xs font-bold"
+              className="mt-2 min-h-[44px] px-4 py-2 rounded-2xl bg-primary text-white text-xs font-bold"
             >
               Coba Lagi
             </button>
@@ -268,9 +227,9 @@ export default function StudentQuizRuntime({
           <>
             {/* Question Body */}
             <div className="flex flex-col gap-3">
-              <div
-                className="text-sm sm:text-base text-fg leading-relaxed font-medium prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: currentQuestion.body_html }}
+              <RichContent
+                html={currentQuestion.body_html}
+                className="text-sm sm:text-base text-fg leading-relaxed font-medium"
               />
             </div>
 
@@ -284,7 +243,7 @@ export default function StudentQuizRuntime({
                     value={selectedAnswer}
                     onChange={(e) => handleSelectOption(e.target.value)}
                     placeholder="Ketik jawaban Anda..."
-                    className="w-full px-4 py-3 rounded-2xl well border border-line text-sm font-semibold text-fg focus:outline-hidden focus:border-primary"
+                    className="w-full min-h-[44px] px-4 py-2.5 rounded-2xl well border border-line text-sm font-semibold text-fg focus:outline-hidden focus:border-primary"
                   />
                 </div>
               ) : (
@@ -297,7 +256,7 @@ export default function StudentQuizRuntime({
                       key={optId}
                       type="button"
                       onClick={() => handleSelectOption(optId)}
-                      className={`p-4 rounded-2xl border flex items-start gap-3.5 transition-all text-left ${
+                      className={`min-h-[44px] p-3.5 sm:p-4 rounded-2xl border flex items-start gap-3 transition-all text-left ${
                         isChecked
                           ? 'border-primary bg-primary/10 shadow-xs ring-2 ring-primary/30 font-semibold'
                           : 'border-line glass hover:bg-well'
@@ -312,7 +271,7 @@ export default function StudentQuizRuntime({
                       >
                         {labelLetter}
                       </span>
-                      <span className="text-xs sm:text-sm text-fg pt-0.5 leading-relaxed">
+                      <span className="text-xs sm:text-sm text-fg pt-0.5 leading-relaxed break-words">
                         {String(opt.text || opt.label || '')}
                       </span>
                     </button>
@@ -324,14 +283,14 @@ export default function StudentQuizRuntime({
         ) : null}
 
         {/* Footer Navigation Buttons */}
-        <div className="flex items-center justify-between pt-5 border-t border-line mt-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-line mt-2">
           {!isStrict ? (
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handlePrev}
                 disabled={currentIndex === 0}
-                className="px-3.5 py-2 rounded-2xl well hover:bg-well/80 border border-line text-xs font-bold text-fg flex items-center gap-1 disabled:opacity-40"
+                className="min-h-[44px] min-w-[44px] px-3.5 py-2.5 rounded-2xl well hover:bg-well/80 border border-line text-xs font-bold text-fg flex items-center gap-1 disabled:opacity-40"
               >
                 <ChevronLeft size={16} />
                 <span>Sebelumnya</span>
@@ -340,7 +299,7 @@ export default function StudentQuizRuntime({
               <button
                 type="button"
                 onClick={toggleDoubt}
-                className={`px-3 py-2 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                className={`min-h-[44px] px-3.5 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   isDoubt
                     ? 'bg-amber-500/15 border-amber-500/40 text-amber-600'
                     : 'well border-line text-fg-subtle hover:text-amber-600'
@@ -360,7 +319,7 @@ export default function StudentQuizRuntime({
                 type="button"
                 onClick={handleNext}
                 disabled={isStrict && !selectedAnswer}
-                className="px-5 py-2.5 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                className="min-h-[44px] px-5 py-2.5 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center gap-1.5 shadow-sm disabled:opacity-50"
               >
                 <span>Selanjutnya</span>
                 <ChevronRight size={16} />
@@ -370,7 +329,7 @@ export default function StudentQuizRuntime({
                 type="button"
                 onClick={handleFinalFinish}
                 disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-2xl bg-success text-white text-xs font-bold clay-success hover:opacity-95 transition-opacity flex items-center gap-1.5 shadow-sm"
+                className="min-h-[44px] px-5 py-2.5 rounded-2xl bg-success text-white text-xs font-bold clay-success hover:opacity-95 transition-opacity flex items-center gap-1.5 shadow-sm"
               >
                 <CheckCircle2 size={16} />
                 <span>Selesaikan Kuis</span>
@@ -382,7 +341,7 @@ export default function StudentQuizRuntime({
 
       {/* Standard Mode: Question Numbers Grid Palette */}
       {!isStrict && (
-        <div className="p-4 sm:p-5 rounded-3xl glass-card border border-line shadow-2xs flex flex-col gap-3">
+        <div className="p-3.5 sm:p-5 rounded-3xl glass-card border border-line shadow-2xs flex flex-col gap-3">
           <span className="text-xs font-bold text-fg-subtle uppercase tracking-wider block">
             Daftar Nomor Soal
           </span>
@@ -395,7 +354,7 @@ export default function StudentQuizRuntime({
                 <button
                   key={idx}
                   onClick={() => setCurrentIndex(idx)}
-                  className={`w-9 h-9 rounded-xl font-mono text-xs font-bold border flex items-center justify-center transition-all ${
+                  className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl font-mono text-xs font-bold border flex items-center justify-center transition-all ${
                     active
                       ? 'border-primary ring-2 ring-primary/40 bg-primary text-white clay-primary'
                       : doubt

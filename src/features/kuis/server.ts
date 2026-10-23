@@ -34,7 +34,13 @@ export async function createQuiz(input: CreateQuizInput) {
 }
 
 export async function updateQuizStatus(quizId: string, action: 'start' | 'pause' | 'resume' | 'finish' | 'cancel') {
-  await requireActiveAdmin();
+  const admin = await requireActiveAdmin();
+  if (admin.role !== 'super_admin') {
+    const quiz = await getQuizById(quizId);
+    if (quiz && quiz.created_by && quiz.created_by !== admin.userId) {
+      throw new Error('Akses ditolak: Anda hanya dapat mengelola status kuis milik sendiri');
+    }
+  }
   const supabase = createAdminSupabaseClient();
   const { data, error } = await ((supabase as unknown) as RpcCaller).rpc('rpc_admin_update_quiz_status', {
     p_quiz_id: quizId,

@@ -7,6 +7,15 @@ export const ALLOWED_STYLE_PROPERTIES = new Set([
   'text-align',
 ]);
 
+export const ALLOWED_TAGS = [
+  'p', 'br', 'span', 'strong', 'b', 'em', 'i', 'u', 's', 'strike',
+  'sub', 'sup', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'ul', 'ol', 'li', 'blockquote', 'hr',
+  'code', 'pre',
+  'table', 'thead', 'tbody', 'tr', 'th', 'td', 'colgroup', 'col',
+  'img', 'mark',
+];
+
 export function sanitizeStyleString(rawStyle: string): string {
   if (!rawStyle || typeof rawStyle !== 'string') return '';
   const declarations = rawStyle.split(';');

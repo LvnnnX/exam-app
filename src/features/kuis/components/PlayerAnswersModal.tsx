@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import RichContent from '@/src/components/RichContent';
 import { getPlayerAnswersAction } from '../actions';
 import MountAvatar from './MountAvatar';
 import type { LivePlayerProgress, PlayerAnswerDetail } from '../types';
@@ -47,6 +48,7 @@ export default function PlayerAnswersModal({ player, onClose }: PlayerAnswersMod
           </div>
           <button
             onClick={onClose}
+            aria-label="Tutup modal"
             className="p-2 rounded-2xl well hover:bg-brick-50 text-fg-subtle hover:text-danger transition-colors border border-line"
           >
             <X size={18} />
@@ -72,10 +74,7 @@ export default function PlayerAnswersModal({ player, onClose }: PlayerAnswersMod
                     {ans.is_correct ? '✓ Benar' : '✗ Salah'} ({ans.time_taken}s)
                   </span>
                 </div>
-                <div
-                  className="text-xs text-fg prose prose-sm max-w-none line-clamp-2"
-                  dangerouslySetInnerHTML={{ __html: ans.body_html }}
-                />
+                <RichContent html={ans.body_html} className="text-xs line-clamp-2" />
                 <div className="flex items-center justify-between text-[11px] font-mono well p-2 rounded-xl border border-line">
                   <span>Jawaban Siswa: <b>{ans.user_answer || '(Kosong)'}</b></span>
                   <span>Kunci: <b>{ans.correct_answer || '-'}</b></span>

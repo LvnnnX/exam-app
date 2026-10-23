@@ -9,7 +9,7 @@
     "lint": "eslint --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/run-e2e.mjs",
     "test:rls": "node scripts/local-stack/run-sql.mjs tests/rls_phase1.sql && node scripts/local-stack/run-sql.mjs tests/rls_phase5.sql",
     "stack:start": "node scripts/local-stack/start.mjs",
     "stack:seed": "node scripts/local-stack/seed-admin.mjs",
@@ -39,7 +39,7 @@
     "canvas-confetti": "1.9.4",
     "clsx": "2.1.1",
     "crypto-js": "4.2.0",
-    "dompurify": "3.4.0",
+    "dompurify": "^3.4.17",
     "exceljs": "^4.4.0",
     "framer-motion": "12.38.0",
     "highlight.js": "11.11.1",
@@ -53,6 +53,7 @@
     "tailwind-merge": "3.6.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "1.60.0",
     "@tailwindcss/postcss": "4.2.2",
     "@types/canvas-confetti": "1.9.0",

@@ -195,7 +195,7 @@ async function handleStorage(req, res, url) {
     writeFileSync(file, body, { flag: 'wx' });
     const id = randomUUID();
     await pool.query(
-      `INSERT INTO storage.objects (id, bucket_id, name, owner, owner_id, metadata) VALUES ($1, $2, $3, $4, $4::text, $5)`,
+      `INSERT INTO storage.objects (id, bucket_id, name, owner, owner_id, metadata) VALUES ($1, $2, $3, $4::uuid, $4::text, $5)`,
       [id, bucket, key, claims.sub, { mimetype: mime, size: body.length }],
     );
     return send(res, 200, { Key: `${bucket}/${key}`, Id: id });
@@ -222,7 +222,7 @@ function cors(req, res) {
   if (origin && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
     res.setHeader('access-control-allow-origin', origin);
     res.setHeader('access-control-allow-credentials', 'true');
-    res.setHeader('access-control-allow-headers', 'authorization, apikey, content-type, prefer, range, x-client-info, x-upsert, accept-profile, content-profile, x-supabase-api-version');
+    res.setHeader('access-control-allow-headers', 'authorization, apikey, content-type, cache-control, prefer, range, x-client-info, x-upsert, accept-profile, content-profile, x-supabase-api-version');
     res.setHeader('access-control-allow-methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
     res.setHeader('access-control-expose-headers', 'content-range, content-profile');
   }

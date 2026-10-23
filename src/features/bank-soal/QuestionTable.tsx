@@ -159,6 +159,7 @@ export default function QuestionTable({
                     type="checkbox"
                     checked={questions.length > 0 && selectedIds.length === questions.length}
                     onChange={handleSelectAll}
+                    aria-label="Pilih semua soal"
                     className="accent-primary"
                   />
                 </th>
@@ -190,6 +191,7 @@ export default function QuestionTable({
                         <input
                           type="checkbox"
                           checked={isChecked}
+                          aria-label={`Pilih soal ${q.id}`}
                           onChange={(e) => {
                             if (e.target.checked) setSelectedIds([...selectedIds, q.id]);
                             else setSelectedIds(selectedIds.filter((id) => id !== q.id));
@@ -284,6 +286,7 @@ export default function QuestionTable({
               type="button"
               disabled={page <= 1}
               onClick={() => onPageChange(page - 1)}
+              aria-label="Halaman sebelumnya"
               className="p-1.5 rounded-lg well hover:bg-well-hover disabled:opacity-40"
             >
               <ChevronLeft size={16} />
@@ -295,6 +298,7 @@ export default function QuestionTable({
               type="button"
               disabled={page >= totalPages}
               onClick={() => onPageChange(page + 1)}
+              aria-label="Halaman selanjutnya"
               className="p-1.5 rounded-lg well hover:bg-well-hover disabled:opacity-40"
             >
               <ChevronRight size={16} />

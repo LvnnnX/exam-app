@@ -17,6 +17,22 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: ImportModalP
   const [previewRows, setPreviewRows] = useState<ImportPreviewRow[]>([]);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const resetState = React.useCallback(() => {
+    setFile(null);
+    setPreviewRows([]);
+    setResult(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -69,7 +85,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: ImportModalP
             <FileSpreadsheet className="text-primary" size={22} />
             <h2 className="text-lg font-bold text-fg">Impor Soal Massal (CSV / XLSX)</h2>
           </div>
-          <button type="button" onClick={onClose} className="p-1 rounded-xl hover:bg-well text-fg-subtle">
+          <button type="button" onClick={handleClose} aria-label="Tutup modal" className="p-1 rounded-xl hover:bg-well text-fg-subtle">
             <X size={20} />
           </button>
         </div>
@@ -105,7 +121,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: ImportModalP
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="mt-3 px-5 py-2.5 rounded-xl text-sm font-semibold clay-primary"
             >
               Tutup
@@ -115,6 +131,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: ImportModalP
           <div className="flex flex-col gap-4">
             <div className="border-2 border-dashed border-line-strong rounded-2xl p-6 text-center hover:bg-well/40 transition-colors">
               <input
+                ref={fileInputRef}
                 type="file"
                 accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                 onChange={handleFileChange}
@@ -177,7 +194,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }: ImportModalP
             <div className="flex justify-end gap-2 pt-3 border-t border-line mt-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={loading}
                 className="px-4 py-2 rounded-xl text-sm font-medium hover:bg-well text-fg-muted"
               >

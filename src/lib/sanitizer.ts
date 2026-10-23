@@ -23,7 +23,7 @@ const ALLOWED_TAGS = [
   'ul', 'ol', 'li', 'blockquote', 'hr',
   'code', 'pre',
   'table', 'thead', 'tbody', 'tr', 'th', 'td', 'colgroup', 'col',
-  'img',
+  'img', 'mark',
 ];
 
 const ALLOWED_ATTRS = [

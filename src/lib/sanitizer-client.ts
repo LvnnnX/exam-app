@@ -45,7 +45,7 @@ const SANITIZE_CONFIG: DomPurifyConfig = {
     'ul', 'ol', 'li', 'blockquote', 'hr',
     'code', 'pre',
     'table', 'thead', 'tbody', 'tr', 'th', 'td', 'colgroup', 'col',
-    'img',
+    'img', 'mark',
   ],
   ALLOWED_ATTR: [
     'style', 'class', 'src', 'alt', 'title', 'loading', 'decoding', 'width', 'height',

@@ -207,6 +207,7 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
               <select
                 value={selectedSubjectId}
                 onChange={(e) => handleSubjectChange(e.target.value)}
+                aria-label="Pilih mata pelajaran"
                 className="w-full px-3.5 py-2.5 rounded-2xl well border border-line text-xs font-medium text-fg focus:outline-hidden focus:border-primary"
                 disabled={isLoadingCats}
               >
@@ -222,6 +223,7 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
               <select
                 value={selectedChapterId}
                 onChange={(e) => handleChapterChange(e.target.value)}
+                aria-label="Pilih bab"
                 disabled={selectedSubjectId === 'all'}
                 className="w-full px-3.5 py-2.5 rounded-2xl well border border-line text-xs font-medium text-fg focus:outline-hidden focus:border-primary disabled:opacity-50"
               >

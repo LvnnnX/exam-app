@@ -59,6 +59,7 @@ export default function QuestionFilters({
           <select
             value={filters.type || 'all'}
             onChange={(e) => onChange({ ...filters, type: e.target.value as QuestionFilter['type'], page: 1 })}
+            aria-label="Filter tipe soal"
             className="w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs"
           >
             <option value="all">Semua Tipe</option>
@@ -72,6 +73,7 @@ export default function QuestionFilters({
           <select
             value={filters.visibility || 'all'}
             onChange={(e) => onChange({ ...filters, visibility: e.target.value as QuestionFilter['visibility'], page: 1 })}
+            aria-label="Filter status visibilitas"
             className="w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs"
           >
             <option value="all">Semua Status</option>
@@ -97,6 +99,7 @@ export default function QuestionFilters({
                 page: 1,
               });
             }}
+            aria-label="Filter mata pelajaran"
             className="w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs"
           >
             <option value="">Semua Mapel</option>
@@ -120,6 +123,7 @@ export default function QuestionFilters({
                 page: 1,
               });
             }}
+            aria-label="Filter bab"
             className="w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs disabled:opacity-50"
           >
             <option value="">Semua Bab</option>
@@ -142,6 +146,7 @@ export default function QuestionFilters({
                 page: 1,
               });
             }}
+            aria-label="Filter sub-bab"
             className="w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs disabled:opacity-50"
           >
             <option value="">Semua Sub-bab</option>
@@ -154,6 +159,7 @@ export default function QuestionFilters({
             type="button"
             onClick={onReset}
             title="Reset Semua Filter"
+            aria-label="Reset semua filter"
             className="p-2 rounded-2xl well hover:bg-well-hover text-fg-muted border border-line shrink-0"
           >
             <RotateCcw size={16} />

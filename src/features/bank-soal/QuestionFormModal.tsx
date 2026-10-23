@@ -96,7 +96,7 @@ function QuestionFormInner({
         <h2 className="text-lg font-bold text-fg">
           {question ? `Edit Soal #${question.id}` : 'Tambah Soal Baru'}
         </h2>
-        <button type="button" onClick={onClose} className="p-1 rounded-xl hover:bg-well text-fg-subtle">
+        <button type="button" onClick={onClose} aria-label="Tutup modal" className="p-1 rounded-xl hover:bg-well text-fg-subtle">
           <X size={20} />
         </button>
       </div>
@@ -115,6 +115,7 @@ function QuestionFormInner({
             <select
               value={selectedTopicId}
               onChange={(e) => setSelectedTopicId(e.target.value)}
+              aria-label="Pilih sub-bab kategori"
               className="w-full p-2 rounded-xl bg-canvas border border-line text-fg text-xs focus:outline-none"
             >
               <option value="">Pilih Sub-bab...</option>
@@ -139,6 +140,7 @@ function QuestionFormInner({
             <select
               value={type}
               onChange={(e) => setType(e.target.value as QuestionType)}
+              aria-label="Pilih tipe soal"
               className="w-full p-2 rounded-xl bg-canvas border border-line text-fg text-xs focus:outline-none"
             >
               <option value="multiple_choice">Pilihan Ganda (A-E)</option>
@@ -151,6 +153,7 @@ function QuestionFormInner({
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as Visibility)}
+              aria-label="Pilih status visibilitas"
               className="w-full p-2 rounded-xl bg-canvas border border-line text-fg text-xs focus:outline-none"
             >
               <option value="shown">Shown (Tampil ke siswa/kuis)</option>

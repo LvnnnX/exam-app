@@ -1,0 +1,2012 @@
+[
+  {
+    "page": "/kuis/852758 (waiting)",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".gap-1\\.5.px-3.py-1:nth-child(2) > span",
+    "html": "<span>5 Soal</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/kuis/852758 (waiting)",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".gap-1\\.5.px-3.py-1:nth-child(3) > span",
+    "html": "<span>15 Menit</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/kuis/852758 (waiting)",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".capitalize > span",
+    "html": "<span>Mode standard</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/kuis/852758 (soal)",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".transition-colors > span",
+    "html": "<span>Tandai Ragu</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio "
+  },
+  {
+    "page": "/admin",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".disabled\\:opacity-40.hover\\:bg-well-hover.p-1\\.5:nth-child(1)",
+    "html": "<button type=\"button\" disabled=\"\" class=\"p-1.5 rounded-lg well hover:bg-well-hover disabled:opacity-40\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".disabled\\:opacity-40.hover\\:bg-well-hover.p-1\\.5:nth-child(3)",
+    "html": "<button type=\"button\" class=\"p-1.5 rounded-lg well hover:bg-well-hover disabled:opacity-40\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".w-8 > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(1) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(2) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(3) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(4) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(5) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(6) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(7) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(8) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(9) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(10) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(11) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(12) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(13) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(14) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(15) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(16) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(17) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(18) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(19) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(20) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(21) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(22) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(23) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(24) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(25) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": ".sm\\:grid-cols-2 > div:nth-child(3) > select",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\"><option value=\"all\" selected=\"\">Semua Tipe</option><option value=\"multiple_choice\">Pilihan Ganda",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(4) > select",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\"><option value=\"all\" selected=\"\">Semua Status</option><option value=\"shown\">Shown (Aktif)</option",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(1) > select",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(2) > .disabled\\:opacity-50",
+    "html": "<select disabled=\"\" class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs disabled:opacity-50\"><option value=\"\" selected=\"\">Semua Bab</option></select>",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": ".gap-2.items-center.flex > .disabled\\:opacity-50",
+    "html": "<select disabled=\"\" class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs disabled:opacity-50\"><option value=\"\" selected=\"\">Semua Sub-bab</option></select>",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".disabled\\:opacity-40.hover\\:bg-well-hover.p-1\\.5:nth-child(1)",
+    "html": "<button type=\"button\" disabled=\"\" class=\"p-1.5 rounded-lg well hover:bg-well-hover disabled:opacity-40\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/soal",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".disabled\\:opacity-40.hover\\:bg-well-hover.p-1\\.5:nth-child(3)",
+    "html": "<button type=\"button\" class=\"p-1.5 rounded-lg well hover:bg-well-hover disabled:opacity-40\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".w-8 > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(1) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(2) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(3) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(4) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(5) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(6) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(7) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(8) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(9) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(10) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(11) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(12) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(13) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(14) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(15) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(16) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(17) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(18) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(19) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(20) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(21) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(22) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(23) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(24) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(25) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": ".sm\\:grid-cols-2 > div:nth-child(3) > select",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\"><option value=\"all\" selected=\"\">Semua Tipe</option><option value=\"multiple_choice\">Pilihan Ganda",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(4) > select",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\"><option value=\"all\" selected=\"\">Semua Status</option><option value=\"shown\">Shown (Aktif)</option",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(1) > select",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(2) > .disabled\\:opacity-50",
+    "html": "<select disabled=\"\" class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs disabled:opacity-50\"><option value=\"\" selected=\"\">Semua Bab</option></select>",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": ".gap-2.items-center.flex > .disabled\\:opacity-50",
+    "html": "<select disabled=\"\" class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs disabled:opacity-50\"><option value=\"\" selected=\"\">Semua Sub-bab</option></select>",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".disabled\\:opacity-40.hover\\:bg-well-hover.well:nth-child(1)",
+    "html": "<button type=\"button\" disabled=\"\" class=\"p-1.5 rounded-lg well hover:bg-well-hover disabled:opacity-40\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".disabled\\:opacity-40.hover\\:bg-well-hover.well:nth-child(3)",
+    "html": "<button type=\"button\" class=\"p-1.5 rounded-lg well hover:bg-well-hover disabled:opacity-40\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".p-1.rounded-xl.text-fg-subtle",
+    "html": "<button type=\"button\" class=\"p-1 rounded-xl hover:bg-well text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".w-8 > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(1) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(2) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(3) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(4) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(5) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(6) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(7) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(8) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(9) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(10) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(11) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(12) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(13) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(14) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(15) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(16) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(17) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(18) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(19) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(20) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(21) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(22) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(23) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(24) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label?application=playwright",
+    "target": ".hover\\:bg-well\\/40:nth-child(25) > .text-center:nth-child(1) > .accent-primary[type=\"checkbox\"]",
+    "html": "<input type=\"checkbox\" class=\"accent-primary\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": ".sm\\:grid-cols-2 > div:nth-child(3) > .px-3",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\"><option value=\"all\" selected=\"\">Semua Tipe</option><option value=\"multiple_choice\">Pilihan Ganda",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(4) > .px-3",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\"><option value=\"all\" selected=\"\">Semua Status</option><option value=\"shown\">Shown (Aktif)</option",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(1) > .px-3",
+    "html": "<select class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(2) > .disabled\\:opacity-50.px-3",
+    "html": "<select disabled=\"\" class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs disabled:opacity-50\"><option value=\"\" selected=\"\">Semua Bab</option></select>",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": ".gap-2.items-center.flex > .disabled\\:opacity-50.px-3",
+    "html": "<select disabled=\"\" class=\"w-full px-3 py-2 rounded-2xl well border border-line text-fg focus:outline-none text-xs disabled:opacity-50\"><option value=\"\" selected=\"\">Semua Sub-bab</option></select>",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(1) > .bg-canvas.rounded-xl.p-2",
+    "html": "<select class=\"w-full p-2 rounded-xl bg-canvas border border-line text-fg text-xs focus:outline-none\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(2) > .bg-canvas.rounded-xl.p-2",
+    "html": "<select class=\"w-full p-2 rounded-xl bg-canvas border border-line text-fg text-xs focus:outline-none\"><option value=\"multiple_choice\">Pilihan Ganda (A-E)</option><option value=\"short_answer\">Isian Sin",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/soal (modal tambah soal)",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "div:nth-child(3) > .bg-canvas.rounded-xl.p-2",
+    "html": "<select class=\"w-full p-2 rounded-xl bg-canvas border border-line text-fg text-xs focus:outline-none\"><option value=\"shown\">Shown (Tampil ke siswa/kuis)</option><option value=\"hidden\">Hidden (Hanya ad",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .px-4.hover\\:bg-well\\/40.p-3 > .gap-2:nth-child(1) > .hover\\:bg-well.p-1.rounded-lg",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg hover:bg-well text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(5) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(7) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .px-4.hover\\:bg-well\\/40.p-3 > .gap-2:nth-child(1) > .hover\\:bg-well.p-1.rounded-lg",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg hover:bg-well text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(3) > .px-4.hover\\:bg-well\\/40.p-3 > .gap-2:nth-child(1) > .hover\\:bg-well.p-1.rounded-lg",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg hover:bg-well text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "button-name",
+    "impact": "critical",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/button-name?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(3) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl > .p-2\\.5.px-3.hover\\:bg-well-hover > .gap-2:nth-child(1) > .p-1.rounded-lg[type=\"button\"]",
+    "html": "<button type=\"button\" class=\"p-1 rounded-lg text-fg-subtle\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references "
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(3) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->14<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(3) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(4) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->17<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(5) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(6) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->17<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(7) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->3<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->32<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(3) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(4) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->32<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(5) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(1) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(5) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->10<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(3) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(4) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(5) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(6) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(7) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(8) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->2<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(9) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->30<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(10) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->17<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(11) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(12) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(13) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(6) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(14) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->30<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(7) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->14<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(3) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(4) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->2<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(5) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(6) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(7) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->2<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(8) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->42<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(9) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->42<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(10) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(11) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->2<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(12) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(13) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(8) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(14) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(15) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(16) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(17) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(18) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->14<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->124<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->15<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(3) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->188<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(4) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->31<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(5) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->17<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(1) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(6) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->23<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(2) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->91<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->20<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(3) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(3) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->8<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(1) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->1<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(2) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(2) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->23<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(3) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->2<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(4) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->8<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(5) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->2<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".border-line\\/80.overflow-hidden.rounded-2xl:nth-child(4) > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl:nth-child(6) > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->34<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kategori",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-canvas\\/30.flex-col:nth-child(3) > .pl-6.sm\\:pl-10.pr-4 > .border-line\\/80.overflow-hidden.rounded-2xl > .pl-8.pr-3.pt-1 > .bg-canvas\\/60.p-1\\.5.rounded-xl > .gap-2:nth-child(1) > .font-mono.text-\\[10px\\]",
+    "html": "<span class=\"text-[10px] text-fg-subtle font-mono\">(<!-- -->4<!-- --> soal)</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #5f6f72, background color: #e9eeed, font size: 7.5pt (10px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kuis",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".bg-danger\\/20 > span",
+    "html": "<span>Akhiri Kuis</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4 (foreground color: #a63f2e, background color: #dcccc8, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of "
+  },
+  {
+    "page": "/admin/kuis",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".w-12",
+    "html": "<th class=\"py-3 px-4 w-12 text-center\">Rank</th>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio "
+  },
+  {
+    "page": "/admin/kuis",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": "th:nth-child(3)",
+    "html": "<th class=\"py-3 px-4 text-center\">Progress</th>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio "
+  },
+  {
+    "page": "/admin/kuis",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": "th:nth-child(4)",
+    "html": "<th class=\"py-3 px-4 text-center\">Skor</th>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio "
+  },
+  {
+    "page": "/admin/kuis",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": "th:nth-child(5)",
+    "html": "<th class=\"py-3 px-4 text-center\">Total Waktu</th>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio "
+  },
+  {
+    "page": "/admin/kuis",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": "th:nth-child(6)",
+    "html": "<th class=\"py-3 px-4 text-center\">Status</th>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio "
+  },
+  {
+    "page": "/admin/kuis",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": ".w-16",
+    "html": "<th class=\"py-3 px-4 text-center w-16\">Detail</th>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.15 (foreground color: #5f6f72, background color: #e0e6e5, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio "
+  },
+  {
+    "page": "/admin/kuis",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/select-name?application=playwright",
+    "target": "select",
+    "html": "<select class=\"px-3 py-1.5 rounded-xl well border border-line text-xs font-mono font-bold text-fg focus:outline-hidden\">",
+    "failureSummary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribut"
+  },
+  {
+    "page": "/admin/kelola-admin",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": "li:nth-child(1) > .gap-1.flex-col > .gap-2 > .border-warn\\/30.bg-warn\\/10.px-2",
+    "html": "<span class=\"rounded-full border border-warn/30 bg-warn/10 px-2 py-0.5 text-xs font-semibold text-warn\">Pending</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #a8661f, background color: #efeae3, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+  },
+  {
+    "page": "/admin/kelola-admin",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright",
+    "target": "li:nth-child(2) > .gap-1.flex-col > .gap-2 > .border-warn\\/30.bg-warn\\/10.px-2",
+    "html": "<span class=\"rounded-full border border-warn/30 bg-warn/10 px-2 py-0.5 text-xs font-semibold text-warn\">Pending</span>",
+    "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #a8661f, background color: #efeae3, font size: 9.0pt (12px), font weight: normal). Expected contrast rati"
+  }
+]
