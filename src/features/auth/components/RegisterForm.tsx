@@ -106,7 +106,7 @@ export default function RegisterForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="clay-primary mt-1 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold disabled:opacity-50"
+                className="clay-primary mt-1 flex w-full min-h-[44px] items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold disabled:opacity-50"
               >
                 {loading ? 'Mengirim...' : 'Kirim permohonan'} <ArrowRight size={16} aria-hidden />
               </button>

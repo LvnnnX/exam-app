@@ -74,7 +74,7 @@ export default function HomeClient() {
 
         <Link
           href="/admin/kuis"
-          className="px-3.5 py-1.5 rounded-2xl well hover:bg-well/80 border border-line text-xs font-bold text-fg flex items-center gap-1.5 transition-colors"
+          className="min-h-[44px] px-3.5 py-2 rounded-2xl well hover:bg-well/80 border border-line text-xs font-bold text-fg flex items-center gap-1.5 transition-colors"
         >
           <Shield size={14} className="text-primary" />
           <span>Portal Admin</span>
@@ -144,7 +144,7 @@ export default function HomeClient() {
             <button
               type="submit"
               disabled={isJoining}
-              className="w-full mt-2 py-3 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+              className="w-full mt-2 min-h-[44px] py-3 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
             >
               {isJoining ? (
                 <span>Menghubungkan ke Sesi...</span>
@@ -173,7 +173,7 @@ export default function HomeClient() {
           </div>
           <Link
             href="/ujian"
-            className="px-4 py-2 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center gap-1.5 shrink-0"
+            className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center gap-1.5 shrink-0"
           >
             <span>Mulai</span>
             <ArrowRight size={14} />

@@ -57,7 +57,7 @@ export default function LoginForm({ redirectTo }: { redirectTo: string }) {
           <button
             type="submit"
             disabled={loading}
-            className="clay-primary mt-1 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold disabled:opacity-50"
+            className="clay-primary mt-1 flex w-full min-h-[44px] items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold disabled:opacity-50"
           >
             {loading ? 'Memproses...' : 'Masuk'} <ArrowRight size={16} aria-hidden />
           </button>
@@ -65,7 +65,7 @@ export default function LoginForm({ redirectTo }: { redirectTo: string }) {
 
         <p className="border-t border-line pt-4 text-center text-sm text-fg-muted">
           Belum punya akun?{' '}
-          <Link href="/admin/register" className="font-bold text-primary hover:underline">
+          <Link href="/admin/register" className="inline-flex items-center font-bold text-primary hover:underline py-1">
             Ajukan pendaftaran
           </Link>
         </p>

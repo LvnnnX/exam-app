@@ -48,6 +48,7 @@ export default function MountPickerModal({
           </div>
           <button
             onClick={onClose}
+            aria-label="Tutup modal"
             className="p-2 rounded-2xl well hover:bg-brick-50 text-fg-subtle hover:text-danger transition-colors border border-line"
           >
             <X size={18} />
@@ -84,6 +85,8 @@ export default function MountPickerModal({
                   key={mount.id}
                   type="button"
                   onClick={() => setSelectedMount(mount.id)}
+                  aria-label={`Pilih hewan ${mount.name}`}
+                  aria-pressed={isSelected}
                   className={`p-2 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center ${
                     isSelected
                       ? 'border-primary bg-primary/10 shadow-xs ring-2 ring-primary/30'
@@ -118,6 +121,8 @@ export default function MountPickerModal({
                   key={pid}
                   type="button"
                   onClick={() => setSelectedPreset(pid)}
+                  aria-label={`Pilih warna ${p.name}`}
+                  aria-pressed={isSelected}
                   className={`p-2.5 rounded-2xl border flex items-center gap-2 transition-all ${
                     isSelected
                       ? 'border-primary bg-primary/10 ring-2 ring-primary/30'

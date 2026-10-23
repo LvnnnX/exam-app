@@ -10,16 +10,7 @@ interface CategoryNode {
   id: string;
   name: string;
   slug: string;
-  chapters?: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    topics?: Array<{
-      id: string;
-      name: string;
-      slug: string;
-    }>;
-  }>;
+  chapters?: Array<{ id: string; name: string; slug: string; topics?: Array<{ id: string; name: string; slug: string }> }>;
 }
 
 interface AdminQuizFormProps {
@@ -29,8 +20,6 @@ interface AdminQuizFormProps {
 export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [isLoadingCats, setIsLoadingCats] = useState(true);
-
-  // Form states
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all');
   const [selectedChapterId, setSelectedChapterId] = useState<string>('all');
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
@@ -40,8 +29,6 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
   const [allowMidGame, setAllowMidGame] = useState<boolean>(false);
   const [useCustomWeights, setUseCustomWeights] = useState<boolean>(false);
   const [weights, setWeights] = useState<Record<string, number>>({});
-
-  // Feedback states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [guardModalMsg, setGuardModalMsg] = useState<string | null>(null);
@@ -51,15 +38,12 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
     const fetchCats = async () => {
       setIsLoadingCats(true);
       const res = await getCategoryTreeAction();
-      if (active && res.success && res.tree) {
-        setCategories(res.tree as CategoryNode[]);
-      }
+      if (active && res.success && res.tree) setCategories(res.tree as CategoryNode[]);
       if (active) setIsLoadingCats(false);
     };
-    fetchCats();
+    void fetchCats();
     return () => { active = false; };
   }, []);
-
   const currentSubject = categories.find((s) => s.id === selectedSubjectId);
   const currentChapter = currentSubject?.chapters?.find((c) => c.id === selectedChapterId);
   const availableTopics = currentChapter?.topics || [];
@@ -78,18 +62,12 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
   };
 
   const toggleTopic = (tid: string) => {
-    setSelectedTopicIds((prev) =>
-      prev.includes(tid) ? prev.filter((id) => id !== tid) : [...prev, tid]
-    );
+    setSelectedTopicIds((prev) => (prev.includes(tid) ? prev.filter((id) => id !== tid) : [...prev, tid]));
   };
 
   const handleSelectAllTopics = () => {
     if (availableTopics.length === 0) return;
-    if (selectedTopicIds.length === availableTopics.length) {
-      setSelectedTopicIds([]);
-    } else {
-      setSelectedTopicIds(availableTopics.map((t) => t.id));
-    }
+    setSelectedTopicIds(selectedTopicIds.length === availableTopics.length ? [] : availableTopics.map((t) => t.id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +75,6 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
     setErrorMessage(null);
     setGuardModalMsg(null);
 
-    // Validation
     if (questionCount <= 0) {
       setErrorMessage('Jumlah soal harus lebih dari 0');
       return;
@@ -107,7 +84,6 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
       return;
     }
 
-    // Weight validation if enabled
     let finalWeights: Record<string, number> | undefined = undefined;
     if (useCustomWeights && selectedTopicIds.length > 0) {
       const sum = Object.values(weights).reduce((a, b) => a + (b || 0), 0);
@@ -194,7 +170,6 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* Kategori Selection */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2 text-xs font-bold text-fg-subtle uppercase tracking-wider">
             <Layers size={14} className="text-primary" />
@@ -355,13 +330,11 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Strict */}
-            <div
+            <button
+              type="button"
               onClick={() => setQuizMode('strict')}
-              className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                quizMode === 'strict'
-                  ? 'border-primary bg-primary/10 shadow-xs ring-2 ring-primary/20'
-                  : 'border-line glass hover:bg-well'
+              className={`p-3.5 rounded-2xl border text-left transition-all ${
+                quizMode === 'strict' ? 'border-primary bg-primary/10 shadow-xs ring-2 ring-primary/20' : 'border-line glass hover:bg-well'
               }`}
             >
               <div className="flex items-center gap-2 font-bold text-xs text-fg">
@@ -371,15 +344,13 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
               <p className="text-[11px] text-fg-subtle mt-1 leading-relaxed">
                 Soal dikerjakan berurutan satu per satu. Siswa tidak dapat kembali ke soal sebelumnya.
               </p>
-            </div>
+            </button>
 
-            {/* Standard */}
-            <div
+            <button
+              type="button"
               onClick={() => setQuizMode('standard')}
-              className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                quizMode === 'standard'
-                  ? 'border-primary bg-primary/10 shadow-xs ring-2 ring-primary/20'
-                  : 'border-line glass hover:bg-well'
+              className={`p-3.5 rounded-2xl border text-left transition-all ${
+                quizMode === 'standard' ? 'border-primary bg-primary/10 shadow-xs ring-2 ring-primary/20' : 'border-line glass hover:bg-well'
               }`}
             >
               <div className="flex items-center gap-2 font-bold text-xs text-fg">
@@ -389,10 +360,9 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
               <p className="text-[11px] text-fg-subtle mt-1 leading-relaxed">
                 Siswa dapat berpindah nomor secara bebas, mengubah jawaban, dan menandai ragu-ragu.
               </p>
-            </div>
+            </button>
           </div>
 
-          {/* Toggle mid-game join */}
           <label className="flex items-center gap-2.5 p-3 rounded-2xl well border border-line cursor-pointer mt-1">
             <input
               type="checkbox"
@@ -412,7 +382,7 @@ export default function AdminQuizForm({ onSuccess }: AdminQuizFormProps) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full mt-3 py-3 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+          className="w-full mt-3 min-h-[44px] py-3 rounded-2xl bg-primary text-white text-xs font-bold clay-primary hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
         >
           {isSubmitting ? (
             <span>Memvalidasi & Membuat Kuis...</span>

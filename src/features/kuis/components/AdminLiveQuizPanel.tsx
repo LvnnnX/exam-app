@@ -87,6 +87,7 @@ export default function AdminLiveQuizPanel({
               </span>
               <button
                 onClick={handleCopyCode}
+                aria-label="Salin kode kuis"
                 className="p-2.5 rounded-2xl well hover:bg-well/80 border border-line text-fg transition-all"
                 title="Salin Kode"
               >
@@ -183,6 +184,7 @@ export default function AdminLiveQuizPanel({
             <button
               onClick={() => handleAction('cancel')}
               disabled={isActing}
+              aria-label="Batalkan kuis"
               className="p-2.5 rounded-2xl well hover:bg-brick-50 border border-line text-fg-subtle hover:text-danger transition-colors"
               title="Batalkan Kuis"
             >
@@ -312,6 +314,7 @@ export default function AdminLiveQuizPanel({
                       <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => setInspectPlayer(p)}
+                          aria-label={`Lihat jawaban ${p.name}`}
                           className="p-1.5 rounded-xl well hover:bg-well/80 border border-line text-fg-subtle hover:text-primary transition-colors"
                           title="Lihat Jawaban"
                         >
