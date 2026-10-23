@@ -42,7 +42,7 @@ export default function ResultView({ summary, onShowRecap, onRetry }: ResultView
         <span className="text-[12px] font-semibold text-fg-muted">
           Hasil ujian mandiri • {summary.mode === 'exam' ? 'Exam' : 'Survival'}
         </span>
-        <h1 className="text-[22px] font-bold text-fg sm:text-[26px]">{summary.name}</h1>
+        <h2 className="text-[22px] font-bold text-fg sm:text-[26px]">{summary.name}</h2>
 
         {isExam ? (
           <div className="flex flex-col items-center gap-2">

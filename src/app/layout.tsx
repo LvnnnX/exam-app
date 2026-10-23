@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
+import { HOME_DESCRIPTION, HOME_TITLE, SITE_NAME, SITE_URL } from '@/src/lib/site';
 import './globals.css';
 
 const jakarta = Plus_Jakarta_Sans({
@@ -9,8 +10,13 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Smandapura Exam App v2',
-  description: 'Sistem Ujian dan Kuis Teracak SMAN 2 Amlapura',
+  metadataBase: new URL(SITE_URL),
+  title: { default: HOME_TITLE, template: `%s · ${SITE_NAME}` },
+  description: HOME_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: { type: 'website', locale: 'id_ID', siteName: SITE_NAME },
+  twitter: { card: 'summary_large_image' },
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export default function RootLayout({

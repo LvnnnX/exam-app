@@ -1,5 +1,12 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import QuizRoomClient from './QuizRoomClient';
+
+// A quiz room lives for one session: keep it out of search results.
+export const metadata: Metadata = {
+  title: 'Kuis Live',
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = 'force-dynamic';
 
